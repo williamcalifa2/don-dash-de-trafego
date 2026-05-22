@@ -298,6 +298,19 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px
 .add-client-card:hover{border-color:var(--p);color:var(--p);background:var(--pl)}
 .add-client-card i{font-size:28px;opacity:.5}
 .add-client-card span{font-size:13px;font-weight:500}
+/* LOGO UPLOAD */
+.logo-upload-zone{border:2px dashed var(--bd2);border-radius:var(--r2);padding:20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--bg)}
+.logo-upload-zone:hover{border-color:var(--p);background:var(--pl)}
+.logo-upload-zone.dragging{border-color:var(--p);background:var(--pl);transform:scale(1.01)}
+.logo-upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.logo-preview{width:80px;height:80px;border-radius:var(--r2);object-fit:contain;border:1px solid var(--bd);background:#fff;padding:6px}
+.logo-upload-txt{font-size:13px;color:var(--tx3);margin-top:8px}
+.logo-upload-sub{font-size:11px;color:var(--tx3);opacity:.7;margin-top:3px}
+.logo-uploading{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--p);margin-top:8px}
+.logo-spinner{width:16px;height:16px;border:2px solid var(--pl);border-top-color:var(--p);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.logo-remove{font-size:11px;color:var(--err-tx);cursor:pointer;margin-top:6px;display:inline-flex;align-items:center;gap:4px;background:none;border:none;font-family:var(--font)}
+.logo-remove:hover{text-decoration:underline}
 .rev-section{margin-bottom:24px}
 .rev-ttl{font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .rev-ttl::after{content:'';flex:1;height:1px;background:var(--bd)}
@@ -309,6 +322,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px
 .divider{border:none;border-top:1px solid var(--bd);margin:16px 0}
 #toast{position:fixed;bottom:24px;right:24px;background:var(--tx);color:#fff;padding:11px 18px;border-radius:var(--r2);font-size:13px;font-weight:500;z-index:999;display:flex;align-items:center;gap:7px;opacity:0;pointer-events:none;transition:opacity .25s;box-shadow:var(--sh2)}
 ::-webkit-scrollbar{width:5px;height:5px}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:99px}
 
@@ -462,12 +476,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px
     <div class="page" id="page-detail">
       <div class="dhdr">
         <button class="back" onclick="nav('clients')"><i class="ti ti-arrow-left"></i> Clientes</button>
-        <div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span class="dname" id="d-name"></span>
-            <span id="d-badge" class="badge"></span>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div id="d-logo-wrap" style="display:none;width:48px;height:48px;border-radius:10px;overflow:hidden;border:1px solid var(--bd);background:#fff;flex-shrink:0">
+            <img id="d-logo-img" src="" style="width:100%;height:100%;object-fit:contain;padding:4px" onerror="document.getElementById('d-logo-wrap').style.display='none'">
           </div>
-          <div class="dsub" id="d-sub"></div>
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span class="dname" id="d-name"></span>
+              <span id="d-badge" class="badge"></span>
+            </div>
+            <div class="dsub" id="d-sub"></div>
+          </div>
         </div>
         <div style="margin-left:auto">
           <button class="btn primary sm" onclick="openQM()"><i class="ti ti-plus"></i> Registrar</button>
@@ -702,6 +721,24 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px
                 <div class="fg"><label>Nicho</label><input type="text" id="cfg-niche" placeholder="Ex: Imóveis, Clínica estética, Advocacia..."></div>
                 <div class="fg"><label>Fase atual</label><select id="cfg-phase"><option value="">— Selecione —</option><option>Testando públicos</option><option>Topo / Público frio</option><option>Escala</option><option>Retargeting</option><option>Manutenção</option></select></div>
               </div>
+              <div class="frow frow-1">
+                <div class="fg">
+                  <label>Logo do cliente</label>
+                  <div style="display:flex;align-items:center;gap:12px;margin-top:2px">
+                    <div id="cfg-logo-preview" style="width:56px;height:56px;border-radius:10px;border:1.5px dashed var(--bd2);background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--tx3);font-size:20px;flex-shrink:0;overflow:hidden;cursor:pointer;transition:all .15s" onclick="document.getElementById('cfg-logo-input').click()" title="Clique para fazer upload">
+                      <i class="ti ti-photo" id="cfg-logo-icon"></i>
+                    </div>
+                    <div style="flex:1">
+                      <button type="button" class="btn sm" id="cfg-logo-btn" onclick="document.getElementById('cfg-logo-input').click()">
+                        <i class="ti ti-upload"></i> Fazer upload da logo
+                      </button>
+                      <div style="font-size:11px;color:var(--tx3);margin-top:5px" id="cfg-logo-status">PNG, JPG ou SVG — recomendado fundo transparente</div>
+                    </div>
+                    <input type="file" id="cfg-logo-input" accept="image/*" style="display:none" onchange="uploadLogo(this)">
+                    <input type="hidden" id="cfg-logo">
+                  </div>
+                </div>
+              </div>
               <div class="frow frow-3">
                 <div class="fg"><label>Budget mensal (R$)</label><input type="number" id="cfg-budget" placeholder="0"></div>
                 <div class="fg"><label>Ticket médio (R$)</label><input type="number" id="cfg-ticket" placeholder="0"></div>
@@ -851,6 +888,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px
 
 <script>
 const SU='https://script.google.com/macros/s/AKfycby76WgHv3WdLFY30DUfWWoxa8cP0_jP5shNXOp9D-aq_IZNeaqoaP4ThWsKd2zgfRSrHA/exec';
+const CLOUDINARY_CLOUD='dptvzasry';
+const CLOUDINARY_PRESET='don_logos';
+const CLOUDINARY_URL=`https://api.cloudinary.com/v1_1/dptvzasry/image/upload`;
+const CLOUDINARY_CLOUD='dptvzasry';
+const CLOUDINARY_PRESET='don_logos';
 const SH={A:'Públicos',C:'Criativos',T:'Tarefas',CL:'Clientes'};
 // Lista de clientes é dinâmica por usuário
 let CL = [];
@@ -901,6 +943,57 @@ function audI(s){return{testing:['b-g','Testando'],active:['b-ok','Ativo ✓'],p
 function crI(s){return{champion:['b-p','Campeão 🏆'],testing:['b-p','Testando'],paused:['b-warn','Pausado'],dead:['b-err','Saturado']}[s]||['b-g',s];}
 function priI(p){return{high:['p-h','Alta'],mid:['p-m','Média'],low:['p-l','Baixa']}[p]||['p-l','Baixa'];}
 function dtImg(u){if(!u)return'';if(u.includes('drive.google.com/file/d/')){const m=u.match(/\/d\/([^/]+)/);if(m)return`https://drive.google.com/thumbnail?id=${m[1]}&sz=w400`;}return u;}
+function driveLogoUrl(u){
+  if(!u)return'';
+  if(u.includes('drive.google.com/file/d/')){const m=u.match(/\/d\/([^/]+)/);if(m)return`https://drive.google.com/thumbnail?id=${m[1]}&sz=w200`;}
+  if(u.includes('drive.google.com/open?id=')){const m=u.match(/id=([^&]+)/);if(m)return`https://drive.google.com/thumbnail?id=${m[1]}&sz=w200`;}
+  return u;
+}
+
+async function uploadLogo(input){
+  const file=input.files[0];
+  if(!file) return;
+  const btn=document.getElementById('cfg-logo-btn');
+  const status=document.getElementById('cfg-logo-status');
+  const preview=document.getElementById('cfg-logo-preview');
+  const icon=document.getElementById('cfg-logo-icon');
+
+  // Loading state
+  btn.disabled=true;
+  btn.innerHTML='<i class="ti ti-loader" style="animation:spin .8s linear infinite"></i> Enviando...';
+  status.textContent='Fazendo upload...';
+  status.style.color='var(--p)';
+
+  try {
+    const fd=new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', CLOUDINARY_PRESET);
+    fd.append('folder', 'don_logos');
+
+    const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,{method:'POST',body:fd});
+    const data=await res.json();
+
+    if(data.secure_url){
+      // Salvar URL no campo hidden
+      document.getElementById('cfg-logo').value=data.secure_url;
+      // Mostrar preview
+      preview.innerHTML=`<img src="${data.secure_url}" style="width:100%;height:100%;object-fit:contain;padding:4px">`;
+      preview.style.border='1.5px solid var(--ok)';
+      btn.innerHTML='<i class="ti ti-check"></i> Logo enviada';
+      status.textContent='Upload concluído! Salve a configuração para aplicar.';
+      status.style.color='var(--ok-tx)';
+    } else {
+      throw new Error(data.error?.message||'Erro no upload');
+    }
+  } catch(e) {
+    btn.innerHTML='<i class="ti ti-upload"></i> Tentar novamente';
+    status.textContent='Erro: '+e.message;
+    status.style.color='var(--err-tx)';
+  } finally {
+    btn.disabled=false;
+    input.value='';
+  }
+}
 function toast(m){const t=document.getElementById('toast');t.innerHTML=`<i class="ti ti-check"></i> ${m}`;t.style.opacity='1';t.style.pointerEvents='auto';clearTimeout(t._t);t._t=setTimeout(()=>{t.style.opacity='0';t.style.pointerEvents='none';},2500);}
 function emp(m){return`<div class="empty">${m}</div>`;}
 function setSync(m){document.getElementById('ssync').textContent=m;}
@@ -915,8 +1008,18 @@ function rc(px){const s=document.getElementById(px+'-csel');if(s)s.value='';cons
 // SELECTS
 function popSel(){
   const o=CL.map(c=>`<option value="${c}">${c}</option>`).join('');
-  ['aud-client','cr-client','task-client','cfg-client'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=o;});
-  const kf=document.getElementById('kfilter');if(kf){const v=kf.value;kf.innerHTML='<option value="">Todos os clientes</option>'+o;kf.value=v;}
+  ['aud-client','cr-client','task-client','cfg-client'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    const prev=el.value;
+    el.innerHTML=o||'<option value="">— Nenhum cliente cadastrado —</option>';
+    // Manter seleção anterior se ainda existir
+    if(prev && CL.includes(prev)) el.value=prev;
+  });
+  const kf=document.getElementById('kfilter');
+  if(kf){const v=kf.value;kf.innerHTML='<option value="">Todos os clientes</option>'+o;kf.value=v;}
+  // Recarregar config do cliente selecionado
+  if(document.getElementById('cfg-client')) loadCfg();
 }
 function rch(px){
   const cs=document.getElementById(px+'-client');const cl=cs?cs.value:qc;
@@ -934,7 +1037,7 @@ function nav(p){
   if(idx!==undefined)document.querySelectorAll('.ni')[idx].classList.add('on');
   if(p==='clients')renderC();
   if(p==='kanban')renderK();
-  if(p==='register')rch('aud');
+  if(p==='register'){popSel();rch('aud');}
   window.scrollTo(0,0);
 }
 function stab(btn,t){
@@ -945,7 +1048,8 @@ function rtab(t){
   const tabs=['audience','creative','task','config'];
   document.querySelectorAll('#page-register .rtab').forEach((b,i)=>b.classList.toggle('on',tabs[i]===t));
   document.querySelectorAll('#page-register .rpanel').forEach((p,i)=>p.classList.toggle('on','rp-'+tabs[i]==='rp-'+t));
-  if(t==='audience')rch('aud');
+  if(t==='audience') rch('aud');
+  if(t==='config') loadCfg();
 }
 function qrtab(t){
   const tabs=['audience','creative','task'];
@@ -1007,6 +1111,10 @@ function addNewClient(){
   sUC(db.clients[name]);
   popSel();
   document.getElementById('new-client-modal').classList.remove('open');
+  // Resetar logo preview para próximo cliente
+  document.getElementById('logo-preview-wrap').style.display='none';
+  document.getElementById('logo-upload-placeholder').style.display='block';
+  document.getElementById('cfg-logo').value='';
   renderC();
   toast(`Cliente "${name}" adicionado!`);
 }
@@ -1031,10 +1139,16 @@ function renderC(){
     const init=name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
     const st=c.status||'active';
     const dotColor={active:'var(--ok)',warn:'var(--warn)',err:'var(--err)'}[st]||'var(--ok)';
+    const logoUrl=c.logo||'';
 
     return`<div class="ccard ${sc(st)}" data-name="${name}" data-status="${st}" onclick="openCl('${name.replace(/'/g,"\\'")}')">
       <div class="cc-top">
-        <div class="cc-init">${init}</div>
+        ${logoUrl
+          ? `<div class="cc-init" style="padding:0;overflow:hidden;background:#fff;border:1px solid var(--bd)">
+               <img src="${logoUrl}" style="width:100%;height:100%;object-fit:contain;padding:4px" onerror="this.parentElement.innerHTML='${init}';this.parentElement.style.cssText='background:var(--pl);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--p)'">
+             </div>`
+          : `<div class="cc-init">${init}</div>`
+        }
         <div class="cc-dot" style="background:${dotColor}" title="${sl(st)}"></div>
       </div>
       <div class="cc-name">${name}</div>
@@ -1062,6 +1176,11 @@ function openCl(name){
   const st=c.status||'active';
 
   document.getElementById('d-name').textContent=name;
+  // Logo no detalhe
+  const logoWrap=document.getElementById('d-logo-wrap');
+  const logoImg=document.getElementById('d-logo-img');
+  if(c.logo){logoImg.src=c.logo;logoWrap.style.display='block';}
+  else{logoWrap.style.display='none';}
   document.getElementById('d-sub').textContent=`${auds.filter(a=>a.status==='active').length} públicos ativos · ${crs.filter(cr=>cr.status==='champion').length} criativos campeões`;
   const b=document.getElementById('d-badge');b.className=`badge ${sbc(st)}`;b.textContent=sl(st);
 
@@ -1202,11 +1321,42 @@ function addTask(){
   updM();toast('Tarefa salva! Disponível no Kanban.');
 }
 
-function loadCfg(){const n=document.getElementById('cfg-client').value;const c=cfg(n);document.getElementById('cfg-status').value=c.status||'active';document.getElementById('cfg-niche').value=c.niche||'';document.getElementById('cfg-phase').value=c.phase||'';document.getElementById('cfg-budget').value=c.budget||'';document.getElementById('cfg-ticket').value=c.ticket||'';document.getElementById('cfg-cpa-meta').value=c.cpaMeta||'';document.getElementById('cfg-goal').value=c.goal||'';document.getElementById('cfg-obs').value=c.obs||'';}
+function loadCfg(){
+  const sel=document.getElementById('cfg-client');
+  if(!sel||!sel.value) return;
+  const n=sel.value;
+  const c=cfg(n);
+  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val;};
+  set('cfg-status', c.status||'active');
+  set('cfg-niche',  c.niche||'');
+  set('cfg-phase',  c.phase||'');
+  set('cfg-budget', c.budget||'');
+  set('cfg-ticket', c.ticket||'');
+  set('cfg-cpa-meta', c.cpaMeta||'');
+  set('cfg-goal',   c.goal||'');
+  set('cfg-obs',    c.obs||'');
+  set('cfg-logo', c.logo||'');
+  // Preview da logo atual
+  const prev=document.getElementById('cfg-logo-preview');
+  const icon=document.getElementById('cfg-logo-icon');
+  const statusEl=document.getElementById('cfg-logo-status');
+  const btn=document.getElementById('cfg-logo-btn');
+  if(c.logo){
+    prev.innerHTML=`<img src="${c.logo}" style="width:100%;height:100%;object-fit:contain;padding:4px" onerror="this.parentElement.innerHTML='<i class=\"ti ti-photo\" style=\"font-size:20px\"></i>'">`;
+    prev.style.border='1.5px solid var(--ok)';
+    if(btn){btn.innerHTML='<i class="ti ti-upload"></i> Trocar logo';}
+    if(statusEl){statusEl.textContent='Logo atual carregada';statusEl.style.color='var(--ok-tx)';}
+  } else {
+    prev.innerHTML='<i class="ti ti-photo" style="font-size:20px"></i>';
+    prev.style.border='1.5px dashed var(--bd2)';
+    if(btn){btn.innerHTML='<i class="ti ti-upload"></i> Fazer upload da logo';}
+    if(statusEl){statusEl.textContent='PNG, JPG ou SVG — recomendado fundo transparente';statusEl.style.color='';}
+  }
+}
 
 function saveCfg(){
   const n=document.getElementById('cfg-client').value;
-  const cpaMeta=document.getElementById('cfg-cpa-meta').value;db.clients[n]={...db.clients[n],userEmail:currentUser?.email||'',name:n,status:document.getElementById('cfg-status').value,niche:document.getElementById('cfg-niche').value.trim(),phase:document.getElementById('cfg-phase').value,budget:document.getElementById('cfg-budget').value,ticket:document.getElementById('cfg-ticket').value,cpaMeta:cpaMeta,goal:document.getElementById('cfg-goal').value.trim(),obs:document.getElementById('cfg-obs').value.trim()};
+  const cpaMeta=document.getElementById('cfg-cpa-meta').value;const logo=document.getElementById('cfg-logo').value.trim();db.clients[n]={...db.clients[n],userEmail:currentUser?.email||'',name:n,status:document.getElementById('cfg-status').value,niche:document.getElementById('cfg-niche').value.trim(),phase:document.getElementById('cfg-phase').value,budget:document.getElementById('cfg-budget').value,ticket:document.getElementById('cfg-ticket').value,cpaMeta:cpaMeta,goal:document.getElementById('cfg-goal').value.trim(),obs:document.getElementById('cfg-obs').value.trim(),logo:logo};
   save();sUC(db.clients[n]);toast('Configuração salva!');
 }
 
