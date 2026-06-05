@@ -231,9 +231,9 @@ body.dark .tb-search input:focus{background:#1E1E2C}
 body.dark .fg input,body.dark .fg select,body.dark .fg textarea{background:var(--bg)}
 body.dark .sb{background:#08080D;border-color:rgba(255,255,255,.03)}
 body.dark .ccard:hover{border-color:rgba(107,111,207,.35)}
-#auth-screen{position:fixed;inset:0;background:#0D0D12;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+#auth-screen{position:fixed;inset:0;background:#08080D;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;background-image:radial-gradient(ellipse at 20% 50%,rgba(107,111,207,.08) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(107,111,207,.05) 0%,transparent 50%)}
 #auth-screen.hidden{display:none}
-.auth-card{background:#16161F;border:1px solid rgba(255,255,255,.07);border-radius:var(--r);padding:40px;width:100%;max-width:360px;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+.auth-card{background:rgba(22,22,31,.95);border:1px solid rgba(255,255,255,.08);border-radius:var(--r);padding:44px 40px;width:100%;max-width:380px;box-shadow:0 32px 80px rgba(0,0,0,.7),0 0 0 1px rgba(107,111,207,.1)}
 .auth-logo{display:flex;align-items:baseline;gap:1px;margin-bottom:6px}
 .auth-don{font-size:28px;font-weight:700;color:#fff;letter-spacing:-1.5px;line-height:1}
 .auth-dot{font-size:28px;font-weight:700;color:var(--p);line-height:1}
@@ -251,11 +251,24 @@ body.dark .ccard:hover{border-color:rgba(107,111,207,.35)}
 body.dark ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1)}
 .sb-theme-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:16px;padding:4px 6px;transition:color .15s;line-height:1;margin-left:auto;border-radius:6px}
 .sb-theme-btn:hover{color:rgba(255,255,255,.8);background:rgba(255,255,255,.06)}
+#admin-bar{position:fixed;top:0;left:0;right:0;z-index:9000;height:36px;background:linear-gradient(90deg,#6B6FCF,#9B59B6);display:none;align-items:center;justify-content:space-between;padding:0 20px;font-size:12px;font-weight:500;color:#fff}
+#admin-bar.on{display:flex}
+#admin-bar .ab-tag{display:flex;align-items:center;gap:7px;opacity:.9}
+body.has-admin-bar .main{padding-top:36px}
+body.has-admin-bar .sb{top:36px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
+
+<div id="admin-bar">
+  <div class="ab-tag"><i class="ti ti-shield-check" style="font-size:14px"></i> Modo Admin — acesso de demonstração</div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <span style="opacity:.7;font-size:11px">admin@dondigital.com</span>
+    <button onclick="App.signOut()" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:var(--font)">Sair</button>
+  </div>
+</div>
 
 <div id="auth-screen">
   <div class="auth-card">
@@ -271,6 +284,11 @@ body.dark ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1)}
       <div style="display:flex;justify-content:space-between;margin-top:14px">
         <button onclick="App.authPanel('register')" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:12px;cursor:pointer;font-family:var(--font)">Criar conta</button>
         <button onclick="App.authPanel('forgot')" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:12px;cursor:pointer;font-family:var(--font)">Esqueci minha senha</button>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,.06);margin-top:20px;padding-top:16px">
+        <button onclick="App.loginAsDemo()" style="width:100%;padding:10px;background:rgba(107,111,207,.12);border:1.5px dashed rgba(107,111,207,.3);color:rgba(107,111,207,.8);font-size:12px;font-weight:500;border-radius:var(--r2);cursor:pointer;font-family:var(--font);transition:all .15s" onmouseover="this.style.background='rgba(107,111,207,.2)'" onmouseout="this.style.background='rgba(107,111,207,.12)'">
+          ⚡ Acesso demonstração
+        </button>
       </div>
     </div>
 
@@ -1807,6 +1825,22 @@ body.dark ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1)}
     setAuthErr(''); bootApp();
   }
 
+  const ADMIN_EMAIL = 'admin@dondigital.com';
+  async function loginAsDemo() {
+    const btn = document.querySelector('button[onclick="App.loginAsDemo()"]');
+    if (btn) { btn.textContent = 'Entrando...'; btn.disabled = true; }
+    const { error } = await sb.auth.signInWithPassword({ email: ADMIN_EMAIL, password: 'dondigital' });
+    if (error) { setAuthErr('Erro no acesso demo.'); if(btn){btn.textContent='⚡ Acesso demonstração';btn.disabled=false;} return; }
+    bootApp();
+  }
+  function checkAdminBar() {
+    sb.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email === ADMIN_EMAIL) {
+        $('admin-bar').classList.add('on');
+        document.body.classList.add('has-admin-bar');
+      }
+    });
+  }
   async function signOut() { await sb.auth.signOut(); location.reload(); }
 
   async function changePassword() {
@@ -1948,6 +1982,7 @@ body.dark ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1)}
   }
   function bootApp() {
     hideAuthScreen();
+    checkAdminBar();
     loadState();
     populateSelects();
     loadClientCfg();
@@ -1997,7 +2032,7 @@ body.dark ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1)}
     toggleArchive, unarchiveClient,
     addNote, filterNotes, openNote, closeNoteModal, deleteNote,
     openEditTask, saveEditTask, closeEditTask,
-    signIn, signUp, signOut, sendReset, confirmReset, authPanel, changePassword,
+    signIn, signUp, signOut, sendReset, confirmReset, authPanel, changePassword, loginAsDemo,
     closeReminderModal, toggleDark, onFormatChange,
     selectPreset, saveCustomPreset, toggleMetric, saveResult, deleteResult, renderResults,
     renderDashboard,
