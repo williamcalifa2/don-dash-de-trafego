@@ -81,6 +81,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px
 .ov-table colgroup col:nth-child(8){width:48px}
 .ov-ca-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;color:var(--tx3);background:transparent;border:1px solid transparent;text-decoration:none;transition:all .15s;font-size:14px}
 .ov-ca-btn:hover{color:var(--p);background:var(--pl);border-color:rgba(107,111,207,.2)}
+.ov-ca-dim{opacity:.25}
 .ov-table th{text-align:left;font-size:10px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;padding:7px 12px;border-bottom:1px solid var(--bd2);white-space:nowrap;background:var(--bg)}
 .ov-table th:first-child{padding-left:40px}
 .ov-table td{padding:0;border-bottom:1px solid rgba(255,255,255,.035)}
@@ -2303,10 +2304,7 @@ body.has-admin-bar .sb{top:36px}
             </select>
           </td>
           <td class="ov-cell" style="text-align:center">
-            ${c.actId
-              ? `<a class="ov-ca-btn" href="https://www.facebook.com/adsmanager/manage/campaigns?act=${c.actId}" target="_blank" title="Conta de Anúncios"><i class="ti ti-external-link"></i></a>`
-              : `<span class="ov-empty" style="font-size:11px">—</span>`
-            }
+            <a class="ov-ca-btn${c.actId?'':' ov-ca-dim'}" href="${c.actId?`https://www.facebook.com/adsmanager/manage/campaigns?act=${c.actId}`:'https://www.facebook.com/adsmanager'}" target="_blank" title="${c.actId?'Conta de Anúncios — ID '+c.actId:'Sem ID configurado'}"><i class="ti ti-external-link"></i></a>
           </td>
         </tr>`;
       });
