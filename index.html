@@ -382,7 +382,7 @@ body.has-admin-bar .sb{top:36px}
     <button class="ni on" onclick="App.nav('overview')"><i class="ti ti-layout-dashboard"></i> Visão Geral</button>
     <button class="ni" onclick="App.nav('clients')"><i class="ti ti-building"></i> Clientes</button>
     <button class="ni" onclick="App.nav('kanban')"><i class="ti ti-layout-kanban"></i> Kanban</button>
-    <button class="ni" onclick="App.nav('register');App.switchRegTab('config')"><i class="ti ti-shield-cog"></i> Administrador</button>
+    <button class="ni" onclick="App.nav('register');App.switchRegTab('config')" style="display:none"></button>
     <div style="height:1px;background:rgba(255,255,255,.05);margin:8px 10px"></div>
     <button class="ni" onclick="App.nav('archived')"><i class="ti ti-archive"></i> Arquivados <span id="sb-archived-count" style="margin-left:auto;font-size:10px;background:rgba(255,255,255,.08);padding:1px 7px;border-radius:99px"></span></button>
   </nav>
@@ -438,6 +438,7 @@ body.has-admin-bar .sb{top:36px}
         </div>
         <div style="margin-left:auto;display:flex;gap:8px">
           <button class="btn sm" id="btn-archive" onclick="App.toggleArchive()"><i class="ti ti-archive" style="font-size:13px"></i> Arquivar</button>
+          <button class="btn sm" onclick="App.openEditCfg()"><i class="ti ti-pencil" style="font-size:13px"></i> Editar</button>
           <button class="btn primary sm" onclick="App.openModal()"><i class="ti ti-plus"></i> Registrar</button>
         </div>
       </div>
@@ -691,43 +692,15 @@ body.has-admin-bar .sb{top:36px}
       </div>
 
       <div class="rpanel" id="rp-config">
-        <div class="fcard">
-          <div class="fcard-head"><h3>Configurar cliente</h3><p>Aparece no briefing e nos cards</p></div>
-          <div class="fcard-body">
-            <div class="fsec"><div class="fsec-ttl">Seleção e status</div>
-              <div class="frow frow-2">
-                <div class="fg"><label>Cliente</label><select id="cfg-client" onchange="App.loadClientCfg()"></select></div>
-                <div class="fg"><label>Status</label><select id="cfg-status"><option value="active">✅ Ativo</option><option value="warn">⚠️ Atenção</option><option value="err">🔴 Problema</option><option value="off">⏸️ Pausado</option></select></div>
-              </div>
-            </div>
-            <div class="fsec"><div class="fsec-ttl">Informações do negócio</div>
-              <div class="frow frow-1" style="margin-bottom:14px">
-                <div class="fg"><label>Nome do cliente <span style="font-size:10px;font-weight:400;color:var(--tx2)">(alterar exibição)</span></label><input type="text" id="cfg-alias" maxlength="100" placeholder="Deixe vazio para usar o nome original"></div>
-              </div>
-              <div class="frow frow-2">
-                <div class="fg"><label>Nicho</label><input type="text" id="cfg-niche" maxlength="100" placeholder="Ex: Imóveis, Clínica estética..."></div>
-                <div class="fg"><label>Fase atual</label><select id="cfg-phase"><option value="">— Selecione —</option><option>Testando públicos</option><option>Topo / Público frio</option><option>Escala</option><option>Retargeting</option><option>Manutenção</option></select></div>
-              </div>
-              <div class="frow frow-3">
-                <div class="fg"><label>Budget mensal (R$)</label><input type="number" id="cfg-budget" min="0" placeholder="0"></div>
-                <div class="fg"><label>Ticket médio (R$)</label><input type="number" id="cfg-ticket" min="0" placeholder="0"></div>
-                <div class="fg"><label>Objetivo principal</label><input type="text" id="cfg-goal" maxlength="100" placeholder="Ex: Gerar leads, Vendas diretas..."></div>
-              </div>
-              <div class="frow frow-2">
-                <div class="fg"><label>Verba Meta Ads (R$)</label><input type="number" id="cfg-invest-meta" min="0" placeholder="0"><span class="hint">Aparece na Visão Geral</span></div>
-                <div class="fg"><label>Verba Google Ads (R$)</label><input type="number" id="cfg-invest-google" min="0" placeholder="0"><span class="hint">Aparece na Visão Geral</span></div>
-              </div>
-            </div>
-            <div class="fsec"><div class="fsec-ttl">Links rápidos</div>
-              <div class="frow frow-3">
-                <div class="fg"><label>ID Conta de Anúncios</label><input type="text" id="cfg-act-id" maxlength="30" placeholder="Ex: 1234567890"><span class="hint">Só os números</span></div>
-                <div class="fg"><label>ID Pixel</label><input type="text" id="cfg-pixel-id" maxlength="30" placeholder="Ex: 987654321"></div>
-                <div class="fg"><label>Landing Page</label><input type="url" id="cfg-lp-url" maxlength="500" placeholder="https://..."></div>
-              </div>
-            </div>
-          </div>
-          <div class="fcard-foot"><button class="btn primary" onclick="App.saveClientCfg()"><i class="ti ti-check"></i> Salvar configuração</button></div>
-        </div>
+        <!-- form movido para edit-cfg-modal -->
+        <select id="cfg-client" style="display:none" onchange="App.loadClientCfg()"></select>
+        <select id="cfg-status" style="display:none"><option value="active">✅ Ativo</option><option value="warn">⚠️ Atenção</option><option value="err">🔴 Problema</option><option value="off">⏸️ Pausado</option></select>
+        <input type="hidden" id="cfg-alias"><input type="hidden" id="cfg-niche">
+        <select id="cfg-phase" style="display:none"><option value="">—</option><option>Testando públicos</option><option>Topo / Público frio</option><option>Escala</option><option>Retargeting</option><option>Manutenção</option></select>
+        <input type="hidden" id="cfg-budget"><input type="hidden" id="cfg-ticket">
+        <input type="hidden" id="cfg-goal"><input type="hidden" id="cfg-act-id">
+        <input type="hidden" id="cfg-pixel-id"><input type="hidden" id="cfg-lp-url">
+        <input type="hidden" id="cfg-invest-meta"><input type="hidden" id="cfg-invest-google">
       </div>
       <div class="fcard">
         <div class="fcard-head"><h3>Alterar senha</h3><p>Senha usada na tela de login</p></div>
@@ -901,6 +874,68 @@ body.has-admin-bar .sb{top:36px}
     </div>
     <div class="mbody">
       <p id="note-view-text" style="font-size:14px;color:var(--tx);line-height:1.8;white-space:pre-wrap"></p>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT CLIENT MODAL -->
+<div class="mbg" id="edit-cfg-modal" role="dialog" aria-modal="true" aria-hidden="true" onclick="App.closeEditCfg()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:560px">
+    <div class="mhdr">
+      <div><div class="mttl" id="ecfg-title">Editar cliente</div><div class="msub">Configurações e verbas</div></div>
+      <button class="mclose" onclick="App.closeEditCfg()" aria-label="Fechar"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="mbody">
+      <div class="fsec"><div class="fsec-ttl">Status</div>
+        <div class="frow frow-2">
+          <div class="fg"><label>Status do cliente</label>
+            <select id="ecfg-status">
+              <option value="active">✅ Ativo</option>
+              <option value="warn">⚠️ Atenção</option>
+              <option value="err">🔴 Problema</option>
+              <option value="off">⏸️ Pausado</option>
+            </select>
+          </div>
+          <div class="fg"><label>Nome de exibição</label><input type="text" id="ecfg-alias" maxlength="100" placeholder="Deixe vazio para usar o original"></div>
+        </div>
+      </div>
+      <div class="fsec"><div class="fsec-ttl">Verbas</div>
+        <div class="frow frow-2">
+          <div class="fg"><label>Verba Meta Ads (R$)</label><input type="number" id="ecfg-invest-meta" min="0" placeholder="0"></div>
+          <div class="fg"><label>Verba Google Ads (R$)</label><input type="number" id="ecfg-invest-google" min="0" placeholder="0"></div>
+        </div>
+      </div>
+      <div class="fsec"><div class="fsec-ttl">Informações</div>
+        <div class="frow frow-2">
+          <div class="fg"><label>Nicho</label><input type="text" id="ecfg-niche" maxlength="100" placeholder="Ex: Imóveis, Estética..."></div>
+          <div class="fg"><label>Fase atual</label>
+            <select id="ecfg-phase">
+              <option value="">— Selecione —</option>
+              <option>Testando públicos</option>
+              <option>Topo / Público frio</option>
+              <option>Escala</option>
+              <option>Retargeting</option>
+              <option>Manutenção</option>
+            </select>
+          </div>
+        </div>
+        <div class="frow frow-3">
+          <div class="fg"><label>Budget mensal (R$)</label><input type="number" id="ecfg-budget" min="0" placeholder="0"></div>
+          <div class="fg"><label>Ticket médio (R$)</label><input type="number" id="ecfg-ticket" min="0" placeholder="0"></div>
+          <div class="fg"><label>Objetivo</label><input type="text" id="ecfg-goal" maxlength="100" placeholder="Ex: Gerar leads..."></div>
+        </div>
+      </div>
+      <div class="fsec"><div class="fsec-ttl">Links rápidos</div>
+        <div class="frow frow-3">
+          <div class="fg"><label>ID Conta de Anúncios</label><input type="text" id="ecfg-act-id" maxlength="30" placeholder="Ex: 1234567890"><span class="hint">Só os números</span></div>
+          <div class="fg"><label>ID Pixel</label><input type="text" id="ecfg-pixel-id" maxlength="30" placeholder="Ex: 987654321"></div>
+          <div class="fg"><label>Landing Page</label><input type="url" id="ecfg-lp-url" maxlength="500" placeholder="https://..."></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">
+        <button class="btn sm" onclick="App.closeEditCfg()">Cancelar</button>
+        <button class="btn primary" onclick="App.saveEditCfg()"><i class="ti ti-check"></i> Salvar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1537,6 +1572,61 @@ body.has-admin-bar .sb{top:36px}
     }
     toast('Configuração salva!');
     renderOverview();
+    // close modal if it was opened via Editar button
+    closeEditCfg();
+  }
+
+  // ── EDITAR MODAL ───────────────────────────────────────────────────────
+  function openEditCfg() {
+    if (!activeClient) return;
+    const c = getCfg(activeClient);
+    $('ecfg-title').textContent = c.alias || activeClient;
+    // populate modal fields from client data
+    sv('ecfg-status',       c.status       || 'active');
+    sv('ecfg-alias',        c.alias        || '');
+    sv('ecfg-niche',        c.niche        || '');
+    sv('ecfg-phase',        c.phase        || '');
+    sv('ecfg-budget',       c.budget       || '');
+    sv('ecfg-ticket',       c.ticket       || '');
+    sv('ecfg-goal',         c.goal         || '');
+    sv('ecfg-act-id',       c.actId        || '');
+    sv('ecfg-pixel-id',     c.pixelId      || '');
+    sv('ecfg-lp-url',       c.lpUrl        || '');
+    sv('ecfg-invest-meta',  c.investMeta   || '');
+    sv('ecfg-invest-google',c.investGoogle || '');
+    // sync hidden cfg-* stubs so saveClientCfg still works
+    sv('cfg-client', activeClient);
+    const modal = $('edit-cfg-modal');
+    modal.style.display = 'flex';
+    modal.removeAttribute('aria-hidden');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeEditCfg() {
+    const modal = $('edit-cfg-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+  function saveEditCfg() {
+    if (!activeClient) return;
+    // copy ecfg-* values into cfg-* stubs, then delegate to saveClientCfg
+    sv('cfg-client',       activeClient);
+    sv('cfg-status',       gv('ecfg-status'));
+    sv('cfg-alias',        gv('ecfg-alias'));
+    sv('cfg-niche',        gv('ecfg-niche'));
+    sv('cfg-phase',        gv('ecfg-phase'));
+    sv('cfg-budget',       gv('ecfg-budget'));
+    sv('cfg-ticket',       gv('ecfg-ticket'));
+    sv('cfg-goal',         gv('ecfg-goal'));
+    sv('cfg-act-id',       gv('ecfg-act-id'));
+    sv('cfg-pixel-id',     gv('ecfg-pixel-id'));
+    sv('cfg-lp-url',       gv('ecfg-lp-url'));
+    sv('cfg-invest-meta',  gv('ecfg-invest-meta'));
+    sv('cfg-invest-google',gv('ecfg-invest-google'));
+    saveClientCfg();
+    // update detail header in case alias changed
+    openClient(activeClient);
   }
 
   // ── ACTIONS: TASK TOGGLE ──────────────────────────────────────────────
@@ -2281,6 +2371,7 @@ body.has-admin-bar .sb{top:36px}
     openAddClientModal, closeAddClientModal, addCustomClient,
     renderOverview, setTemperatura, setOptStatus, saveInvestment, setPayment, toggleOvGroup,
     toggleArchive, unarchiveClient,
+    openEditCfg, closeEditCfg, saveEditCfg,
     addNote, filterNotes, openNote, closeNoteModal, deleteNote,
     openEditTask, saveEditTask, closeEditTask,
     signIn, signUp, signOut, sendReset, confirmReset, authPanel, changePassword, loginAsDemo,
