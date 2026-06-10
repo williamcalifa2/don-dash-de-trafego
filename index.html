@@ -1118,8 +1118,18 @@ body.has-admin-bar .sb{top:36px}
     (data||[]).forEach(c => { db.clients[c.name] = { name:c.name, alias:c.alias, status:c.status, niche:c.niche, phase:c.phase, budget:c.budget, ticket:c.ticket, goal:c.goal, actId:c.act_id, pixelId:c.pixel_id, lpUrl:c.lp_url }; });
   }
 
+  const SB_CONFLICT = {
+    clients:       'user_id,name',
+    audiences:     'id',
+    creatives:     'id',
+    tasks:         'id',
+    client_notes:  'id',
+    client_results:'id',
+    metrics_config:'user_id,client',
+  };
   async function sbSave(table, row) {
-    try { await sb.from(table).upsert(row); } catch(e) { console.error('sbSave',table,e); }
+    const onConflict = SB_CONFLICT[table] || 'id';
+    try { await sb.from(table).upsert(row, { onConflict }); } catch(e) { console.error('sbSave',table,e); }
   }
   async function sbDelete(table, id) {
     try { await sb.from(table).delete().eq('id', String(id)); } catch(e) { console.error('sbDelete',table,e); }
