@@ -235,6 +235,23 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px
 .fsec{margin-bottom:20px}
 .fsec-ttl{font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .fsec-ttl::after{content:'';flex:1;height:1px;background:var(--bd)}
+/* ── EDIT CFG MODAL — refined / lightweight ─────────────────────────── */
+#edit-cfg-modal .modal{max-width:520px}
+#edit-cfg-modal .mbody{padding:20px 24px 24px}
+#edit-cfg-modal .fsec{margin-bottom:16px}
+#edit-cfg-modal .fsec-ttl{font-size:10px;font-weight:500;letter-spacing:.08em;opacity:.55;text-transform:uppercase;margin-bottom:10px}
+#edit-cfg-modal .fsec-ttl::after{background:var(--bd);opacity:.6}
+#edit-cfg-modal .frow{gap:10px;margin-bottom:10px}
+#edit-cfg-modal .fg label{font-size:11px;font-weight:500;color:var(--tx2);text-transform:none;letter-spacing:0;opacity:.8}
+#edit-cfg-modal .fg input,
+#edit-cfg-modal .fg select,
+#edit-cfg-modal .fg textarea{font-size:13px;padding:7px 10px;border-width:1px;border-radius:6px;height:34px}
+#edit-cfg-modal .fg select{height:34px}
+#edit-cfg-modal .fg .hint{font-size:10px;opacity:.55;margin-top:1px}
+#edit-cfg-modal .mhdr{padding:16px 20px}
+#edit-cfg-modal .mttl{font-size:15px;font-weight:600}
+#edit-cfg-modal .msub{font-size:12px;color:var(--tx3);margin-top:2px}
+
 .rtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:22px}
 .rtab{padding:7px 16px;font-size:13px;font-weight:500;border:1.5px solid var(--bd2);border-radius:99px;background:var(--surface);color:var(--tx3);cursor:pointer;font-family:var(--font);transition:all .15s;box-shadow:var(--sh)}
 .rtab.on{background:var(--p);color:#fff;border-color:var(--p);box-shadow:0 2px 10px rgba(107,111,207,.3)}
