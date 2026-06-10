@@ -2125,11 +2125,18 @@ body.has-admin-bar .sb{top:36px}
   }
 
   // ── ARCHIVE ───────────────────────────────────────────────────────────
+  async function sbSetArchived(name, archived) {
+    const uid = await getUID(); if (!uid) return;
+    try {
+      await sb.from('clients').update({ archived }).eq('user_id', uid).eq('name', name);
+    } catch(e) { console.error('sbSetArchived', e); }
+  }
   function toggleArchive() {
     const c = getCfg(activeClient);
     const willArchive = !c.archived;
     c.archived = willArchive;
-    saveState(); sbSaveClient(c);
+    saveState();
+    sbSetArchived(activeClient, willArchive); // update direto só no campo archived
     updateArchivedBadge();
     if (willArchive) { toast(`${dn(activeClient)} arquivado.`); nav('clients'); }
     else { toast(`${dn(activeClient)} reativado!`); updateArchiveBtn(); }
