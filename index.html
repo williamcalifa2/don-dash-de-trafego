@@ -78,6 +78,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px
 .ov-table colgroup col:nth-child(5){width:110px}
 .ov-table colgroup col:nth-child(6){width:110px}
 .ov-table colgroup col:nth-child(7){width:110px}
+.ov-table colgroup col:nth-child(8){width:48px}
+.ov-ca-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;color:var(--tx3);background:transparent;border:1px solid transparent;text-decoration:none;transition:all .15s;font-size:14px}
+.ov-ca-btn:hover{color:var(--p);background:var(--pl);border-color:rgba(107,111,207,.2)}
 .ov-table th{text-align:left;font-size:10px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;padding:7px 12px;border-bottom:1px solid var(--bd2);white-space:nowrap;background:var(--bg)}
 .ov-table th:first-child{padding-left:40px}
 .ov-table td{padding:0;border-bottom:1px solid rgba(255,255,255,.035)}
@@ -573,7 +576,7 @@ body.has-admin-bar .sb{top:36px}
       <div class="ov-wrap">
         <table class="ov-table">
           <colgroup>
-            <col><col><col><col><col><col><col>
+            <col><col><col><col><col><col><col><col>
           </colgroup>
           <thead><tr>
             <th>Cliente</th>
@@ -583,6 +586,7 @@ body.has-admin-bar .sb{top:36px}
             <th>Meta Ads (R$)</th>
             <th>Google Ads (R$)</th>
             <th>Pagamento</th>
+            <th>CA</th>
           </tr></thead>
           <tbody id="overview-body"></tbody>
         </table>
@@ -2225,7 +2229,7 @@ body.has-admin-bar .sb{top:36px}
     const today = new Date(); today.setHours(0,0,0,0);
     const clients = allClients();
     const body = $('overview-body'); if (!body) return;
-    if (!clients.length) { body.innerHTML = `<tr><td colspan="7" class="empty">Nenhum cliente ativo.</td></tr>`; return; }
+    if (!clients.length) { body.innerHTML = `<tr><td colspan="8" class="empty">Nenhum cliente ativo.</td></tr>`; return; }
 
     const byGroup = { risco: [], necessaria: [], otimizada: [] };
     clients.forEach(name => {
@@ -2239,7 +2243,7 @@ body.has-admin-bar .sb{top:36px}
       if (!list.length) return;
       const col = _ovCollapsed[g.key];
       html += `<tr class="ov-group-row">
-        <td colspan="7">
+        <td colspan="8">
           <div class="ov-group-hdr" onclick="App.toggleOvGroup('${g.key}')">
             <i class="ti ti-chevron-down ov-group-chev${col?' collapsed':''}" id="ov-chev-${g.key}"></i>
             <span class="ov-group-badge ${g.cls}">${g.label}</span>
@@ -2297,6 +2301,12 @@ body.has-admin-bar .sb{top:36px}
               <option value="pix"    ${pm==='pix'   ?'selected':''}>⚡ Pix</option>
               <option value="boleto" ${pm==='boleto'?'selected':''}>📄 Boleto</option>
             </select>
+          </td>
+          <td class="ov-cell" style="text-align:center">
+            ${c.actId
+              ? `<a class="ov-ca-btn" href="https://www.facebook.com/adsmanager/manage/campaigns?act=${c.actId}" target="_blank" title="Conta de Anúncios"><i class="ti ti-external-link"></i></a>`
+              : `<span class="ov-empty" style="font-size:11px">—</span>`
+            }
           </td>
         </tr>`;
       });
