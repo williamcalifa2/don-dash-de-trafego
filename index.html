@@ -11,48 +11,48 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 :root {
-  --p:#6B6FCF;--p2:#5458B0;--pl:rgba(107,111,207,.09);--pm:rgba(107,111,207,.18);
-  --ok:#2DB87A;--ok-bg:rgba(45,184,122,.1);--ok-tx:#1A8A59;
-  --warn:#E8A020;--warn-bg:rgba(232,160,32,.1);--warn-tx:#A06010;
-  --err:#E0504A;--err-bg:rgba(224,80,74,.1);--err-tx:#A03030;
-  --side:#111119;--side-w:216px;
-  --bg:#F7F7F9;--surface:#FFFFFF;
-  --tx:#18181F;--tx2:#70708A;--tx3:#B0B0C8;
-  --bd:rgba(0,0,0,.07);--bd2:rgba(0,0,0,.12);
-  --r:14px;--r2:10px;--r3:7px;
-  --sh:0 1px 4px rgba(0,0,0,.06),0 0 0 1px rgba(0,0,0,.04);
-  --sh2:0 8px 32px rgba(0,0,0,.10),0 2px 8px rgba(0,0,0,.06);
+  --p:#7C7FF5;--p2:#6366D4;--pl:rgba(124,127,245,.08);--pm:rgba(124,127,245,.15);
+  --ok:#34D399;--ok-bg:rgba(52,211,153,.08);--ok-tx:#10B981;
+  --warn:#FBBF24;--warn-bg:rgba(251,191,36,.08);--warn-tx:#D97706;
+  --err:#F87171;--err-bg:rgba(248,113,113,.08);--err-tx:#EF4444;
+  --side:#07070E;--side-w:186px;
+  --bg:#07070E;--surface:#0D0D1C;--surface2:#131326;
+  --tx:#E2E2F0;--tx2:#52527A;--tx3:#28283E;
+  --bd:rgba(255,255,255,.05);--bd2:rgba(255,255,255,.09);
+  --r:10px;--r2:7px;--r3:5px;
+  --sh:0 1px 3px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.03);
+  --sh2:0 12px 48px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.05);
   --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5;display:flex;min-height:100vh;-webkit-font-smoothing:antialiased}
 .sb{width:var(--side-w);background:var(--side);display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:200;border-right:1px solid rgba(255,255,255,.04)}
-.sb-logo{padding:24px 20px 22px;border-bottom:1px solid rgba(255,255,255,.05)}
+.sb-logo{padding:20px 16px 18px;border-bottom:1px solid rgba(255,255,255,.04)}
 .sb-brand{display:flex;align-items:baseline;gap:1px}
-.sb-don{font-size:21px;font-weight:700;color:#fff;letter-spacing:-1px;line-height:1}
-.sb-dot{font-size:21px;font-weight:700;color:var(--p);line-height:1}
-.sb-sub{font-size:9px;font-weight:500;color:rgba(255,255,255,.22);text-transform:uppercase;letter-spacing:.12em;margin-top:4px}
-.sb-nav{flex:1;padding:12px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
-.sb-sec{font-size:9px;font-weight:600;color:rgba(255,255,255,.2);text-transform:uppercase;letter-spacing:.12em;padding:12px 10px 6px}
-.ni{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r3);font-size:13px;font-weight:400;color:rgba(255,255,255,.45);cursor:pointer;transition:all .15s;border:none;background:none;width:100%;text-align:left;font-family:var(--font);position:relative}
-.ni i{font-size:15px;width:16px;flex-shrink:0}
-.ni:hover{color:rgba(255,255,255,.85);background:rgba(255,255,255,.05)}
-.ni.on{color:#fff;background:rgba(255,255,255,.08);font-weight:500}
-.ni.on::before{content:'';position:absolute;left:-10px;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--p);border-radius:0 3px 3px 0}
-.sb-foot{padding:14px 20px;border-top:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:10px}
-.sb-av{width:30px;height:30px;border-radius:50%;background:var(--p);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;flex-shrink:0}
-.sb-uname{font-size:12px;font-weight:500;color:rgba(255,255,255,.75)}
-.sb-urole{font-size:10px;color:rgba(255,255,255,.28)}
+.sb-don{font-size:19px;font-weight:700;color:#fff;letter-spacing:-1.2px;line-height:1}
+.sb-dot{font-size:19px;font-weight:700;color:var(--p);line-height:1}
+.sb-sub{font-size:9px;font-weight:500;color:rgba(255,255,255,.18);text-transform:uppercase;letter-spacing:.12em;margin-top:3px}
+.sb-nav{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:1px;overflow-y:auto}
+.sb-sec{font-size:9px;font-weight:600;color:rgba(255,255,255,.16);text-transform:uppercase;letter-spacing:.12em;padding:10px 8px 5px}
+.ni{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:var(--r3);font-size:12.5px;font-weight:400;color:rgba(255,255,255,.38);cursor:pointer;transition:all .12s;border:none;background:none;width:100%;text-align:left;font-family:var(--font);position:relative}
+.ni i{font-size:14px;width:15px;flex-shrink:0}
+.ni:hover{color:rgba(255,255,255,.75);background:rgba(255,255,255,.04)}
+.ni.on{color:rgba(255,255,255,.95);background:rgba(124,127,245,.1);font-weight:500}
+.ni.on::before{content:'';position:absolute;left:-8px;top:50%;transform:translateY(-50%);width:2.5px;height:16px;background:var(--p);border-radius:0 2px 2px 0}
+.sb-foot{padding:12px 16px;border-top:1px solid rgba(255,255,255,.04);display:flex;align-items:center;gap:8px}
+.sb-av{width:26px;height:26px;border-radius:50%;background:var(--p);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0}
+.sb-uname{font-size:11px;font-weight:500;color:rgba(255,255,255,.65)}
+.sb-urole{font-size:10px;color:rgba(255,255,255,.22)}
 .main{margin-left:var(--side-w);flex:1;display:flex;flex-direction:column}
-.topbar{height:52px;background:var(--surface);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 28px;gap:12px;position:sticky;top:0;z-index:100;box-shadow:var(--sh)}
+.topbar{height:48px;background:var(--bg);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 24px;gap:12px;position:sticky;top:0;z-index:100}
 .tb-search{flex:1;max-width:380px;position:relative}
 .tb-search i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--tx3);font-size:14px;pointer-events:none}
 .tb-search input{width:100%;padding:8px 12px 8px 32px;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r2);color:var(--tx);font-size:13px;outline:none;font-family:var(--font);transition:all .15s}
 .tb-search input::placeholder{color:var(--tx3)}
-.tb-search input:focus{border-color:var(--p);background:#fff;box-shadow:0 0 0 3px var(--pl)}
+.tb-search input:focus{border-color:var(--p);background:var(--surface2);box-shadow:0 0 0 3px var(--pl)}
 .tb-right{margin-left:auto}
 .tb-sync{font-size:11px;color:var(--tx3);padding:4px 10px;background:var(--bg);border:1px solid var(--bd);border-radius:99px;font-family:var(--mono)}
-.wrap{padding:28px;flex:1}
+.wrap{padding:24px;flex:1}
 .page{display:none}.page.on{display:block}
 .ph{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;gap:12px;flex-wrap:wrap}
 .ph-title{font-size:21px;font-weight:700;color:var(--tx);letter-spacing:-.3px}
@@ -68,25 +68,50 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px
 .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
 .ccard{background:var(--surface);border:1.5px solid var(--bd);border-radius:var(--r);padding:20px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;box-shadow:var(--sh)}
 .ccard:hover{border-color:rgba(107,111,207,.22);transform:translateY(-3px);box-shadow:var(--sh2)}
-.ov-table{width:100%;border-collapse:collapse;font-size:13px}
-.ov-table th{text-align:left;font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;padding:0 14px 12px;border-bottom:1.5px solid var(--bd2)}
-.ov-table td{padding:0;border-bottom:1px solid var(--bd)}
-.ov-row{transition:background .12s}
-.ov-row:hover{background:var(--bg)}
+/* ── OVERVIEW TABLE — ClickUp dense style ─────────── */
+.ov-wrap{background:var(--surface);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--sh);overflow-x:auto;overflow-y:visible}
+.ov-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.ov-table colgroup col:nth-child(1){width:200px}
+.ov-table colgroup col:nth-child(2){width:130px}
+.ov-table colgroup col:nth-child(3){width:100px}
+.ov-table colgroup col:nth-child(4){width:175px}
+.ov-table colgroup col:nth-child(5){width:110px}
+.ov-table colgroup col:nth-child(6){width:110px}
+.ov-table colgroup col:nth-child(7){width:110px}
+.ov-table th{text-align:left;font-size:10px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;padding:7px 12px;border-bottom:1px solid var(--bd2);white-space:nowrap;background:var(--bg)}
+.ov-table th:first-child{padding-left:40px}
+.ov-table td{padding:0;border-bottom:1px solid rgba(255,255,255,.035)}
+.ov-row{transition:background .08s}
+.ov-row:hover td{background:rgba(255,255,255,.02)}
 .ov-row:last-child td{border-bottom:none}
-.ov-cell{padding:12px 14px;vertical-align:middle}
-.ov-name{font-weight:600;color:var(--tx);cursor:pointer;display:flex;align-items:center;gap:8px}
+.ov-cell{padding:0 12px;height:36px;vertical-align:middle;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-cell:first-child{padding-left:10px}
+.ov-name{font-size:13px;font-weight:500;color:var(--tx);cursor:pointer;display:flex;align-items:center;gap:8px;line-height:1}
 .ov-name:hover{color:var(--p)}
-.ov-sel{font-family:var(--font);font-size:12px;font-weight:500;padding:5px 10px;border-radius:99px;border:1.5px solid transparent;cursor:pointer;outline:none;transition:all .15s;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:22px}
-.ov-sel.temp-safe{background-color:var(--ok-bg);color:var(--ok-tx);border-color:rgba(45,184,122,.2)}
-.ov-sel.temp-atencao{background-color:var(--warn-bg);color:var(--warn-tx);border-color:rgba(232,160,32,.2)}
-.ov-sel.temp-risco{background-color:var(--err-bg);color:var(--err-tx);border-color:rgba(224,80,74,.2)}
-.ov-sel.opt-necessaria{background-color:var(--warn-bg);color:var(--warn-tx);border-color:rgba(232,160,32,.2)}
-.ov-sel.opt-otimizada{background-color:var(--ok-bg);color:var(--ok-tx);border-color:rgba(45,184,122,.2)}
-.ov-sel.opt-risco{background-color:var(--err-bg);color:var(--err-tx);border-color:rgba(224,80,74,.2)}
-.ov-date{font-size:12px;color:var(--tx2);font-family:var(--mono)}
+.ov-name-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+/* Status selects — styled as compact badges */
+.ov-sel{font-family:var(--font);font-size:11px;font-weight:600;padding:3px 18px 3px 8px;border-radius:4px;border:1px solid transparent;cursor:pointer;outline:none;transition:background .12s,color .12s;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4'%3E%3Cpath d='M0 0l3.5 4 3.5-4z' fill='%23888'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;height:24px;letter-spacing:.02em}
+.ov-sel.temp-safe{background-color:rgba(52,211,153,.1);color:#34D399;border-color:rgba(52,211,153,.18)}
+.ov-sel.temp-atencao{background-color:rgba(251,191,36,.1);color:#FBBF24;border-color:rgba(251,191,36,.18)}
+.ov-sel.temp-risco{background-color:rgba(248,113,113,.1);color:#F87171;border-color:rgba(248,113,113,.18)}
+.ov-sel.opt-necessaria{background-color:rgba(251,191,36,.1);color:#FBBF24;border-color:rgba(251,191,36,.18)}
+.ov-sel.opt-otimizada{background-color:rgba(52,211,153,.1);color:#34D399;border-color:rgba(52,211,153,.18)}
+.ov-sel.opt-risco{background-color:rgba(248,113,113,.1);color:#F87171;border-color:rgba(248,113,113,.18)}
+/* select option backgrounds */
+.ov-sel option{background:#1a1a2e;color:#E2E2F0;font-weight:500}
+.ov-invest{display:flex;align-items:center;gap:3px;font-size:12px;color:var(--tx2)}
+.ov-invest span{font-size:10px;opacity:.45}
+.ov-invest input{width:70px;background:none;border:none;border-bottom:1px solid transparent;color:var(--tx);font-family:var(--mono);font-size:12px;padding:1px 0;outline:none;transition:border-color .12s}
+.ov-invest input:hover{border-bottom-color:var(--bd2)}
+.ov-invest input:focus{border-bottom-color:var(--p)}
+.ov-invest input::placeholder{color:var(--tx3)}
+.ov-pm{font-family:var(--font);font-size:11px;font-weight:500;padding:3px 18px 3px 8px;border-radius:4px;border:1px solid var(--bd2);background:var(--surface2);color:var(--tx2);cursor:pointer;outline:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4'%3E%3Cpath d='M0 0l3.5 4 3.5-4z' fill='%23666'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;height:24px}
+.ov-pm option{background:#1a1a2e}
+.ov-date{font-size:11px;color:var(--tx2);font-family:var(--mono)}
 .ov-date.late{color:var(--err);font-weight:600}
 .ov-date.soon{color:var(--warn);font-weight:600}
+.ov-money{font-size:12px;font-family:var(--mono);font-weight:500;color:var(--tx)}
+.ov-empty{color:var(--tx3);font-family:var(--mono)}
 .note-card{background:var(--bg);border:1px solid var(--bd);border-radius:var(--r2);padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .15s}
 .note-card:hover{border-color:var(--p);background:var(--surface)}
 .note-date{font-size:11px;color:var(--tx3);margin-bottom:5px}
@@ -140,7 +165,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px
 .sp{display:none}.sp.on{display:block}
 .titem{background:var(--surface);border:1px solid var(--bd);border-radius:var(--r2);padding:14px 16px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;box-shadow:var(--sh)}
 .titem.done{opacity:.4}
-.tchk{width:18px;height:18px;border:1.5px solid var(--bd2);border-radius:5px;cursor:pointer;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;transition:all .2s;background:#fff}
+.tchk{width:18px;height:18px;border:1.5px solid var(--bd2);border-radius:5px;cursor:pointer;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;transition:all .2s;background:var(--surface2)}
 .tchk.on{background:var(--ok);border-color:var(--ok)}
 .ttxt{font-size:14px;font-weight:400;color:var(--tx);line-height:1.5;flex:1}
 .tmeta{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
@@ -184,7 +209,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px
 .kdue.soon{color:var(--warn)}.kdue.late{color:var(--err)}
 .cdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:500}
-.b-ok{background:var(--ok-bg);color:var(--ok-tx)}.b-warn{background:var(--warn-bg);color:var(--warn-tx)}.b-err{background:var(--err-bg);color:var(--err-tx)}.b-p{background:var(--pl);color:var(--p)}.b-g{background:rgba(0,0,0,.05);color:var(--tx3)}
+.b-ok{background:var(--ok-bg);color:var(--ok-tx)}.b-warn{background:var(--warn-bg);color:var(--warn-tx)}.b-err{background:var(--err-bg);color:var(--err-tx)}.b-p{background:var(--pl);color:var(--p)}.b-g{background:rgba(255,255,255,.06);color:var(--tx2)}
 .pills{display:flex;flex-wrap:wrap;gap:6px}
 .pill{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;font-size:12px;font-weight:500;border:1.5px solid var(--bd2);border-radius:99px;background:var(--surface);color:var(--tx3);cursor:pointer;font-family:var(--font);transition:all .15s}
 .pill:hover{border-color:var(--p);color:var(--p)}.pill.on{background:var(--p);color:#fff;border-color:var(--p)}.pill i{font-size:13px}
@@ -200,7 +225,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px
 .fg{display:flex;flex-direction:column;gap:6px}
 .fg label{font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em}
 .fg input,.fg select,.fg textarea{font-family:var(--font);font-size:13px;padding:10px 13px;border:1.5px solid var(--bd2);border-radius:var(--r2);background:var(--bg);color:var(--tx);outline:none;transition:all .15s;width:100%}
-.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--p);background:#fff;box-shadow:0 0 0 3px var(--pl)}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--p);background:var(--surface2);box-shadow:0 0 0 3px var(--pl)}
 .fg input::placeholder,.fg textarea::placeholder{color:var(--tx3)}
 .fg textarea{resize:vertical;min-height:80px;line-height:1.65}
 .fg .hint{font-size:11px;color:var(--tx3);margin-top:2px}
@@ -233,23 +258,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px
 #toast{position:fixed;bottom:24px;right:24px;color:#fff;padding:11px 18px;border-radius:var(--r2);font-size:13px;font-weight:500;z-index:999;display:flex;align-items:center;gap:7px;opacity:0;pointer-events:none;transition:opacity .25s;box-shadow:var(--sh2)}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:99px}
-body.dark{
-  --bg:#0D0D12;--surface:#16161F;
-  --tx:#E8E8F2;--tx2:#8888A8;--tx3:#44445A;
-  --bd:rgba(255,255,255,.06);--bd2:rgba(255,255,255,.10);
-  --sh:0 1px 4px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.04);
-  --sh2:0 8px 32px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.3);
-  --pl:rgba(107,111,207,.14);--pm:rgba(107,111,207,.24);
-  --ok-bg:rgba(45,184,122,.14);--ok-tx:#3DD68C;
-  --warn-bg:rgba(232,160,32,.14);--warn-tx:#F0A830;
-  --err-bg:rgba(224,80,74,.14);--err-tx:#F07070;
-}
-body.dark .fg input:focus,body.dark .fg select:focus,body.dark .fg textarea:focus{background:#1E1E2C}
-body.dark .tb-search input:focus{background:#1E1E2C}
-body.dark .fg input,body.dark .fg select,body.dark .fg textarea{background:var(--bg)}
-body.dark .sb{background:#08080D;border-color:rgba(255,255,255,.03)}
-body.dark .ccard:hover{border-color:rgba(107,111,207,.35)}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--p);background:var(--surface2) !important;box-shadow:0 0 0 3px var(--pl)}
+.tb-search input:focus{border-color:var(--p);background:var(--surface2) !important;box-shadow:0 0 0 3px var(--pl)}
 #auth-screen{position:fixed;inset:0;background:#08080D;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;background-image:radial-gradient(ellipse at 20% 50%,rgba(107,111,207,.08) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(107,111,207,.05) 0%,transparent 50%)}
 #auth-screen.hidden{display:none}
 .auth-card{background:rgba(22,22,31,.95);border:1px solid rgba(255,255,255,.08);border-radius:var(--r);padding:44px 40px;width:100%;max-width:380px;box-shadow:0 32px 80px rgba(0,0,0,.7),0 0 0 1px rgba(107,111,207,.1)}
@@ -267,7 +278,6 @@ body.dark .ccard:hover{border-color:rgba(107,111,207,.35)}
 .auth-btn:hover{background:var(--p2)}
 .auth-btn:disabled{opacity:.5;cursor:not-allowed}
 .auth-err{font-size:12px;color:var(--err);margin-top:10px;text-align:center;min-height:18px}
-body.dark ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1)}
 .sb-theme-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:16px;padding:4px 6px;transition:color .15s;line-height:1;margin-left:auto;border-radius:6px}
 .sb-theme-btn:hover{color:rgba(255,255,255,.8);background:rgba(255,255,255,.06)}
 #admin-bar{position:fixed;top:0;left:0;right:0;z-index:9000;height:36px;background:linear-gradient(90deg,#6B6FCF,#9B59B6);display:none;align-items:center;justify-content:space-between;padding:0 20px;font-size:12px;font-weight:500;color:#fff}
@@ -275,6 +285,23 @@ body.dark ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1)}
 #admin-bar .ab-tag{display:flex;align-items:center;gap:7px;opacity:.9}
 body.has-admin-bar .main{padding-top:36px}
 body.has-admin-bar .sb{top:36px}
+
+/* ── OVERVIEW GROUPS (ClickUp-style) ────────────────── */
+.ov-group-row td{padding:0;border-bottom:2px solid var(--bg) !important}
+.ov-group-hdr{display:flex;align-items:center;gap:8px;padding:7px 14px 7px 12px;cursor:pointer;user-select:none;background:rgba(255,255,255,.025);border-top:1px solid rgba(255,255,255,.04)}
+.ov-group-hdr:hover{background:rgba(255,255,255,.04)}
+.ov-group-chev{font-size:11px;color:var(--tx3);transition:transform .16s;flex-shrink:0;width:14px}
+.ov-group-chev.collapsed{transform:rotate(-90deg)}
+.ov-group-badge{display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 6px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.ov-group-badge i{font-size:7px}
+.ov-group-badge.risco{background:rgba(248,113,113,.12);color:#F87171}
+.ov-group-badge.necessaria{background:rgba(251,191,36,.1);color:#FBBF24}
+.ov-group-badge.otimizada{background:rgba(52,211,153,.1);color:#34D399}
+.ov-group-count{font-size:11px;color:var(--tx3);font-family:var(--mono);min-width:20px;text-align:center}
+.ov-group-spacer{flex:1}
+.ov-section-row.collapsed{display:none}
+/* dot colors per temp */
+.dot-safe{background:#34D399}.dot-atencao{background:#FBBF24}.dot-risco{background:#F87171}.dot-off{background:#52527A}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -362,8 +389,7 @@ body.has-admin-bar .sb{top:36px}
   <div class="sb-foot">
     <div class="sb-av">WC</div>
     <div><div class="sb-uname">Gestor de Tráfego</div><div class="sb-urole">Don Digital</div></div>
-    <button class="sb-theme-btn" id="theme-btn" onclick="App.toggleDark()" title="Dark / Light mode"><i class="ti ti-moon" id="theme-icon"></i></button>
-    <button class="sb-theme-btn" onclick="App.signOut()" title="Sair"><i class="ti ti-logout" style="color:rgba(255,255,255,.3)"></i></button>
+    <button class="sb-theme-btn" onclick="App.signOut()" title="Sair" style="margin-left:auto"><i class="ti ti-logout" style="color:rgba(255,255,255,.25)"></i></button>
   </div>
 </aside>
 
@@ -418,12 +444,14 @@ body.has-admin-bar .sb{top:36px}
       <div class="icard">
         <div class="icard-ttl">Briefing do cliente</div>
         <div class="bfg">
-          <div class="bfi"><label>Nicho</label><span id="d-niche">—</span></div>
-          <div class="bfi"><label>Fase</label><span id="d-phase">—</span></div>
-          <div class="bfi"><label>Budget mensal</label><span id="d-budget">—</span></div>
-          <div class="bfi"><label>Ticket médio</label><span id="d-ticket">—</span></div>
-          <div class="bfi"><label>Objetivo</label><span id="d-goal">—</span></div>
           <div class="bfi"><label>Status</label><span id="d-stxt">—</span></div>
+          <div class="bfi"><label>Verba Meta Ads</label><span id="d-invest-meta">—</span></div>
+          <div class="bfi"><label>Verba Google Ads</label><span id="d-invest-google">—</span></div>
+          <span id="d-niche" style="display:none"></span>
+          <span id="d-phase" style="display:none"></span>
+          <span id="d-budget" style="display:none"></span>
+          <span id="d-ticket" style="display:none"></span>
+          <span id="d-goal" style="display:none"></span>
         </div>
       </div>
       <div class="icard" id="d-links-card" style="display:none">
@@ -515,13 +543,19 @@ body.has-admin-bar .sb{top:36px}
     <!-- VISÃO GERAL -->
     <div class="page on" id="page-overview">
       <div class="ph"><div><div class="ph-title">Visão Geral</div><div class="ph-sub">Status de otimização por cliente</div></div></div>
-      <div style="background:var(--surface);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden">
+      <div class="ov-wrap">
         <table class="ov-table">
+          <colgroup>
+            <col><col><col><col><col><col><col>
+          </colgroup>
           <thead><tr>
-            <th style="width:35%">Cliente</th>
-            <th style="width:18%">Temperatura</th>
-            <th style="width:18%">Vencimento</th>
-            <th style="width:29%">Status de otimização</th>
+            <th>Cliente</th>
+            <th>Temperatura</th>
+            <th>Vencimento</th>
+            <th>Status otimização</th>
+            <th>Meta Ads (R$)</th>
+            <th>Google Ads (R$)</th>
+            <th>Pagamento</th>
           </tr></thead>
           <tbody id="overview-body"></tbody>
         </table>
@@ -678,6 +712,10 @@ body.has-admin-bar .sb{top:36px}
                 <div class="fg"><label>Budget mensal (R$)</label><input type="number" id="cfg-budget" min="0" placeholder="0"></div>
                 <div class="fg"><label>Ticket médio (R$)</label><input type="number" id="cfg-ticket" min="0" placeholder="0"></div>
                 <div class="fg"><label>Objetivo principal</label><input type="text" id="cfg-goal" maxlength="100" placeholder="Ex: Gerar leads, Vendas diretas..."></div>
+              </div>
+              <div class="frow frow-2">
+                <div class="fg"><label>Verba Meta Ads (R$)</label><input type="number" id="cfg-invest-meta" min="0" placeholder="0"><span class="hint">Aparece na Visão Geral</span></div>
+                <div class="fg"><label>Verba Google Ads (R$)</label><input type="number" id="cfg-invest-google" min="0" placeholder="0"><span class="hint">Aparece na Visão Geral</span></div>
               </div>
             </div>
             <div class="fsec"><div class="fsec-ttl">Links rápidos</div>
@@ -976,7 +1014,7 @@ body.has-admin-bar .sb{top:36px}
       // clients
       db.customClients = (clients || []).map(c => ({ name: c.name }));
       db.clients = {};
-      (clients || []).forEach(c => { db.clients[c.name] = { name:c.name, alias:c.alias, status:c.status, niche:c.niche, phase:c.phase, budget:c.budget, ticket:c.ticket, goal:c.goal, actId:c.act_id, pixelId:c.pixel_id, lpUrl:c.lp_url, archived:c.archived||false, temperatura:c.temperatura||'safe', optStatus:c.opt_status||'necessaria', optDate:c.opt_date||'' }; });
+      (clients || []).forEach(c => { db.clients[c.name] = { name:c.name, alias:c.alias, status:c.status, niche:c.niche, phase:c.phase, budget:c.budget, ticket:c.ticket, goal:c.goal, actId:c.act_id, pixelId:c.pixel_id, lpUrl:c.lp_url, archived:c.archived||false, temperatura:c.temperatura||'safe', optStatus:c.opt_status||'necessaria', optDate:c.opt_date||'', investMeta:c.invest_meta||'', investGoogle:c.invest_google||'', paymentMethod:c.payment_method||'cartao' }; });
 
       // audiences / creatives / tasks
       db.audiences = (audiences || []).map(a => ({ id:a.id, client:a.client, name:a.name, status:a.status, platform:a.platform, placement:a.placement, champion:a.champion, cpa:a.cpa, notes:a.notes, date:a.created_at }));
@@ -1037,7 +1075,7 @@ body.has-admin-bar .sb{top:36px}
   }
   async function sbSaveClient(cfg) {
     const uid = await getUID();
-    sbSave('clients', { user_id:uid, name:cfg.name, alias:cfg.alias||'', status:cfg.status, niche:cfg.niche||'', phase:cfg.phase||'', budget:cfg.budget||null, ticket:cfg.ticket||null, goal:cfg.goal||'', act_id:cfg.actId||'', pixel_id:cfg.pixelId||'', lp_url:cfg.lpUrl||'', archived:cfg.archived||false, temperatura:cfg.temperatura||'safe', opt_status:cfg.optStatus||'necessaria', opt_date:cfg.optDate||null });
+    sbSave('clients', { user_id:uid, name:cfg.name, alias:cfg.alias||'', status:cfg.status, niche:cfg.niche||'', phase:cfg.phase||'', budget:cfg.budget||null, ticket:cfg.ticket||null, goal:cfg.goal||'', act_id:cfg.actId||'', pixel_id:cfg.pixelId||'', lp_url:cfg.lpUrl||'', archived:cfg.archived||false, temperatura:cfg.temperatura||'safe', opt_status:cfg.optStatus||'necessaria', opt_date:cfg.optDate||null, invest_meta:cfg.investMeta||null, invest_google:cfg.investGoogle||null, payment_method:cfg.paymentMethod||'cartao' });
   }
   async function sbAddClient(name) {
     const uid = await getUID();
@@ -1253,6 +1291,8 @@ body.has-admin-bar .sb{top:36px}
     $('d-ticket').textContent = c.ticket ? fmMoney(c.ticket) : '—';
     $('d-goal').textContent   = c.goal   || '—';
     $('d-stxt').textContent   = ST_LBL[st] || '';
+    $('d-invest-meta').textContent   = c.investMeta   ? fmMoney(c.investMeta)   : '—';
+    $('d-invest-google').textContent = c.investGoogle ? fmMoney(c.investGoogle) : '—';
 
     // Links rápidos
     const linksCard = $('d-links-card');
@@ -1464,25 +1504,39 @@ body.has-admin-bar .sb{top:36px}
     sv('cfg-budget',   c.budget   || '');
     sv('cfg-ticket',   c.ticket   || '');
     sv('cfg-goal',     c.goal     || '');
-    sv('cfg-act-id',   c.actId    || '');
-    sv('cfg-pixel-id', c.pixelId  || '');
-    sv('cfg-lp-url',   c.lpUrl    || '');
+    sv('cfg-act-id',       c.actId       || '');
+    sv('cfg-pixel-id',     c.pixelId     || '');
+    sv('cfg-lp-url',       c.lpUrl       || '');
+    sv('cfg-invest-meta',  c.investMeta  || '');
+    sv('cfg-invest-google',c.investGoogle|| '');
   }
   function saveClientCfg() {
     const name = gv('cfg-client');
+    const existing = getCfg(name);
+    const im = gv('cfg-invest-meta');
+    const ig = gv('cfg-invest-google');
     db.clients[name] = {
+      ...existing,
       name, status: gv('cfg-status'),
-      alias:   san(gv('cfg-alias'),    MAX.name),
-      niche:   san(gv('cfg-niche'),    MAX.name),
-      phase:   gv('cfg-phase'),
-      budget:  gv('cfg-budget'),
-      ticket:  gv('cfg-ticket'),
-      goal:    san(gv('cfg-goal'),     MAX.name),
-      actId:   san(gv('cfg-act-id'),   30),
-      pixelId: san(gv('cfg-pixel-id'), 30),
-      lpUrl:   san(gv('cfg-lp-url'),   MAX.url),
+      alias:        san(gv('cfg-alias'),         MAX.name),
+      niche:        san(gv('cfg-niche'),         MAX.name),
+      phase:        gv('cfg-phase'),
+      budget:       gv('cfg-budget'),
+      ticket:       gv('cfg-ticket'),
+      goal:         san(gv('cfg-goal'),          MAX.name),
+      actId:        san(gv('cfg-act-id'),        30),
+      pixelId:      san(gv('cfg-pixel-id'),      30),
+      lpUrl:        san(gv('cfg-lp-url'),        MAX.url),
+      investMeta:   im  ? parseFloat(im)  : null,
+      investGoogle: ig  ? parseFloat(ig)  : null,
     };
-    saveState(); sbSaveClient(db.clients[name]); toast('Configuração salva!');
+    saveState(); sbSaveClient(db.clients[name]);
+    if (activeClient === name) {
+      $('d-invest-meta').textContent   = db.clients[name].investMeta   ? fmMoney(db.clients[name].investMeta)   : '—';
+      $('d-invest-google').textContent = db.clients[name].investGoogle ? fmMoney(db.clients[name].investGoogle) : '—';
+    }
+    toast('Configuração salva!');
+    renderOverview();
   }
 
   // ── ACTIONS: TASK TOGGLE ──────────────────────────────────────────────
@@ -1892,15 +1946,8 @@ body.has-admin-bar .sb{top:36px}
   }
 
   // ── DARK MODE ─────────────────────────────────────────────────────────
-  function toggleDark() {
-    const isDark = document.body.classList.toggle('dark');
-    $('theme-icon').className = isDark ? 'ti ti-sun' : 'ti ti-moon';
-    try { localStorage.setItem('don_dark', isDark ? '1' : '0'); } catch {}
-  }
-  function initDark() {
-    const saved = localStorage.getItem('don_dark');
-    if (saved === '1') { document.body.classList.add('dark'); $('theme-icon').className = 'ti ti-sun'; }
-  }
+  function toggleDark() {} // dark mode always on
+  function initDark() {}
 
   // ── FORMAT-AWARE CREATIVE FORM ───────────────────────────────────────
   const FORMAT_FIELDS = {
@@ -1937,6 +1984,31 @@ body.has-admin-bar .sb{top:36px}
     if (changed) saveState();
   }
 
+  function fmtOvInput(input, name, platform) {
+    const raw = parseFloat(String(input.value).replace(/[^0-9,.]/g,'').replace(',','.'));
+    if (!isNaN(raw) && raw > 0) {
+      input.value = 'R$ ' + raw.toLocaleString('pt-BR', { minimumFractionDigits:0, maximumFractionDigits:0 });
+      saveInvestment(name, platform, raw);
+    } else {
+      input.value = '';
+      saveInvestment(name, platform, '');
+    }
+  }
+  function focusOvInput(input) {
+    const raw = String(input.value).replace(/[^0-9,.]/g,'').replace(',','.');
+    input.value = raw || '';
+    input.select();
+  }
+  function saveInvestment(name, platform, val) {
+    const c = getCfg(name);
+    if (platform === 'meta')   c.investMeta   = val ? parseFloat(val) : null;
+    if (platform === 'google') c.investGoogle = val ? parseFloat(val) : null;
+    saveState(); sbSaveClient(c);
+  }
+  function setPayment(name, val) {
+    const c = getCfg(name); c.paymentMethod = val;
+    saveState(); sbSaveClient(c);
+  }
   function setTemperatura(name, val) {
     const c = getCfg(name); c.temperatura = val;
     saveState(); sbSaveClient(c); renderOverview();
@@ -1952,70 +2024,104 @@ body.has-admin-bar .sb{top:36px}
     saveState(); sbSaveClient(c); renderOverview();
   }
 
+  const OV_GROUPS = [
+    { key: 'risco',      label: 'Em Risco',              cls: 'risco' },
+    { key: 'necessaria', label: 'Otimização Necessária',  cls: 'necessaria' },
+    { key: 'otimizada',  label: 'Otimizada',              cls: 'otimizada' },
+  ];
+  const _ovCollapsed = {};
+
   function renderOverview() {
     checkOptimizations();
     const today = new Date(); today.setHours(0,0,0,0);
     const clients = allClients();
-    const ORDER_TEMP = { risco:0, atencao:1, safe:2 };
-    const ORDER_OPT  = { risco:0, necessaria:1, otimizada:2 };
-    const sorted = [...clients].sort((a,b) => {
-      const ca = getCfg(a), cb = getCfg(b);
-      const to = (ORDER_TEMP[ca.temperatura]||1) - (ORDER_TEMP[cb.temperatura]||1);
-      return to !== 0 ? to : (ORDER_OPT[ca.optStatus]||1) - (ORDER_OPT[cb.optStatus]||1);
-    });
     const body = $('overview-body'); if (!body) return;
-    if (!sorted.length) { body.innerHTML = `<tr><td colspan="4" class="empty">Nenhum cliente ativo.</td></tr>`; return; }
+    if (!clients.length) { body.innerHTML = `<tr><td colspan="7" class="empty">Nenhum cliente ativo.</td></tr>`; return; }
 
-    body.innerHTML = sorted.map(name => {
-      const c = getCfg(name);
-      const temp   = c.temperatura || 'safe';
-      const optSt  = c.optStatus   || 'necessaria';
-      const sn = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const byGroup = { risco: [], necessaria: [], otimizada: [] };
+    clients.forEach(name => {
+      const k = getCfg(name).optStatus || 'necessaria';
+      (byGroup[k] || byGroup['necessaria']).push(name);
+    });
 
-      let dateTxt = '—', dateCls = 'ov-date';
-      if (c.optDate) {
-        const due = new Date(c.optDate + 'T00:00:00');
-        const diff = Math.ceil((due - today) / 86400000);
-        const [yr,mo,dy] = c.optDate.split('-');
-        dateTxt = `${dy}/${mo}/${yr}`;
-        if (diff < 0)       dateCls = 'ov-date late';
-        else if (diff <= 1) dateCls = 'ov-date soon';
-      }
-
-      return `<tr class="ov-row">
-        <td class="ov-cell">
-          <div class="ov-name" onclick="App.openClient('${sn}');App.nav('clients')">
-            <span style="width:8px;height:8px;border-radius:50%;background:${temp==='safe'?'var(--ok)':temp==='atencao'?'var(--warn)':'var(--err)'};flex-shrink:0;display:inline-block"></span>
-            ${esc(dn(name))}
+    let html = '';
+    OV_GROUPS.forEach(g => {
+      const list = byGroup[g.key];
+      if (!list.length) return;
+      const col = _ovCollapsed[g.key];
+      html += `<tr class="ov-group-row">
+        <td colspan="7">
+          <div class="ov-group-hdr" onclick="App.toggleOvGroup('${g.key}')">
+            <i class="ti ti-chevron-down ov-group-chev${col?' collapsed':''}" id="ov-chev-${g.key}"></i>
+            <span class="ov-group-badge ${g.cls}">${g.label}</span>
+            <span class="ov-group-count">${list.length}</span>
+            <span class="ov-group-spacer"></span>
           </div>
         </td>
-        <td class="ov-cell">
-          <select class="ov-sel temp-${temp}" onchange="App.setTemperatura('${sn}',this.value)">
-            <option value="safe"    ${temp==='safe'    ?'selected':''}>Safe</option>
-            <option value="atencao" ${temp==='atencao' ?'selected':''}>Em Atenção</option>
-            <option value="risco"   ${temp==='risco'   ?'selected':''}>Em Risco</option>
-          </select>
-        </td>
-        <td class="ov-cell"><span class="${dateCls}">${dateTxt}</span></td>
-        <td class="ov-cell">
-          <select class="ov-sel opt-${optSt}" onchange="App.setOptStatus('${sn}',this.value)">
-            <option value="necessaria" ${optSt==='necessaria'?'selected':''}>Otimização Necessária</option>
-            <option value="otimizada"  ${optSt==='otimizada' ?'selected':''}>Otimizada</option>
-            <option value="risco"      ${optSt==='risco'     ?'selected':''}>Em Risco</option>
-          </select>
-        </td>
       </tr>`;
-    }).join('');
 
-    // Update select colors after render
-    body.querySelectorAll('.ov-sel').forEach(sel => {
-      sel.onchange = function() {
-        const fn = this.className.includes('temp-') ? 'setTemperatura' : 'setOptStatus';
-        const row = this.closest('tr');
-        const nameEl = row.querySelector('.ov-name');
-        App[fn](nameEl.dataset?.name || nameEl.textContent.trim(), this.value);
-      };
+      list.forEach(name => {
+        const c = getCfg(name);
+        const temp  = c.temperatura || 'safe';
+        const optSt = c.optStatus   || 'necessaria';
+        const sn = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
+        let dateTxt = '—', dateCls = 'ov-date';
+        if (c.optDate) {
+          const due = new Date(c.optDate + 'T00:00:00');
+          const diff = Math.ceil((due - today) / 86400000);
+          const [yr,mo,dy] = c.optDate.split('-');
+          dateTxt = `${dy}/${mo}/${yr}`;
+          if (diff < 0)       dateCls = 'ov-date late';
+          else if (diff <= 1) dateCls = 'ov-date soon';
+        }
+
+        const pm = c.paymentMethod || 'cartao';
+        html += `<tr class="ov-row ov-section-row${col?' collapsed':''}" data-group="${g.key}">
+          <td class="ov-cell">
+            <div class="ov-name" onclick="App.openClient('${sn}');App.nav('clients')"><span class="ov-name-dot dot-${c.temperatura||'safe'}"></span>${esc(dn(name))}</div>
+          </td>
+          <td class="ov-cell">
+            <select class="ov-sel temp-${temp}" onchange="App.setTemperatura('${sn}',this.value)">
+              <option value="safe"    ${temp==='safe'    ?'selected':''}>Safe</option>
+              <option value="atencao" ${temp==='atencao' ?'selected':''}>Em Atenção</option>
+              <option value="risco"   ${temp==='risco'   ?'selected':''}>Em Risco</option>
+            </select>
+          </td>
+          <td class="ov-cell"><span class="${dateCls}">${dateTxt}</span></td>
+          <td class="ov-cell">
+            <select class="ov-sel opt-${optSt}" onchange="App.setOptStatus('${sn}',this.value)">
+              <option value="necessaria" ${optSt==='necessaria'?'selected':''}>Otimização Necessária</option>
+              <option value="otimizada"  ${optSt==='otimizada' ?'selected':''}>Otimizada</option>
+              <option value="risco"      ${optSt==='risco'     ?'selected':''}>Em Risco</option>
+            </select>
+          </td>
+          <td class="ov-cell">
+            <span class="ov-money">${c.investMeta ? fmMoney(c.investMeta) : '<span class="ov-empty">—</span>'}</span>
+          </td>
+          <td class="ov-cell">
+            <span class="ov-money">${c.investGoogle ? fmMoney(c.investGoogle) : '<span class="ov-empty">—</span>'}</span>
+          </td>
+          <td class="ov-cell">
+            <select class="ov-pm" onchange="App.setPayment('${sn}',this.value)">
+              <option value="cartao" ${pm==='cartao'?'selected':''}>💳 Cartão</option>
+              <option value="pix"    ${pm==='pix'   ?'selected':''}>⚡ Pix</option>
+              <option value="boleto" ${pm==='boleto'?'selected':''}>📄 Boleto</option>
+            </select>
+          </td>
+        </tr>`;
+      });
     });
+
+    body.innerHTML = html;
+  }
+
+  function toggleOvGroup(key) {
+    _ovCollapsed[key] = !_ovCollapsed[key];
+    const col = _ovCollapsed[key];
+    document.querySelectorAll(`.ov-section-row[data-group="${key}"]`).forEach(r => r.classList.toggle('collapsed', col));
+    const chev = $(`ov-chev-${key}`);
+    if (chev) chev.classList.toggle('collapsed', col);
   }
 
   // ── ARCHIVE ───────────────────────────────────────────────────────────
@@ -2166,7 +2272,7 @@ body.has-admin-bar .sb{top:36px}
     toggleTask, kDragStart, kanbanDrop, renderKanban,
     setClientFilter,
     openAddClientModal, closeAddClientModal, addCustomClient,
-    renderOverview, setTemperatura, setOptStatus,
+    renderOverview, setTemperatura, setOptStatus, saveInvestment, setPayment, toggleOvGroup,
     toggleArchive, unarchiveClient,
     addNote, filterNotes, openNote, closeNoteModal, deleteNote,
     openEditTask, saveEditTask, closeEditTask,
