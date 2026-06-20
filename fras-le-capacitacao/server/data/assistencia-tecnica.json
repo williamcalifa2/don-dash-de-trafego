@@ -1,0 +1,46 @@
+{
+  "pillar": "assistencia-tecnica",
+  "label": "Assistência Técnica",
+  "summary": {
+    "chamadosAbertos": 4280,
+    "tempoMedioRespostaHoras": 4.2,
+    "taxaResolucaoPrimeiroContato": 81.3,
+    "visitasTecnicas": 612,
+    "garantiasAnalisadas": 1340,
+    "garantiasAprovadas": 1102,
+    "csat": 4.6
+  },
+  "series": [
+    { "mes": "2025-07", "chamados": 312, "visitas": 38, "garantias": 96 },
+    { "mes": "2025-08", "chamados": 328, "visitas": 41, "garantias": 101 },
+    { "mes": "2025-09", "chamados": 345, "visitas": 44, "garantias": 108 },
+    { "mes": "2025-10", "chamados": 360, "visitas": 47, "garantias": 112 },
+    { "mes": "2025-11", "chamados": 398, "visitas": 53, "garantias": 124 },
+    { "mes": "2025-12", "chamados": 290, "visitas": 36, "garantias": 88 },
+    { "mes": "2026-01", "chamados": 305, "visitas": 39, "garantias": 92 },
+    { "mes": "2026-02", "chamados": 372, "visitas": 49, "garantias": 116 },
+    { "mes": "2026-03", "chamados": 410, "visitas": 56, "garantias": 128 },
+    { "mes": "2026-04", "chamados": 388, "visitas": 52, "garantias": 119 },
+    { "mes": "2026-05", "chamados": 421, "visitas": 58, "garantias": 132 },
+    { "mes": "2026-06", "chamados": 451, "visitas": 61, "garantias": 142 }
+  ],
+  "motivos": [
+    { "nome": "Ruído / Vibração", "qtd": 1180, "pct": 27.6 },
+    { "nome": "Desgaste Prematuro", "qtd": 940, "pct": 22.0 },
+    { "nome": "Instalação Incorreta", "qtd": 760, "pct": 17.8 },
+    { "nome": "Garantia de Produto", "qtd": 642, "pct": 15.0 },
+    { "nome": "Dúvida Técnica de Aplicação", "qtd": 758, "pct": 17.6 }
+  ],
+  "ranking": [
+    { "regiao": "SP", "chamados": 1120, "tempoRespostaHoras": 3.6, "csat": 4.7 },
+    { "regiao": "RS", "chamados": 780, "tempoRespostaHoras": 3.1, "csat": 4.8 },
+    { "regiao": "MG", "chamados": 540, "tempoRespostaHoras": 4.4, "csat": 4.5 },
+    { "regiao": "PR", "chamados": 470, "tempoRespostaHoras": 3.9, "csat": 4.6 },
+    { "regiao": "SC", "chamados": 360, "tempoRespostaHoras": 3.7, "csat": 4.7 },
+    { "regiao": "BA", "chamados": 290, "tempoRespostaHoras": 5.8, "csat": 4.2 },
+    { "regiao": "RJ", "chamados": 260, "tempoRespostaHoras": 5.2, "csat": 4.3 },
+    { "regiao": "GO", "chamados": 190, "tempoRespostaHoras": 4.9, "csat": 4.4 },
+    { "regiao": "PE", "chamados": 150, "tempoRespostaHoras": 6.1, "csat": 4.1 },
+    { "regiao": "Outros", "chamados": 120, "tempoRespostaHoras": 5.5, "csat": 4.3 }
+  ]
+}

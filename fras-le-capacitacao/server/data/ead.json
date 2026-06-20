@@ -1,0 +1,46 @@
+{
+  "pillar": "ead",
+  "label": "EAD — Capacitação a Distância",
+  "summary": {
+    "cursosDisponiveis": 34,
+    "alunosAtivos": 18420,
+    "novasMatriculasPeriodo": 2860,
+    "taxaConclusao": 68.4,
+    "certificadosEmitidos": 9870,
+    "horasTreinamento": 52300,
+    "nps": 71
+  },
+  "series": [
+    { "mes": "2025-07", "matriculas": 1480, "conclusoes": 940, "certificados": 822 },
+    { "mes": "2025-08", "matriculas": 1620, "conclusoes": 1010, "certificados": 889 },
+    { "mes": "2025-09", "matriculas": 1710, "conclusoes": 1180, "certificados": 1034 },
+    { "mes": "2025-10", "matriculas": 1840, "conclusoes": 1260, "certificados": 1109 },
+    { "mes": "2025-11", "matriculas": 2050, "conclusoes": 1390, "certificados": 1221 },
+    { "mes": "2025-12", "matriculas": 1390, "conclusoes": 980, "certificados": 860 },
+    { "mes": "2026-01", "matriculas": 1560, "conclusoes": 1040, "certificados": 915 },
+    { "mes": "2026-02", "matriculas": 2120, "conclusoes": 1450, "certificados": 1276 },
+    { "mes": "2026-03", "matriculas": 2480, "conclusoes": 1720, "certificados": 1512 },
+    { "mes": "2026-04", "matriculas": 2360, "conclusoes": 1610, "certificados": 1416 },
+    { "mes": "2026-05", "matriculas": 2710, "conclusoes": 1890, "certificados": 1663 },
+    { "mes": "2026-06", "matriculas": 2860, "conclusoes": 1990, "certificados": 1752 }
+  ],
+  "categorias": [
+    { "nome": "Diagnóstico de Freios", "matriculas": 5240, "conclusao": 74.2 },
+    { "nome": "Instalação de Pastilhas/Lonas", "matriculas": 4680, "conclusao": 71.8 },
+    { "nome": "Linha Pesada (Caminhões/Ônibus)", "matriculas": 3210, "conclusao": 61.4 },
+    { "nome": "Eletrônica Embarcada de Freios", "matriculas": 2890, "conclusao": 58.9 },
+    { "nome": "Gestão de Distribuidor", "matriculas": 2400, "conclusao": 69.5 }
+  ],
+  "ranking": [
+    { "regiao": "SP", "matriculas": 4120, "conclusao": 70.1, "certificados": 2120 },
+    { "regiao": "RS", "matriculas": 2890, "conclusao": 76.8, "certificados": 1690 },
+    { "regiao": "MG", "matriculas": 2340, "conclusao": 65.4, "certificados": 1180 },
+    { "regiao": "PR", "matriculas": 1980, "conclusao": 72.0, "certificados": 1070 },
+    { "regiao": "SC", "matriculas": 1640, "conclusao": 74.3, "certificados": 920 },
+    { "regiao": "BA", "matriculas": 1280, "conclusao": 59.2, "certificados": 580 },
+    { "regiao": "RJ", "matriculas": 1190, "conclusao": 63.7, "certificados": 560 },
+    { "regiao": "GO", "matriculas": 980, "conclusao": 68.0, "certificados": 510 },
+    { "regiao": "PE", "matriculas": 870, "conclusao": 61.1, "certificados": 410 },
+    { "regiao": "Outros", "matriculas": 1130, "conclusao": 64.5, "certificados": 580 }
+  ]
+}

@@ -1,0 +1,92 @@
+:root {
+  /* base — dark instrument panel */
+  --bg: #0a0b10;
+  --bg-elevated: #13141c;
+  --bg-sunken: #06070b;
+  --ink: #f1f2f6;
+  --ink-soft: #aeb2c2;
+  --ink-faint: #6c7080;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+
+  /* brand — brightened for dark backgrounds */
+  --red: #ff4347;
+  --red-dark: #ed3237;
+  --red-tint: rgba(255, 67, 71, 0.14);
+  --blue: #3d96e8;
+  --blue-soft: #79b8ef;
+  --blue-tint: rgba(61, 150, 232, 0.14);
+  --gold: #e2a93f;
+  --gold-soft: #f0c878;
+  --gold-tint: rgba(226, 169, 63, 0.14);
+
+  /* sidebar */
+  --sidebar-bg: #0d0e14;
+  --sidebar-bg-2: #181a23;
+  --sidebar-line: rgba(255, 255, 255, 0.08);
+  --sidebar-ink: #f1f2f6;
+  --sidebar-ink-faint: #6c7080;
+
+  /* type */
+  --font-display: "Sora", sans-serif;
+  --font-body: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+
+  /* layout */
+  --sidebar-w: 252px;
+  --topbar-h: 68px;
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04), 0 16px 32px -22px rgba(0, 0, 0, 0.7);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(680px circle at 8% -6%, rgba(61, 150, 232, 0.16), transparent 60%),
+    radial-gradient(620px circle at 96% 0%, rgba(255, 67, 71, 0.1), transparent 55%);
+  background-attachment: fixed, fixed;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.tabular {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--red);
+  color: #fff;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: var(--font-body);
+}
