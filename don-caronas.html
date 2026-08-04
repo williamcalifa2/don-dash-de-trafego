@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Don Caronas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0b0a14;
+  --purple:#8b5cf6;
+  --purple2:#c4b5fd;
+  --blue:#7c6cff;
+  --cyan:#2dd4bf;
+  --green:#22c55e;
+  --amber:#f59e0b;
+  --red:#ef4444;
+  --text:#f5f3fb;
+  --text-dim:#9c96b8;
+  --text-dim2:#635c7d;
+  --card-bg:#161320;
+  --card-bg-hover:#1c1828;
+  --card-border:rgba(255,255,255,.08);
+  --cell-gray:rgba(255,255,255,.06);
+  --font-display:'Sora',sans-serif;
+  --font-heading:'Plus Jakarta Sans',sans-serif;
+  --font-mono:'Plus Jakarta Sans',sans-serif;
+}
+html,body{height:100%;}
+body{
+  background:
+    radial-gradient(ellipse 1100px 560px at 50% -8%, rgba(139,92,246,.32), transparent 62%),
+    radial-gradient(ellipse 700px 500px at 100% 100%, rgba(124,108,255,.14), transparent 60%),
+    var(--bg);
+  color:var(--text);
+  font-family:var(--font-heading);
+  font-weight:500;
+  min-height:100vh;
+  position:relative;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,.num,.font-display{font-family:var(--font-display);font-weight:700;}
+button{font-family:inherit;}
+input,select{font-family:inherit;}
+a{color:inherit;}
+
+::selection{background:var(--purple);color:#fff;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:4px;}
+*:focus-visible{outline:2px solid var(--purple);outline-offset:2px;}
+
+/* background decor: glow roxo atmosférico sobre fundo quase-preto */
+#bg-decor{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;}
+.blob{position:absolute;border-radius:50%;filter:blur(120px);opacity:.28;}
+.blob1{width:560px;height:560px;background:#8b5cf6;top:-220px;left:-140px;}
+.blob2{width:480px;height:480px;background:#7c6cff;top:15%;right:-180px;opacity:.22;}
+.blob3{width:420px;height:420px;background:#5b3fa8;bottom:-180px;left:25%;opacity:.24;}
+
+/* ============================================================
+   SHARED UI
+   ============================================================ */
+.screen{min-height:100vh;width:100%;}
+.hidden{display:none !important;}
+.container{max-width:1180px;margin:0 auto;padding:28px 24px 90px;}
+.glass{
+  background:var(--card-bg);
+  border:1px solid var(--card-border);
+  border-radius:20px;
+  box-shadow:0 20px 44px -22px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04);
+}
+.card{padding:22px;}
+.section-title{font-family:var(--font-display);font-size:.92rem;font-weight:600;margin-bottom:14px;letter-spacing:0;color:var(--text);}
+.text-dim{color:var(--text-dim);}
+.mt-24{margin-top:24px;}
+.mt-32{margin-top:32px;}
+
+.icon-badge{
+  width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  background:rgba(255,255,255,.045);
+}
+.icon-badge svg{width:15px;height:15px;fill:none;stroke:var(--purple2);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+
+/* cor do ícone por categoria de KPI (chip neutro, cor só no traço) */
+.kpi-money .icon-badge svg{stroke:#f472b6;}
+.kpi-check .icon-badge svg{stroke:#4ade80;}
+.kpi-half .icon-badge svg{stroke:#fb923c;}
+.kpi-flame .icon-badge svg{stroke:var(--purple2);}
+
+/* topbar */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 24px;max-width:1180px;margin:0 auto;
+}
+.brand{
+  font-family:var(--font-display);font-weight:800;font-size:1.2rem;letter-spacing:-.01em;
+  background:linear-gradient(135deg,var(--purple2),var(--blue));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.topbar-right{display:flex;align-items:center;gap:14px;}
+.status-dot{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--text-dim);padding:5px 10px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--card-border);}
+.status-dot .dot{width:7px;height:7px;border-radius:50%;background:var(--text-dim2);}
+.status-dot.online .dot{background:var(--green);box-shadow:0 0 6px var(--green);}
+.status-dot.online{color:var(--green);}
+.user-chip{display:flex;align-items:center;gap:10px;}
+.avatar{
+  width:34px;height:34px;border-radius:50%;
+  background:linear-gradient(135deg,var(--blue),var(--cyan));
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;color:#fff;
+}
+.user-name{font-size:.85rem;font-weight:600;}
+.btn{
+  border:none;cursor:pointer;border-radius:12px;font-weight:600;font-size:.85rem;padding:10px 16px;
+  transition:filter .15s, transform .1s, box-shadow .15s;
+}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;box-shadow:0 10px 24px -8px rgba(139,92,246,.55);}
+.btn-primary:hover{filter:brightness(1.1);box-shadow:0 12px 28px -6px rgba(139,92,246,.65);}
+.btn-ghost{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--card-border);}
+.btn-ghost:hover{background:rgba(255,255,255,.11);}
+.btn-danger{background:rgba(239,68,68,.14);color:#f87171;border:1px solid rgba(239,68,68,.3);}
+.btn-danger:hover{background:rgba(239,68,68,.22);}
+.btn-sm{padding:7px 12px;font-size:.78rem;border-radius:9px;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* KPI grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+.kpi{position:relative;padding:20px;}
+.kpi .icon-badge{position:absolute;top:18px;right:18px;}
+.kpi .value{font-family:var(--font-display);font-size:1.7rem;font-weight:700;margin-top:24px;letter-spacing:-.01em;color:#f5f3fb;}
+.kpi .label{color:var(--text-dim);font-size:.78rem;margin-top:3px;font-weight:500;}
+@media(max-width:760px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:12px;}
+  .kpi{padding:14px;}
+  .kpi .value{font-size:1.2rem;}
+  .kpi .icon-badge{width:24px;height:24px;border-radius:8px;top:12px;right:12px;}
+  .kpi .icon-badge svg{width:12px;height:12px;stroke-width:1.8;}
+}
+
+/* pills nav */
+.pills{display:flex;gap:4px;padding:5px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--card-border);width:fit-content;margin:0 auto 26px;}
+.pill{padding:9px 18px;border-radius:10px;color:var(--text-dim);cursor:pointer;font-weight:600;font-size:.85rem;white-space:nowrap;border:none;background:none;}
+.pill.active{background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;box-shadow:0 4px 16px -4px rgba(139,92,246,.5);}
+.bottom-tabs{display:none;}
+@media(max-width:760px){
+  .pills{display:none;}
+  .bottom-tabs{
+    display:flex;position:fixed;bottom:0;left:0;right:0;z-index:50;
+    background:rgba(11,10,20,.92);backdrop-filter:blur(14px);border-top:1px solid var(--card-border);
+    padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+  }
+  .bottom-tabs .pill{flex:1;text-align:center;padding:9px 4px;font-size:.72rem;}
+  .container{padding-bottom:100px;}
+}
+
+/* painel de destaque (atividade recente) - tom lavanda suave, não gradiente sólido */
+.activity-panel{
+  background:linear-gradient(160deg,#1e1a30,#141220);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:20px;padding:22px;color:#f3f2fa;
+  box-shadow:0 24px 48px -24px rgba(0,0,0,.6);
+}
+.activity-panel .section-title{color:#fff;}
+.activity-item{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.09);font-size:.85rem;}
+.activity-item:last-child{border-bottom:none;}
+.activity-item .who{font-weight:600;color:#fff;}
+.activity-item .meta{color:rgba(255,255,255,.5);font-size:.78rem;}
+.activity-item .val{font-weight:700;white-space:nowrap;color:var(--purple2);}
+.activity-empty{color:rgba(255,255,255,.5);font-size:.85rem;padding:8px 0;}
+
+/* grid layout helpers */
+.grid-2{display:grid;grid-template-columns:1.4fr 1fr;gap:20px;}
+.grid-2 > *{min-width:0;}
+@media(max-width:900px){.grid-2{grid-template-columns:1fr;}}
+
+/* Calendário semanal — quadrados com bordas arredondadas, navegação por semana */
+.cal-week-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;}
+.cal-week-btn{
+  background:rgba(255,255,255,.06);border:1px solid var(--card-border);color:var(--text);
+  width:32px;height:32px;border-radius:9px;font-size:1.15rem;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;
+}
+.cal-week-btn:disabled{opacity:.3;cursor:not-allowed;}
+.cal-week-btn:hover:not(:disabled){background:rgba(255,255,255,.12);}
+.cal-week-range{font-family:var(--font-mono);font-size:.78rem;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.03em;text-align:center;}
+.cal-week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;}
+.cal-day-col{display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0;}
+.cal-day-label{font-size:.64rem;color:var(--text-dim);text-transform:uppercase;font-weight:700;letter-spacing:.03em;}
+.cal-cell{
+  width:100%;aspect-ratio:1/1;max-width:54px;border-radius:13px;background:var(--cell-gray);
+  display:flex;align-items:center;justify-content:center;transition:transform .15s,filter .15s;
+}
+.cal-day-num{font-family:var(--font-display);font-weight:700;font-size:1rem;color:var(--text-dim);}
+.cal-cell.completa{background:var(--green);}
+.cal-cell.completa .cal-day-num{color:#0c2415;}
+.cal-cell.meia{background:var(--amber);}
+.cal-cell.meia .cal-day-num{color:#2b1704;}
+.cal-cell.future{opacity:.35;}
+.cal-cell.today{outline:2px solid var(--purple2);outline-offset:2px;box-shadow:0 0 0 5px rgba(139,92,246,.18);}
+.cal-cell.clickable{cursor:pointer;}
+.cal-cell.clickable:hover{filter:brightness(1.22);transform:translateY(-2px);}
+.cal-legend{display:flex;gap:18px;margin-top:16px;flex-wrap:wrap;font-size:.78rem;color:var(--text-dim);}
+.cal-legend .item{display:flex;align-items:center;gap:6px;}
+.cal-legend .sw{width:12px;height:12px;border-radius:4px;}
+
+.cal-popover{
+  position:absolute;z-index:250;background:#1c1828;border:1px solid var(--card-border);
+  border-radius:14px;padding:6px;box-shadow:0 20px 45px -14px rgba(0,0,0,.55);min-width:180px;
+}
+.cal-popover .cp-date{font-size:.72rem;color:var(--text-dim);padding:6px 10px 4px;}
+.cal-popover button{
+  display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:none;
+  color:var(--text);padding:9px 10px;border-radius:9px;cursor:pointer;font-size:.85rem;font-weight:600;
+}
+.cal-popover button:hover{background:rgba(255,255,255,.07);}
+.cal-popover button.active{background:rgba(139,92,246,.18);}
+.cal-popover .cp-dot{width:10px;height:10px;border-radius:4px;flex-shrink:0;}
+.cal-popover .cp-dot.completa{background:var(--green);}
+.cal-popover .cp-dot.meia{background:var(--amber);}
+.cal-popover .cp-dot.none{background:var(--text-dim2);}
+.colega-select{
+  background:rgba(255,255,255,.05);border:1px solid var(--card-border);color:var(--text);
+  padding:9px 14px;border-radius:11px;font-size:.85rem;font-weight:600;cursor:pointer;
+}
+
+/* tooltip */
+#tooltip{
+  position:absolute;z-index:200;background:#1c1828;color:var(--text);font-size:.72rem;padding:6px 9px;
+  border-radius:8px;border:1px solid var(--card-border);pointer-events:none;white-space:nowrap;
+  box-shadow:0 10px 24px -8px rgba(0,0,0,.5);
+  transform:translate(-50%,-115%);opacity:0;transition:opacity .1s;
+}
+#tooltip.show{opacity:1;}
+
+/* KPI de PIX com blur/olho (substitui "dias seguidos" na tela do colega) */
+.kpi-pix-toggle{position:absolute;top:18px;right:18px;cursor:pointer;}
+.kpi-pix-toggle svg{stroke:var(--purple2);}
+.kpi-pix-value{
+  font-family:var(--font-mono);font-weight:700;font-size:.92rem;margin-top:26px;line-height:1.35;
+  color:#fff;word-break:break-all;filter:blur(7px);user-select:none;transition:filter .2s;
+}
+.kpi-pix-value.revealed{filter:blur(0);user-select:text;cursor:pointer;}
+
+/* economia vs transporte público */
+.econ-hero{text-align:center;padding:20px 0 6px;}
+.econ-hero-val{font-family:var(--font-display);font-weight:700;font-size:2rem;color:#f5f3fb;letter-spacing:-.01em;}
+.econ-hero-label{color:var(--text-dim);font-size:.8rem;margin-top:4px;}
+.econ-compare{margin:18px 0;display:flex;flex-direction:column;gap:14px;}
+.econ-compare-row{display:flex;align-items:center;gap:10px;}
+.econ-compare-label{width:118px;flex-shrink:0;font-size:.78rem;color:var(--text-dim);}
+.econ-compare-track{flex:1;height:10px;border-radius:6px;background:rgba(255,255,255,.06);overflow:hidden;}
+.econ-compare-fill{height:100%;border-radius:6px;transition:width .4s ease;}
+.econ-compare-fill.publico{background:linear-gradient(90deg,#4b4560,#6b6485);}
+.econ-compare-fill.carona{background:linear-gradient(90deg,var(--purple),var(--purple2));}
+.econ-compare-val{width:76px;flex-shrink:0;text-align:right;font-family:var(--font-mono);font-size:.8rem;font-weight:700;color:var(--text);}
+.economia-chart-wrap{margin-top:6px;}
+.economia-chart{width:100%;height:56px;display:block;}
+
+/* tables */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:.85rem;min-width:520px;}
+th{text-align:left;color:var(--text-dim);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid var(--card-border);}
+td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.05);}
+tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:rgba(255,255,255,.03);}
+.tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:.72rem;font-weight:600;}
+.tag.completa{background:rgba(34,197,94,.16);color:#4ade80;}
+.tag.meia{background:rgba(245,158,11,.18);color:#fbbf24;}
+.tag.none{background:rgba(255,255,255,.07);color:var(--text-dim);}
+.num-input{width:78px;background:rgba(255,255,255,.04);border:1px solid var(--card-border);color:var(--text);border-radius:8px;padding:6px 8px;font-size:.82rem;}
+
+/* forms */
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px;}
+.field label{display:block;font-size:.76rem;color:var(--text-dim);margin-bottom:6px;font-weight:600;}
+.field input,.field select{
+  width:100%;padding:11px 13px;border-radius:11px;border:1px solid var(--card-border);
+  background:rgba(255,255,255,.03);color:var(--text);font-size:.88rem;
+}
+.field input:focus,.field select:focus{outline:none;border-color:var(--purple);box-shadow:0 0 0 3px rgba(139,92,246,.18);}
+.help-text{font-size:.78rem;color:var(--text-dim2);line-height:1.5;margin-top:10px;}
+.error-text{color:var(--red);font-size:.8rem;margin-top:8px;}
+
+/* bar chart */
+.bar-chart{display:flex;align-items:flex-end;gap:22px;height:180px;padding-top:20px;}
+.bar-col{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;height:100%;justify-content:flex-end;}
+.bar{width:100%;max-width:56px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,var(--purple2),var(--purple));position:relative;min-height:4px;transition:height .3s ease;}
+.bar-val{font-size:.75rem;font-weight:700;color:var(--text);}
+.bar-name{font-size:.78rem;color:var(--text-dim);text-align:center;}
+
+/* login screen */
+#screen-login{display:flex;align-items:center;justify-content:center;padding:24px;min-height:100vh;}
+.login-card{width:100%;max-width:420px;padding:36px 32px;}
+.login-card > *{animation:reveal-up .5s ease both;}
+.login-card > *:nth-child(1){animation-delay:.05s;}
+.login-card > *:nth-child(2){animation-delay:.15s;}
+.login-card > *:nth-child(3){animation-delay:.25s;}
+.login-card > *:nth-child(4){animation-delay:.4s;}
+@keyframes reveal-up{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.login-logo{margin-bottom:28px;}
+.login-logo h1{
+  font-family:var(--font-display);font-weight:800;font-size:1.6rem;letter-spacing:-.01em;
+  background:linear-gradient(135deg,var(--purple2),var(--blue));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.login-sub{color:var(--text-dim);font-size:.88rem;margin-bottom:26px;line-height:1.5;}
+.login-form .field{margin-bottom:16px;}
+.demo-box{margin-top:24px;padding:16px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid var(--card-border);}
+.demo-box h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim);margin-bottom:10px;font-weight:700;}
+.demo-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:.8rem;border-bottom:1px solid rgba(255,255,255,.06);}
+.demo-item:last-child{border-bottom:none;}
+.demo-item .cred{color:var(--text-dim);font-family:monospace;font-size:.74rem;}
+.demo-item button{white-space:nowrap;}
+
+/* toast */
+#toast-host{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:300;display:flex;flex-direction:column;gap:8px;align-items:center;}
+.toast{background:#1c1828;border:1px solid var(--card-border);padding:11px 18px;border-radius:12px;font-size:.85rem;color:var(--text);box-shadow:0 14px 34px -10px rgba(0,0,0,.5);animation:toast-in .2s ease;}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* modal (fechamento mensal, rachadinha) */
+.modal-overlay{position:fixed;inset:0;z-index:400;background:rgba(6,5,12,.72);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.hidden{display:none;}
+.modal-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:24px;padding:28px;max-width:380px;width:100%;text-align:center;box-shadow:0 30px 60px -20px rgba(0,0,0,.6);animation:modal-in .22s ease;}
+@keyframes modal-in{from{opacity:0;transform:translateY(12px) scale(.97);}to{opacity:1;transform:translateY(0) scale(1);}}
+.modal-card .modal-icon{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--purple),var(--blue));display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
+.modal-card .modal-icon svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+.modal-card h3{font-size:1.05rem;margin-bottom:4px;}
+.modal-card .modal-sub{color:var(--text-dim);font-size:.8rem;margin-bottom:18px;}
+.modal-card .modal-val{font-size:2.1rem;font-weight:800;background:linear-gradient(135deg,var(--purple2),var(--blue));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:22px;}
+.modal-pix{background:rgba(255,255,255,.04);border:1px solid var(--card-border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;text-align:left;}
+.modal-pix .mp-label{font-size:.68rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;}
+.modal-pix .mp-key{font-family:monospace;font-size:.85rem;word-break:break-all;}
+
+/* misc */
+.flex-between{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.chip-remove{background:none;border:none;color:var(--red);cursor:pointer;font-size:1rem;padding:4px 8px;}
+@media(max-width:560px){
+  .container{padding:20px 14px 90px;}
+  .topbar{padding:14px 16px;gap:8px;}
+  .brand{font-size:.92rem;}
+  .topbar-right{gap:8px;}
+  .status-dot .txt{display:none;}
+  .status-dot{padding:6px;}
+  .user-name{display:none;}
+  .avatar{width:28px;height:28px;font-size:.62rem;}
+  .btn-sm{padding:7px 10px;font-size:.68rem;}
+  .login-card{padding:26px 20px;}
+  .card{padding:16px;}
+}
+</style>
+</head>
+<body>
+
+<div id="bg-decor"><div class="blob blob1"></div><div class="blob blob2"></div><div class="blob blob3"></div></div>
+<div id="tooltip"></div>
+<div id="cal-popover" class="cal-popover hidden">
+  <div class="cp-date" id="cp-date"></div>
+  <button data-tipo="completa" onclick="chooseCheckin('completa')"><span class="cp-dot completa"></span>Ida e volta</button>
+  <button data-tipo="meia" onclick="chooseCheckin('meia')"><span class="cp-dot meia"></span>Só um trecho</button>
+  <button data-tipo="none" onclick="chooseCheckin('none')"><span class="cp-dot none"></span>Não veio</button>
+</div>
+<div id="toast-host"></div>
+<div id="fechamento-modal" class="modal-overlay hidden"></div>
+
+<!-- ============================================================
+     TELA DE LOGIN
+     ============================================================ -->
+<div id="screen-login" class="screen">
+  <div class="glass login-card">
+    <div class="login-logo">
+      <h1>Don Caronas</h1>
+    </div>
+    <p class="login-sub">Controle de caronas e ajuda de custo entre colegas de trabalho.</p>
+    <form class="login-form" id="login-form">
+      <div class="field">
+        <label for="login-email">E-mail</label>
+        <input type="email" id="login-email" placeholder="seu@email.com" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="login-senha">Senha</label>
+        <input type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password" required>
+      </div>
+      <div id="login-error" class="error-text hidden"></div>
+      <button type="submit" class="btn btn-primary" id="login-submit-btn" style="width:100%;padding:13px;margin-top:6px;">Entrar</button>
+    </form>
+    <p class="login-sub" style="margin:18px 0 0;text-align:center;">
+      Não tem conta? <a href="#" onclick="event.preventDefault(); showScreen('screen-signup');" style="color:var(--purple);font-weight:700;">Cadastre-se</a>
+    </p>
+  </div>
+</div>
+
+<!-- ============================================================
+     TELA DE CADASTRO
+     ============================================================ -->
+<div id="screen-signup" class="screen hidden">
+  <div class="glass login-card">
+    <div class="login-logo">
+            <h1>Criar conta</h1>
+    </div>
+    <p class="login-sub">Seu acesso fica pendente até o admin aprovar.</p>
+    <form class="login-form" id="signup-form">
+      <div class="field">
+        <label for="signup-nome">Nome</label>
+        <input type="text" id="signup-nome" placeholder="Seu nome" required>
+      </div>
+      <div class="field">
+        <label for="signup-email">E-mail</label>
+        <input type="email" id="signup-email" placeholder="seu@email.com" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="signup-senha">Senha</label>
+        <input type="password" id="signup-senha" placeholder="mínimo 6 caracteres" autocomplete="new-password" required minlength="6">
+      </div>
+      <div id="signup-error" class="error-text hidden"></div>
+      <button type="submit" class="btn btn-primary" id="signup-submit-btn" style="width:100%;padding:13px;margin-top:6px;">Criar conta</button>
+    </form>
+    <p class="login-sub" style="margin:18px 0 0;text-align:center;">
+      Já tem conta? <a href="#" onclick="event.preventDefault(); showScreen('screen-login');" style="color:var(--purple);font-weight:700;">Entrar</a>
+    </p>
+  </div>
+</div>
+
+<!-- ============================================================
+     TELA DE AGUARDANDO APROVAÇÃO
+     ============================================================ -->
+<div id="screen-pending" class="screen hidden">
+  <div class="glass login-card" style="text-align:center;">
+    <div class="login-logo">
+      <h1>Quase lá</h1>
+    </div>
+    <p class="login-sub">Sua conta foi criada e está aguardando aprovação do admin. Assim que liberar, seu acesso aparece aqui.</p>
+    <button class="btn btn-ghost" style="width:100%;padding:13px;margin-top:6px;" onclick="logout()">Sair</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     TELA DO COLEGA
+     ============================================================ -->
+<div id="screen-colega" class="screen hidden">
+  <div class="topbar">
+    <div class="brand">Don Caronas</div>
+    <div class="topbar-right">
+      <div class="status-dot" id="colega-status"><span class="dot"></span><span class="txt">Offline</span></div>
+      <div class="user-chip">
+        <div class="avatar" id="colega-avatar"></div>
+        <span class="user-name" id="colega-username"></span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Sair</button>
+    </div>
+  </div>
+  <div class="container" id="colega-content"></div>
+</div>
+
+<!-- ============================================================
+     TELA DO ADMIN
+     ============================================================ -->
+<div id="screen-admin" class="screen hidden">
+  <div class="topbar">
+    <div class="brand">Don Caronas</div>
+    <div class="topbar-right">
+      <div class="status-dot" id="admin-status"><span class="dot"></span><span class="txt">Offline</span></div>
+      <div class="user-chip">
+        <div class="avatar" id="admin-avatar"></div>
+        <span class="user-name" id="admin-username"></span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Sair</button>
+    </div>
+  </div>
+  <div class="pills" id="admin-pills"></div>
+  <div class="container" id="admin-content"></div>
+  <div class="bottom-tabs" id="admin-bottom-tabs"></div>
+</div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   ESTADO GLOBAL
+   ============================================================ */
+const ADMIN_TABS = [
+  {id:'dashboard', label:'Dashboard'},
+  {id:'equipe', label:'Equipe'},
+  {id:'historico', label:'Histórico'},
+  {id:'config', label:'Configurações'},
+];
+
+const SUPABASE_URL = 'https://htcxdzngjbgbabmmuwuz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0Y3hkem5namJnYmFibW11d3V6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NDg0ODQsImV4cCI6MjA5OTEyNDQ4NH0.sG0bD7p0kj2ZjkIrrZf3zDnDgv33tq0eOSySUKBfaio';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const state = {
+  currentUser: null, // profile (linha da tabela profiles) do usuário logado
+  adminTab: 'dashboard',
+  adminSelectedColega: null,
+  colegaCalWeekOffset: 0, // 0 = semana atual, -1 = anterior, etc.
+  adminCalWeekOffset: 0,
+  pixRevealed: false, // esconde a chave PIX por padrão (privacidade)
+  fechamentoPopupShown: false, // mostra o popup de cobrança só 1x por sessão
+  users: [], // cache de profiles: colega vê a própria linha + a do admin (RLS), admin vê todas
+  checkins: [], // cache de checkins, no formato {id, data, userId, nome, tipo, valor}
+  fechamentos: [], // cache de fechamentos mensais (histórico + status de pagamento)
+  extras: [], // cache de custos extras (Rachadinha)
+};
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const MESES_ABREV = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+function stripTime(d){ const n = new Date(d); n.setHours(0,0,0,0); return n; }
+function todayDate(){ return stripTime(new Date()); }
+function isoDate(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function formatBR(iso){ const [y,m,d]=iso.split('-'); return `${d}/${m}`; }
+function formatCurrency(v){ return 'R$ ' + (v||0).toFixed(2).replace('.', ','); }
+function initials(nome){
+  return nome.trim().split(/\s+/).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+}
+function greeting(){
+  const h = new Date().getHours();
+  if(h < 12) return 'Bom dia';
+  if(h < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+function findUserById(id){ return state.users.find(u=>u.id===id); }
+function isColegaAtiva(userId){ const u = findUserById(userId); return !!u && u.ativo !== false; }
+function isSameMonth(iso, ref){
+  const d = new Date(iso+'T00:00:00');
+  return d.getFullYear()===ref.getFullYear() && d.getMonth()===ref.getMonth();
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function showToast(msg){
+  const host = document.getElementById('toast-host');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  host.appendChild(el);
+  setTimeout(()=>{ el.remove(); }, 3200);
+}
+
+/* ============================================================
+   CARREGAMENTO DE DADOS (Supabase)
+   ============================================================ */
+function mapProfileRow(row){
+  return {
+    id: row.id, nome: row.nome, email: row.email, role: row.role,
+    valor_completa: Number(row.valor_completa), valor_meia: Number(row.valor_meia),
+    bio: row.bio || '', avatar_url: row.avatar_url || '',
+    pix_key: row.pix_key || '', custo_transporte_publico: Number(row.custo_transporte_publico || 0),
+    aprovado: row.aprovado, ativo: row.ativo,
+  };
+}
+
+function mapCheckinRow(row){
+  const owner = state.users.find(u=>u.id===row.user_id);
+  return {
+    id: row.id, data: row.data, userId: row.user_id,
+    nome: owner ? owner.nome : '', tipo: row.tipo, valor: Number(row.valor),
+  };
+}
+
+async function fetchAllProfiles(){
+  const { data, error } = await sb.from('profiles').select('*').order('nome');
+  if(error){ console.error(error); showToast('Erro ao carregar colegas.'); return []; }
+  return data.map(mapProfileRow);
+}
+
+async function fetchAllCheckins(){
+  const { data, error } = await sb.from('checkins').select('*').order('data', {ascending:false});
+  if(error){ console.error(error); showToast('Erro ao carregar check-ins.'); return []; }
+  return data.map(mapCheckinRow);
+}
+
+function mapExtraRow(row){
+  const owner = state.users.find(u=>u.id===row.user_id);
+  return {
+    id: row.id, data: row.data, userId: row.user_id,
+    nome: owner ? owner.nome : '', descricao: row.descricao, valor: Number(row.valor),
+  };
+}
+
+async function fetchAllExtras(){
+  const { data, error } = await sb.from('custos_extras').select('*').order('data', {ascending:false});
+  if(error){ console.error(error); showToast('Erro ao carregar rachadinhas.'); return []; }
+  return data.map(mapExtraRow);
+}
+
+function toggleRachadinhaForm(){
+  document.getElementById('rachadinha-form').classList.toggle('hidden');
+}
+
+async function addExtra(){
+  const descInput = document.getElementById('rc-descricao');
+  const valInput = document.getElementById('rc-valor');
+  const descricao = descInput.value.trim();
+  const valor = parseFloat(valInput.value);
+  if(!descricao || !valor || valor<=0){ showToast('Preenche descrição e valor.'); return; }
+
+  const user = state.currentUser;
+  const { data, error } = await sb.from('custos_extras')
+    .insert({ user_id:user.id, data:isoDate(todayDate()), descricao, valor })
+    .select().single();
+  if(error){ console.error(error); showToast('Erro ao salvar rachadinha.'); return; }
+
+  state.extras.unshift(mapExtraRow(data));
+  showToast('Rachadinha adicionada.');
+  renderColega();
+}
+
+async function deleteExtra(id){
+  if(!confirm('Remover essa rachadinha?')) return;
+  const { error } = await sb.from('custos_extras').delete().eq('id', id);
+  if(error){ console.error(error); showToast('Erro ao remover rachadinha.'); return; }
+  state.extras = state.extras.filter(e=>e.id!==id);
+  showToast('Rachadinha removida.');
+  renderColega();
+}
+
+function mapFechamentoRow(row){
+  return {
+    id: row.id, userId: row.user_id, mes: row.mes, ano: row.ano,
+    totalCaronas: Number(row.total_caronas), totalExtras: Number(row.total_extras),
+    totalGeral: Number(row.total_geral), pago: row.pago,
+  };
+}
+
+async function fetchAllFechamentos(){
+  const { data, error } = await sb.from('fechamentos').select('*').order('ano', {ascending:false}).order('mes', {ascending:false});
+  if(error){ console.error(error); showToast('Erro ao carregar histórico de fechamentos.'); return []; }
+  return data.map(mapFechamentoRow);
+}
+
+async function loadDataForCurrentUser(){
+  state.users = await fetchAllProfiles();
+  state.checkins = await fetchAllCheckins();
+  state.extras = await fetchAllExtras();
+  state.fechamentos = await fetchAllFechamentos();
+}
+
+async function ensureProfile(authUser){
+  const { data, error } = await sb.from('profiles').select('*').eq('id', authUser.id).maybeSingle();
+  if(error){ console.error(error); showToast('Erro ao carregar perfil.'); return null; }
+  if(data) return mapProfileRow(data);
+
+  // primeiro login depois de confirmar e-mail: perfil ainda não existe, cria agora
+  const nome = (authUser.user_metadata && authUser.user_metadata.nome) || authUser.email.split('@')[0];
+  const { data: created, error: insErr } = await sb.from('profiles')
+    .insert({ id: authUser.id, nome, email: authUser.email, role:'colega', aprovado:false })
+    .select().single();
+  if(insErr){ console.error(insErr); showToast('Erro ao criar perfil.'); return null; }
+  return mapProfileRow(created);
+}
+
+/* ============================================================
+   AUTENTICAÇÃO (Supabase Auth)
+   ============================================================ */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function clearLoginForm(){
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-senha').value = '';
+  const err = document.getElementById('login-error');
+  err.classList.add('hidden');
+  err.textContent = '';
+}
+
+function clearSignupForm(){
+  document.getElementById('signup-form').reset();
+  const err = document.getElementById('signup-error');
+  err.classList.add('hidden');
+  err.textContent = '';
+}
+
+async function afterAuthSuccess(authUser){
+  const profile = await ensureProfile(authUser);
+  if(!profile){
+    await sb.auth.signOut();
+    return;
+  }
+  state.currentUser = profile;
+  clearLoginForm();
+  if(!profile.aprovado && profile.role !== 'admin'){
+    showScreen('screen-pending');
+    return;
+  }
+  await loadDataForCurrentUser();
+  await checkAndCloseMonth();
+  if(profile.role === 'admin'){
+    renderAdmin();
+    showScreen('screen-admin');
+  } else {
+    renderColega();
+    showScreen('screen-colega');
+  }
+}
+
+async function handleLogin(e){
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const senha = document.getElementById('login-senha').value;
+  const err = document.getElementById('login-error');
+  const btn = document.getElementById('login-submit-btn');
+  err.classList.add('hidden');
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
+  btn.disabled = false; btn.textContent = 'Entrar';
+  if(error){
+    const msgMap = {
+      'Invalid login credentials': 'E-mail ou senha incorretos.',
+      'Email not confirmed': 'Confirme seu e-mail antes de entrar (verifique a caixa de entrada).',
+    };
+    err.textContent = msgMap[error.message] || error.message;
+    err.classList.remove('hidden');
+    return;
+  }
+  await afterAuthSuccess(data.user);
+}
+
+async function handleSignup(e){
+  e.preventDefault();
+  const nome = document.getElementById('signup-nome').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const senha = document.getElementById('signup-senha').value;
+  const err = document.getElementById('signup-error');
+  const btn = document.getElementById('signup-submit-btn');
+  err.classList.add('hidden');
+  btn.disabled = true; btn.textContent = 'Criando...';
+  const { data, error } = await sb.auth.signUp({
+    email, password: senha, options: { data: { nome } },
+  });
+  if(error){
+    btn.disabled = false; btn.textContent = 'Criar conta';
+    err.textContent = error.message.includes('registered') ? 'Já existe conta com esse e-mail.' : error.message;
+    err.classList.remove('hidden');
+    return;
+  }
+  btn.disabled = false; btn.textContent = 'Criar conta';
+  if(!data.session){
+    // projeto exige confirmação por e-mail: sem sessão ainda, não dá pra criar o perfil agora
+    clearSignupForm();
+    showToast('Conta criada! Confirme seu e-mail e depois faça login.');
+    showScreen('screen-login');
+    return;
+  }
+  clearSignupForm();
+  await afterAuthSuccess(data.user);
+}
+
+async function logout(){
+  await sb.auth.signOut();
+  state.currentUser = null;
+  state.users = [];
+  state.checkins = [];
+  clearLoginForm();
+  showScreen('screen-login');
+}
+
+document.getElementById('login-form').addEventListener('submit', handleLogin);
+document.getElementById('signup-form').addEventListener('submit', handleSignup);
+
+/* ============================================================
+   CHECK-IN (regras de valor)
+   ============================================================ */
+function getCheckin(userId, iso){
+  return state.checkins.find(c=>c.userId===userId && c.data===iso);
+}
+
+async function setCheckin(userId, nome, iso, tipo){
+  const user = findUserById(userId);
+  const valor = tipo==='completa' ? user.valor_completa : tipo==='meia' ? user.valor_meia : 0;
+  const { data, error } = await sb.from('checkins')
+    .upsert({ user_id: userId, data: iso, tipo, valor }, { onConflict: 'user_id,data' })
+    .select().single();
+  if(error){ console.error(error); showToast('Erro ao salvar check-in.'); return null; }
+  const rec = mapCheckinRow(data);
+  const idx = state.checkins.findIndex(c=>c.userId===userId && c.data===iso);
+  if(idx >= 0) state.checkins[idx] = rec; else state.checkins.push(rec);
+  return rec;
+}
+
+// Popover de escolha de tipo, aberto ao clicar num dia do calendário do colega.
+let popoverIso = null;
+
+function toggleCalPopover(iso, cellEl){
+  const pop = document.getElementById('cal-popover');
+  if(popoverIso === iso && !pop.classList.contains('hidden')){
+    closeCalPopover();
+    return;
+  }
+  popoverIso = iso;
+  const rect = cellEl.getBoundingClientRect();
+  document.getElementById('cp-date').textContent = formatBR(iso);
+  const current = getCheckin(state.currentUser.id, iso);
+  const currentTipo = current ? current.tipo : 'none';
+  pop.querySelectorAll('button').forEach(b=>{
+    b.classList.toggle('active', b.getAttribute('data-tipo') === currentTipo);
+  });
+  pop.classList.remove('hidden');
+  // posiciona depois de exibir para ter as dimensões corretas
+  const popRect = pop.getBoundingClientRect();
+  let left = rect.left + window.scrollX;
+  if(left + popRect.width > document.documentElement.scrollWidth) left = rect.right + window.scrollX - popRect.width;
+  pop.style.left = left + 'px';
+  pop.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+}
+
+function closeCalPopover(){
+  document.getElementById('cal-popover').classList.add('hidden');
+  popoverIso = null;
+}
+
+async function chooseCheckin(tipo){
+  if(!popoverIso) return;
+  const user = state.currentUser;
+  const iso = popoverIso;
+  closeCalPopover();
+  await setCheckin(user.id, user.nome, iso, tipo);
+  renderColega();
+}
+
+document.addEventListener('click', (e)=>{
+  const pop = document.getElementById('cal-popover');
+  if(pop.classList.contains('hidden')) return;
+  if(pop.contains(e.target)) return;
+  if(e.target.closest && e.target.closest('.cal-cell.clickable')) return;
+  closeCalPopover();
+});
+
+function calcStreak(userId){
+  const today = todayDate();
+  const map = {};
+  state.checkins.filter(c=>c.userId===userId).forEach(c=>{ map[c.data]=c.tipo; });
+  const cursor = new Date(today);
+  if(!map[isoDate(cursor)] || map[isoDate(cursor)]==='none'){
+    cursor.setDate(cursor.getDate()-1);
+  }
+  let streak = 0;
+  while(true){
+    const iso = isoDate(cursor);
+    const tipo = map[iso];
+    if(tipo && tipo!=='none'){
+      streak++;
+      cursor.setDate(cursor.getDate()-1);
+    } else break;
+  }
+  return streak;
+}
+
+function monthStats(userId){
+  const ref = todayDate();
+  const rows = state.checkins.filter(c=>c.userId===userId && isSameMonth(c.data, ref));
+  const totalCaronas = rows.reduce((s,c)=>s+(c.valor||0),0);
+  const totalExtras = state.extras
+    .filter(e=>e.userId===userId && isSameMonth(e.data, ref))
+    .reduce((s,e)=>s+(e.valor||0),0);
+  const completas = rows.filter(c=>c.tipo==='completa').length;
+  const meias = rows.filter(c=>c.tipo==='meia').length;
+  return {total: totalCaronas + totalExtras, totalCaronas, totalExtras, completas, meias};
+}
+
+function isMonthYear(iso, mes, ano){
+  const d = new Date(iso+'T00:00:00');
+  return (d.getMonth()+1)===mes && d.getFullYear()===ano;
+}
+
+const MESES_FULL = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+/* ============================================================
+   FECHAMENTO MENSAL (todo dia 05, fecha o mês anterior)
+   ============================================================ */
+async function checkAndCloseMonth(){
+  const user = state.currentUser;
+  if(!user || user.role === 'admin') return; // fechamento/popup é só pro colega pagar
+
+  const today = todayDate();
+  if(today.getDate() < 5) return; // período de graça, mês anterior ainda não fecha
+
+  let mes = today.getMonth(); // getMonth() é 0-indexed => já é o mês anterior em base 1
+  let ano = today.getFullYear();
+  if(mes === 0){ mes = 12; ano -= 1; }
+
+  const existente = state.fechamentos.find(f=>f.userId===user.id && f.mes===mes && f.ano===ano);
+  if(existente){
+    if(!existente.pago && !state.fechamentoPopupShown){
+      state.fechamentoPopupShown = true;
+      showFechamentoPopup(existente);
+    }
+    return;
+  }
+
+  const totalCaronas = state.checkins
+    .filter(c=>c.userId===user.id && isMonthYear(c.data, mes, ano))
+    .reduce((s,c)=>s+(c.valor||0),0);
+  const totalExtras = state.extras
+    .filter(e=>e.userId===user.id && isMonthYear(e.data, mes, ano))
+    .reduce((s,e)=>s+(e.valor||0),0);
+  const totalGeral = totalCaronas + totalExtras;
+
+  if(totalGeral <= 0) return; // nada pra cobrar, não cria fechamento vazio
+
+  const { data, error } = await sb.from('fechamentos')
+    .insert({ user_id:user.id, mes, ano, total_caronas:totalCaronas, total_extras:totalExtras, total_geral:totalGeral, pago:false })
+    .select().single();
+  if(error){ console.error(error); return; }
+
+  const fechamento = mapFechamentoRow(data);
+  state.fechamentos.unshift(fechamento);
+  state.fechamentoPopupShown = true;
+  showFechamentoPopup(fechamento);
+}
+
+function showFechamentoPopup(fechamento){
+  const driver = getDriverProfile();
+  const pix = driver && driver.pix_key;
+  const modal = document.getElementById('fechamento-modal');
+  modal.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-icon"><svg viewBox="0 0 24 24">${ICONS.money}</svg></div>
+      <h3>Fechamos ${MESES_FULL[fechamento.mes-1]}!</h3>
+      <div class="modal-sub">Valor de ${MESES_FULL[fechamento.mes-1]}/${fechamento.ano} pra acertar com quem te deu carona.</div>
+      <div class="modal-val">${formatCurrency(fechamento.totalGeral)}</div>
+      ${pix ? `
+      <div class="modal-pix">
+        <div><div class="mp-label">Chave PIX</div><div class="mp-key">${escapeHtml(pix)}</div></div>
+        <button class="btn btn-sm btn-primary" onclick="copiarPix('${escapeHtml(pix)}')">Copiar</button>
+      </div>` : `<div class="modal-sub">Motorista ainda não cadastrou a chave PIX.</div>`}
+      <button class="btn btn-ghost" style="width:100%;margin-top:6px;" onclick="closeFechamentoModal()">Já paguei / fechar</button>
+    </div>`;
+  modal.classList.remove('hidden');
+}
+
+function closeFechamentoModal(){
+  document.getElementById('fechamento-modal').classList.add('hidden');
+}
+
+/* ============================================================
+   ECONOMIA vs. TRANSPORTE PÚBLICO
+   ============================================================ */
+function economiaDoCheckin(c, custoTransporte){
+  if(c.tipo === 'completa') return custoTransporte - c.valor;
+  if(c.tipo === 'meia') return (custoTransporte/2) - c.valor;
+  return 0;
+}
+
+function economiaStats(userId){
+  const user = findUserById(userId);
+  const custoTransporte = user.custo_transporte_publico || 0;
+  const today = todayDate();
+  const todayIso = isoDate(today);
+  const rows = state.checkins.filter(c=>c.userId===userId);
+
+  let totalMes = 0, hoje = 0, diasComCarona = 0, totalCaronaValor = 0, totalTransporteValor = 0;
+  rows.forEach(c=>{
+    if(c.tipo === 'none') return;
+    const e = economiaDoCheckin(c, custoTransporte);
+    const custoDia = c.tipo === 'completa' ? custoTransporte : custoTransporte/2;
+    if(isSameMonth(c.data, today)){
+      totalMes += e; diasComCarona++;
+      totalCaronaValor += c.valor;
+      totalTransporteValor += custoDia;
+    }
+    if(c.data === todayIso) hoje = e;
+  });
+  const mediaDiaria = diasComCarona ? totalMes/diasComCarona : 0;
+  const projecaoAnual = mediaDiaria * 22 * 12; // ~22 dias úteis/mês
+  return {hoje, totalMes, projecaoAnual, custoTransporte, totalCaronaValor, totalTransporteValor, configurado: custoTransporte > 0};
+}
+
+function renderEconomiaChart(userId){
+  const user = findUserById(userId);
+  const custoTransporte = user.custo_transporte_publico || 0;
+  const rows = state.checkins
+    .filter(c=>c.userId===userId && c.tipo!=='none')
+    .slice().sort((a,b)=>a.data.localeCompare(b.data))
+    .slice(-14);
+  if(!rows.length || !custoTransporte){
+    return '<p class="text-dim" style="font-size:.82rem;">Configure o custo do transporte público pra ver o gráfico de economia.</p>';
+  }
+  let cum = 0;
+  const points = rows.map(c=>{ cum += economiaDoCheckin(c, custoTransporte); return cum; });
+  const w = 100, h = 100;
+  const max = Math.max(...points, 0.01);
+  const min = Math.min(...points, 0);
+  const range = (max - min) || 1;
+  const stepX = points.length > 1 ? w/(points.length-1) : 0;
+  const coords = points.map((p,i)=> `${(i*stepX).toFixed(1)},${(h - ((p-min)/range)*h).toFixed(1)}`);
+  const linePath = 'M' + coords.join(' L');
+  const areaPath = linePath + ` L${w},${h} L0,${h} Z`;
+  return `
+    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" class="economia-chart">
+      <defs>
+        <linearGradient id="econGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.5"/>
+          <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path d="${areaPath}" fill="url(#econGrad)" stroke="none"/>
+      <path d="${linePath}" fill="none" stroke="#c4b5fd" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+    </svg>`;
+}
+
+function toggleEconomiaConfig(){
+  document.getElementById('economia-config').classList.toggle('hidden');
+}
+
+async function salvarCustoTransporte(){
+  const val = parseFloat(document.getElementById('cfg-transporte').value) || 0;
+  const { data, error } = await sb.from('profiles').update({custo_transporte_publico: val}).eq('id', state.currentUser.id).select().single();
+  if(error){ console.error(error); showToast('Erro ao salvar.'); return; }
+  state.currentUser = mapProfileRow(data);
+  const idx = state.users.findIndex(u=>u.id===state.currentUser.id);
+  if(idx>=0) state.users[idx] = state.currentUser;
+  showToast('Custo do transporte salvo.');
+  renderColega();
+}
+
+function getDriverProfile(){ return state.users.find(u=>u.role==='admin' && u.ativo!==false); }
+
+function copiarPix(key){
+  navigator.clipboard.writeText(key).then(()=> showToast('Chave PIX copiada.'));
+}
+
+function eyeIcon(open){
+  return open
+    ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+    : '<path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a21.8 21.8 0 015.06-6.06M9.9 4.24A10.94 10.94 0 0112 4c7 0 11 8 11 8a21.8 21.8 0 01-2.16 3.19M14.12 14.12a3 3 0 11-4.24-4.24M1 1l22 22"/>';
+}
+
+function togglePixReveal(){
+  state.pixRevealed = !state.pixRevealed;
+  renderColega();
+}
+
+/* ============================================================
+   CALENDÁRIO SEMANAL (quadrados, navegação por semana)
+   ============================================================ */
+const DIAS_ABREV = ['dom','seg','ter','qua','qui','sex','sáb'];
+
+function buildWeekDays(weekOffset){
+  const today = todayDate();
+  const ref = new Date(today);
+  ref.setDate(ref.getDate() + weekOffset*7);
+  const sunday = new Date(ref);
+  sunday.setDate(sunday.getDate() - sunday.getDay());
+  const days = [];
+  for(let i=0;i<7;i++){ const d = new Date(sunday); d.setDate(d.getDate()+i); days.push(d); }
+  return days;
+}
+
+let calInstanceCounter = 0;
+
+// Renderiza o calendário semanal de um usuário. interactive=true permite clicar no dia (até hoje).
+function renderCalendar(userId, opts){
+  opts = opts || {};
+  const interactive = !!opts.interactive;
+  const weekOffset = opts.weekOffset || 0;
+  const contextKey = opts.contextKey || 'colega';
+  const days = buildWeekDays(weekOffset);
+  const today = todayDate();
+  const todayIso = isoDate(today);
+  const instanceId = 'cal-' + (calInstanceCounter++);
+
+  const checkinsMap = {};
+  state.checkins.filter(c=>c.userId===userId).forEach(c=>{ checkinsMap[c.data]=c.tipo; });
+
+  let cellsHtml = '';
+  days.forEach(d=>{
+    const iso = isoDate(d);
+    const isFuture = d > today;
+    const tipo = checkinsMap[iso] || 'none';
+    const isToday = iso === todayIso;
+    const clickable = interactive && !isFuture;
+    const classes = ['cal-cell'];
+    if(tipo !== 'none') classes.push(tipo);
+    if(isFuture) classes.push('future');
+    if(isToday) classes.push('today');
+    if(clickable) classes.push('clickable');
+    cellsHtml += `
+      <div class="cal-day-col">
+        <div class="cal-day-label">${DIAS_ABREV[d.getDay()]}</div>
+        <div class="${classes.join(' ')}" data-date="${iso}" data-tipo="${tipo}" data-clickable="${clickable}">
+          <span class="cal-day-num">${d.getDate()}</span>
+        </div>
+      </div>`;
+  });
+
+  const rangeLabel = `${String(days[0].getDate()).padStart(2,'0')} ${MESES_ABREV[days[0].getMonth()]} – ${String(days[6].getDate()).padStart(2,'0')} ${MESES_ABREV[days[6].getMonth()]}`;
+
+  const html = `
+    <div id="${instanceId}" data-context="${contextKey}">
+      <div class="cal-week-nav">
+        <button type="button" class="cal-week-btn" data-nav="prev" aria-label="Semana anterior">‹</button>
+        <span class="cal-week-range">${rangeLabel}</span>
+        <button type="button" class="cal-week-btn" data-nav="next" aria-label="Próxima semana" ${weekOffset>=0?'disabled':''}>›</button>
+      </div>
+      <div class="cal-week-grid">${cellsHtml}</div>
+    </div>`;
+
+  // agenda os listeners depois de inserido no DOM (chamador deve inserir e então chamar wireCalendar)
+  return {html, instanceId, interactive};
+}
+
+function wireCalendar(instanceId, interactive){
+  const wrap = document.getElementById(instanceId);
+  if(!wrap) return;
+  const contextKey = wrap.getAttribute('data-context');
+  const tooltip = document.getElementById('tooltip');
+  const tipoLabel = {completa:'Ida e volta', meia:'Só um trecho', none:'Sem check-in'};
+
+  wrap.querySelectorAll('.cal-cell').forEach(cell=>{
+    const iso = cell.getAttribute('data-date');
+    const tipo = cell.getAttribute('data-tipo');
+    const clickable = interactive && cell.getAttribute('data-clickable')==='true';
+    cell.addEventListener('mouseenter', ()=>{
+      const rect = cell.getBoundingClientRect();
+      tooltip.textContent = `${formatBR(iso)} — ${tipoLabel[tipo]}${clickable ? ' (clique para marcar)' : ''}`;
+      tooltip.style.left = (rect.left + window.scrollX + rect.width/2) + 'px';
+      tooltip.style.top = (rect.top + window.scrollY) + 'px';
+      tooltip.classList.add('show');
+    });
+    cell.addEventListener('mouseleave', ()=>{ tooltip.classList.remove('show'); });
+    if(clickable){
+      cell.addEventListener('click', (e)=>{ e.stopPropagation(); toggleCalPopover(iso, cell); });
+    }
+  });
+
+  const prevBtn = wrap.querySelector('[data-nav="prev"]');
+  const nextBtn = wrap.querySelector('[data-nav="next"]');
+  if(prevBtn) prevBtn.addEventListener('click', ()=>{
+    if(contextKey==='admin'){ state.adminCalWeekOffset--; renderAdmin(); }
+    else { state.colegaCalWeekOffset--; renderColega(); }
+  });
+  if(nextBtn) nextBtn.addEventListener('click', ()=>{
+    if(contextKey==='admin'){ if(state.adminCalWeekOffset<0){ state.adminCalWeekOffset++; renderAdmin(); } }
+    else { if(state.colegaCalWeekOffset<0){ state.colegaCalWeekOffset++; renderColega(); } }
+  });
+}
+
+function calendarLegendHtml(){
+  return `
+    <div class="cal-legend">
+      <div class="item"><span class="sw" style="background:var(--green)"></span>Ida e volta</div>
+      <div class="item"><span class="sw" style="background:var(--amber)"></span>Só um trecho</div>
+      <div class="item"><span class="sw" style="background:var(--cell-gray)"></span>Sem check-in</div>
+    </div>`;
+}
+
+/* ============================================================
+   ÍCONES SVG (inline)
+   ============================================================ */
+const ICONS = {
+  money: '<path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>',
+  check: '<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>',
+  half: '<path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/>',
+  flame: '<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>',
+  users: '<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>',
+};
+function iconBadge(name){
+  return `<div class="icon-badge"><svg viewBox="0 0 24 24">${ICONS[name]}</svg></div>`;
+}
+
+/* ============================================================
+   TELA DO COLEGA
+   ============================================================ */
+function renderColega(){
+  const user = state.currentUser;
+  document.getElementById('colega-avatar').textContent = initials(user.nome);
+  document.getElementById('colega-username').textContent = user.nome;
+  updateStatusDot('colega-status');
+
+  const stats = monthStats(user.id);
+
+  const recent = state.checkins
+    .filter(c=>c.userId===user.id)
+    .slice()
+    .sort((a,b)=> b.data.localeCompare(a.data))
+    .slice(0,8);
+
+  const history = state.checkins
+    .filter(c=>c.userId===user.id)
+    .slice()
+    .sort((a,b)=> b.data.localeCompare(a.data));
+
+  const cal = renderCalendar(user.id, {interactive:true, weekOffset:state.colegaCalWeekOffset, contextKey:'colega'});
+  const econ = economiaStats(user.id);
+  const driver = getDriverProfile();
+
+  const extrasDoMes = state.extras
+    .filter(e=>e.userId===user.id && isSameMonth(e.data, todayDate()))
+    .slice()
+    .sort((a,b)=> b.data.localeCompare(a.data));
+
+  document.getElementById('colega-content').innerHTML = `
+    <h2 style="font-size:1.4rem;margin-bottom:22px;">${greeting()}, ${escapeHtml(user.nome.split(' ')[0])}</h2>
+
+    <div class="kpi-grid">
+      <div class="glass kpi kpi-money">${iconBadge('money')}<div class="value">${formatCurrency(stats.total)}</div><div class="label">Débito pendente (mês)</div></div>
+      <div class="glass kpi kpi-check">${iconBadge('check')}<div class="value">${stats.completas}</div><div class="label">Caronas completas</div></div>
+      <div class="glass kpi kpi-half">${iconBadge('half')}<div class="value">${stats.meias}</div><div class="label">Meias caronas</div></div>
+      <div class="glass kpi kpi-pix">
+        <button class="icon-badge kpi-pix-toggle" onclick="togglePixReveal()" aria-label="Mostrar ou ocultar PIX">
+          <svg viewBox="0 0 24 24">${eyeIcon(state.pixRevealed)}</svg>
+        </button>
+        <div class="value kpi-pix-value ${state.pixRevealed?'revealed':''}" ${state.pixRevealed && driver && driver.pix_key ? `onclick="copiarPix('${escapeHtml(driver.pix_key)}')"` : ''}>${driver && driver.pix_key ? escapeHtml(driver.pix_key) : '— sem PIX —'}</div>
+        <div class="label">PIX do motorista${state.pixRevealed && driver && driver.pix_key ? ' · toque pra copiar' : ''}</div>
+      </div>
+    </div>
+
+    <div class="glass card mt-24">
+      <div class="flex-between" style="margin-bottom:4px;">
+        <div class="section-title" style="margin-bottom:0;">Economia</div>
+        <button class="btn btn-ghost btn-sm" onclick="toggleEconomiaConfig()">Configurar</button>
+      </div>
+      <div id="economia-config" class="hidden" style="margin:14px 0;">
+        <div class="form-row" style="margin-bottom:8px;">
+          <div class="field"><label>Quanto gastaria de transporte público (ida+volta, por dia)</label>
+            <input type="number" step="0.01" id="cfg-transporte" value="${user.custo_transporte_publico || ''}" placeholder="ex: 12.00">
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="salvarCustoTransporte()">Salvar</button>
+      </div>
+      ${econ.configurado ? `
+        <div class="econ-hero">
+          <div class="econ-hero-val">${formatCurrency(econ.totalMes)}</div>
+          <div class="econ-hero-label">este mês · projeção de ${formatCurrency(econ.projecaoAnual)} em 12 meses</div>
+        </div>
+        <div class="econ-compare">
+          <div class="econ-compare-row">
+            <div class="econ-compare-label">Transporte público</div>
+            <div class="econ-compare-track"><div class="econ-compare-fill publico" style="width:100%"></div></div>
+            <div class="econ-compare-val">${formatCurrency(econ.totalTransporteValor)}</div>
+          </div>
+          <div class="econ-compare-row">
+            <div class="econ-compare-label">Carona</div>
+            <div class="econ-compare-track"><div class="econ-compare-fill carona" style="width:${econ.totalTransporteValor>0 ? Math.min(100,(econ.totalCaronaValor/econ.totalTransporteValor)*100) : 0}%"></div></div>
+            <div class="econ-compare-val">${formatCurrency(econ.totalCaronaValor)}</div>
+          </div>
+        </div>
+        <div class="economia-chart-wrap">
+          ${renderEconomiaChart(user.id)}
+        </div>
+      ` : `
+        <p class="text-dim" style="font-size:.85rem;margin-top:14px;">Configure o custo do transporte público pra ver sua economia.</p>
+      `}
+    </div>
+
+    <div class="glass card mt-24">
+      <div class="section-title">Presença</div>
+      ${cal.html}
+      ${calendarLegendHtml()}
+    </div>
+
+    <div class="glass card mt-24">
+      <div class="flex-between" style="margin-bottom:4px;">
+        <div class="section-title" style="margin-bottom:0;">Rachadinha</div>
+        <button class="btn btn-ghost btn-sm" onclick="toggleRachadinhaForm()">+ Adicionar</button>
+      </div>
+      <p class="text-dim" style="font-size:.8rem;margin:2px 0 14px;">Custo extra pra dividir, tipo estacionamento ou pedágio.</p>
+      <div id="rachadinha-form" class="hidden" style="margin-bottom:14px;">
+        <div class="form-row" style="margin-bottom:8px;">
+          <div class="field"><label>Descrição</label><input type="text" id="rc-descricao" placeholder="ex: Estacionamento"></div>
+          <div class="field"><label>Valor</label><input type="number" step="0.01" id="rc-valor" placeholder="ex: 10.00"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addExtra()">Salvar</button>
+      </div>
+      ${extrasDoMes.length ? extrasDoMes.map(e=>`
+        <div class="activity-item">
+          <div><div class="who">${escapeHtml(e.descricao)}</div><div class="meta">${formatBR(e.data)}</div></div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="val">${formatCurrency(e.valor)}</div>
+            <button class="chip-remove" onclick="deleteExtra('${e.id}')" aria-label="Remover rachadinha">×</button>
+          </div>
+        </div>`).join('') : '<div class="activity-empty">Nenhuma rachadinha este mês.</div>'}
+    </div>
+
+    <div class="grid-2 mt-24">
+      <div class="activity-panel">
+        <div class="section-title">Atividade recente</div>
+        ${recent.length ? recent.map(c=>`
+          <div class="activity-item">
+            <div><div class="who">${formatBR(c.data)}</div><div class="meta">${c.tipo==='completa'?'Ida e volta':c.tipo==='meia'?'Só um trecho':'Não veio'}</div></div>
+            <div class="val">${formatCurrency(c.valor)}</div>
+          </div>`).join('') : '<div class="activity-empty">Nenhum check-in ainda.</div>'}
+      </div>
+
+      <div class="glass card">
+        <div class="section-title">Histórico completo</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Data</th><th>Tipo</th><th>Valor</th></tr></thead>
+            <tbody>
+              ${history.length ? history.map(c=>`
+                <tr>
+                  <td>${formatBR(c.data)}</td>
+                  <td><span class="tag ${c.tipo}">${c.tipo==='completa'?'Ida e volta':c.tipo==='meia'?'Só um trecho':'Não veio'}</span></td>
+                  <td>${formatCurrency(c.valor)}</td>
+                </tr>`).join('') : '<tr><td colspan="3" class="text-dim">Sem registros.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
+  wireCalendar(cal.instanceId, cal.interactive);
+}
+
+/* ============================================================
+   TELA DO ADMIN
+   ============================================================ */
+function updateStatusDot(id){
+  const el = document.getElementById(id);
+  el.classList.add('online');
+  el.querySelector('.txt').textContent = 'Online';
+}
+
+function renderAdmin(){
+  const user = state.currentUser;
+  document.getElementById('admin-avatar').textContent = initials(user.nome);
+  document.getElementById('admin-username').textContent = user.nome;
+  updateStatusDot('admin-status');
+
+  const pillsHtml = ADMIN_TABS.map(t=>`<button class="pill ${state.adminTab===t.id?'active':''}" onclick="setAdminTab('${t.id}')">${t.label}</button>`).join('');
+  document.getElementById('admin-pills').innerHTML = pillsHtml;
+  document.getElementById('admin-bottom-tabs').innerHTML = pillsHtml;
+
+  renderAdminTabContent();
+}
+
+function setAdminTab(tab){
+  state.adminTab = tab;
+  renderAdmin();
+}
+
+function renderAdminTabContent(){
+  const container = document.getElementById('admin-content');
+  if(state.adminTab === 'dashboard') container.innerHTML = adminDashboardHtml();
+  else if(state.adminTab === 'equipe') container.innerHTML = adminEquipeHtml();
+  else if(state.adminTab === 'historico') container.innerHTML = adminHistoricoHtml();
+  else if(state.adminTab === 'config') container.innerHTML = adminConfigHtml();
+
+  if(state.adminTab === 'dashboard') wireAdminDashboardCalendars();
+}
+
+function colegas(){ return state.users.filter(u=>u.role==='colega' && u.aprovado && u.ativo); }
+function pendentes(){ return state.users.filter(u=>u.role==='colega' && !u.aprovado); }
+
+function setAdminSelectedColega(userId){
+  state.adminSelectedColega = userId;
+  state.adminCalWeekOffset = 0;
+  renderAdmin();
+}
+
+function adminDashboardHtml(){
+  const ref = todayDate();
+  const monthCheckins = state.checkins.filter(c=>isSameMonth(c.data, ref) && isColegaAtiva(c.userId));
+  const totalPagar = monthCheckins.reduce((s,c)=>s+(c.valor||0),0);
+  const completas = monthCheckins.filter(c=>c.tipo==='completa').length;
+  const meias = monthCheckins.filter(c=>c.tipo==='meia').length;
+  const ativos = colegas().length;
+
+  const cols = colegas();
+  const maxTotal = Math.max(1, ...cols.map(c=> monthStats(c.id).total));
+
+  // garante uma seleção válida (default = primeiro colega da lista)
+  if(!state.adminSelectedColega || !cols.find(c=>c.id===state.adminSelectedColega)){
+    state.adminSelectedColega = cols.length ? cols[0].id : null;
+  }
+  const sel = state.adminSelectedColega ? findUserById(state.adminSelectedColega) : null;
+  const selStats = sel ? monthStats(sel.id) : {total:0,completas:0,meias:0};
+  const selStreak = sel ? calcStreak(sel.id) : 0;
+  const selRecent = sel ? state.checkins
+    .filter(c=>c.userId===sel.id)
+    .slice()
+    .sort((a,b)=> b.data.localeCompare(a.data))
+    .slice(0,8) : [];
+
+  return `
+    <div class="kpi-grid">
+      <div class="glass kpi kpi-money">${iconBadge('money')}<div class="value">${formatCurrency(totalPagar)}</div><div class="label">Total a receber (mês)</div></div>
+      <div class="glass kpi kpi-check">${iconBadge('check')}<div class="value">${completas}</div><div class="label">Caronas completas</div></div>
+      <div class="glass kpi kpi-half">${iconBadge('half')}<div class="value">${meias}</div><div class="label">Meias caronas</div></div>
+      <div class="glass kpi kpi-flame">${iconBadge('users')}<div class="value">${ativos}</div><div class="label">Colegas ativos</div></div>
+    </div>
+
+    <div class="glass card mt-24">
+      <div class="flex-between" style="margin-bottom:18px;">
+        <div class="section-title" style="margin-bottom:0;">Dashboard do colega</div>
+        ${cols.length ? `
+          <select class="colega-select" onchange="setAdminSelectedColega(this.value)">
+            ${cols.map(c=>`<option value="${c.id}" ${c.id===state.adminSelectedColega?'selected':''}>${escapeHtml(c.nome)}</option>`).join('')}
+          </select>` : ''}
+      </div>
+      ${sel ? `
+        <div class="kpi-grid" style="margin-bottom:22px;">
+          <div class="glass kpi kpi-money">${iconBadge('money')}<div class="value">${formatCurrency(selStats.total)}</div><div class="label">A receber este mês</div></div>
+          <div class="glass kpi kpi-check">${iconBadge('check')}<div class="value">${selStats.completas}</div><div class="label">Caronas completas</div></div>
+          <div class="glass kpi kpi-half">${iconBadge('half')}<div class="value">${selStats.meias}</div><div class="label">Meias caronas</div></div>
+          <div class="glass kpi kpi-flame">${iconBadge('flame')}<div class="value">${selStreak}</div><div class="label">Dias seguidos</div></div>
+        </div>
+        <div id="admin-sel-calendar"></div>
+        ${calendarLegendHtml()}
+      ` : '<p class="text-dim">Nenhum colega cadastrado.</p>'}
+    </div>
+
+    <div class="grid-2 mt-24">
+      <div class="glass card">
+        <div class="section-title">Total do mês por colega</div>
+        <div class="bar-chart">
+          ${cols.map(c=>{
+            const total = monthStats(c.id).total;
+            const h = Math.max(4, (total/maxTotal)*140);
+            return `<div class="bar-col">
+              <div class="bar-val">${formatCurrency(total)}</div>
+              <div class="bar" style="height:${h}px"></div>
+              <div class="bar-name">${escapeHtml(c.nome.split(' ')[0])}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="activity-panel">
+        <div class="section-title">${sel ? `Atividade recente — ${escapeHtml(sel.nome.split(' ')[0])}` : 'Atividade recente'}</div>
+        ${selRecent.length ? selRecent.map(c=>`
+          <div class="activity-item">
+            <div><div class="who">${formatBR(c.data)}</div><div class="meta">${c.tipo==='completa'?'Ida e volta':c.tipo==='meia'?'Só um trecho':'Não veio'}</div></div>
+            <div class="val">${formatCurrency(c.valor)}</div>
+          </div>`).join('') : '<div class="activity-empty">Nenhuma atividade ainda.</div>'}
+      </div>
+    </div>
+  `;
+}
+
+function wireAdminDashboardCalendars(){
+  const el = document.getElementById('admin-sel-calendar');
+  if(!el || !state.adminSelectedColega) return;
+  const cal = renderCalendar(state.adminSelectedColega, {interactive:false, weekOffset:state.adminCalWeekOffset, contextKey:'admin'});
+  el.innerHTML = cal.html;
+  wireCalendar(cal.instanceId, false);
+}
+
+function adminEquipeHtml(){
+  const rows = colegas();
+  const pend = pendentes();
+  return `
+    ${pend.length ? `
+    <div class="glass card">
+      <div class="section-title">Pendentes de aprovação</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nome</th><th>E-mail</th><th></th></tr></thead>
+          <tbody>
+            ${pend.map(u=>`
+              <tr>
+                <td>${escapeHtml(u.nome)}</td>
+                <td class="text-dim">${escapeHtml(u.email)}</td>
+                <td><button class="btn btn-primary btn-sm" onclick="aprovarColega('${u.id}')">Aprovar</button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>` : ''}
+
+    <div class="glass card mt-24">
+      <div class="section-title">Colegas</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nome</th><th>E-mail</th><th>Completa</th><th>Meia</th><th>Total do mês</th><th></th></tr></thead>
+          <tbody>
+            ${rows.length ? rows.map(u=>{
+              const total = monthStats(u.id).total;
+              return `<tr>
+                <td>${escapeHtml(u.nome)}</td>
+                <td class="text-dim">${escapeHtml(u.email)}</td>
+                <td><input class="num-input" type="number" step="0.01" value="${u.valor_completa}" onchange="updateColegaValor('${u.id}','valor_completa',this.value)"></td>
+                <td><input class="num-input" type="number" step="0.01" value="${u.valor_meia}" onchange="updateColegaValor('${u.id}','valor_meia',this.value)"></td>
+                <td>${formatCurrency(total)}</td>
+                <td><button class="chip-remove" title="Desativar" onclick="desativarColega('${u.id}')">✕</button></td>
+              </tr>`;
+            }).join('') : '<tr><td colspan="6" class="text-dim">Nenhum colega aprovado ainda.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+async function aprovarColega(userId){
+  const { data, error } = await sb.from('profiles')
+    .update({ aprovado: true }).eq('id', userId).select().single();
+  if(error){ console.error(error); showToast('Erro ao aprovar colega.'); return; }
+  const idx = state.users.findIndex(u=>u.id===userId);
+  if(idx>=0) state.users[idx] = mapProfileRow(data);
+  showToast(`${data.nome} aprovado.`);
+  renderAdmin();
+}
+
+async function updateColegaValor(userId, field, value){
+  const payload = {}; payload[field] = parseFloat(value) || 0;
+  const { data, error } = await sb.from('profiles')
+    .update(payload).eq('id', userId).select().single();
+  if(error){ console.error(error); showToast('Erro ao atualizar valor.'); return; }
+  const idx = state.users.findIndex(u=>u.id===userId);
+  if(idx>=0) state.users[idx] = mapProfileRow(data);
+  renderAdmin();
+}
+
+async function desativarColega(userId){
+  const u = findUserById(userId);
+  if(!confirm(`Desativar ${u.nome}? Ele deixa de aparecer nas contas, mas o histórico continua salvo.`)) return;
+  const { data, error } = await sb.from('profiles')
+    .update({ ativo: false }).eq('id', userId).select().single();
+  if(error){ console.error(error); showToast('Erro ao desativar colega.'); return; }
+  const idx = state.users.findIndex(x=>x.id===userId);
+  if(idx>=0) state.users[idx] = mapProfileRow(data);
+  showToast(`${u.nome} desativado.`);
+  renderAdmin();
+}
+
+async function excluirCheckin(checkinId){
+  if(!confirm('Excluir esse check-in? Não dá pra desfazer.')) return;
+  const { error } = await sb.from('checkins').delete().eq('id', checkinId);
+  if(error){ console.error(error); showToast('Erro ao excluir check-in.'); return; }
+  state.checkins = state.checkins.filter(c=>c.id!==checkinId);
+  showToast('Check-in excluído.');
+  renderAdmin();
+}
+
+function adminHistoricoHtml(){
+  const ref = todayDate();
+  const rows = state.checkins
+    .filter(c=>isSameMonth(c.data, ref) && isColegaAtiva(c.userId))
+    .slice()
+    .sort((a,b)=> b.data.localeCompare(a.data) || a.nome.localeCompare(b.nome));
+  return `
+    <div class="glass card">
+      <div class="section-title">Histórico do mês — todos os colegas</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Colega</th><th>Tipo</th><th>Valor</th><th></th></tr></thead>
+          <tbody>
+            ${rows.length ? rows.map(c=>`
+              <tr>
+                <td>${formatBR(c.data)}</td>
+                <td>${escapeHtml(c.nome)}</td>
+                <td><span class="tag ${c.tipo}">${c.tipo==='completa'?'Ida e volta':c.tipo==='meia'?'Só um trecho':'Não veio'}</span></td>
+                <td>${formatCurrency(c.valor)}</td>
+                <td><button class="chip-remove" title="Excluir check-in" onclick="excluirCheckin('${c.id}')">✕</button></td>
+              </tr>`).join('') : '<tr><td colspan="5" class="text-dim">Nenhum check-in neste mês.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    ${adminFechamentosHtml()}
+  `;
+}
+
+function adminFechamentosHtml(){
+  const list = state.fechamentos
+    .filter(f=>isColegaAtiva(f.userId))
+    .slice()
+    .sort((a,b)=> b.ano-a.ano || b.mes-a.mes || (findUserById(a.userId)?.nome||'').localeCompare(findUserById(b.userId)?.nome||''));
+  return `
+    <div class="glass card mt-24">
+      <div class="section-title">Fechamentos mês a mês</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mês</th><th>Colega</th><th>Caronas</th><th>Rachadinha</th><th>Total</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            ${list.length ? list.map(f=>{
+              const u = findUserById(f.userId);
+              return `
+              <tr>
+                <td>${MESES_FULL[f.mes-1]}/${f.ano}</td>
+                <td>${escapeHtml(u ? u.nome : '—')}</td>
+                <td>${formatCurrency(f.totalCaronas)}</td>
+                <td>${formatCurrency(f.totalExtras)}</td>
+                <td>${formatCurrency(f.totalGeral)}</td>
+                <td><span class="tag ${f.pago?'completa':'meia'}">${f.pago?'Pago':'Pendente'}</span></td>
+                <td>${f.pago ? '' : `<button class="btn btn-primary btn-sm" onclick="marcarFechamentoPago('${f.id}')">Marcar pago</button>`}</td>
+              </tr>`;
+            }).join('') : '<tr><td colspan="7" class="text-dim">Nenhum fechamento ainda.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+async function marcarFechamentoPago(id){
+  const { data, error } = await sb.from('fechamentos')
+    .update({ pago:true }).eq('id', id).select().single();
+  if(error){ console.error(error); showToast('Erro ao marcar como pago.'); return; }
+  const idx = state.fechamentos.findIndex(f=>f.id===id);
+  if(idx>=0) state.fechamentos[idx] = mapFechamentoRow(data);
+  showToast('Marcado como pago.');
+  renderAdmin();
+}
+
+function adminConfigHtml(){
+  const admin = state.currentUser;
+  return `
+    <div class="glass card">
+      <div class="section-title">Minha conta (admin)</div>
+      <form id="admin-account-form">
+        <div class="form-row">
+          <div class="field"><label>Nome</label><input type="text" id="acc-nome" value="${escapeHtml(admin.nome)}" required></div>
+          <div class="field"><label>E-mail</label><input type="email" id="acc-email" value="${escapeHtml(admin.email)}" disabled></div>
+          <div class="field"><label>Nova senha (opcional)</label><input type="password" id="acc-senha" placeholder="deixe em branco pra manter" minlength="6"></div>
+          <div class="field"><label>Chave PIX (aparece pros colegas)</label><input type="text" id="acc-pix" value="${escapeHtml(admin.pix_key||'')}" placeholder="e-mail, telefone, CPF ou chave aleatória"></div>
+        </div>
+        <p class="help-text">Trocar o e-mail não é suportado por aqui ainda — precisa mexer direto no Supabase.</p>
+        <button type="submit" class="btn btn-primary">Salvar alterações</button>
+      </form>
+    </div>
+  `;
+}
+
+function wireConfigForm(){
+  const form = document.getElementById('admin-account-form');
+  if(!form) return;
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const admin = state.currentUser;
+    const nome = document.getElementById('acc-nome').value.trim();
+    const senha = document.getElementById('acc-senha').value;
+    const pixKey = document.getElementById('acc-pix').value.trim();
+
+    const { data, error } = await sb.from('profiles').update({ nome, pix_key: pixKey }).eq('id', admin.id).select().single();
+    if(error){ console.error(error); showToast('Erro ao salvar dados.'); return; }
+    state.currentUser = mapProfileRow(data);
+    const idx = state.users.findIndex(u=>u.id===admin.id);
+    if(idx>=0) state.users[idx] = state.currentUser;
+
+    if(senha){
+      const { error: pwErr } = await sb.auth.updateUser({ password: senha });
+      if(pwErr){ console.error(pwErr); showToast('Dados salvos, mas erro ao trocar senha.'); renderAdmin(); return; }
+    }
+    showToast('Dados da conta atualizados.');
+    renderAdmin();
+  });
+}
+
+/* ============================================================
+   RENDER HOOK: re-liga formulários após cada render do admin
+   ============================================================ */
+const _origRenderAdminTabContent = renderAdminTabContent;
+renderAdminTabContent = function(){
+  _origRenderAdminTabContent();
+  wireConfigForm();
+};
+
+/* ============================================================
+   INICIALIZAÇÃO
+   ============================================================ */
+(async function init(){
+  showScreen('screen-login');
+  const { data } = await sb.auth.getSession();
+  if(data.session && data.session.user){
+    await afterAuthSuccess(data.session.user);
+  }
+})();
+</script>
+</body>
+</html>
