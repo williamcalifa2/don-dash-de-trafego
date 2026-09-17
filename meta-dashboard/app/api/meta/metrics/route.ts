@@ -13,7 +13,7 @@ const MOCK: MetricsResponse = {
   account_id: 'act_demo',
   account_name: 'Agência Demo — Conta Principal',
   currency: 'BRL',
-  date_preset: 'last_7_days',
+  date_preset: 'last_7d',
   generated_at: new Date().toISOString(),
   is_mock: true,
   summary: {
