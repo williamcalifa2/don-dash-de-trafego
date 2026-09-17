@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { RefreshCw, AlertCircle, Moon, Sun } from 'lucide-react'
+import { RefreshCw, TrendingUp, AlertCircle, Moon, Sun } from 'lucide-react'
 import { MetricTile } from '@/components/MetricTile'
 import { CampaignTable } from '@/components/CampaignTable'
 import { DailyChart } from '@/components/DailyChart'
@@ -10,10 +10,10 @@ import { useMetricsRealtime } from '@/lib/useMetricsRealtime'
 import type { DatePreset } from '@/lib/meta'
 
 const PRESETS: { value: DatePreset; label: string }[] = [
-  { value: 'today',    label: 'Hoje'    },
-  { value: 'last_7d',  label: '7d'      },
-  { value: 'last_14d', label: '14d'     },
-  { value: 'last_30d', label: '30d'     },
+  { value: 'today',    label: 'Hoje' },
+  { value: 'last_7d',  label: '7 dias' },
+  { value: 'last_14d', label: '14 dias' },
+  { value: 'last_30d', label: '30 dias' },
 ]
 
 function fmt(v: number | null | undefined, currency: string) {
@@ -22,14 +22,14 @@ function fmt(v: number | null | undefined, currency: string) {
 }
 function fmtCompact(v: number) {
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
-  if (v >= 1_000)     return `${(v / 1_000).toFixed(1)}k`
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k`
   return String(v)
 }
 
 export default function MetaDashboard() {
-  const [preset, setPreset]   = useState<DatePreset>('last_7d')
-  const [theme, setTheme]     = useState<'dark' | 'light'>('dark')
-  const [tab, setTab]         = useState<'metrics' | 'funnel'>('metrics')
+  const [preset, setPreset] = useState<DatePreset>('last_7d')
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [tab, setTab] = useState<'metrics' | 'funnel'>('metrics')
 
   useEffect(() => {
     const saved = localStorage.getItem('theme') as 'dark' | 'light' | null
@@ -52,241 +52,196 @@ export default function MetaDashboard() {
   const d = data?.daily
 
   const tiles = s ? [
-    { label: 'Investimento', value: fmt(s.spend, currency),                spark: d?.spend       },
-    { label: 'Leads',        value: fmtCompact(s.leads),                   spark: d?.leads       },
-    { label: 'CPL',          value: fmt(s.cpl, currency),                  spark: d?.cpl         },
-    { label: 'ROAS',         value: s.roas ? `${s.roas.toFixed(2)}×` : '—', spark: undefined    },
-    { label: 'Impressões',   value: fmtCompact(s.impressions),             spark: d?.impressions },
-    { label: 'CTR',          value: `${s.ctr.toFixed(2)}%`,               spark: d?.ctr         },
-    { label: 'CPM',          value: fmt(s.cpm, currency),                  spark: undefined      },
-    { label: 'Frequência',   value: s.frequency.toFixed(1),                spark: undefined      },
+    { label: 'Investimento', value: fmt(s.spend, currency),                  spark: d?.spend },
+    { label: 'Leads',        value: fmtCompact(s.leads),                      spark: d?.leads },
+    { label: 'CPL',          value: fmt(s.cpl, currency),                     spark: d?.cpl },
+    { label: 'ROAS',         value: s.roas ? `${s.roas.toFixed(2)}x` : '—',  spark: undefined },
+    { label: 'Impressões',   value: fmtCompact(s.impressions),                spark: d?.impressions },
+    { label: 'CTR',          value: `${s.ctr.toFixed(2)}%`,                   spark: d?.ctr },
+    { label: 'CPM',          value: fmt(s.cpm, currency),                     spark: undefined },
+    { label: 'Frequência',   value: s.frequency.toFixed(1),                   spark: undefined },
   ] : []
 
   const hasEnvError = data?.error?.includes('META_ACCESS_TOKEN')
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingTop: 2 }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '0 16px', paddingBlock: '40px 80px', maxWidth: 1040, margin: '0 auto' }}>
 
       {/* Header */}
-      <header style={{
-        borderBottom: '1px solid var(--border)',
-        padding: '0 32px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: 56,
-        position: 'sticky',
-        top: 0,
-        background: 'var(--bg)',
-        zIndex: 50,
-        gap: 16,
-      }}>
-        {/* Brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
-          <span style={{
-            fontSize: 13,
-            fontWeight: 800,
-            letterSpacing: '-.2px',
-            color: 'var(--text-1)',
-            fontFamily: 'var(--font)',
-            whiteSpace: 'nowrap',
-          }}>
-            DON <span style={{ color: 'var(--accent)' }}>↯</span> DASH
-          </span>
-
-          <span style={{ color: 'var(--border-med)', fontSize: 16, userSelect: 'none' }}>│</span>
-
-          {data?.account_name && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-              {!data.is_mock && (
-                <span style={{ position: 'relative', display: 'inline-flex', width: 7, height: 7, flexShrink: 0 }}>
-                  <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'var(--green)', animation: 'ping 2.5s cubic-bezier(0,0,.2,1) infinite', opacity: 0.45 }} />
-                  <span style={{ position: 'relative', width: 7, height: 7, borderRadius: '50%', background: 'var(--green)' }} />
-                </span>
-              )}
-              <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 40, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <TrendingUp size={20} color="var(--accent)" strokeWidth={1.75} />
+            <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.3px' }}>Meta Ads Dashboard</h1>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {data?.account_name && (
+              <p style={{ fontSize: 13, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                {!data.is_mock && (
+                  <span style={{ position: 'relative', display: 'inline-flex', width: 8, height: 8 }}>
+                    <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'var(--green)', animation: 'ping 2s cubic-bezier(0,0,.2,1) infinite', opacity: 0.5 }} />
+                    <span style={{ position: 'relative', width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />
+                  </span>
+                )}
                 {data.account_name}
+              </p>
+            )}
+            {data?.is_mock && (
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', padding: '2px 7px', borderRadius: 4, background: 'rgba(245,158,11,.12)', color: 'var(--amber)', border: '1px solid rgba(245,158,11,.2)' }}>
+                Demo · dados fictícios
               </span>
-              {data.is_mock && (
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.15em', padding: '2px 6px', border: '1px solid var(--amber)', borderRadius: 'var(--radius-sm)', color: 'var(--amber)', textTransform: 'uppercase' }}>
-                  Demo
-                </span>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          {/* Period */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 1, marginRight: 8 }}>
-            {PRESETS.map(p => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {/* Period picker */}
+          <div style={{ display: 'flex', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+            {PRESETS.map((p) => (
               <button key={p.value} onClick={() => setPreset(p.value)} style={{
-                padding: '5px 10px',
-                fontSize: 11,
-                fontWeight: 600,
-                fontFamily: 'var(--font)',
-                letterSpacing: '.04em',
-                border: 'none',
-                cursor: 'pointer',
-                borderRadius: 'var(--radius-sm)',
+                padding: '6px 12px', fontSize: 12, fontWeight: 600, fontFamily: 'var(--font)',
+                border: 'none', cursor: 'pointer',
                 background: preset === p.value ? 'var(--accent-soft)' : 'transparent',
-                color: preset === p.value ? 'var(--accent)' : 'var(--text-3)',
-                transition: 'all .12s',
+                color: preset === p.value ? 'var(--accent)' : 'var(--text-2)',
+                transition: 'all .15s',
               }}>
                 {p.label}
               </button>
             ))}
           </div>
 
-          <button onClick={toggleTheme} style={iconBtn}>
-            {theme === 'dark' ? <Sun size={13} strokeWidth={1.75} /> : <Moon size={13} strokeWidth={1.75} />}
+          {/* Theme toggle */}
+          <button onClick={toggleTheme} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 34, height: 34, background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--text-2)',
+          }}>
+            {theme === 'dark'
+              ? <Sun size={14} strokeWidth={1.75} />
+              : <Moon size={14} strokeWidth={1.75} />}
           </button>
 
+          {/* Refresh */}
           <button onClick={() => mutate()} disabled={isValidating} style={{
-            ...iconBtn,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '0 10px',
-            width: 'auto',
+            display: 'flex', alignItems: 'center', gap: 5,
+            height: 34, padding: '0 12px',
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+            color: 'var(--text-2)', fontSize: 12, fontWeight: 600, fontFamily: 'var(--font)',
+            opacity: isValidating ? 0.6 : 1,
           }}>
-            <RefreshCw size={12} strokeWidth={1.75} style={{ animation: isValidating ? 'spin 1s linear infinite' : undefined }} />
-            <span style={{ fontSize: 11, fontWeight: 600 }}>Atualizar</span>
+            <RefreshCw size={13} strokeWidth={1.75} style={{ animation: isValidating ? 'spin 1s linear infinite' : undefined }} />
+            Atualizar
           </button>
         </div>
-      </header>
+      </div>
 
-      {/* Main */}
-      <main style={{ maxWidth: 1080, margin: '0 auto', padding: '32px 32px 80px' }}>
+      {/* Tab nav */}
+      <div style={{ display: 'flex', gap: 2, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', width: 'fit-content', marginBottom: 28 }}>
+        {([['metrics', 'Métricas'], ['funnel', 'Funil de Vendas']] as const).map(([key, label]) => (
+          <button key={key} onClick={() => setTab(key)} style={{
+            padding: '7px 16px', fontSize: 12, fontWeight: 600, fontFamily: 'var(--font)',
+            border: 'none', cursor: 'pointer',
+            background: tab === key ? 'var(--accent-soft)' : 'transparent',
+            color: tab === key ? 'var(--accent)' : 'var(--text-2)',
+            transition: 'all .15s',
+          }}>{label}</button>
+        ))}
+      </div>
 
-        {/* Error */}
-        {(error || data?.error) && !data?.is_mock && (
-          <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: 10,
-            background: 'rgba(245,96,90,.06)', border: '1px solid rgba(245,96,90,.2)',
-            borderRadius: 'var(--radius)', padding: '12px 16px', marginBottom: 24,
-          }}>
-            <AlertCircle size={14} color="var(--red)" strokeWidth={1.75} style={{ flexShrink: 0, marginTop: 2 }} />
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--red)', marginBottom: 2 }}>
-                {hasEnvError ? 'Configuração incompleta' : 'Erro ao buscar dados'}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-2)' }}>
-                {data?.error ?? 'Não foi possível conectar com a Meta API.'}
-              </div>
+      {/* Error */}
+      {(error || data?.error) && !data?.is_mock && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.2)',
+          borderRadius: 'var(--radius)', padding: '14px 16px', marginBottom: 32,
+        }}>
+          <AlertCircle size={16} color="var(--red)" strokeWidth={1.75} style={{ flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--red)', marginBottom: 2 }}>
+              {hasEnvError ? 'Configuração incompleta' : 'Erro ao buscar dados'}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
+              {data?.error ?? 'Não foi possível conectar com a Meta API.'}
+              {hasEnvError && (
+                <span> Adicione <code style={{ fontFamily: 'var(--mono)', background: 'var(--bg-card2)', padding: '1px 5px', borderRadius: 3 }}>META_ACCESS_TOKEN</code> e <code style={{ fontFamily: 'var(--mono)', background: 'var(--bg-card2)', padding: '1px 5px', borderRadius: 3 }}>META_AD_ACCOUNT_ID</code> no <code style={{ fontFamily: 'var(--mono)', background: 'var(--bg-card2)', padding: '1px 5px', borderRadius: 3 }}>.env.local</code>.</span>
+              )}
             </div>
           </div>
-        )}
-
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: 28 }}>
-          {(['metrics', 'funnel'] as const).map((key) => {
-            const label = key === 'metrics' ? 'Métricas' : 'Funil de Vendas'
-            const active = tab === key
-            return (
-              <button key={key} onClick={() => setTab(key)} style={{
-                padding: '10px 16px',
-                fontSize: 12,
-                fontWeight: active ? 700 : 500,
-                fontFamily: 'var(--font)',
-                letterSpacing: active ? '.02em' : '.01em',
-                border: 'none',
-                cursor: 'pointer',
-                background: 'transparent',
-                color: active ? 'var(--text-1)' : 'var(--text-3)',
-                borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
-                marginBottom: -1,
-                transition: 'all .12s',
-              }}>{label}</button>
-            )
-          })}
         </div>
+      )}
 
-        {/* Funnel tab */}
-        {!isLoading && tab === 'funnel' && s && <FunnelTab summary={s} currency={currency} />}
-        {!isLoading && tab === 'funnel' && !s && (
-          <div style={{ color: 'var(--text-3)', fontSize: 12, textAlign: 'center', padding: 40, letterSpacing: '.1em', textTransform: 'uppercase' }}>Carregando…</div>
-        )}
+      {/* Funnel tab */}
+      {!isLoading && tab === 'funnel' && s && (
+        <FunnelTab summary={s} currency={currency} />
+      )}
+      {!isLoading && tab === 'funnel' && !s && !error && (
+        <div style={{ color: 'var(--text-3)', fontSize: 13, textAlign: 'center', padding: 40 }}>Carregando dados...</div>
+      )}
 
-        {/* Loading skeleton */}
-        {isLoading && tab === 'metrics' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 8 }}>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '18px 20px', minHeight: 96 }}>
-                <div style={{ height: 8, width: '45%', background: 'var(--bg-card2)', borderRadius: 2, marginBottom: 14, animation: 'pulse 1.5s ease-in-out infinite' }} />
-                <div style={{ height: 22, width: '60%', background: 'var(--bg-card2)', borderRadius: 2, animation: 'pulse 1.5s ease-in-out infinite' }} />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Metric tiles */}
-        {!isLoading && s && tab === 'metrics' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 20 }}>
-            {tiles.map(t => (
-              <MetricTile key={t.label} label={t.label} value={t.value} sparkData={t.spark} />
-            ))}
-          </div>
-        )}
-
-        {/* Daily chart */}
-        {!isLoading && d && tab === 'metrics' && (
-          <div style={{
-            background: 'var(--bg-card)', border: '1px solid var(--border)',
-            borderRadius: 'var(--radius)', padding: '20px 24px', marginBottom: 20,
-          }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 16 }}>
-              Evolução Diária
+      {/* Loading skeleton */}
+      {isLoading && tab === 'metrics' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '18px 20px', minHeight: 100 }}>
+              <div style={{ height: 10, width: '60%', background: 'var(--border)', borderRadius: 3, marginBottom: 10, animation: 'pulse 1.5s ease-in-out infinite' }} />
+              <div style={{ height: 26, width: '40%', background: 'var(--border)', borderRadius: 4, animation: 'pulse 1.5s ease-in-out infinite' }} />
             </div>
-            <DailyChart daily={d} currency={currency} />
-          </div>
-        )}
+          ))}
+        </div>
+      )}
 
-        {/* Timestamp */}
-        {data?.generated_at && !isLoading && tab === 'metrics' && (
-          <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 20, textAlign: 'right', letterSpacing: '.06em', fontFamily: 'var(--mono)' }}>
-            {new Date(data.generated_at).toLocaleString('pt-BR')} · ws
-          </div>
-        )}
+      {/* Metric tiles */}
+      {!isLoading && s && tab === 'metrics' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+          {tiles.map((t) => (
+            <MetricTile
+              key={t.label}
+              label={t.label}
+              value={t.value}
+              sparkData={t.spark}
+            />
+          ))}
+        </div>
+      )}
 
-        {/* Campaigns */}
-        {!isLoading && data?.campaigns && tab === 'metrics' && (
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--text-3)' }}>Campanhas</div>
-              <div style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>{data.campaigns.length}</div>
-            </div>
-            <CampaignTable campaigns={data.campaigns} currency={currency} />
+      {/* Daily chart */}
+      {!isLoading && d && tab === 'metrics' && (
+        <div style={{
+          background: 'var(--bg-card)', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)', padding: '20px', marginBottom: 24,
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16 }}>Evolução diária</div>
+          <DailyChart daily={d} currency={currency} />
+        </div>
+      )}
+
+      {/* Last update */}
+      {data?.generated_at && !isLoading && tab === 'metrics' && (
+        <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 24, textAlign: 'right' }}>
+          Atualizado em {new Date(data.generated_at).toLocaleString('pt-BR')} · WebSocket ativo
+        </div>
+      )}
+
+      {/* Campaigns table */}
+      {!isLoading && data?.campaigns && tab === 'metrics' && (
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Campanhas</div>
+            <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{data.campaigns.length} campanhas</div>
           </div>
-        )}
-      </main>
+          <CampaignTable campaigns={data.campaigns} currency={currency} />
+        </div>
+      )}
 
       <style>{`
-        @keyframes spin  { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
-        @keyframes ping  { 75%,100% { transform: scale(2.4); opacity: 0; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+        @keyframes ping { 75%,100% { transform: scale(2.2); opacity: 0; } }
         @media (max-width: 700px) {
           div[style*="repeat(4, 1fr)"] { grid-template-columns: repeat(2, 1fr) !important; }
-          header { padding: 0 16px !important; }
-          main   { padding: 20px 16px 60px !important; }
         }
       `}</style>
     </div>
   )
-}
-
-const iconBtn: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 32,
-  height: 32,
-  background: 'transparent',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-sm)',
-  cursor: 'pointer',
-  color: 'var(--text-2)',
-  fontFamily: 'var(--font)',
-  transition: 'border-color .12s, color .12s',
 }

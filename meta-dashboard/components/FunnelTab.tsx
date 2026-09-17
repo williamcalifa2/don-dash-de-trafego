@@ -11,24 +11,26 @@ interface FunnelTabProps {
 }
 
 function fmt(v: number, currency: string) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v)
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0,
+  }).format(v)
 }
 function fmtN(v: number) {
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
-  if (v >= 1_000)     return `${(v / 1_000).toFixed(1)}k`
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k`
   return String(Math.round(v))
 }
 function fmtPct(v: number) { return v.toFixed(1).replace('.', ',') + '%' }
 
 export function FunnelTab({ summary, currency, clientSlug = 'dal-moro' }: FunnelTabProps) {
-  const { impressions, clicks, leads, purchases, purchase_value, spend, cpm, ctr, frequency } = summary
+  const { impressions, clicks, leads, purchases, purchase_value, spend, reach, cpm, ctr, frequency } = summary
   const hasPurchases = purchases > 0
 
-  const [manualSales, setManualSales]     = useState(0)
+  const [manualSales, setManualSales] = useState(0)
   const [manualRevenue, setManualRevenue] = useState(0)
-  const [editing, setEditing]             = useState(false)
-  const [draftSales, setDraftSales]       = useState('')
-  const [draftRevenue, setDraftRevenue]   = useState('')
+  const [editing, setEditing] = useState(false)
+  const [draftSales, setDraftSales] = useState('')
+  const [draftRevenue, setDraftRevenue] = useState('')
 
   const hasSupabase = typeof window !== 'undefined' && !!(process.env.NEXT_PUBLIC_SUPABASE_URL)
 
@@ -54,124 +56,156 @@ export function FunnelTab({ summary, currency, clientSlug = 'dal-moro' }: Funnel
   }, [clientSlug, hasSupabase])
 
   async function saveManual() {
-    const sales   = Math.max(0, Number(draftSales) || 0)
+    const sales = Math.max(0, Number(draftSales) || 0)
     const revenue = Math.max(0, Number(draftRevenue) || 0)
     setManualSales(sales)
     setManualRevenue(revenue)
     const today = new Date().toISOString().slice(0, 10)
-    if (hasSupabase) { try { await upsertFechamento(clientSlug, today, sales, revenue) } catch {} }
+    if (hasSupabase) {
+      try { await upsertFechamento(clientSlug, today, sales, revenue) } catch {}
+    }
     try { localStorage.setItem('funnel_manual', JSON.stringify({ sales, revenue })) } catch {}
     setEditing(false)
   }
 
-  const effectiveSales   = hasPurchases ? purchases   : manualSales
+  const effectiveSales = hasPurchases ? purchases : manualSales
   const effectiveRevenue = hasPurchases ? purchase_value : manualRevenue
 
-  const cpc          = clicks > 0 ? spend / clicks : null
-  const cpl          = leads  > 0 ? spend / leads  : null
-  const cpv          = effectiveSales > 0 ? spend / effectiveSales : null
-  const leadRate     = clicks > 0 ? (leads / clicks) * 100 : 0
-  const closeRate    = leads > 0 && effectiveSales > 0 ? (effectiveSales / leads) * 100 : null
-  const overallRate  = clicks > 0 && effectiveSales > 0 ? (effectiveSales / clicks) * 100 : null
+  const cpc = clicks > 0 ? spend / clicks : null
+  const cpl = leads > 0 ? spend / leads : null
+  const cpv = effectiveSales > 0 ? spend / effectiveSales : null
+  const leadRate = clicks > 0 ? (leads / clicks) * 100 : 0
+  const closeRate = leads > 0 && effectiveSales > 0 ? (effectiveSales / leads) * 100 : null
+  const overallRate = clicks > 0 && effectiveSales > 0 ? (effectiveSales / clicks) * 100 : null
   const effectiveRoas = effectiveRevenue > 0 && spend > 0 ? effectiveRevenue / spend : null
 
   const stages = [
     {
-      key: 'clicks', label: 'Cliques', value: clicks, pct: 100,
-      color: '#4fc9b0', cost: cpc ? fmt(cpc, currency) : null, costLabel: 'CPC',
-      extra: `CTR ${fmtPct(ctr)}`, manual: false,
+      key: 'clicks',
+      label: 'Cliques',
+      value: clicks,
+      pct: 100,
+      color: 'hsl(172 55% 45%)',
+      glow: 'hsl(172 55% 45% / .18)',
+      cost: cpc ? fmt(cpc, currency) : null,
+      costLabel: 'CPC',
+      extra: `CTR ${fmtPct(ctr)}`,
     },
     {
-      key: 'leads', label: 'Leads', value: leads,
+      key: 'leads',
+      label: 'Leads',
+      value: leads,
       pct: clicks > 0 ? (leads / clicks) * 100 : 0,
-      color: 'var(--amber)', cost: cpl ? fmt(cpl, currency) : null, costLabel: 'CPL',
-      extra: null, manual: false,
+      color: 'hsl(38 92% 55%)',
+      glow: 'hsl(38 92% 55% / .18)',
+      cost: cpl ? fmt(cpl, currency) : null,
+      costLabel: 'CPL',
+      extra: null,
     },
     {
-      key: 'closings', label: 'Fechamentos', value: effectiveSales,
+      key: 'closings',
+      label: 'Fechamentos',
+      value: effectiveSales,
       pct: clicks > 0 ? (effectiveSales / clicks) * 100 : 0,
-      color: 'var(--accent)', cost: cpv ? fmt(cpv, currency) : null, costLabel: 'Custo/venda',
+      color: 'hsl(233 100% 75%)',
+      glow: 'hsl(233 100% 75% / .18)',
+      cost: cpv ? fmt(cpv, currency) : null,
+      costLabel: 'Custo/venda',
       extra: effectiveRevenue > 0 ? `Receita ${fmt(effectiveRevenue, currency)}` : null,
       manual: !hasPurchases,
     },
   ]
 
   const convRates = [
-    { value: fmtPct(leadRate),  label: 'clique → lead',        good: leadRate >= 3 },
+    { value: fmtPct(leadRate), label: 'clique → lead', good: leadRate >= 3 },
     ...(closeRate != null ? [{ value: fmtPct(closeRate), label: 'lead → fechamento', good: closeRate >= 5 }] : []),
   ]
 
   return (
     <div>
-      {/* KPI strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 20 }}>
+      {/* Top KPIs */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 24,
+      }}>
         {[
           { label: 'Investimento', value: fmt(spend, currency) },
-          { label: 'Impressões',   value: fmtN(impressions)    },
-          { label: 'CPM',          value: fmt(cpm, currency)   },
-          { label: 'Frequência',   value: frequency.toFixed(1) },
-          { label: 'ROAS',         value: effectiveRoas ? `${effectiveRoas.toFixed(2)}×` : '—' },
+          { label: 'Impressões', value: fmtN(impressions) },
+          { label: 'CPM', value: fmt(cpm, currency) },
+          { label: 'Frequência', value: frequency.toFixed(1) },
+          { label: 'ROAS', value: effectiveRoas ? `${effectiveRoas.toFixed(2)}x` : '—' },
         ].map(item => (
           <div key={item.label} style={{
             background: 'var(--bg-card)', border: '1px solid var(--border)',
             borderRadius: 'var(--radius)', padding: '14px 16px',
           }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.2em', textTransform: 'uppercase' as const, color: 'var(--text-3)', marginBottom: 6 }}>{item.label}</div>
-            <div style={{ fontSize: 16, fontWeight: 500, fontFamily: 'var(--mono)', color: 'var(--text-1)', letterSpacing: '-0.5px' }}>{item.value}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'var(--text-3)', marginBottom: 4 }}>{item.label}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--mono)', color: 'var(--text-1)' }}>{item.value}</div>
           </div>
         ))}
       </div>
 
       {/* Funnel */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+      <div style={{
+        background: 'var(--bg-card)', border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-lg)', overflow: 'hidden',
+      }}>
         {stages.map((stage, i) => (
           <div key={stage.key}>
-            {/* Conversion rate row */}
+            {/* Conversion rate separator */}
             {i > 0 && (
               <div style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '8px 28px',
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '10px 28px',
                 borderTop: '1px solid var(--border-soft)',
                 borderBottom: '1px solid var(--border-soft)',
                 background: 'var(--bg)',
               }}>
-                <span style={{ fontSize: 9, color: 'var(--text-3)', letterSpacing: '.1em', textTransform: 'uppercase' as const }}>↓</span>
+                <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
+                  <path d="M6 0v12M2 9l4 5 4-5" stroke="var(--border)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
                 <span style={{
-                  fontSize: 13, fontWeight: 600, fontFamily: 'var(--mono)',
-                  color: convRates[i-1]?.good ? 'var(--green)' : 'var(--red)',
+                  fontSize: 13, fontWeight: 700, fontFamily: 'var(--mono)',
+                  color: convRates[i - 1]?.good ? 'var(--green)' : 'var(--red)',
                 }}>
-                  {convRates[i-1]?.value}
+                  {convRates[i - 1]?.value}
                 </span>
-                <span style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: '.04em' }}>{convRates[i-1]?.label}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{convRates[i - 1]?.label}</span>
               </div>
             )}
 
-            {/* Stage */}
+            {/* Stage row */}
             <div style={{ padding: '20px 28px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap' as const, gap: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ width: 3, height: 16, background: stage.color, borderRadius: 2, flexShrink: 0, display: 'block' }} />
-                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.2em', textTransform: 'uppercase' as const, color: 'var(--text-3)', fontFamily: 'var(--font)' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap' as const, gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, letterSpacing: '.12em',
+                    textTransform: 'uppercase' as const, color: stage.color,
+                  }}>
                     {stage.label}
-                    {stage.manual && <span style={{ fontWeight: 400, color: 'var(--text-3)', letterSpacing: '.06em', marginLeft: 8 }}>· manual</span>}
+                    {stage.manual && (
+                      <span style={{ fontWeight: 400, color: 'var(--text-3)', letterSpacing: 0, textTransform: 'none' as const, marginLeft: 6 }}>
+                        · manual
+                      </span>
+                    )}
                   </span>
-                  {stage.extra && <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{stage.extra}</span>}
+                  {stage.extra && (
+                    <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{stage.extra}</span>
+                  )}
                 </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
                   {stage.cost && (
-                    <span style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>
-                      {stage.costLabel} <span style={{ color: 'var(--text-2)', fontWeight: 500 }}>{stage.cost}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                      {stage.costLabel}: <span style={{ fontFamily: 'var(--mono)', color: 'var(--text-2)', fontWeight: 600 }}>{stage.cost}</span>
                     </span>
                   )}
                   {stage.key === 'closings' && !hasPurchases && (
                     <button
                       onClick={() => { setDraftSales(String(manualSales || '')); setDraftRevenue(String(manualRevenue || '')); setEditing(true) }}
                       style={{
-                        fontSize: 10, fontWeight: 600, color: 'var(--accent)',
-                        background: 'var(--accent-soft)', border: '1px solid rgba(207,242,90,.2)',
+                        fontSize: 11, fontWeight: 600, color: stage.color,
+                        background: 'transparent', border: `1px solid ${stage.color}44`,
                         borderRadius: 'var(--radius-sm)', padding: '3px 10px', cursor: 'pointer',
-                        fontFamily: 'var(--font)', letterSpacing: '.06em',
+                        fontFamily: 'var(--font)',
                       }}
                     >
                       {effectiveSales > 0 ? 'Editar' : '+ Adicionar'}
@@ -183,47 +217,79 @@ export function FunnelTab({ summary, currency, clientSlug = 'dal-moro' }: Funnel
               {/* Edit form */}
               {editing && stage.key === 'closings' ? (
                 <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    {[
-                      { l: 'Fechamentos', val: draftSales, set: setDraftSales },
-                      { l: 'Receita (R$)', val: draftRevenue, set: setDraftRevenue },
-                    ].map(({ l, val, set }) => (
-                      <div key={l}>
-                        <label style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>{l}</label>
-                        <input type="number" min={0} value={val} onChange={e => set(e.target.value)} placeholder="0" style={{
-                          width: '100%', padding: '10px 12px',
-                          background: 'var(--bg)', border: '1px solid var(--border)',
-                          borderRadius: 'var(--radius-sm)', color: 'var(--text-1)',
-                          fontFamily: 'var(--mono)', fontSize: 18, fontWeight: 500, outline: 'none',
-                          letterSpacing: '-0.5px',
-                        }} />
-                      </div>
-                    ))}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>Fechamentos</label>
+                      <input type="number" min={0} value={draftSales} onChange={e => setDraftSales(e.target.value)} placeholder="0" style={{
+                        width: '100%', padding: '10px 14px',
+                        background: 'var(--bg)', border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-sm)', color: 'var(--text-1)',
+                        fontFamily: 'var(--mono)', fontSize: 18, fontWeight: 700, outline: 'none',
+                      }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>Receita (R$)</label>
+                      <input type="number" min={0} value={draftRevenue} onChange={e => setDraftRevenue(e.target.value)} placeholder="0" style={{
+                        width: '100%', padding: '10px 14px',
+                        background: 'var(--bg)', border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-sm)', color: 'var(--text-1)',
+                        fontFamily: 'var(--mono)', fontSize: 18, fontWeight: 700, outline: 'none',
+                      }} />
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                    <button onClick={() => setEditing(false)} style={{ padding: '6px 14px', fontSize: 11, cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-2)', fontFamily: 'var(--font)', fontWeight: 600 }}>Cancelar</button>
-                    <button onClick={() => { saveManual() }} style={{ padding: '6px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer', background: 'var(--accent)', border: 'none', borderRadius: 'var(--radius-sm)', color: '#0a0a0a', fontFamily: 'var(--font)', letterSpacing: '.04em' }}>Salvar</button>
+                    <button onClick={() => setEditing(false)} style={{
+                      padding: '7px 16px', fontSize: 12, cursor: 'pointer',
+                      background: 'transparent', border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-sm)', color: 'var(--text-2)', fontFamily: 'var(--font)',
+                    }}>Cancelar</button>
+                    <button onClick={() => { saveManual() }} style={{
+                      padding: '7px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      background: stage.color, border: 'none',
+                      borderRadius: 'var(--radius-sm)', color: '#0d0d0d', fontFamily: 'var(--font)',
+                    }}>Salvar</button>
                   </div>
                 </div>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                  <div style={{ fontSize: 40, fontWeight: 500, fontFamily: 'var(--mono)', color: 'var(--text-1)', letterSpacing: '-2px', lineHeight: 1, minWidth: 120, flexShrink: 0 }}>
+                  {/* Number */}
+                  <div style={{
+                    fontSize: 40, fontWeight: 700, fontFamily: 'var(--mono)',
+                    color: 'var(--text-1)', letterSpacing: '-2px', lineHeight: 1,
+                    minWidth: 120, flexShrink: 0,
+                  }}>
                     {stage.value > 0 ? fmtN(stage.value) : '—'}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ height: 6, borderRadius: 1, background: 'var(--border)', overflow: 'hidden' }}>
+
+                  {/* Bar */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                    <div style={{
+                      height: 36, borderRadius: 6, background: 'var(--bg)',
+                      overflow: 'hidden', position: 'relative' as const,
+                    }}>
                       <div style={{
                         height: '100%',
-                        width: `${Math.max(stage.pct, stage.value > 0 ? 0.5 : 0)}%`,
-                        background: stage.color,
-                        borderRadius: 1,
+                        width: `${Math.max(stage.pct, stage.value > 0 ? 1 : 0)}%`,
+                        background: `linear-gradient(90deg, ${stage.color}, ${stage.color}aa)`,
+                        borderRadius: 6,
+                        boxShadow: `0 0 16px ${stage.glow}`,
                         transition: 'width .6s cubic-bezier(.4,0,.2,1)',
-                        opacity: 0.9,
-                      }} />
+                        position: 'relative' as const,
+                      }}>
+                        {stage.pct >= 8 && (
+                          <span style={{
+                            position: 'absolute' as const, right: 10, top: '50%', transform: 'translateY(-50%)',
+                            fontSize: 11, fontWeight: 700, color: '#000', opacity: 0.7,
+                            fontFamily: 'var(--mono)',
+                          }}>
+                            {fmtPct(stage.pct)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 5, fontFamily: 'var(--mono)' }}>
-                      {fmtPct(stage.pct)} {i > 0 ? 'dos cliques' : ''}
-                    </div>
+                    {stage.pct < 8 && stage.value > 0 && (
+                      <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>{fmtPct(stage.pct)} do total de cliques</div>
+                    )}
                   </div>
                 </div>
               )}
@@ -231,25 +297,28 @@ export function FunnelTab({ summary, currency, clientSlug = 'dal-moro' }: Funnel
           </div>
         ))}
 
-        {/* Bottom summary */}
+        {/* Overall conversion */}
         {overallRate != null && (
-          <div style={{ borderTop: '1px solid var(--border-soft)', padding: '12px 28px', background: 'var(--bg)', display: 'flex', gap: 28, flexWrap: 'wrap' as const, alignItems: 'center' }}>
+          <div style={{
+            borderTop: '1px solid var(--border-soft)',
+            padding: '14px 28px',
+            background: 'var(--bg)',
+            display: 'flex', gap: 32, flexWrap: 'wrap' as const,
+          }}>
             <div>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: 'var(--text-3)', marginBottom: 2 }}>Conversão Geral</div>
-              <div style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--mono)', color: 'var(--text-1)', letterSpacing: '-0.3px' }}>
-                {fmtPct(overallRate)} <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 400 }}>clique → fechamento</span>
-              </div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'var(--text-3)', marginBottom: 2 }}>Conversão geral</div>
+              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--mono)', color: 'var(--text-1)' }}>{fmtPct(overallRate)} <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 400 }}>clique → fechamento</span></div>
             </div>
             {effectiveRevenue > 0 && effectiveSales > 0 && (
               <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: 'var(--text-3)', marginBottom: 2 }}>Ticket Médio</div>
-                <div style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--mono)', color: 'var(--text-1)', letterSpacing: '-0.3px' }}>{fmt(effectiveRevenue / effectiveSales, currency)}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'var(--text-3)', marginBottom: 2 }}>Ticket médio</div>
+                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--mono)', color: 'var(--text-1)' }}>{fmt(effectiveRevenue / effectiveSales, currency)}</div>
               </div>
             )}
             {effectiveRoas && (
               <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' as const, color: 'var(--text-3)', marginBottom: 2 }}>ROAS</div>
-                <div style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--mono)', color: effectiveRoas >= 3 ? 'var(--green)' : 'var(--amber)', letterSpacing: '-0.3px' }}>{effectiveRoas.toFixed(2)}×</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: 'var(--text-3)', marginBottom: 2 }}>ROAS</div>
+                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--mono)', color: effectiveRoas >= 3 ? 'var(--green)' : 'var(--amber)' }}>{effectiveRoas.toFixed(2)}x</div>
               </div>
             )}
           </div>
