@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchMetrics, type DatePreset, type MetricsResponse } from '@/lib/meta'
+import { getSupabase } from '@/lib/supabase'
+
+async function cacheMetrics(accountId: string, datePreset: string, data: MetricsResponse) {
+  const db = getSupabase()
+  if (!db) return
+  try {
+    await db.from('metrics_cache').upsert({
+      id: `${accountId}:${datePreset}`,
+      data,
+      updated_at: new Date().toISOString(),
+    })
+  } catch {}
+}
 
 function pastDates(n: number): string[] {
   return Array.from({ length: n }, (_, i) => {
@@ -132,6 +145,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const data = await fetchMetrics(token, accountId, datePreset)
+    // fire-and-forget: write to Supabase so Realtime pushes to all connected clients
+    cacheMetrics(accountId, datePreset, data)
     return NextResponse.json(data, {
       headers: { 'Cache-Control': 'no-store' },
     })

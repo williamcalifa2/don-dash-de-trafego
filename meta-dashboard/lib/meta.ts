@@ -46,6 +46,7 @@ export interface MetricsResponse {
   date_preset: DatePreset
   generated_at: string
   is_mock?: boolean
+  error?: string
   summary: MetricsSummary
   summary_prev?: MetricsSummary
   daily?: DailySummary

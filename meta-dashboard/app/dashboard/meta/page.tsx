@@ -1,16 +1,13 @@
 'use client'
 
-import useSWR from 'swr'
 import { useState, useEffect } from 'react'
 import { RefreshCw, TrendingUp, AlertCircle, Moon, Sun } from 'lucide-react'
 import { MetricTile } from '@/components/MetricTile'
 import { CampaignTable } from '@/components/CampaignTable'
 import { DailyChart } from '@/components/DailyChart'
 import { FunnelTab } from '@/components/FunnelTab'
-import type { MetricsResponse, DatePreset } from '@/lib/meta'
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _unused() { return null }
+import { useMetricsRealtime } from '@/lib/useMetricsRealtime'
+import type { DatePreset } from '@/lib/meta'
 
 const PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'today',    label: 'Hoje' },
@@ -18,9 +15,6 @@ const PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'last_14d', label: '14 dias' },
   { value: 'last_30d', label: '30 dias' },
 ]
-
-const fetcher = (url: string) =>
-  fetch(url).then((r) => r.json() as Promise<MetricsResponse & { error?: string }>)
 
 function fmt(v: number | null | undefined, currency: string) {
   if (v == null) return '—'
@@ -51,11 +45,7 @@ export default function MetaDashboard() {
     localStorage.setItem('theme', next)
   }
 
-  const { data, error, isLoading, isValidating, mutate } = useSWR(
-    `/api/meta/metrics?date_preset=${preset}`,
-    fetcher,
-    { refreshInterval: 60_000, revalidateOnFocus: true }
-  )
+  const { data, error, isLoading, isValidating, mutate } = useMetricsRealtime(preset)
 
   const currency = data?.currency ?? 'BRL'
   const s = data?.summary
@@ -229,7 +219,7 @@ export default function MetaDashboard() {
       {/* Last update */}
       {data?.generated_at && !isLoading && tab === 'metrics' && (
         <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 24, textAlign: 'right' }}>
-          Atualizado em {new Date(data.generated_at).toLocaleString('pt-BR')} · atualiza a cada 1min
+          Atualizado em {new Date(data.generated_at).toLocaleString('pt-BR')} · WebSocket ativo
         </div>
       )}
 
