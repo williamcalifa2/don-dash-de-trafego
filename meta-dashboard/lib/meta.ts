@@ -68,14 +68,11 @@ const INSIGHT_FIELDS = [
 
 function getLeads(actions: Array<{ action_type: string; value: string }> | undefined): number {
   if (!actions) return 0
-  const leadTypes = [
-    'lead',
-    'onsite_conversion.lead_grouped',
-    'leadgen.other',
-    'offsite_conversion.fb_pixel_lead',
-  ]
+  // Use only `lead` (Lead Form submissions) to avoid double-counting with
+  // onsite_conversion.lead_grouped and offsite_conversion.fb_pixel_lead
+  // which represent the same conversions in different Meta groupings.
   return actions
-    .filter((a) => leadTypes.includes(a.action_type))
+    .filter((a) => a.action_type === 'lead')
     .reduce((sum, a) => sum + Number(a.value), 0)
 }
 
