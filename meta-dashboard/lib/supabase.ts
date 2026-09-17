@@ -1,9 +1,14 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+let _client: SupabaseClient | null = null
 
-export const supabase = createClient(url, key)
+export function getSupabase(): SupabaseClient | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return null
+  if (!_client) _client = createClient(url, key)
+  return _client
+}
 
 export interface Fechamento {
   id: string
@@ -15,7 +20,10 @@ export interface Fechamento {
 }
 
 export async function getFechamentos(clientSlug: string): Promise<Fechamento[]> {
-  const { data: client } = await supabase
+  const db = getSupabase()
+  if (!db) return []
+
+  const { data: client } = await db
     .from('clients')
     .select('id')
     .eq('slug', clientSlug)
@@ -23,7 +31,7 @@ export async function getFechamentos(clientSlug: string): Promise<Fechamento[]> 
 
   if (!client) return []
 
-  const { data } = await supabase
+  const { data } = await db
     .from('fechamentos')
     .select('*')
     .eq('client_id', client.id)
@@ -39,7 +47,10 @@ export async function upsertFechamento(
   revenue: number,
   notes?: string
 ): Promise<void> {
-  const { data: client } = await supabase
+  const db = getSupabase()
+  if (!db) return
+
+  const { data: client } = await db
     .from('clients')
     .select('id')
     .eq('slug', clientSlug)
@@ -47,7 +58,7 @@ export async function upsertFechamento(
 
   if (!client) throw new Error('Client not found')
 
-  await supabase.from('fechamentos').upsert(
+  await db.from('fechamentos').upsert(
     { client_id: client.id, date, count, revenue, notes },
     { onConflict: 'client_id,date' }
   )

@@ -32,7 +32,7 @@ export function FunnelTab({ summary, currency, clientSlug = 'dal-moro' }: Funnel
   const [draftSales, setDraftSales] = useState('')
   const [draftRevenue, setDraftRevenue] = useState('')
 
-  const hasSupabase = !!(process.env.NEXT_PUBLIC_SUPABASE_URL)
+  const hasSupabase = typeof window !== 'undefined' && !!(process.env.NEXT_PUBLIC_SUPABASE_URL)
 
   useEffect(() => {
     async function load() {
