@@ -69,9 +69,10 @@ const INSIGHT_FIELDS = [
 
 function getLeads(actions: Array<{ action_type: string; value: string }> | undefined): number {
   if (!actions) return 0
-  // Use only `lead` (Lead Form submissions) to avoid double-counting with
-  // onsite_conversion.lead_grouped and offsite_conversion.fb_pixel_lead
-  // which represent the same conversions in different Meta groupings.
+  // onsite_conversion.lead_grouped matches what Ads Manager reports as "Leads (Formulário)"
+  // Prefer it; fall back to `lead` if absent (different campaign objectives)
+  const grouped = actions.find((a) => a.action_type === 'onsite_conversion.lead_grouped')
+  if (grouped) return Number(grouped.value)
   return actions
     .filter((a) => a.action_type === 'lead')
     .reduce((sum, a) => sum + Number(a.value), 0)
