@@ -54,7 +54,7 @@ export default function MetaDashboard() {
   const { data, error, isLoading, isValidating, mutate } = useSWR(
     `/api/meta/metrics?date_preset=${preset}`,
     fetcher,
-    { refreshInterval: 3_600_000, revalidateOnFocus: false }
+    { refreshInterval: 60_000, revalidateOnFocus: true }
   )
 
   const currency = data?.currency ?? 'BRL'
@@ -229,7 +229,7 @@ export default function MetaDashboard() {
       {/* Last update */}
       {data?.generated_at && !isLoading && tab === 'metrics' && (
         <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 24, textAlign: 'right' }}>
-          Atualizado em {new Date(data.generated_at).toLocaleString('pt-BR')} · atualiza a cada 1h
+          Atualizado em {new Date(data.generated_at).toLocaleString('pt-BR')} · atualiza a cada 1min
         </div>
       )}
 
