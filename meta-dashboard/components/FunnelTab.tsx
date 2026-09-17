@@ -22,136 +22,132 @@ function fmtN(v: number) {
 }
 function fmtPct(v: number) { return v.toFixed(1).replace('.', ',') + '%' }
 
-interface SankeyProps {
-  stages: { label: string; value: number; cost?: string; costLabel?: string }[]
+/* ─── Organic flow funnel — pink→gold gradient, echo layers, bezier curves ─── */
+interface FunnelStage {
+  label: string
+  value: number
+  sublabel?: string
 }
 
-function SankeyFunnel({ stages }: SankeyProps) {
-  const W = 860
-  const H = 220
-  const padX = 24
-  const barW = 20
-  const centerY = H / 2
+function OrganicFunnel({ stages }: { stages: FunnelStage[] }) {
+  const W = 560
+  const CY = 100            // vertical center in SVG coords
+  const MAX_H = 80          // max half-height
+  const MIN_H = 8           // floor so thin stages stay visible
+  const ECHO1 = 9           // echo 1 expansion
+  const ECHO2 = 17          // echo 2 expansion
+  const xs = [0, 140, 280, 420, 560]   // x-positions for 4 zones (5 edges)
+  const mxs = [70, 210, 350, 490]      // bezier control x midpoints
 
+  // Power-scale heights so small values remain visible
   const maxV = stages[0]?.value || 1
-  const maxBarH = H * 0.88
+  const hs = [...stages.map(s => {
+    const ratio = Math.max(0, s.value / maxV)
+    return Math.max(MIN_H, Math.pow(ratio, 0.38) * MAX_H)
+  }), 0] // dummy 5th — filled below
+  hs[4] = hs[3] // right edge mirrors stage-4 height
 
-  const count = stages.length
-  const innerW = W - padX * 2 - barW
-  const xs = stages.map((_, i) => padX + (i / (count - 1)) * innerW)
-  const heights = stages.map(s => Math.max(6, (s.value / maxV) * maxBarH))
-  const tops = heights.map(h => centerY - h / 2)
-  const bots = heights.map(h => centerY + h / 2)
-  const pcts = stages.map((s, i) => i === 0 ? 100 : (s.value / maxV) * 100)
+  // tops / bots for main shape
+  const t = hs.map(h => CY - h)
+  const b = hs.map(h => CY + h)
 
-  const barColors = ['#f97066', '#fb923c', '#c084fc', '#818cf8']
-  const bandGrads = [
-    { from: '#f97066cc', to: '#fb923ccc' },
-    { from: '#fb923ccc', to: '#c084fccc' },
-    { from: '#c084fccc', to: '#818cf8cc' },
-  ]
+  // Build closed bezier path from 5 (x, yTop) points then reverse along (x, yBot)
+  function shape(dTop: number[], dBot: number[]) {
+    const top = `
+      M ${xs[0]} ${dTop[0]}
+      C ${mxs[0]} ${dTop[0]}, ${mxs[0]} ${dTop[1]}, ${xs[1]} ${dTop[1]}
+      C ${mxs[1]} ${dTop[1]}, ${mxs[1]} ${dTop[2]}, ${xs[2]} ${dTop[2]}
+      C ${mxs[2]} ${dTop[2]}, ${mxs[2]} ${dTop[3]}, ${xs[3]} ${dTop[3]}
+      C ${mxs[3]} ${dTop[3]}, ${mxs[3]} ${dTop[4]}, ${xs[4]} ${dTop[4]}`
+    const bot = `
+      L ${xs[4]} ${dBot[4]}
+      C ${mxs[3]} ${dBot[4]}, ${mxs[3]} ${dBot[3]}, ${xs[3]} ${dBot[3]}
+      C ${mxs[2]} ${dBot[3]}, ${mxs[2]} ${dBot[2]}, ${xs[2]} ${dBot[2]}
+      C ${mxs[1]} ${dBot[2]}, ${mxs[1]} ${dBot[1]}, ${xs[1]} ${dBot[1]}
+      C ${mxs[0]} ${dBot[1]}, ${mxs[0]} ${dBot[0]}, ${xs[0]} ${dBot[0]}
+      Z`
+    return top + bot
+  }
 
-  const bands = stages.slice(0, -1).map((_, i) => {
-    const x1 = xs[i] + barW
-    const x2 = xs[i + 1]
-    const mx = (x1 + x2) / 2
-    return `M ${x1} ${tops[i]} C ${mx} ${tops[i]}, ${mx} ${tops[i + 1]}, ${x2} ${tops[i + 1]} L ${x2} ${bots[i + 1]} C ${mx} ${bots[i + 1]}, ${mx} ${bots[i]}, ${x1} ${bots[i]} Z`
+  const mainPath  = shape(t, b)
+  const echo1Path = shape(hs.map(h => CY - (h + ECHO1)), hs.map(h => CY + (h + ECHO1)))
+  const echo2Path = shape(hs.map(h => CY - (h + ECHO2)), hs.map(h => CY + (h + ECHO2)))
+
+  // Conversion rates (stage i vs stage i-1)
+  const rates = stages.map((s, i) => {
+    if (i === 0) return null
+    const prev = stages[i - 1].value
+    return prev > 0 ? (s.value / prev) * 100 : 0
   })
 
-  const headerH = 52
-  const footerH = 48
-  const totalH = headerH + H + footerH
+  // Zone centers for labels
+  const zoneCxs = [70, 210, 350, 490]
 
   return (
     <svg
-      viewBox={`0 0 ${W} ${totalH}`}
+      viewBox={`0 0 ${W} 200`}
       style={{ width: '100%', display: 'block', overflow: 'visible' }}
       aria-label="Funil de conversão"
     >
       <defs>
-        {bandGrads.map((g, i) => (
-          <linearGradient key={i} id={`sg-${i}`} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor={g.from} />
-            <stop offset="100%" stopColor={g.to} />
-          </linearGradient>
-        ))}
+        <linearGradient id="ofg" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%"   stopColor="#FF1493" />
+          <stop offset="28%"  stopColor="#FF5C8A" />
+          <stop offset="65%"  stopColor="#FF8C55" />
+          <stop offset="100%" stopColor="#FFD700" />
+        </linearGradient>
+        <linearGradient id="oe1" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%"   stopColor="#FF1493" stopOpacity=".13" />
+          <stop offset="100%" stopColor="#FFD700" stopOpacity=".09" />
+        </linearGradient>
+        <linearGradient id="oe2" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%"   stopColor="#FF1493" stopOpacity=".05" />
+          <stop offset="100%" stopColor="#FFD700" stopOpacity=".03" />
+        </linearGradient>
       </defs>
 
-      {/* Bands */}
-      <g transform={`translate(0, ${headerH})`}>
-        {bands.map((d, i) => (
-          <path key={i} d={d} fill={`url(#sg-${i})`} />
-        ))}
+      {/* Echo layers */}
+      <path d={echo2Path} fill="url(#oe2)" />
+      <path d={echo1Path} fill="url(#oe1)" />
 
-        {/* Bar columns */}
-        {stages.map((_, i) => (
-          <rect
+      {/* Main funnel */}
+      <path d={mainPath} fill="url(#ofg)" />
+
+      {/* Stage dividers */}
+      {[1, 2, 3].map(i => (
+        <line key={i}
+          x1={xs[i]} y1={t[i]}
+          x2={xs[i]} y2={b[i]}
+          stroke="rgba(255,255,255,.40)"
+          strokeWidth={1.5}
+          strokeDasharray="3 2.5"
+        />
+      ))}
+
+      {/* % labels inside zones */}
+      {stages.map((_, i) => {
+        const h = hs[i]
+        const cx = zoneCxs[i]
+        const labelY = CY + 1
+        const rate = i === 0 ? null : rates[i]
+        const display = i === 0 ? '100%' : (rate != null ? fmtPct(rate) : '—')
+        const fontSize = Math.min(24, Math.max(9, h * 0.55))
+        const fits = h >= 11
+
+        if (!fits) return null
+        return (
+          <text
             key={i}
-            x={xs[i]} y={tops[i]}
-            width={barW} height={heights[i]}
-            rx={barW / 2}
-            fill={barColors[i] ?? '#818cf8'}
-          />
-        ))}
-      </g>
-
-      {/* Labels + pct above bars */}
-      {stages.map((s, i) => {
-        const cx = xs[i] + barW / 2
-        const barTop = headerH + tops[i]
-        return (
-          <g key={i}>
-            <text
-              x={cx} y={barTop - 28}
-              textAnchor="middle"
-              fontSize={10} fontWeight={700}
-              fill="var(--text-3)"
-              style={{ fontFamily: 'var(--font)', letterSpacing: '0.08em', textTransform: 'uppercase' } as React.CSSProperties}
-            >
-              {s.label}
-            </text>
-            {i > 0 && (
-              <text
-                x={cx} y={barTop - 13}
-                textAnchor="middle"
-                fontSize={11} fontWeight={700}
-                fill={barColors[i] ?? '#818cf8'}
-                style={{ fontFamily: 'var(--mono)' } as React.CSSProperties}
-              >
-                {fmtPct(pcts[i])}
-              </text>
-            )}
-          </g>
-        )
-      })}
-
-      {/* Values + cost below bars */}
-      {stages.map((s, i) => {
-        const cx = xs[i] + barW / 2
-        const barBot = headerH + bots[i]
-        return (
-          <g key={i}>
-            <text
-              x={cx} y={barBot + 18}
-              textAnchor="middle"
-              fontSize={15} fontWeight={700}
-              fill="var(--text-1)"
-              style={{ fontFamily: 'var(--mono)' } as React.CSSProperties}
-            >
-              {s.value > 0 ? fmtN(s.value) : '—'}
-            </text>
-            {s.cost && (
-              <text
-                x={cx} y={barBot + 34}
-                textAnchor="middle"
-                fontSize={10} fontWeight={500}
-                fill="var(--text-3)"
-                style={{ fontFamily: 'var(--mono)' } as React.CSSProperties}
-              >
-                {s.costLabel} {s.cost}
-              </text>
-            )}
-          </g>
+            x={cx} y={labelY}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize={fontSize}
+            fontWeight={700}
+            fill={i === 3 ? 'rgba(80,40,0,.85)' : 'rgba(255,255,255,.95)'}
+            style={{ fontFamily: 'var(--font)' }}
+          >
+            {display}
+          </text>
         )
       })}
     </svg>
@@ -215,11 +211,11 @@ export function FunnelTab({ summary, currency, clientSlug = 'dal-moro' }: Funnel
   const overallRate = clicks > 0 && effectiveSales > 0 ? (effectiveSales / clicks) * 100 : null
   const effectiveRoas = effectiveRevenue > 0 && spend > 0 ? effectiveRevenue / spend : null
 
-  const sankeyStages = [
+  const funnelStages = [
     { label: 'Impressões', value: impressions },
-    { label: 'Cliques', value: clicks, cost: cpc ? fmt(cpc, currency) : undefined, costLabel: 'CPC' },
-    { label: 'Leads', value: leads, cost: cpl ? fmt(cpl, currency) : undefined, costLabel: 'CPL' },
-    { label: 'Conversões', value: effectiveSales, cost: cpv ? fmt(cpv, currency) : undefined, costLabel: 'CPV' },
+    { label: 'Cliques',    value: clicks },
+    { label: 'Leads',      value: leads },
+    { label: 'Conversões', value: effectiveSales },
   ]
 
   return (
@@ -228,10 +224,10 @@ export function FunnelTab({ summary, currency, clientSlug = 'dal-moro' }: Funnel
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 24 }}>
         {[
           { label: 'Investimento', value: fmt(spend, currency) },
-          { label: 'CPM', value: fmt(cpm, currency) },
-          { label: 'CTR', value: `${ctr.toFixed(2)}%` },
-          { label: 'Frequência', value: frequency.toFixed(1) },
-          { label: 'ROAS', value: effectiveRoas ? `${effectiveRoas.toFixed(2)}x` : '—' },
+          { label: 'CPM',          value: fmt(cpm, currency) },
+          { label: 'CTR',          value: `${ctr.toFixed(2)}%` },
+          { label: 'Frequência',   value: frequency.toFixed(1) },
+          { label: 'ROAS',         value: effectiveRoas ? `${effectiveRoas.toFixed(2)}x` : '—' },
         ].map(item => (
           <div key={item.label} style={{
             background: 'var(--bg-card)', border: '1px solid var(--border)',
@@ -243,16 +239,41 @@ export function FunnelTab({ summary, currency, clientSlug = 'dal-moro' }: Funnel
         ))}
       </div>
 
-      {/* Sankey chart */}
+      {/* Organic funnel card */}
       <div style={{
         background: 'var(--bg-card)', border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-lg)', padding: '28px 28px 20px',
+        borderRadius: 'var(--radius-lg)', padding: '24px 24px 20px',
         marginBottom: 16,
       }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 20 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 18 }}>
           Funil de conversão
         </div>
-        <SankeyFunnel stages={sankeyStages} />
+
+        <OrganicFunnel stages={funnelStages} />
+
+        {/* Stage labels below funnel */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', marginTop: 14, textAlign: 'center', gap: 4 }}>
+          {[
+            { label: 'Impressões', value: fmtN(impressions), sub: null },
+            { label: 'Cliques',    value: fmtN(clicks),      sub: `CTR ${ctr.toFixed(2)}%` },
+            { label: 'Leads',      value: fmtN(leads),        sub: cpl ? `CPL ${fmt(cpl, currency)}` : null },
+            { label: 'Conversões', value: fmtN(effectiveSales), sub: cpv ? `CPV ${fmt(cpv, currency)}` : null },
+          ].map(item => (
+            <div key={item.label}>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 15, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
+                {item.value || '—'}
+              </div>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginTop: 2 }}>
+                {item.label}
+              </div>
+              {item.sub && (
+                <div style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'var(--mono)', marginTop: 2 }}>
+                  {item.sub}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Conversion rates row */}
@@ -263,8 +284,8 @@ export function FunnelTab({ summary, currency, clientSlug = 'dal-moro' }: Funnel
         marginBottom: 16,
       }}>
         {[
-          { label: 'Imp → Clique', value: fmtPct(clicks > 0 && impressions > 0 ? (clicks / impressions) * 100 : 0), good: ctr >= 1 },
-          { label: 'Clique → Lead', value: fmtPct(leadRate), good: leadRate >= 3 },
+          { label: 'Imp → Clique',       value: fmtPct(clicks > 0 && impressions > 0 ? (clicks / impressions) * 100 : 0), good: ctr >= 1 },
+          { label: 'Clique → Lead',       value: fmtPct(leadRate), good: leadRate >= 3 },
           ...(closeRate != null ? [{ label: 'Lead → Fechamento', value: fmtPct(closeRate), good: closeRate >= 5 }] : []),
           ...(overallRate != null ? [{ label: 'Clique → Fechamento', value: fmtPct(overallRate), good: overallRate >= 1 }] : []),
         ].map(r => (
