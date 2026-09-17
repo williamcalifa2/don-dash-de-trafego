@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import type { MetricsSummary } from '@/lib/meta'
+import { upsertFechamento, getFechamentos } from '@/lib/supabase'
 
 interface FunnelTabProps {
   summary: MetricsSummary
   currency: string
+  clientSlug?: string
 }
 
 function fmt(v: number, currency: string) {
@@ -20,7 +22,7 @@ function fmtN(v: number) {
 }
 function fmtPct(v: number) { return v.toFixed(1).replace('.', ',') + '%' }
 
-export function FunnelTab({ summary, currency }: FunnelTabProps) {
+export function FunnelTab({ summary, currency, clientSlug = 'dal-moro' }: FunnelTabProps) {
   const { impressions, clicks, leads, purchases, purchase_value, spend, reach, cpm, ctr, frequency } = summary
   const hasPurchases = purchases > 0
 
@@ -30,22 +32,38 @@ export function FunnelTab({ summary, currency }: FunnelTabProps) {
   const [draftSales, setDraftSales] = useState('')
   const [draftRevenue, setDraftRevenue] = useState('')
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('funnel_manual')
-      if (saved) {
-        const { sales, revenue } = JSON.parse(saved)
-        setManualSales(Number(sales) || 0)
-        setManualRevenue(Number(revenue) || 0)
-      }
-    } catch {}
-  }, [])
+  const hasSupabase = !!(process.env.NEXT_PUBLIC_SUPABASE_URL)
 
-  function saveManual() {
+  useEffect(() => {
+    async function load() {
+      if (hasSupabase) {
+        try {
+          const rows = await getFechamentos(clientSlug)
+          const total = rows.reduce((s, r) => ({ count: s.count + r.count, revenue: s.revenue + r.revenue }), { count: 0, revenue: 0 })
+          if (total.count > 0) { setManualSales(total.count); setManualRevenue(total.revenue); return }
+        } catch {}
+      }
+      try {
+        const saved = localStorage.getItem('funnel_manual')
+        if (saved) {
+          const { sales, revenue } = JSON.parse(saved)
+          setManualSales(Number(sales) || 0)
+          setManualRevenue(Number(revenue) || 0)
+        }
+      } catch {}
+    }
+    load()
+  }, [clientSlug, hasSupabase])
+
+  async function saveManual() {
     const sales = Math.max(0, Number(draftSales) || 0)
     const revenue = Math.max(0, Number(draftRevenue) || 0)
     setManualSales(sales)
     setManualRevenue(revenue)
+    const today = new Date().toISOString().slice(0, 10)
+    if (hasSupabase) {
+      try { await upsertFechamento(clientSlug, today, sales, revenue) } catch {}
+    }
     try { localStorage.setItem('funnel_manual', JSON.stringify({ sales, revenue })) } catch {}
     setEditing(false)
   }
@@ -225,7 +243,7 @@ export function FunnelTab({ summary, currency }: FunnelTabProps) {
                       background: 'transparent', border: '1px solid var(--border)',
                       borderRadius: 'var(--radius-sm)', color: 'var(--text-2)', fontFamily: 'var(--font)',
                     }}>Cancelar</button>
-                    <button onClick={saveManual} style={{
+                    <button onClick={() => { saveManual() }} style={{
                       padding: '7px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
                       background: stage.color, border: 'none',
                       borderRadius: 'var(--radius-sm)', color: '#0d0d0d', fontFamily: 'var(--font)',
