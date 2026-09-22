@@ -127,7 +127,7 @@ describe('Construção dos slides (buildSlides)', () => {
     expect(analysisTitle).toBeDefined()
   })
 
-  it('gera relatório avançado com 11 slides e elementos nativos (gráfico e tabela)', () => {
+  it('gera relatório avançado com 11 slides, orgânico antes do pago, perfil de público e campanhas inteligentes', () => {
     const data: ReportData = {
       month: lastMonthOf(NOW),
       client: { name: 'Cliente Teste', logoUrl: null },
@@ -135,10 +135,10 @@ describe('Construção dos slides (buildSlides)', () => {
       organic: { status: 'ok', handle: '@teste', stats: [], top: [] },
       paid: { status: 'ok', resultLabel: 'Leads', stats: [], top: [] },
       notes,
-      daily: {
-        dates: ['01/08', '02/08'],
-        spend: [100, 150],
-        results: [10, 15],
+      audience: {
+        topAge: [{ label: '25-34 anos', pct: 45 }],
+        gender: { female: 65, male: 35 },
+        platforms: { instagram: 85, facebook: 15 },
       },
       funnel: {
         impressions: 50000,
@@ -150,7 +150,18 @@ describe('Construção dos slides (buildSlides)', () => {
         clickToResultRate: 6.0,
       },
       campaigns: [
-        { id: '1', name: 'Campanha Conversão', status: 'ACTIVE', spend: 1000, results: 100, costPerResult: 10, ctr: 4.5 },
+        {
+          id: '1',
+          name: 'Campanha Conversão',
+          status: 'ACTIVE',
+          spend: 1000,
+          clicks: 300,
+          results: 100,
+          costPerResult: 10,
+          objectiveKind: 'leads',
+          primaryMetric: { label: 'Leads', value: '100 leads', cost: 'R$ 10,00 / res.' },
+          ctr: 4.5,
+        },
       ],
     }
 
@@ -160,26 +171,30 @@ describe('Construção dos slides (buildSlides)', () => {
     const advanced = buildSlides(data, notes, 'advanced')
     expect(advanced).toHaveLength(11)
 
+    // Regra: Orgânico sempre antes do pago
+    const organicIdx = advanced.findIndex(s => s.id === 'organic')
+    const paidIdx = advanced.findIndex(s => s.id === 'overview')
+    expect(organicIdx).toBeGreaterThan(-1)
+    expect(paidIdx).toBeGreaterThan(-1)
+    expect(organicIdx).toBeLessThan(paidIdx)
+
     // Verifica presença de slides exclusivos do avançado
-    expect(advanced.some(s => s.id === 'evolution')).toBe(true)
+    expect(advanced.some(s => s.id === 'audience')).toBe(true)
     expect(advanced.some(s => s.id === 'funnel')).toBe(true)
     expect(advanced.some(s => s.id === 'campaigns')).toBe(true)
 
-    // Verifica que o slide de evolução tem o elemento nativo de gráfico
-    const evolutionSlide = advanced.find(s => s.id === 'evolution')!
-    const chartEl = evolutionSlide.els.find(el => el.t === 'chart')
-    expect(chartEl).toBeDefined()
-    if (chartEl && chartEl.t === 'chart') {
-      expect(chartEl.chartType).toBe('line')
-      expect(chartEl.data).toHaveLength(2)
-    }
+    // Verifica que o slide de público tem as seções demográficas
+    const audienceSlide = advanced.find(s => s.id === 'audience')!
+    expect(audienceSlide.els.some(el => el.t === 'text' && el.text.includes('PERFIL DO PÚBLICO'))).toBe(true)
 
-    // Verifica que o slide de campanhas tem o elemento nativo de tabela
+    // Verifica que o slide de campanhas tem as colunas inteligentes
     const campaignsSlide = advanced.find(s => s.id === 'campaigns')!
     const tableEl = campaignsSlide.els.find(el => el.t === 'table')
     expect(tableEl).toBeDefined()
     if (tableEl && tableEl.t === 'table') {
       expect(tableEl.headers).toContain('Campanha')
+      expect(tableEl.headers).toContain('Entregas Principais')
+      expect(tableEl.headers).toContain('Custo Unitário')
       expect(tableEl.rows).toHaveLength(1)
     }
   })

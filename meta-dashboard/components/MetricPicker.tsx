@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { X, Check, GripVertical } from 'lucide-react'
-import { METRIC_DEFS, DEFAULT_METRICS, type MetricKey, type MetricsSummary } from '@/lib/meta'
+import { METRIC_DEFS, DEFAULT_METRICS, type MetricKey } from '@/lib/metricDefs'
+import type { MetricsSummary } from '@/lib/meta'
 
 const STORAGE_KEY = 'meta_selected_metrics'
 
@@ -16,12 +17,12 @@ export function useSelectedMetrics(): [MetricKey[], (keys: MetricKey[]) => void]
         const parsed = JSON.parse(saved) as MetricKey[]
         if (Array.isArray(parsed) && parsed.length > 0) setSelectedState(parsed)
       }
-    } catch {}
+    } catch { }
   }, [])
 
   function setSelected(keys: MetricKey[]) {
     setSelectedState(keys)
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(keys)) } catch {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(keys)) } catch { }
   }
 
   return [selected, setSelected]
@@ -47,32 +48,32 @@ function fmtPreview(key: MetricKey, s: MetricsSummary, currency: string): string
     return String(Math.round(v))
   }
   switch (key) {
-    case 'spend':                 return fmt(s.spend)
-    case 'cpc':                   return fmt(s.cpc)
-    case 'cpm':                   return fmt(s.cpm)
-    case 'cpl':                   return fmt(s.cpl)
-    case 'cpa':                   return fmt(s.cpa)
-    case 'roas':                  return s.roas ? `${s.roas.toFixed(2)}x` : '—'
-    case 'cost_per_engagement':   return fmt(s.cost_per_engagement)
-    case 'cost_per_link_click':   return fmt(s.cost_per_link_click)
+    case 'spend': return fmt(s.spend)
+    case 'cpc': return fmt(s.cpc)
+    case 'cpm': return fmt(s.cpm)
+    case 'cpl': return fmt(s.cpl)
+    case 'cpa': return fmt(s.cpa)
+    case 'roas': return s.roas ? `${s.roas.toFixed(2)}x` : '—'
+    case 'cost_per_engagement': return fmt(s.cost_per_engagement)
+    case 'cost_per_link_click': return fmt(s.cost_per_link_click)
     case 'cost_per_conversation': return fmt(s.cost_per_conversation)
-    case 'impressions':           return compact(s.impressions)
-    case 'reach':                 return compact(s.reach)
-    case 'frequency':             return s.frequency.toFixed(1)
-    case 'clicks':                return compact(s.clicks)
-    case 'unique_clicks':         return compact(s.unique_clicks)
-    case 'ctr':                   return `${s.ctr.toFixed(2)}%`
-    case 'link_clicks':           return compact(s.link_clicks)
-    case 'post_engagement':       return compact(s.post_engagement)
-    case 'reactions':             return compact(s.reactions)
-    case 'comments':              return compact(s.comments)
-    case 'video_views':           return compact(s.video_views)
-    case 'leads':                 return compact(s.leads)
-    case 'purchases':             return compact(s.purchases)
-    case 'purchase_value':        return fmt(s.purchase_value)
-    case 'landing_page_views':    return compact(s.landing_page_views)
+    case 'impressions': return compact(s.impressions)
+    case 'reach': return compact(s.reach)
+    case 'frequency': return s.frequency.toFixed(1)
+    case 'clicks': return compact(s.clicks)
+    case 'unique_clicks': return compact(s.unique_clicks)
+    case 'ctr': return `${s.ctr.toFixed(2)}%`
+    case 'link_clicks': return compact(s.link_clicks)
+    case 'post_engagement': return compact(s.post_engagement)
+    case 'reactions': return compact(s.reactions)
+    case 'comments': return compact(s.comments)
+    case 'video_views': return compact(s.video_views)
+    case 'leads': return compact(s.leads)
+    case 'purchases': return compact(s.purchases)
+    case 'purchase_value': return fmt(s.purchase_value)
+    case 'landing_page_views': return compact(s.landing_page_views)
     case 'messaging_conversations': return compact(s.messaging_conversations)
-    default:                      return '—'
+    default: return '—'
   }
 }
 
@@ -255,8 +256,8 @@ export function MetricPicker({ selected: initialSelected, summary, currency = 'B
                       border: isDropTarget
                         ? '1px dashed var(--accent)'
                         : isDragging
-                        ? '1px dashed var(--border)'
-                        : '1px solid var(--border)',
+                          ? '1px dashed var(--border)'
+                          : '1px solid var(--border)',
                       borderRadius: 12, padding: 12,
                       cursor: 'grab', opacity: isDragging ? 0.4 : 1,
                       transition: 'all .1s',

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, Download, Eye, EyeOff, FileText, Loader2, RefreshCw, Sparkles, X } from 'lucide-react'
+import { Check, Download, Eye, EyeOff, FileText, Loader2, RefreshCw, Sparkles, X, UploadCloud, RotateCcw } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import { generateSmartAnalysis, type ReportData, type ReportMode, type ReportNotes, type ReportPreset } from '@/lib/report'
 import { buildSlides, FONT, PALETTE, STAGE, type El, type SlideSpec } from '@/lib/reportSlides'
@@ -201,7 +201,7 @@ function Element({
   }
   const text: React.CSSProperties = {
     ...pos, fontFamily: `${FONT}, system-ui, sans-serif`, fontSize: el.size, fontWeight: el.weight ?? 400, color: el.color, textAlign: el.align ?? 'left',
-    lineHeight: el.lineHeight ?? 1.2, whiteSpace: 'pre-wrap', overflow: 'hidden', margin: 0,
+    lineHeight: el.lineHeight ?? 1.2, whiteSpace: 'pre-wrap', overflow: 'visible', margin: 0,
     display: 'flex', alignItems: el.valign === 'middle' ? 'center' : 'flex-start', justifyContent: el.align === 'center' ? 'center' : el.align === 'right' ? 'flex-end' : 'flex-start',
   }
   if (el.edit && onEdit) {
@@ -452,10 +452,10 @@ export function ReportStudio({
             <button
               type="button"
               className={`btn btn-sm ${mode === 'advanced' ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ height: 28, padding: '0 10px', fontSize: 12, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              style={{ height: 28, padding: '0 10px', fontSize: 12, borderRadius: 6 }}
               onClick={() => { setMode('advanced'); setCurrent(0) }}
             >
-              <Sparkles size={12} /> Avançado (11 slides)
+              Avançado (11 slides)
             </button>
           </div>
         </div>
@@ -502,6 +502,61 @@ export function ReportStudio({
             <div style={{ boxShadow: '0 8px 30px rgba(0,0,0,.18)', borderRadius: 8 }}>
               <Slide spec={active} scale={scale} onEdit={edit} onSmartAnalysis={handleSmartAnalysis} />
             </div>
+            {active.id === 'creatives' && data.paid.top.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card, #FFFFFF)', border: '1px solid var(--border, #E2E2EA)', borderRadius: 8, padding: '6px 14px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2, #55556A)' }}>Melhorar resolução dos criativos:</span>
+                {data.paid.top.slice(0, 3).map((a, idx) => {
+                  const isOverridden = !!notes.creativeOverrides?.[a.id]
+                  return (
+                    <div key={a.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <label
+                        className="btn btn-outline btn-sm"
+                        style={{ height: 26, padding: '0 8px', fontSize: 11, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        title="Substituir thumbnail por imagem em alta definição do seu computador"
+                      >
+                        <UploadCloud size={12} />
+                        <span>Criativo {idx + 1} {isOverridden ? '✓' : ''}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={e => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            const reader = new FileReader()
+                            reader.onload = () => {
+                              const dataUrl = String(reader.result)
+                              const nextOverrides = { ...(notes.creativeOverrides ?? {}), [a.id]: dataUrl }
+                              const nextNotes = { ...notes, creativeOverrides: nextOverrides }
+                              setNotes(nextNotes)
+                              void save(nextNotes)
+                            }
+                            reader.readAsDataURL(file)
+                          }}
+                        />
+                      </label>
+                      {isOverridden && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-icon btn-sm"
+                          style={{ width: 22, height: 22 }}
+                          title="Restaurar imagem original da Meta"
+                          onClick={() => {
+                            const nextOverrides = { ...(notes.creativeOverrides ?? {}) }
+                            delete nextOverrides[a.id]
+                            const nextNotes = { ...notes, creativeOverrides: nextOverrides }
+                            setNotes(nextNotes)
+                            void save(nextNotes)
+                          }}
+                        >
+                          <RotateCcw size={11} />
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
             <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>Os campos com contorno tracejado são textos seus: clique e escreva. O resto vem dos dados da Meta.</p>
           </div>
         </div>

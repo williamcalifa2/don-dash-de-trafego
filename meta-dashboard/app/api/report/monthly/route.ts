@@ -8,7 +8,7 @@ import { snapshotMode, accountStateOrNull, snapshotGuard } from '@/lib/meta/mode
 import { readMetrics, readPerformance } from '@/lib/meta/read'
 import { readOrganic } from '@/lib/meta/organicRead'
 import { refreshNow, refreshOrganicNow } from '@/lib/meta/refreshNow'
-import { cleanNotes, draftAnalysis, EMPTY_NOTES, extractCampaigns, extractDaily, extractFunnel, monthEndsAt, organicSection, paidSection, reportPeriodOf, type ReportData, type ReportNotes, type ReportPreset } from '@/lib/report'
+import { cleanNotes, draftAnalysis, EMPTY_NOTES, extractAudience, extractCampaigns, extractDaily, extractFunnel, monthEndsAt, organicSection, paidSection, reportPeriodOf, type ReportData, type ReportNotes, type ReportPreset } from '@/lib/report'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -40,12 +40,13 @@ export async function GET(req: NextRequest) {
     const period = reportPeriodOf(preset, Date.now())
     const cfg = metaConfig()
     const st = await accountStateOrNull(tenant.clientId)
-    const [organic, metrics, perf, struct, notes] = await Promise.all([
+    const [organic, metrics, perf, struct, notes, audienceSnap] = await Promise.all([
       readOrganic(stores.snaps, tenant.clientId, preset),
       readMetrics(stores.snaps, tenant.clientId, account, preset, cfg, st),
       readPerformance(stores.snaps, tenant.clientId, preset, cfg, st),
       stores.snaps.get<Array<{ id: string; creative?: Record<string, unknown> }>>(tenant.clientId, 'structure', 'ads'),
       loadNotes(tenant.slug, period.key),
+      stores.snaps.get(tenant.clientId, 'audience', preset === 'last_7d' ? 'last_7d' : 'last_30d'),
     ])
     // Sem o resumo guardado, os números ainda não foram buscados.
     const summary = await stores.snaps.get(tenant.clientId, 'summary', preset)
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest) {
     const hasPaid = preset === 'last_month'
       ? (!!summary && summary.fetchedAt >= notBefore)
       : (!!summary && (metrics.summary?.spend != null || metrics.summary?.impressions != null))
-    const paid = paidSection(hasPaid ? metrics : null, perf.rows, struct?.payload ?? [])
+    const paid = paidSection(hasPaid ? metrics : null, perf.rows, struct?.payload ?? [], notes.creativeOverrides)
     const { currency, ...paidOut } = paid
     const data: ReportData = {
       month: period, client: { name: tenant.name, logoUrl: tenant.logoUrl }, currency,
@@ -61,6 +62,8 @@ export async function GET(req: NextRequest) {
       campaigns: extractCampaigns(hasPaid ? metrics : null),
       daily: extractDaily(hasPaid ? metrics : null),
       funnel: extractFunnel(hasPaid ? metrics : null),
+      audience: extractAudience(audienceSnap?.payload ?? null),
+      creativeOverrides: notes.creativeOverrides,
       notes,
     }
     return NextResponse.json({ ...data, draftAnalysis: draftAnalysis(data) }, { headers: { 'Cache-Control': 'no-store' } })

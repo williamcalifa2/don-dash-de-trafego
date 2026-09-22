@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Download, FileBarChart, RefreshCw, TrendingUp, AlertCircle, Moon, Sun, Settings2, Tv, Bell, BellOff, LogOut, Shield, Sparkles } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Download, FileBarChart, RefreshCw, TrendingUp, AlertCircle, Moon, Sun, Settings2, Tv, Bell, BellOff, LogOut, Shield, ChevronDown } from 'lucide-react'
 import { MetricTile } from '@/components/MetricTile'
 import { CampaignTable } from '@/components/CampaignTable'
 import { DailyChart } from '@/components/DailyChart'
@@ -128,6 +128,20 @@ function Dashboard() {
     setTheme(initial)
     document.documentElement.setAttribute('data-theme', initial)
   }, [])
+
+  const [reportMenuOpen, setReportMenuOpen] = useState(false)
+  const reportMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!reportMenuOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (reportMenuRef.current && !reportMenuRef.current.contains(e.target as Node)) {
+        setReportMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [reportMenuOpen])
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('tv') === '1') setTv(true)
@@ -365,22 +379,86 @@ function Dashboard() {
       {!isLoading && s && tab === 'metrics' && (
         <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
           {me?.admin && me.role !== 'reader' && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginRight: 8, flexWrap: 'wrap' }}>
+            <div ref={reportMenuRef} style={{ position: 'relative', display: 'inline-flex', marginRight: 8 }}>
               <button
                 className="btn btn-outline btn-sm"
-                onClick={() => { setMonthlyMode('standard'); setMonthlyOpen(true) }}
-                title="Apresentação padrão de 8 slides"
+                onClick={() => setReportMenuOpen(v => !v)}
+                aria-expanded={reportMenuOpen}
+                aria-haspopup="menu"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                title="Escolha o modelo de apresentação para exportar"
               >
-                <FileBarChart size={16} strokeWidth={1.75} /> Relatório Padrão (PPTX)
+                <FileBarChart size={16} strokeWidth={1.75} />
+                <span>Apresentação PPTX</span>
+                <ChevronDown
+                  size={14}
+                  strokeWidth={2}
+                  style={{
+                    transform: reportMenuOpen ? 'rotate(180deg)' : 'none',
+                    transition: 'transform 0.15s ease',
+                  }}
+                />
               </button>
-              <button
-                className="btn btn-primary btn-sm"
-                style={{ background: 'linear-gradient(135deg, #6F6DF7 0%, #4F46E5 100%)', border: 'none', color: '#FFF' }}
-                onClick={() => { setMonthlyMode('advanced'); setMonthlyOpen(true) }}
-                title="Relatório executivo avançado de 11 slides com funil de conversão, gráficos nativos e análise inteligente"
-              >
-                <Sparkles size={15} strokeWidth={2} /> Relatório Avançado ✨
-              </button>
+              {reportMenuOpen && (
+                <div
+                  role="menu"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    right: 0,
+                    zIndex: 50,
+                    minWidth: 260,
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.35)',
+                    padding: 6,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                  }}
+                >
+                  <button
+                    role="menuitem"
+                    onClick={() => { setMonthlyMode('standard'); setMonthlyOpen(true); setReportMenuOpen(false) }}
+                    className="btn btn-ghost btn-sm"
+                    style={{
+                      justifyContent: 'flex-start',
+                      textAlign: 'left',
+                      padding: '8px 10px',
+                      height: 'auto',
+                      width: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      gap: 2,
+                    }}
+                  >
+                    <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>Apresentação Padrão</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-3)' }}>8 slides · Resumo executivo tradicional</span>
+                  </button>
+                  <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+                  <button
+                    role="menuitem"
+                    onClick={() => { setMonthlyMode('advanced'); setMonthlyOpen(true); setReportMenuOpen(false) }}
+                    className="btn btn-ghost btn-sm"
+                    style={{
+                      justifyContent: 'flex-start',
+                      textAlign: 'left',
+                      padding: '8px 10px',
+                      height: 'auto',
+                      width: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      gap: 2,
+                    }}
+                  >
+                    <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>Relatório Avançado</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-3)' }}>11 slides · Funil, público e campanhas</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
           <button className="btn btn-outline btn-sm" onClick={() => setReportOpen(true)} disabled={reportOpen}>

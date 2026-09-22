@@ -92,40 +92,7 @@ export interface MetricsResponse {
   freshness?: { updatedAt: number | null; stale: boolean; pending: boolean; note: string | null }
 }
 
-// All available metric definitions (used by picker UI)
-export const METRIC_DEFS = [
-  { key: 'spend',                 label: 'Investimento',         group: 'Financeiro' },
-  { key: 'cpc',                   label: 'CPC',                  group: 'Financeiro' },
-  { key: 'cpm',                   label: 'CPM',                  group: 'Financeiro' },
-  { key: 'cpl',                   label: 'CPL',                  group: 'Financeiro' },
-  { key: 'cpa',                   label: 'CPA',                  group: 'Financeiro' },
-  { key: 'roas',                  label: 'ROAS',                 group: 'Financeiro' },
-  { key: 'cost_per_engagement',   label: 'Custo por Engajamento', group: 'Financeiro' },
-  { key: 'cost_per_link_click',   label: 'Custo por Clique no Link', group: 'Financeiro' },
-  { key: 'cost_per_conversation', label: 'Custo por Conversa',  group: 'Financeiro' },
-  { key: 'impressions',           label: 'Impressões',           group: 'Alcance' },
-  { key: 'reach',                 label: 'Alcance',              group: 'Alcance' },
-  { key: 'frequency',             label: 'Frequência',           group: 'Alcance' },
-  { key: 'clicks',                label: 'Cliques',              group: 'Engajamento' },
-  { key: 'unique_clicks',         label: 'Cliques Únicos',       group: 'Engajamento' },
-  { key: 'ctr',                   label: 'CTR',                  group: 'Engajamento' },
-  { key: 'link_clicks',           label: 'Cliques no Link',      group: 'Engajamento' },
-  { key: 'post_engagement',       label: 'Engajamento',          group: 'Engajamento' },
-  { key: 'reactions',             label: 'Reações',              group: 'Engajamento' },
-  { key: 'comments',              label: 'Comentários',          group: 'Engajamento' },
-  { key: 'video_views',           label: 'Visualizações de Vídeo', group: 'Vídeo' },
-  { key: 'leads',                 label: 'Leads',                group: 'Conversões' },
-  { key: 'purchases',             label: 'Compras',              group: 'Conversões' },
-  { key: 'purchase_value',        label: 'Valor das Compras',    group: 'Conversões' },
-  { key: 'landing_page_views',    label: 'Visitas à Página',     group: 'Conversões' },
-  { key: 'messaging_conversations', label: 'Conversas Iniciadas', group: 'Mensagens' },
-] as const
-
-export type MetricKey = typeof METRIC_DEFS[number]['key']
-
-export const DEFAULT_METRICS: MetricKey[] = [
-  'spend', 'leads', 'cpl', 'roas', 'impressions', 'ctr', 'cpm', 'frequency',
-]
+export { METRIC_DEFS, DEFAULT_METRICS, type MetricKey } from './metricDefs'
 
 const INSIGHT_FIELDS = [
   'spend',
@@ -248,26 +215,26 @@ function buildSummary(s: Record<string, unknown>): MetricsSummary {
 
   return {
     spend,
-    impressions:       Number(s.impressions ?? 0),
-    clicks:            Number(s.clicks ?? 0),
-    unique_clicks:     Number(s.unique_clicks ?? 0),
-    ctr:               Number(s.ctr ?? 0),
-    cpm:               Number(s.cpm ?? 0),
-    cpc:               Number(s.cpc ?? 0) || (Number(s.clicks ?? 0) > 0 ? spend / Number(s.clicks) : 0),
-    cpl:               leads > 0 ? spend / leads : null,
+    impressions: Number(s.impressions ?? 0),
+    clicks: Number(s.clicks ?? 0),
+    unique_clicks: Number(s.unique_clicks ?? 0),
+    ctr: Number(s.ctr ?? 0),
+    cpm: Number(s.cpm ?? 0),
+    cpc: Number(s.cpc ?? 0) || (Number(s.clicks ?? 0) > 0 ? spend / Number(s.clicks) : 0),
+    cpl: leads > 0 ? spend / leads : null,
     leads,
     purchases,
-    purchase_value:    purchaseValue,
-    roas:              purchaseValue > 0 && spend > 0 ? purchaseValue / spend : null,
-    cpa:               purchases > 0 ? spend / purchases : null,
-    frequency:         Number(s.frequency ?? 0),
-    reach:             Number(s.reach ?? 0),
-    post_engagement:   engagement,
+    purchase_value: purchaseValue,
+    roas: purchaseValue > 0 && spend > 0 ? purchaseValue / spend : null,
+    cpa: purchases > 0 ? spend / purchases : null,
+    frequency: Number(s.frequency ?? 0),
+    reach: Number(s.reach ?? 0),
+    post_engagement: engagement,
     cost_per_engagement: engagement > 0 ? spend / engagement : null,
     reactions,
     comments,
-    video_views:       videoViews,
-    link_clicks:       linkClicks,
+    video_views: videoViews,
+    link_clicks: linkClicks,
     cost_per_link_click: linkClicks > 0 ? spend / linkClicks : null,
     landing_page_views: landingPageViews,
     messaging_conversations: conversations,
@@ -336,15 +303,15 @@ export function assembleMetrics(adAccountId: string, datePreset: DatePreset, raw
     for (const k of Object.keys(perDay[0])) metrics[k] = perDay.map(day => Number((day as unknown as Record<string, number | null>)[k]) || 0)
     daily = {
       dates: rows.map(r => new Date(r.date_start as string).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })),
-      spend:       rows.map(r => Number(r.spend ?? 0)),
-      leads:       rows.map(r => getLeads(r.actions as ActionRow[] | undefined)),
-      cpl:         rows.map(r => {
+      spend: rows.map(r => Number(r.spend ?? 0)),
+      leads: rows.map(r => getLeads(r.actions as ActionRow[] | undefined)),
+      cpl: rows.map(r => {
         const l = getLeads(r.actions as ActionRow[] | undefined)
         const sp = Number(r.spend ?? 0)
         return l > 0 ? sp / l : 0
       }),
       impressions: rows.map(r => Number(r.impressions ?? 0)),
-      ctr:         rows.map(r => Number(r.ctr ?? 0)),
+      ctr: rows.map(r => Number(r.ctr ?? 0)),
       metrics,
     }
   }
