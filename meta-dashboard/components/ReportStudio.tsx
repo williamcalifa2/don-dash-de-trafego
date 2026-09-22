@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, Download, Eye, EyeOff, FileText, Loader2, RefreshCw, Sparkles, X, UploadCloud, RotateCcw } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
-import { generateSmartAnalysis, type ReportData, type ReportMode, type ReportNotes, type ReportPreset } from '@/lib/report'
+import { compact, generateSmartAnalysis, type ReportData, type ReportMode, type ReportNotes, type ReportPreset } from '@/lib/report'
 import { buildSlides, FONT, PALETTE, STAGE, type El, type SlideSpec } from '@/lib/reportSlides'
 
 type Loaded = ReportData & { draftAnalysis: string }
@@ -125,6 +125,250 @@ function SvgChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
   )
 }
 
+function SvgDoughnut({ el }: { el: Extract<El, { t: 'chart' }> }) {
+  const { data, colors } = el
+  const s0 = data[0]
+  if (!s0 || !s0.values.length) return null
+
+  const total = s0.values.reduce((sum, v) => sum + Number(v || 0), 0)
+  const R = 68
+  const C = 2 * Math.PI * R
+  let acc = 0
+
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '10px 15px', boxSizing: 'border-box' }}>
+      <div style={{ position: 'relative', width: 170, height: 170, flexShrink: 0 }}>
+        <svg viewBox="0 0 180 180" width="100%" height="100%">
+          <circle cx={90} cy={90} r={R} fill="none" stroke="#1E293B" strokeWidth={24} />
+          {total > 0 && s0.values.map((v, i) => {
+            const val = Number(v || 0)
+            const len = (val / total) * C
+            const strokeColor = colors[i % colors.length] || '#818CF8'
+            const circle = (
+              <circle
+                key={i}
+                cx={90}
+                cy={90}
+                r={R}
+                fill="none"
+                stroke={strokeColor}
+                strokeWidth={24}
+                strokeDasharray={`${len} ${C - len}`}
+                strokeDashoffset={-acc}
+                transform="rotate(-90 90 90)"
+              >
+                <title>{`${s0.labels[i]}: ${val.toFixed(1)}%`}</title>
+              </circle>
+            )
+            acc += len
+            return circle
+          })}
+        </svg>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 180 }}>
+        {s0.labels.map((lbl, i) => {
+          const val = Number(s0.values[i] || 0)
+          const dotColor = colors[i % colors.length] || '#818CF8'
+          return (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, fontSize: 13 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#E2E8F0' }}>
+                <span style={{ width: 9, height: 9, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                <span>{lbl}</span>
+              </div>
+              <span style={{ fontWeight: 700, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>
+                {val.toFixed(val >= 10 ? 0 : 1).replace('.', ',')}%
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function SvgBarChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
+  const { data, colors, showValueLabels, costSubtitle } = el
+  if (!data || !data.length || !data[0].labels.length) return null
+
+  const labels = data[0].labels
+  const seriesCount = data.length
+  const allVals = data.flatMap(s => s.values.map(v => Number(v) || 0))
+  const max = Math.max(...allVals, 1) * 1.15
+
+  const W = 520
+  const H = costSubtitle ? 145 : 165
+  const PL = 36
+  const PR = 15
+  const PT = showValueLabels ? 20 : 10
+  const PB = 24
+  const plotW = W - PL - PR
+  const plotH = H - PT - PB
+
+  const slotW = plotW / labels.length
+  const bw = Math.min(22, (slotW * 0.72) / seriesCount)
+  const groupW = bw * seriesCount + (seriesCount - 1) * 3
+
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {seriesCount > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 20, fontSize: 11, color: '#94A3B8', marginBottom: 6 }}>
+          {data.map((s, idx) => (
+            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors[idx % colors.length] }} />
+              <span>{s.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={{ overflow: 'visible' }}>
+          {[0, 0.5, 1].map(t => {
+            const y = PT + plotH * (1 - t)
+            const tickVal = Math.round(max * t)
+            const tickLabel = tickVal >= 1000 ? `${(tickVal / 1000).toFixed(1)}k` : String(tickVal)
+            return (
+              <g key={t}>
+                <line x1={PL} x2={W - PR} y1={y} y2={y} stroke="#1E293B" strokeWidth={1} strokeDasharray="3 3" />
+                <text x={PL - 6} y={y + 3} textAnchor="end" fontSize="9" fill="#64748B">{tickLabel}</text>
+              </g>
+            )
+          })}
+
+          {labels.map((lbl, i) => {
+            const cx = PL + slotW * i + slotW / 2
+            const x0 = cx - groupW / 2
+            return (
+              <g key={i}>
+                {data.map((s, sIdx) => {
+                  const val = Number(s.values[i]) || 0
+                  const h = Math.max(0, (val / max) * plotH)
+                  const x = x0 + sIdx * (bw + 3)
+                  const y = PT + plotH - h
+                  const barColor = colors[sIdx % colors.length] || '#818CF8'
+                  return (
+                    <g key={sIdx}>
+                      <rect x={x} y={y} width={bw} height={h} rx={2} fill={barColor} />
+                      {showValueLabels && val > 0 && (
+                        <text x={x + bw / 2} y={y - 4} textAnchor="middle" fontSize="9" fontWeight={700} fill="#F8FAFC">
+                          {val}
+                        </text>
+                      )}
+                    </g>
+                  )
+                })}
+                <text x={cx} y={H - 6} textAnchor="middle" fontSize="9.5" fill="#94A3B8">{lbl}</text>
+              </g>
+            )
+          })}
+        </svg>
+      </div>
+
+      {costSubtitle && (
+        <div style={{ fontSize: 11, color: '#64748B', textAlign: 'center', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {costSubtitle}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SvgFunnel({ el }: { el: Extract<El, { t: 'funnel' }> }) {
+  const { impressions, clicks, results, conversions, ctr, clickToResultRate, resultLabel, roas, costPerResult } = el
+
+  const W = 1160
+  const H = 485
+  const topH = 100
+  const waveW = W - 40
+  const waveH = H - topH - 40
+
+  const stages = [
+    { label: 'IMPRESSÕES', val: compact(impressions), sub: 'Pessoas impactadas' },
+    { label: 'CLIQUES NO LINK', val: compact(clicks), sub: `${ctr}% CTR` },
+    { label: resultLabel.toUpperCase(), val: compact(results), sub: costPerResult ? `Custo: ${costPerResult}` : 'Resultados' },
+    { label: 'CONVERSÕES', val: compact(conversions), sub: 'Vendas / Contatos' },
+  ]
+
+  const vals = [impressions || 1, clicks || 1, results || 1, conversions || 1]
+  const minWh = 35
+  const maxWh = waveH - 40
+  const waveHeights = vals.map(v => minWh + (maxWh - minWh) * Math.pow(Math.max(0, v / (impressions || 1)), 0.36))
+  const ys = waveHeights.map(hi => waveH - hi)
+
+  const xs = [0, waveW * 0.28, waveW * 0.58, waveW * 0.85, waveW]
+  const mxs = [waveW * 0.14, waveW * 0.43, waveW * 0.71, waveW * 0.92]
+
+  const wavePath = `
+    M 0 ${ys[0]}
+    C ${mxs[0]} ${ys[0]}, ${mxs[0]} ${ys[1]}, ${xs[1]} ${ys[1]}
+    C ${mxs[1]} ${ys[1]}, ${mxs[1]} ${ys[2]}, ${xs[2]} ${ys[2]}
+    C ${mxs[2]} ${ys[2]}, ${mxs[2]} ${ys[3]}, ${xs[3]} ${ys[3]}
+    L ${waveW} ${ys[3]} L ${waveW} ${waveH} L 0 ${waveH} Z`
+
+  return (
+    <div style={{ position: 'relative', width: W, height: H, background: '#0F172A', border: '1.5px solid #1E293B', borderRadius: 16, overflow: 'hidden', padding: 20, boxSizing: 'border-box' }}>
+      {/* Top KPI Header */}
+      <div style={{ display: 'flex', alignItems: 'center', height: topH - 20, borderBottom: '1px solid #1E293B', paddingBottom: 15 }}>
+        <div style={{ display: 'flex', flex: 1, gap: 15 }}>
+          {stages.map((stg, i) => (
+            <div key={i} style={{ flex: 1, position: 'relative' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', color: i === 2 ? '#22C55E' : '#64748B' }}>
+                {stg.label}
+              </div>
+              <div style={{ fontSize: 30, fontWeight: 800, color: i === 2 ? '#22C55E' : '#F8FAFC', lineHeight: 1.15, marginTop: 4 }}>
+                {stg.val}
+              </div>
+              <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
+                {stg.sub}
+              </div>
+              {i < 3 && <div style={{ position: 'absolute', right: -7, top: 8, bottom: 8, width: 1, background: '#1E293B' }} />}
+            </div>
+          ))}
+        </div>
+
+        {/* ROAS Badge */}
+        <div style={{ width: 140, background: '#131927', border: '1px solid #1E293B', borderRadius: 10, padding: '10px 14px', textAlign: 'center' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#64748B' }}>RETORNO GERAL</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#FFFFFF', marginTop: 2 }}>{roas ? `${roas}x` : '0,0%'}</div>
+        </div>
+      </div>
+
+      {/* Wave Graphic */}
+      <div style={{ position: 'relative', width: waveW, height: waveH, marginTop: 15, background: '#131927', borderRadius: 12, overflow: 'hidden' }}>
+        <svg viewBox={`0 0 ${waveW} ${waveH}`} width="100%" height="100%" preserveAspectRatio="none" style={{ display: 'block' }}>
+          <defs>
+            <linearGradient id="funnelWaveGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#818CF8" stopOpacity="0.55" />
+              <stop offset="60%" stopColor="#4F46E5" stopOpacity="0.30" />
+              <stop offset="100%" stopColor="#1E1B4B" stopOpacity="0.10" />
+            </linearGradient>
+          </defs>
+
+          {[xs[1], xs[2], xs[3]].map((x, idx) => (
+            <line key={idx} x1={x} x2={x} y1={0} y2={waveH} stroke="rgba(255,255,255,0.08)" strokeWidth={1.5} strokeDasharray="4 4" />
+          ))}
+
+          <path d={wavePath} fill="url(#funnelWaveGrad)" />
+        </svg>
+
+        {/* Drop-off Conversion rate pill tags */}
+        <div style={{ position: 'absolute', left: xs[1] - 65, top: ys[1] - 20, background: '#0F172A', border: '1.5px solid #6366F1', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#818CF8', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', zIndex: 5 }}>
+          {ctr}% CTR
+        </div>
+
+        <div style={{ position: 'absolute', left: xs[2] - 75, top: ys[2] - 20, background: '#0F172A', border: '1.5px solid #22C55E', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#22C55E', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', zIndex: 5 }}>
+          {clickToResultRate}% {resultLabel}
+        </div>
+
+        <div style={{ position: 'absolute', left: xs[3] - 60, top: ys[3] - 20, background: '#0F172A', border: '1.5px solid #F59E0B', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#F59E0B', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', zIndex: 5 }}>
+          0,0% Venda
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /** Uma linha de texto/forma do slide. Com `onEdit`, os textos da equipe viram campos editáveis. */
 function Element({
   el,
@@ -136,23 +380,41 @@ function Element({
   onSmartAnalysis?: () => void
 }) {
   const pos = { position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h } as const
-  if (el.t === 'box') return <div style={{ ...pos, background: el.fill, border: el.line ? `2px solid ${el.line}` : undefined, borderRadius: el.radius, boxSizing: 'border-box' }} />
+  if (el.t === 'box') {
+    const boxContent = (
+      <div style={{ ...pos, background: el.fill, border: el.line ? `1.5px solid ${el.line}` : undefined, borderRadius: el.radius, boxSizing: 'border-box', cursor: el.url ? 'pointer' : undefined }} />
+    )
+    return el.url ? (
+      <a href={el.url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
+        {boxContent}
+      </a>
+    ) : boxContent
+  }
   if (el.t === 'img') {
-    return el.src ? <img src={el.src} alt="" style={{ ...pos, objectFit: 'cover', borderRadius: el.radius }} /> : <div style={{ ...pos, background: '#D9D9E6', borderRadius: el.radius }} />
+    return el.src ? <img src={el.src} alt="" style={{ ...pos, objectFit: 'cover', borderRadius: el.radius }} /> : <div style={{ ...pos, background: '#1E293B', borderRadius: el.radius }} />
   }
   if (el.t === 'chart') {
     return (
-      <div style={{ ...pos, background: '#FFFFFF', borderRadius: 16, border: '1px solid #E2E2EA', padding: '16px 20px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
-        {el.title && <div style={{ fontSize: 16, fontWeight: 700, color: PALETTE.ink, marginBottom: 8, fontFamily: `${FONT}, sans-serif` }}>{el.title}</div>}
+      <div style={{ ...pos, background: '#0F172A', borderRadius: 16, border: '1.5px solid #1E293B', padding: '16px 20px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
+        {el.title && <div style={{ fontSize: 15, fontWeight: 700, color: '#F8FAFC', marginBottom: 8, fontFamily: `${FONT}, sans-serif` }}>{el.title}</div>}
         <div style={{ flex: 1, minHeight: 0 }}>
-          <SvgChart el={el} />
+          {el.chartType === 'doughnut' ? (
+            <SvgDoughnut el={el} />
+          ) : el.chartType === 'bar' ? (
+            <SvgBarChart el={el} />
+          ) : (
+            <SvgChart el={el} />
+          )}
         </div>
       </div>
     )
   }
+  if (el.t === 'funnel') {
+    return <div style={pos}><SvgFunnel el={el} /></div>
+  }
   if (el.t === 'table') {
     return (
-      <div style={{ ...pos, background: '#FFFFFF', borderRadius: 14, border: '1px solid #E2E2EA', overflow: 'hidden', boxSizing: 'border-box', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+      <div style={{ ...pos, background: '#0F172A', borderRadius: 14, border: '1.5px solid #1E293B', overflow: 'hidden', boxSizing: 'border-box', boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
         <table style={{ width: '100%', height: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontFamily: `${FONT}, system-ui, sans-serif` }}>
           <thead>
             <tr style={{ background: PALETTE.violet, color: '#FFFFFF', height: 46 }}>
@@ -161,7 +423,7 @@ function Element({
                   key={i}
                   style={{
                     width: el.colWidths[i] ? `${(el.colWidths[i] / el.w) * 100}%` : 'auto',
-                    textAlign: i === 0 ? 'left' : 'right',
+                    textAlign: i === 0 ? 'left' : 'center',
                     padding: '8px 16px',
                     fontSize: 13,
                     fontWeight: 700,
@@ -174,7 +436,7 @@ function Element({
           </thead>
           <tbody>
             {el.rows.map((row, rIdx) => (
-              <tr key={rIdx} style={{ background: rIdx % 2 === 0 ? '#FFFFFF' : '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+              <tr key={rIdx} style={{ background: rIdx % 2 === 0 ? '#0F172A' : '#131927', borderBottom: '1px solid #1E293B' }}>
                 {row.map((cell, cIdx) => (
                   <td
                     key={cIdx}
@@ -182,7 +444,7 @@ function Element({
                       padding: '12px 16px',
                       fontSize: 12,
                       fontWeight: cell.bold ? 700 : 400,
-                      color: cell.color ?? PALETTE.ink,
+                      color: cell.color ?? '#F8FAFC',
                       textAlign: cell.align ?? 'left',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
@@ -203,6 +465,13 @@ function Element({
     ...pos, fontFamily: `${FONT}, system-ui, sans-serif`, fontSize: el.size, fontWeight: el.weight ?? 400, color: el.color, textAlign: el.align ?? 'left',
     lineHeight: el.lineHeight ?? 1.2, whiteSpace: 'pre-wrap', overflow: 'visible', margin: 0,
     display: 'flex', alignItems: el.valign === 'middle' ? 'center' : 'flex-start', justifyContent: el.align === 'center' ? 'center' : el.align === 'right' ? 'flex-end' : 'flex-start',
+  }
+  if (el.url) {
+    return (
+      <a href={el.url} target="_blank" rel="noreferrer" style={{ ...text, textDecoration: 'none', cursor: 'pointer' }}>
+        <span style={{ width: '100%' }}>{el.text}</span>
+      </a>
+    )
   }
   if (el.edit && onEdit) {
     const key = el.edit
@@ -276,7 +545,7 @@ export function Slide({
 }) {
   return (
     <div style={{ width: STAGE.w * scale, height: STAGE.h * scale, position: 'relative', overflow: 'hidden', borderRadius: scale < 0.5 ? 4 : 8, flexShrink: 0 }}>
-      <div style={{ width: STAGE.w, height: STAGE.h, position: 'absolute', left: 0, top: 0, transform: `scale(${scale})`, transformOrigin: 'top left', background: spec.dark ? PALETTE.dark : PALETTE.light, overflow: 'hidden' }}>
+      <div style={{ width: STAGE.w, height: STAGE.h, position: 'absolute', left: 0, top: 0, transform: `scale(${scale})`, transformOrigin: 'top left', background: spec.dark ? PALETTE.dark : PALETTE.light, overflow: 'hidden', transition: 'background-color 0.2s ease, opacity 0.2s ease' }}>
         {spec.els.map((el, i) => <Element key={i} el={el} onEdit={onEdit} onSmartAnalysis={onSmartAnalysis} />)}
       </div>
     </div>

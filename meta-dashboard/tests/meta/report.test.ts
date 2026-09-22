@@ -127,7 +127,7 @@ describe('Construção dos slides (buildSlides)', () => {
     expect(analysisTitle).toBeDefined()
   })
 
-  it('gera relatório avançado com 11 slides, orgânico antes do pago, perfil de público e campanhas inteligentes', () => {
+  it('gera relatório avançado com 12 slides, orgânico antes do pago, perfil de público e campanhas inteligentes', () => {
     const data: ReportData = {
       month: lastMonthOf(NOW),
       client: { name: 'Cliente Teste', logoUrl: null },
@@ -169,7 +169,7 @@ describe('Construção dos slides (buildSlides)', () => {
     expect(standard).toHaveLength(8)
 
     const advanced = buildSlides(data, notes, 'advanced')
-    expect(advanced).toHaveLength(11)
+    expect(advanced).toHaveLength(12)
 
     // Regra: Orgânico sempre antes do pago
     const organicIdx = advanced.findIndex(s => s.id === 'organic')

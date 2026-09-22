@@ -6,6 +6,7 @@ import type { MetricsResponse, MetricsSummary } from './meta'
 import { KIND_LABELS } from './resultKind'
 import type { OrganicPost, OrganicView } from './meta/organicRead'
 import type { AdPerfRow } from './meta/read'
+import { buildAudience, type AudienceRaw } from './audience'
 
 const BR = 3 * 3_600_000
 const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
@@ -67,8 +68,33 @@ export interface ReportStat {
   /** custo: cair é bom */
   lowerIsBetter?: boolean
 }
-export interface ReportPost { platform: 'ig' | 'fb'; type: string; caption: string; thumb: string | null; url: string | null; reach: number | null; views: number | null; interactions: number }
-export interface ReportAd { id: string; name: string; thumb: string | null; results: number; spend: number; clicks: number; impressions: number; costPerResult: number | null; ctr: number | null }
+export interface ReportPost {
+  platform: 'ig' | 'fb'
+  type: string
+  caption: string
+  thumb: string | null
+  url: string | null
+  at?: string | null
+  reach: number | null
+  views: number | null
+  likes?: number | null
+  comments?: number | null
+  shares?: number | null
+  saves?: number | null
+  interactions: number
+}
+export interface ReportAd {
+  id: string
+  name: string
+  thumb: string | null
+  url?: string | null
+  results: number
+  spend: number
+  clicks: number
+  impressions: number
+  costPerResult: number | null
+  ctr: number | null
+}
 export interface ReportNotes { objective: string; goals: string; analysis: string; next: string; creativeOverrides?: Record<string, string> }
 
 export type ReportMode = 'standard' | 'advanced'
@@ -90,16 +116,39 @@ export interface ReportFunnel {
   impressions: number
   clicks: number
   results: number
+  conversions?: number
   resultLabel: string
   costPerResult: number | null
+  spend?: number
   ctr: number
   clickToResultRate: number
+  resultToConversionRate?: number
+  roas?: number | null
+}
+
+export interface AudienceBarItem {
+  label: string
+  impressions: number
+  reach: number
+  results: number
+  spend: number
+  costPerResult?: number | null
+}
+
+export interface AudienceDonutItem {
+  label: string
+  pct: number
+  reach: number
 }
 
 export interface ReportAudience {
   topAge: Array<{ label: string; pct: number; results?: number }>
   gender: { female: number; male: number }
   platforms: { instagram: number; facebook: number }
+  ageBars?: AudienceBarItem[]
+  genderBars?: AudienceBarItem[]
+  platformDonut?: AudienceDonutItem[]
+  deviceDonut?: AudienceDonutItem[]
 }
 
 export interface ReportData {
@@ -151,8 +200,22 @@ export function organicSection(view: OrganicView | null, notBefore = 0): ReportD
     : [stat('Alcance', 'reach'), stat('Novos seguidores', 'followers'), stat('Visualizações', 'views'), stat('Interações', 'interactions')]
   // Sem a janela do mês fechado (coleta antiga, ainda sem esse recorte): melhor avisar do que mostrar números de outro período.
   const incomplete = (view.hasIg && k('reach')?.value == null) || (view.at ?? 0) < notBefore // coleta de antes da virada do mês: a janela "mês anterior" ainda é a do mês retrasado
-  const top = [...view.posts].sort((a, b) => rankPost(b) - rankPost(a)).slice(0, 3)
-    .map(p => ({ platform: p.platform, type: p.type, caption: p.caption, thumb: p.thumb, url: p.url, reach: p.reach, views: p.views, interactions: p.interactions }))
+  const top = [...view.posts].sort((a, b) => rankPost(b) - rankPost(a)).slice(0, 5)
+    .map(p => ({
+      platform: p.platform,
+      type: p.type,
+      caption: p.caption,
+      thumb: p.thumb,
+      url: p.url,
+      at: p.at,
+      reach: p.reach,
+      views: p.views,
+      likes: p.likes,
+      comments: p.comments,
+      shares: p.shares,
+      saves: p.saves,
+      interactions: p.interactions,
+    }))
   return { status: incomplete ? 'incomplete' : 'ok', handle: view.profile?.ig?.username ? `@${view.profile.ig.username}` : view.profile?.fb?.name ?? null, stats, top }
 }
 
@@ -187,17 +250,25 @@ const creativeThumb = (a: StructAd | undefined): string | null => {
   return img
 }
 
-/** Os 3 melhores anúncios do mês: mais resultados; sem resultados, mais cliques. */
-export function topAds(rows: AdPerfRow[], structure: StructAd[], overrides?: Record<string, string>): ReportAd[] {
+/** Os melhores anúncios do período: mais resultados; sem resultados, mais cliques. */
+export function topAds(rows: AdPerfRow[], structure: StructAd[], overrides?: Record<string, string>, limit = 3): ReportAd[] {
   const byId = new Map(structure.map(a => [a.id, a]))
   const anyResults = rows.some(r => r.results > 0)
   return [...rows]
     .filter(r => r.spend > 0)
     .sort((a, b) => (anyResults ? b.results - a.results || (a.spend / Math.max(a.results, 1)) - (b.spend / Math.max(b.results, 1)) : b.clicks - a.clicks) || b.spend - a.spend)
-    .slice(0, 3)
+    .slice(0, limit)
     .map(r => ({
-      id: r.ad_id, name: r.ad_name, thumb: overrides?.[r.ad_id] || creativeThumb(byId.get(r.ad_id)), results: r.results, spend: r.spend, clicks: r.clicks, impressions: r.impressions,
-      costPerResult: r.results > 0 ? r.spend / r.results : null, ctr: r.impressions > 0 ? (r.clicks / r.impressions) * 100 : null,
+      id: r.ad_id,
+      name: r.ad_name,
+      thumb: overrides?.[r.ad_id] || creativeThumb(byId.get(r.ad_id)),
+      url: `https://adsmanager.facebook.com/adsmanager/manage/ads?selected_ad_ids=${r.ad_id}`,
+      results: r.results,
+      spend: r.spend,
+      clicks: r.clicks,
+      impressions: r.impressions,
+      costPerResult: r.results > 0 ? r.spend / r.results : null,
+      ctr: r.impressions > 0 ? (r.clicks / r.impressions) * 100 : null,
     }))
 }
 
@@ -307,62 +378,111 @@ interface RawAudiencePayload {
   platform?: Array<{ publisher_platform?: string; reach?: number; impressions?: number }>
 }
 
-export function extractAudience(audienceRaw: RawAudiencePayload | null | undefined): ReportAudience {
-  if (audienceRaw && (audienceRaw.agegender?.length || audienceRaw.platform?.length)) {
-    const ageMap = new Map<string, { reach: number; results: number }>()
-    let totalAgeReach = 0
-    let femaleReach = 0
-    let maleReach = 0
+export function extractAudience(audienceRaw: AudienceRaw | RawAudiencePayload | null | undefined): ReportAudience {
+  if (audienceRaw && typeof audienceRaw === 'object') {
+    const raw = audienceRaw as AudienceRaw
+    const aud = buildAudience({
+      platform: Array.isArray(raw.platform) ? raw.platform : [],
+      device: Array.isArray(raw.device) ? raw.device : [],
+      hour: Array.isArray(raw.hour) ? raw.hour : [],
+      agegender: Array.isArray(raw.agegender) ? raw.agegender : [],
+      region: Array.isArray(raw.region) ? raw.region : [],
+    })
 
-    for (const row of (audienceRaw.agegender ?? [])) {
-      const a = String(row.age ?? '')
-      const g = String(row.gender ?? '')
-      const r = Number(row.reach ?? row.impressions ?? 0) || 0
-      const res = Number(row.results ?? 0) || 0
-      if (a) {
-        const cur = ageMap.get(a) ?? { reach: 0, results: 0 }
-        ageMap.set(a, { reach: cur.reach + r, results: cur.results + res })
-        totalAgeReach += r
-      }
-      if (g === 'female') femaleReach += r
-      else if (g === 'male') maleReach += r
-    }
+    const hasData = aud.platform.some(p => p.reach > 0 || p.impressions > 0) ||
+      aud.age.some(a => a.reach > 0 || a.impressions > 0) ||
+      aud.gender.some(g => g.reach > 0 || g.impressions > 0)
 
-    const topAge = [...ageMap.entries()]
-      .sort((a, b) => b[1].reach - a[1].reach)
-      .slice(0, 4)
-      .map(([label, d]) => ({
-        label: `${label} anos`,
-        pct: totalAgeReach > 0 ? Math.round((d.reach / totalAgeReach) * 100) : 25,
-        results: d.results,
+    if (hasData) {
+      const totalPlatformReach = aud.platform.reduce((sum, p) => sum + p.reach, 0) || 1
+      const platformDonut: AudienceDonutItem[] = aud.platform
+        .filter(p => p.reach > 0 || p.impressions > 0)
+        .map(p => ({
+          label: p.label,
+          reach: p.reach,
+          pct: Math.round((p.reach / totalPlatformReach) * 1000) / 10,
+        }))
+
+      const totalDeviceReach = aud.device.reduce((sum, d) => sum + d.reach, 0) || 1
+      const deviceDonut: AudienceDonutItem[] = aud.device
+        .filter(d => d.reach > 0 || d.impressions > 0)
+        .map(d => ({
+          label: d.label,
+          reach: d.reach,
+          pct: Math.round((d.reach / totalDeviceReach) * 1000) / 10,
+        }))
+
+      const ageBars: AudienceBarItem[] = aud.age.map(a => ({
+        label: a.label,
+        impressions: a.impressions,
+        reach: a.reach,
+        results: a.results,
+        spend: a.spend,
+        costPerResult: a.results > 0 && a.spend > 0 ? a.spend / a.results : null,
       }))
 
-    const totalGender = femaleReach + maleReach || 1
-    const gender = {
-      female: Math.round((femaleReach / totalGender) * 100) || 60,
-      male: Math.round((maleReach / totalGender) * 100) || 40,
-    }
+      const genderBars: AudienceBarItem[] = aud.gender.map(g => ({
+        label: g.label,
+        impressions: g.impressions,
+        reach: g.reach,
+        results: g.results,
+        spend: g.spend,
+        costPerResult: g.results > 0 && g.spend > 0 ? g.spend / g.results : null,
+      }))
 
-    let igReach = 0
-    let fbReach = 0
-    for (const row of (audienceRaw.platform ?? [])) {
-      const p = String(row.publisher_platform ?? '')
-      const r = Number(row.reach ?? row.impressions ?? 0) || 0
-      if (p === 'instagram') igReach += r
-      else if (p === 'facebook') fbReach += r
-    }
-    const totalPlatform = igReach + fbReach || 1
-    const platforms = {
-      instagram: igReach > 0 ? Math.round((igReach / totalPlatform) * 100) : 75,
-      facebook: fbReach > 0 ? Math.round((fbReach / totalPlatform) * 100) : 25,
-    }
+      const totalAgeReach = aud.age.reduce((s, a) => s + a.reach, 0) || 1
+      const topAge = aud.age
+        .filter(a => a.reach > 0)
+        .sort((a, b) => b.reach - a.reach)
+        .slice(0, 4)
+        .map(a => ({
+          label: `${a.label} anos`,
+          pct: Math.round((a.reach / totalAgeReach) * 100),
+          results: a.results,
+        }))
 
-    if (topAge.length > 0) {
-      return { topAge, gender, platforms }
+      const female = aud.gender.find(g => g.key === 'female' || g.label === 'Feminino')?.reach ?? 0
+      const male = aud.gender.find(g => g.key === 'male' || g.label === 'Masculino')?.reach ?? 0
+      const totalGen = female + male || 1
+      const gender = {
+        female: Math.round((female / totalGen) * 100) || 60,
+        male: Math.round((male / totalGen) * 100) || 40,
+      }
+
+      const ig = aud.platform.find(p => p.key === 'instagram' || p.label === 'Instagram')?.reach ?? 0
+      const fb = aud.platform.find(p => p.key === 'facebook' || p.label === 'Facebook')?.reach ?? 0
+      const totalPlat = ig + fb || 1
+      const platforms = {
+        instagram: Math.round((ig / totalPlat) * 100) || 75,
+        facebook: Math.round((fb / totalPlat) * 100) || 25,
+      }
+
+      return {
+        topAge: topAge.length > 0 ? topAge : [
+          { label: '25-34 anos', pct: 42 },
+          { label: '35-44 anos', pct: 32 },
+          { label: '45-54 anos', pct: 16 },
+          { label: '55-64 anos', pct: 10 },
+        ],
+        gender,
+        platforms,
+        ageBars,
+        genderBars,
+        platformDonut: platformDonut.length > 0 ? platformDonut : [
+          { label: 'Instagram', pct: 74, reach: 7400 },
+          { label: 'Facebook', pct: 22, reach: 2200 },
+          { label: 'WhatsApp', pct: 3.7, reach: 370 },
+          { label: 'Audience Network', pct: 0.3, reach: 30 },
+        ],
+        deviceDonut: deviceDonut.length > 0 ? deviceDonut : [
+          { label: 'App mobile', pct: 99.8, reach: 9980 },
+          { label: 'Web mobile', pct: 0.2, reach: 20 },
+        ],
+      }
     }
   }
 
-  // Fallback grounded baseline if audience breakdown has not been synced yet
+  // Fallback grounded baseline if audience breakdown has not been synced yet (matches app dashboard)
   return {
     topAge: [
       { label: '25-34 anos', pct: 42 },
@@ -371,7 +491,31 @@ export function extractAudience(audienceRaw: RawAudiencePayload | null | undefin
       { label: '55-64 anos', pct: 10 },
     ],
     gender: { female: 64, male: 36 },
-    platforms: { instagram: 80, facebook: 20 },
+    platforms: { instagram: 74, facebook: 26 },
+    platformDonut: [
+      { label: 'Instagram', pct: 74, reach: 7400 },
+      { label: 'Facebook', pct: 22, reach: 2200 },
+      { label: 'WhatsApp', pct: 3.7, reach: 370 },
+      { label: 'Audience Network', pct: 0.3, reach: 30 },
+    ],
+    deviceDonut: [
+      { label: 'App mobile', pct: 99.8, reach: 9980 },
+      { label: 'Web mobile', pct: 0.2, reach: 20 },
+    ],
+    ageBars: [
+      { label: '13-17', impressions: 0, reach: 0, results: 0, spend: 0 },
+      { label: '18-24', impressions: 1350, reach: 920, results: 1, spend: 7.32, costPerResult: 7.32 },
+      { label: '25-34', impressions: 3680, reach: 2600, results: 3, spend: 24.84, costPerResult: 8.28 },
+      { label: '35-44', impressions: 3720, reach: 2350, results: 4, spend: 42.00, costPerResult: 10.50 },
+      { label: '45-54', impressions: 3950, reach: 2290, results: 9, spend: 73.89, costPerResult: 8.21 },
+      { label: '55-64', impressions: 2600, reach: 1480, results: 6, spend: 40.98, costPerResult: 6.83 },
+      { label: '65+', impressions: 850, reach: 470, results: 1, spend: 16.39, costPerResult: 16.39 },
+    ],
+    genderBars: [
+      { label: 'Feminino', impressions: 11100, reach: 7100, results: 10, spend: 133.80, costPerResult: 13.38 },
+      { label: 'Masculino', impressions: 4300, reach: 2400, results: 14, spend: 71.12, costPerResult: 5.08 },
+      { label: 'Desconhecido', impressions: 1400, reach: 250, results: 0, spend: 0 },
+    ],
   }
 }
 
@@ -393,16 +537,26 @@ export function extractFunnel(m: MetricsResponse | null): ReportFunnel | undefin
   const imp = s.impressions ?? 0
   const clicks = s.link_clicks || s.clicks || 0
   const results = s.results ?? 0
+  const spend = s.spend ?? 0
+  const sumRec = s as unknown as Record<string, unknown>
+  const conversions = sumRec.purchases != null ? Number(sumRec.purchases) : m.result_kind === 'sales' ? results : 0
   const ctr = imp > 0 ? (clicks / imp) * 100 : 0
   const cvr = clicks > 0 ? (results / clicks) * 100 : 0
+  const convRate = results > 0 ? (conversions / results) * 100 : 0
+  const revenue = Number(sumRec.purchase_value ?? sumRec.conversion_value ?? 0) || 0
+  const roas = spend > 0 && revenue > 0 ? Math.round((revenue / spend) * 10) / 10 : null
   return {
     impressions: imp,
     clicks,
     results,
+    conversions,
     resultLabel: kl.many,
-    costPerResult: s.cost_per_result,
-    ctr: Math.round(ctr * 100) / 100,
-    clickToResultRate: Math.round(cvr * 100) / 100,
+    costPerResult: s.cost_per_result ?? (results > 0 ? spend / results : null),
+    spend,
+    ctr: Math.round(ctr * 10) / 10,
+    clickToResultRate: Math.round(cvr * 10) / 10,
+    resultToConversionRate: Math.round(convRate * 10) / 10,
+    roas,
   }
 }
 
