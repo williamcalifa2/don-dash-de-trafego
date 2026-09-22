@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const opts = { accountId: tenant.adAccountId, clientId: tenant.clientId, purpose: 'painel:anuncios' }
 
   // Uma chamada só: anúncios com criativo e números do período aninhados (sem uma chamada por anúncio).
-  const fields = `id,name,status,creative{id,name,thumbnail_url,image_url,video_id,body,title,object_type},insights.date_preset(${datePreset}){spend,impressions,clicks,ctr,actions,cost_per_action_type}`
+  const fields = `id,name,status,creative{id,name,thumbnail_url,image_url,video_id,body,title,object_type},insights.date_preset(${datePreset}){spend,impressions,clicks,ctr,frequency,actions,cost_per_action_type}`
   const res = await legacyGet<{ data?: Array<Record<string, unknown>> }>(`${id}/ads?fields=${fields}&limit=50`, opts)
   if (!res.ok) return NextResponse.json({ error: errMsg(res, 'API error') }, { status: 400 })
   const ads = res.data.data ?? []
@@ -59,6 +59,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       spend,
       impressions: Number(ins.impressions ?? 0),
       clicks: Number(ins.clicks ?? 0),
+      ctr: Number(ins.ctr ?? 0),
+      frequency: Number(ins.frequency ?? 1),
       leads: leads ? Number(leads.value) : 0,
       cpl: cpl ? Number(cpl.value) : null,
       results: getResults(actions),

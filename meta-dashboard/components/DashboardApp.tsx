@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Download, FileBarChart, RefreshCw, TrendingUp, AlertCircle, Moon, Sun, Settings2, Tv, Bell, BellOff, LogOut, Shield, ChevronDown } from 'lucide-react'
+import { Download, FileBarChart, RefreshCw, TrendingUp, AlertCircle, Moon, Sun, Settings2, Tv, Bell, BellOff, LogOut, Shield, ChevronDown, CalendarDays } from 'lucide-react'
 import { MetricTile } from '@/components/MetricTile'
 import { CampaignTable } from '@/components/CampaignTable'
 import { DailyChart } from '@/components/DailyChart'
@@ -14,6 +14,8 @@ import { RetornoTab } from '@/components/RetornoTab'
 import { ReportTab } from '@/components/ReportTab'
 import { ReportStudio } from '@/components/ReportStudio'
 import { LeadToast } from '@/components/LeadToast'
+import { BudgetPacingCard } from '@/components/BudgetPacingCard'
+import { CalendarViewModal } from '@/components/CalendarViewModal'
 import { LeadsProvider, useLeadsData } from '@/lib/leadsContext'
 import { useLeadAlerts } from '@/lib/useLeadAlerts'
 import { isStale } from '@/lib/leadUtils'
@@ -114,6 +116,7 @@ function Dashboard() {
   const [monthlyMode, setMonthlyMode] = useState<ReportMode>('standard')
   const [tab, setTab] = useState<'metrics' | 'funnel' | 'audience' | 'organic' | 'retorno' | 'simulator' | 'leads'>('metrics')
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [calendarOpen, setCalendarOpen] = useState(false)
   const [tv, setTv] = useState(false)
   const [me, setMe] = useState<{ slug: string; name: string; logoUrl: string | null; platforms?: PlatformKey[]; authEnabled: boolean; admin?: boolean; role?: string | null } | null>(null)
   const [openLeadId, setOpenLeadId] = useState<string | null>(null)
@@ -306,6 +309,17 @@ function Dashboard() {
           </div>
 
           <div className="hdr-sep" style={{ width: 1, height: 24, background: 'var(--border)' }} />
+
+          <button
+            onClick={() => setCalendarOpen(true)}
+            title="Abrir Calendário de Performance"
+            aria-label="Abrir Calendário de Performance"
+            className="btn btn-outline btn-sm"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <CalendarDays size={16} strokeWidth={1.75} />
+            <span>Calendário</span>
+          </button>
 
           <button onClick={() => setPickerOpen(true)} title="Personalizar métricas" aria-label="Personalizar métricas" className="btn btn-outline btn-icon btn-sm">
             <Settings2 size={16} strokeWidth={1.75} />
@@ -545,6 +559,16 @@ function Dashboard() {
       )}
 
 
+      {/* Budget Pacing */}
+      {!isLoading && data?.campaigns && s && tab === 'metrics' && (
+        <BudgetPacingCard
+          campaigns={data.campaigns}
+          currentSpend={s.spend}
+          currency={currency}
+          clientSlug={me?.slug}
+        />
+      )}
+
       {/* Campaigns table */}
       {!isLoading && data?.campaigns && tab === 'metrics' && (
         <div className="card" style={{ overflow: 'hidden' }}>
@@ -597,6 +621,17 @@ function Dashboard() {
             setSelectedMetrics(keys)
             setPickerOpen(false)
           }}
+        />
+      )}
+
+      {/* Calendar View Modal */}
+      {calendarOpen && (
+        <CalendarViewModal
+          onClose={() => setCalendarOpen(false)}
+          daily={d}
+          currency={currency}
+          kind={kind}
+          leads={leadsApi.leads}
         />
       )}
     </div>

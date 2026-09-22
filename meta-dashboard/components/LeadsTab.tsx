@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Plus, RefreshCw, Search, Users, TrendingUp, DollarSign, StickyNote, Clock } from 'lucide-react'
+import { Plus, RefreshCw, Search, Users, TrendingUp, DollarSign, StickyNote, Clock, LayoutGrid, Table as TableIcon, MessageSquare } from 'lucide-react'
 import { useLeadsData as useLeads } from '@/lib/leadsContext'
 import type { Lead, LeadStatus } from '@/lib/leadTypes'
 import { LeadDrawer } from './LeadDrawer'
 import { NewLeadModal } from './NewLeadModal'
+import { LeadsKanban } from './LeadsKanban'
 import { isStale, timeAgo, STALE_HOURS, waLink, fmtPhone } from '@/lib/leadUtils'
 
 export const STATUS_META: Record<LeadStatus, { dot: string; bg: string }> = {
@@ -145,6 +146,19 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
   const [filterStatus, setFilterStatus] = useState<LeadStatus | 'Todos' | 'Parados'>('Todos')
   const [newOpen, setNewOpen] = useState(false)
   const [drawer,       setDrawer]       = useState<{ id: string; focus: 'motivo' | 'valor' | null } | null>(null)
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table')
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('leads_view_mode')
+      if (saved === 'kanban' || saved === 'table') setViewMode(saved)
+    } catch {}
+  }, [])
+
+  const handleSetViewMode = (mode: 'table' | 'kanban') => {
+    setViewMode(mode)
+    try { localStorage.setItem('leads_view_mode', mode) } catch {}
+  }
 
   useEffect(() => {
     if (openId) { setDrawer({ id: openId, focus: null }); onOpenConsumed?.() }
@@ -246,6 +260,48 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
           ))}
         </div>
 
+        {/* View Mode Switcher: Tabela / Kanban */}
+        <div style={{ display: 'inline-flex', background: 'var(--bg-card2)', padding: 2, borderRadius: 8, border: '1px solid var(--border-soft)' }}>
+          <button
+            type="button"
+            onClick={() => handleSetViewMode('table')}
+            className="btn btn-ghost btn-sm"
+            style={{
+              padding: '4px 8px',
+              fontSize: 12,
+              background: viewMode === 'table' ? 'var(--bg-card)' : 'transparent',
+              color: viewMode === 'table' ? 'var(--text-1)' : 'var(--text-3)',
+              boxShadow: viewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              borderRadius: 6,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+            title="Visualização em Tabela"
+          >
+            <TableIcon size={14} /> Tabela
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSetViewMode('kanban')}
+            className="btn btn-ghost btn-sm"
+            style={{
+              padding: '4px 8px',
+              fontSize: 12,
+              background: viewMode === 'kanban' ? 'var(--bg-card)' : 'transparent',
+              color: viewMode === 'kanban' ? 'var(--text-1)' : 'var(--text-3)',
+              boxShadow: viewMode === 'kanban' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              borderRadius: 6,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+            title="Visualização Kanban (Pipeline)"
+          >
+            <LayoutGrid size={14} /> Kanban
+          </button>
+        </div>
+
         {!readOnly && <button onClick={() => setNewOpen(true)} className="btn btn-soft btn-sm">
           <Plus size={16} strokeWidth={1.75} /> Novo lead
         </button>}
@@ -255,7 +311,17 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
         </button>
       </div>
 
-      {/* Tabela */}
+      {viewMode === 'kanban' ? (
+        <div style={{ marginTop: 14 }}>
+          <LeadsKanban
+            leads={filtered}
+            onSelectLead={lead => setDrawer({ id: lead.id, focus: null })}
+            onChangeStatus={(lead, st) => changeStatus(lead, st)}
+            readOnly={readOnly}
+          />
+        </div>
+      ) : (
+      /* Tabela */
       <div style={{
         overflowX: 'auto', border: '1px solid var(--border)',
         borderTop: 'none', borderRadius: '0 0 16px 16px',
@@ -425,6 +491,7 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
           </div>
         </div>
       </div>
+      )}
 
       {newOpen && <NewLeadModal onClose={() => setNewOpen(false)} />}
       {drawerLead && (

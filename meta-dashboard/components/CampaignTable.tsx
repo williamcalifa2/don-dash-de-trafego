@@ -3,10 +3,11 @@
 import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
 import { ConversionChips } from '@/components/ConversionsCard'
 import { Fragment, useState, useCallback } from 'react'
-import { ChevronRight, ExternalLink, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { ChevronRight, ExternalLink, X, ArrowUpDown, ArrowUp, ArrowDown, Activity } from 'lucide-react'
 import { resolveDelivery, type CampaignRow, type ConversionItem } from '@/lib/meta'
 import { apiFetch } from '@/lib/apiFetch'
 import { previewSrc } from '@/lib/adPreview'
+import { analyzeFatigue } from '@/lib/creativeFatigue'
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; dot: string }> = {
   ACTIVE: { label: 'Ativo', color: 'var(--green)', bg: 'var(--green-soft)', dot: 'var(--green)' },
@@ -46,7 +47,7 @@ interface AdSet {
 
 interface Ad {
   id: string; name: string; status: string; thumb: string; creative_name: string
-  object_type: string; spend: number; impressions: number; clicks: number; leads: number; cpl: number | null; results?: number; cost_per_result?: number | null
+  object_type: string; spend: number; impressions: number; clicks: number; ctr?: number; frequency?: number; leads: number; cpl: number | null; results?: number; cost_per_result?: number | null
   conversions?: ConversionItem[]
 }
 
@@ -347,6 +348,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                                                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                                                   {ads.map(ad => {
                                                     const adDelivery = resolveDelivery(ad, kind)
+                                                    const fatigue = analyzeFatigue(ad)
                                                     return (
                                                       <div key={ad.id}
                                                         onClick={async () => {
@@ -361,7 +363,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                                                           setPreviewLoading(false)
                                                         }}
                                                         className="card card-interactive"
-                                                        style={{ width: 148, overflow: 'hidden' }}
+                                                        style={{ width: 154, overflow: 'hidden' }}
                                                       >
                                                         <div style={{ height: 80, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                                                           {ad.thumb ? (
@@ -372,17 +374,32 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                                                         </div>
                                                         <div style={{ padding: 8 }}>
                                                           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ad.name}</div>
-                                                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, alignItems: 'center' }}>
+                                                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, alignItems: 'center', gap: 4 }}>
                                                             <StatusBadge status={ad.status} />
-                                                            {adDelivery.count > 0 && (
+                                                            <span
+                                                              style={{
+                                                                fontSize: 9,
+                                                                fontWeight: 700,
+                                                                padding: '1px 5px',
+                                                                borderRadius: 4,
+                                                                background: fatigue.bg,
+                                                                color: fatigue.color,
+                                                              }}
+                                                              title={`Saúde: ${fatigue.label}\nFreq: ${fatigue.frequency.toFixed(2)}x | CTR: ${fatigue.ctr.toFixed(2)}%`}
+                                                            >
+                                                              {fatigue.shortLabel}
+                                                            </span>
+                                                          </div>
+                                                          {adDelivery.count > 0 && (
+                                                            <div style={{ marginTop: 4, textAlign: 'right' }}>
                                                               <span
                                                                 style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)' }}
                                                                 title={`${adDelivery.count} ${adDelivery.label}`}
                                                               >
                                                                 {adDelivery.count} {adDelivery.badge}
                                                               </span>
-                                                            )}
-                                                          </div>
+                                                            </div>
+                                                          )}
                                                         </div>
                                                       </div>
                                                     )
@@ -451,26 +468,60 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
               {(() => {
                 const modalDelivery = resolveDelivery(creativeModal, kind)
                 return (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                    {[
-                      { label: 'Investido', value: fmt(creativeModal.spend, currency) },
-                      { label: 'Impressões', value: creativeModal.impressions.toLocaleString('pt-BR') },
-                      {
-                        label: modalDelivery.label ? (modalDelivery.label.charAt(0).toUpperCase() + modalDelivery.label.slice(1)) : L.many,
-                        value: modalDelivery.count > 0 ? modalDelivery.count.toLocaleString('pt-BR') : '—',
-                      },
-                      { label: 'Cliques', value: String(creativeModal.clicks || '—') },
-                      {
-                        label: modalDelivery.costLabel ? `Custo (${modalDelivery.costLabel})` : L.cost,
-                        value: modalDelivery.cost ? fmtSmall(modalDelivery.cost, currency) : '—',
-                      },
-                    ].map(m => (
-                      <div key={m.label} style={{ background: 'var(--bg-card2)', borderRadius: 12, padding: 12 }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)', marginBottom: 4 }}>{m.label}</div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>{m.value}</div>
-                      </div>
-                    ))}
-                  </div>
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                      {[
+                        { label: 'Investido', value: fmt(creativeModal.spend, currency) },
+                        { label: 'Impressões', value: creativeModal.impressions.toLocaleString('pt-BR') },
+                        {
+                          label: modalDelivery.label ? (modalDelivery.label.charAt(0).toUpperCase() + modalDelivery.label.slice(1)) : L.many,
+                          value: modalDelivery.count > 0 ? modalDelivery.count.toLocaleString('pt-BR') : '—',
+                        },
+                        { label: 'Cliques', value: String(creativeModal.clicks || '—') },
+                        {
+                          label: modalDelivery.costLabel ? `Custo (${modalDelivery.costLabel})` : L.cost,
+                          value: modalDelivery.cost ? fmtSmall(modalDelivery.cost, currency) : '—',
+                        },
+                      ].map(m => (
+                        <div key={m.label} style={{ background: 'var(--bg-card2)', borderRadius: 12, padding: 12 }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)', marginBottom: 4 }}>{m.label}</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>{m.value}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Diagnóstico de Fadiga do Criativo */}
+                    {(() => {
+                      const f = analyzeFatigue(creativeModal)
+                      return (
+                        <div
+                          style={{
+                            marginTop: 14,
+                            padding: '12px 14px',
+                            borderRadius: 12,
+                            background: f.bg,
+                            border: `1px solid ${f.color}40`,
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: f.color }}>
+                              <span style={{ width: 8, height: 8, borderRadius: '50%', background: f.dot }} />
+                              Diagnóstico: {f.label}
+                            </div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: f.color }}>
+                              Freq: {f.frequency.toFixed(2)}x · CTR: {f.ctr.toFixed(2)}%
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-1)', lineHeight: 1.4, marginBottom: 6 }}>
+                            {f.diagnosis}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-2)', lineHeight: 1.4, borderTop: '1px solid var(--border-soft)', paddingTop: 6 }}>
+                            <strong>Recomendação:</strong> {f.recommendation}
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </>
                 )
               })()}
             </div>
