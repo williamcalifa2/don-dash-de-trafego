@@ -152,7 +152,7 @@ function Dashboard() {
   }, [])
 
   useEffect(() => {
-    const iconUrl = me?.logoUrl || '/api/brand/icon'
+    const iconUrl = me?.logoUrl || '/icon-32.png'
     const existing = document.querySelectorAll<HTMLLinkElement>("link[rel*='icon']")
     if (existing.length > 0) {
       existing.forEach(link => {

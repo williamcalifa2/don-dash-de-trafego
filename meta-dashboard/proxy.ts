@@ -4,7 +4,28 @@ import { authEnabled, readSession, SESSION_COOKIE } from './lib/auth'
 import { ADMIN_SLUG, VIEW_COOKIE } from './lib/admin'
 import { hostSlug, SLUG_RE } from './lib/host'
 
-const PUBLIC_PREFIXES = ['/login', '/admin', '/api/auth/', '/api/admin/', '/api/webhooks/', '/api/cron/', '/api/internal/', '/api/logo/', '/api/brand/', '/platforms/', '/privacidade', '/exclusao-de-dados']
+const PUBLIC_PREFIXES = [
+  '/login',
+  '/admin',
+  '/api/auth/',
+  '/api/admin/',
+  '/api/webhooks/',
+  '/api/cron/',
+  '/api/internal/',
+  '/api/logo/',
+  '/api/brand/',
+  '/platforms/',
+  '/privacidade',
+  '/exclusao-de-dados',
+  '/icon-32.png',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon.png',
+  '/apple-icon.png',
+  '/apple-touch-icon.png',
+  '/brand-icon.png',
+  '/favicon.ico',
+]
 
 export async function proxy(req: NextRequest) {
   if (!authEnabled()) return NextResponse.next()
@@ -69,5 +90,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:ico|png|svg|jpg|jpeg|webp|gif)).*)'],
 }
