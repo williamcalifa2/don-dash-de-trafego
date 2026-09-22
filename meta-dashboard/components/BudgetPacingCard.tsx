@@ -1,7 +1,5 @@
-'use client'
-
 import { useState, useEffect } from 'react'
-import { DollarSign, TrendingUp, AlertTriangle, CheckCircle2, ArrowUpRight, ArrowDownRight, Edit3, Check } from 'lucide-react'
+import { DollarSign, TrendingUp, AlertTriangle, CheckCircle2, ArrowUpRight, ArrowDownRight, Edit3, Check, ChevronDown } from 'lucide-react'
 import type { CampaignRow } from '@/lib/meta'
 
 interface BudgetPacingCardProps {
@@ -38,6 +36,24 @@ export function BudgetPacingCard({ campaigns, currentSpend, currency, clientSlug
   const [targetBudget, setTargetBudget] = useState<number>(autoTarget)
   const [isEditing, setIsEditing] = useState(false)
   const [editInput, setEditInput] = useState('')
+  const [isCollapsed, setIsCollapsed] = useState(true)
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('budget_pacing_collapsed')
+      if (saved !== null) {
+        setIsCollapsed(saved === 'true')
+      }
+    } catch {}
+  }, [])
+
+  const toggleCollapsed = () => {
+    setIsCollapsed(prev => {
+      const next = !prev
+      try { localStorage.setItem('budget_pacing_collapsed', String(next)) } catch {}
+      return next
+    })
+  }
 
   useEffect(() => {
     try {
@@ -99,61 +115,101 @@ export function BudgetPacingCard({ campaigns, currentSpend, currency, clientSlug
     <div
       className="card"
       style={{
-        padding: '18px 20px',
+        padding: isCollapsed ? '14px 18px' : '18px 20px',
         marginBottom: 20,
         boxShadow: 'var(--shadow-soft)',
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderRadius: 16,
+        transition: 'padding 0.2s ease, box-shadow 0.2s ease',
       }}
     >
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+      {/* Header (clickable to collapse/expand) */}
+      <div
+        onClick={toggleCollapsed}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 12,
+          cursor: 'pointer',
+          userSelect: 'none',
+          marginBottom: isCollapsed ? 0 : 16,
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div
             style={{
-              width: 36,
-              height: 36,
+              width: 34,
+              height: 34,
               borderRadius: 10,
               background: 'var(--accent-soft)',
               color: 'var(--accent)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              flexShrink: 0,
             }}
           >
-            <TrendingUp size={20} />
+            <TrendingUp size={18} />
           </div>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>
-              Controle de Ritmo de Verba (Budget Pacing)
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>Controle de Ritmo de Verba (Budget Pacing)</span>
+              {isCollapsed && (
+                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-2)' }}>
+                  · {fmt(currentSpend, currency)} de {fmt(targetBudget, currency)} ({spendPct.toFixed(0)}%)
+                </span>
+              )}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
-              Dia {currentDay} de {totalDays} ({daysRemaining} dias restantes no mês) · Progresso temporal: {monthProgressPct}%
+            <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+              Dia {currentDay} de {totalDays} ({daysRemaining} dias restantes no mês) · Progresso: {monthProgressPct}%
             </div>
           </div>
         </div>
 
-        {/* Pacing Badge */}
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '6px 12px',
-            borderRadius: 20,
-            background: statusBg,
-            color: statusColor,
-            fontSize: 12,
-            fontWeight: 700,
-          }}
-        >
-          <StatusIcon size={16} />
-          <span>{statusText}</span>
+        {/* Right side: Pacing Badge + Chevron */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 10px',
+              borderRadius: 20,
+              background: statusBg,
+              color: statusColor,
+              fontSize: 11,
+              fontWeight: 700,
+            }}
+          >
+            <StatusIcon size={14} />
+            <span>{statusText}</span>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-ghost btn-icon btn-sm"
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              color: 'var(--text-2)',
+              transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)',
+              transition: 'transform 0.2s ease',
+            }}
+            title={isCollapsed ? 'Expandir Ritmo de Verba' : 'Recolher Ritmo de Verba'}
+            aria-expanded={!isCollapsed}
+          >
+            <ChevronDown size={16} />
+          </button>
         </div>
       </div>
 
-      {/* Progress Bar with markers */}
+      {!isCollapsed && (
+        <>
+          {/* Progress Bar with markers */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>
           <span>Investido: {fmt(currentSpend, currency)} ({spendPct.toFixed(1)}%)</span>
@@ -311,7 +367,9 @@ export function BudgetPacingCard({ campaigns, currentSpend, currency, clientSlug
           </div>
         </div>
       </div>
-    </div>
-  )
+    </>
+  )}
+</div>
+)
 }
 
