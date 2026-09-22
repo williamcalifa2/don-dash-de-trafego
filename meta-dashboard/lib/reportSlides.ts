@@ -273,7 +273,7 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
     els: [
       ...corners(false),
       title('Evolução do Período', 56, 60, 'center'),
-      { t: 'text', x: 60, y: 140, w: 1160, h: 30, text: `Histórico diário de investimento (R$) e ${paid.resultLabel.toLowerCase()} gerados no período.`, size: 16, weight: 500, color: P.ink, align: 'center' },
+      { t: 'text', x: 60, y: 140, w: 1160, h: 30, text: `Histórico diário de investimento (R$) e ${paid.resultLabel.toLowerCase()} gerados no período.`, size: 16, weight: 500, color: P.ink, align: 'center' } as El,
       ...(hasDaily ? [
         {
           t: 'chart' as const,
@@ -287,7 +287,7 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
           colors: ['6F6DF7', '16A34A'],
         }
       ] : [
-        { t: 'text' as const, x: 160, y: 320, w: 960, h: 100, text: 'A série de dados diários ainda não foi sincronizada para este período.', size: 18, weight: 500, color: P.soft, align: 'center' }
+        { t: 'text', x: 160, y: 320, w: 960, h: 100, text: 'A série de dados diários ainda não foi sincronizada para este período.', size: 18, weight: 500, color: P.soft, align: 'center' } as El
       ]),
       ...band(false),
     ],
@@ -349,7 +349,7 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
     els: [
       ...corners(false),
       title('Melhores Campanhas', 56, 60, 'center'),
-      { t: 'text', x: 60, y: 140, w: 1160, h: 30, text: `Desempenho detalhado das campanhas com maior volume no período.`, size: 16, weight: 500, color: P.ink, align: 'center' },
+      { t: 'text', x: 60, y: 140, w: 1160, h: 30, text: `Desempenho detalhado das campanhas com maior volume no período.`, size: 16, weight: 500, color: P.ink, align: 'center' } as El,
       ...(hasCamps ? [
         {
           t: 'table' as const,
@@ -366,7 +366,7 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
           ]),
         }
       ] : [
-        { t: 'text' as const, x: 160, y: 320, w: 960, h: 100, text: 'Sem campanhas ativas registradas neste período.', size: 18, weight: 500, color: P.soft, align: 'center' }
+        { t: 'text', x: 160, y: 320, w: 960, h: 100, text: 'Sem campanhas ativas registradas neste período.', size: 18, weight: 500, color: P.soft, align: 'center' } as El
       ]),
       ...band(false),
     ],
@@ -378,7 +378,7 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
     els: [
       ...corners(false),
       title('Criativos Campeões', 76, 50),
-      { t: 'text', x: 60, y: 146, w: 1160, h: 26, text: `Anúncios que mais converteram ${is7d ? 'na semana' : 'no mês'} no gerenciador de anúncios da Meta.`, size: 16, weight: 500, color: P.ink },
+      { t: 'text', x: 60, y: 146, w: 1160, h: 26, text: `Anúncios que mais converteram ${is7d ? 'na semana' : 'no mês'} no gerenciador de anúncios da Meta.`, size: 16, weight: 500, color: P.ink } as El,
       ...phones(paid.top.map(a => ({
         thumb: proxied(a.thumb),
         stats: [[paid.resultLabel, compact(a.results)], ['Investimento', a.spend ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: d.currency }).format(a.spend) : '—'], [a.costPerResult != null ? 'Custo por resultado' : 'CTR', a.costPerResult != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: d.currency }).format(a.costPerResult) : pct(a.ctr)]] as Array<[string, string]>,

@@ -298,10 +298,10 @@ export function generateSmartAnalysis(d: ReportData): { analysis: string; next: 
   }
 
   const freqVal = freq ? parseFloat(freq.value.replace(',', '.')) : 0
-  if (freqVal >= 2.8) {
+  if (freq && freqVal >= 2.8) {
     analysisLines.push(`• Frequência de Exibição: A frequência média atingiu ${freq.value}, sinalizando que o público já foi impactado múltiplas vezes pelos mesmos anúncios.`)
     nextLines.push(`• Renovação de Criativos: Inserir de 2 a 4 novos criativos (revezando vídeos curtos e peças estáticas) para reduzir o desgaste visual.`)
-  } else if (freqVal > 0) {
+  } else if (freq && freqVal > 0) {
     analysisLines.push(`• Cobertura de Público: A frequência média de ${freq.value} demonstra entrega balanceada, com ampla captura de pessoas novas sem saturação.`)
   }
 

@@ -145,6 +145,7 @@ describe('Construção dos slides (buildSlides)', () => {
         clicks: 2500,
         results: 150,
         resultLabel: 'Leads',
+        costPerResult: 10,
         ctr: 5.0,
         clickToResultRate: 6.0,
       },
@@ -196,11 +197,11 @@ describe('Geração de análise inteligente (generateSmartAnalysis)', () => {
         status: 'ok',
         resultLabel: 'Leads',
         stats: [
-          { label: 'Investimento', value: 'R$ 5.000' },
-          { label: 'Leads', value: '500' },
+          { label: 'Investimento', value: 'R$ 5.000', delta: 5 },
+          { label: 'Leads', value: '500', delta: 10 },
           { label: 'Custo por lead', value: 'R$ 10,00', delta: -12, lowerIsBetter: true },
-          { label: 'Frequência', value: '3,2' },
-          { label: 'CTR', value: '2,1%' },
+          { label: 'Frequência', value: '3,2', delta: null },
+          { label: 'CTR', value: '2,1%', delta: null },
         ],
         top: [
           { id: 'ad1', name: 'Vídeo Gancho A', thumb: null, results: 320, spend: 3000, clicks: 1200, impressions: 50000, costPerResult: 9.37, ctr: 2.4 },
