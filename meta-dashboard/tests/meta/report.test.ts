@@ -85,7 +85,6 @@ describe('Construção dos slides (buildSlides)', () => {
     }
 
     const slides = buildSlides(data, notes)
-    expect(slides).toHaveLength(8)
     expect(slides).toHaveLength(10)
 
     // Capa
@@ -167,7 +166,6 @@ describe('Construção dos slides (buildSlides)', () => {
     }
 
     const standard = buildSlides(data, notes, 'standard')
-    expect(standard).toHaveLength(8)
     expect(standard).toHaveLength(10)
     expect(standard.some(s => s.id === 'audience')).toBe(true)
     expect(standard.some(s => s.id === 'platforms')).toBe(true)
