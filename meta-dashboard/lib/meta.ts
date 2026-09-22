@@ -129,6 +129,7 @@ export function getFormLeads(actions: ActionRow[] | undefined): number {
   return actions ? getAction(actions, 'onsite_conversion.lead_grouped') : 0
 }
 
+/** Leads do site: evento Lead do pixel. Sem o evento específico, usa "lead" só quando não há formulário (evita contar 2x). */
 /** Conversões de captação e cadastro no site que não são lead padrão (cadastros, agendamentos, contatos, candidaturas). */
 export function getOtherWebConversions(actions: ActionRow[] | undefined): number {
   if (!actions) return 0

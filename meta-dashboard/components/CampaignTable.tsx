@@ -9,12 +9,12 @@ import { apiFetch } from '@/lib/apiFetch'
 import { previewSrc } from '@/lib/adPreview'
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; dot: string }> = {
-  ACTIVE:      { label: 'Ativo',       color: 'var(--green)',  bg: 'var(--green-soft)', dot: 'var(--green)' },
-  PAUSED:      { label: 'Pausado',     color: 'var(--red)',    bg: 'var(--red-soft)',   dot: 'var(--red)' },
-  DELETED:     { label: 'Deletado',    color: 'var(--red)',    bg: 'var(--red-soft)',   dot: 'var(--red)' },
-  ARCHIVED:    { label: 'Arquivado',   color: 'var(--text-2)', bg: 'var(--bg-card2)',   dot: 'var(--text-2)' },
-  IN_PROCESS:  { label: 'Aprendizado', color: 'var(--amber)',  bg: 'var(--amber-soft)', dot: 'var(--amber)' },
-  WITH_ISSUES: { label: 'Com erros',   color: 'var(--amber)',  bg: 'var(--amber-soft)', dot: 'var(--amber)' },
+  ACTIVE: { label: 'Ativo', color: 'var(--green)', bg: 'var(--green-soft)', dot: 'var(--green)' },
+  PAUSED: { label: 'Pausado', color: 'var(--red)', bg: 'var(--red-soft)', dot: 'var(--red)' },
+  DELETED: { label: 'Deletado', color: 'var(--red)', bg: 'var(--red-soft)', dot: 'var(--red)' },
+  ARCHIVED: { label: 'Arquivado', color: 'var(--text-2)', bg: 'var(--bg-card2)', dot: 'var(--text-2)' },
+  IN_PROCESS: { label: 'Aprendizado', color: 'var(--amber)', bg: 'var(--amber-soft)', dot: 'var(--amber)' },
+  WITH_ISSUES: { label: 'Com erros', color: 'var(--amber)', bg: 'var(--amber-soft)', dot: 'var(--amber)' },
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -59,17 +59,20 @@ interface CampaignTableProps {
 
 export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kind = 'form' }: CampaignTableProps) {
   const L = KIND_LABELS[kind]
-  const [sortCol, setSortCol]   = useState<SortCol>('spend')
-  const [sortDir, setSortDir]   = useState<SortDir>('desc')
+  // Clientes de site/conversas: as colunas de lead/CPL mostram o resultado real (conversas, leads do site ou resultados).
+  const nRes = (r: { leads: number; results?: number }) => (kind === 'form' ? r.leads : (r.results ?? 0))
+  const cRes = (r: { cpl: number | null; cost_per_result?: number | null }) => (kind === 'form' ? r.cpl : (r.cost_per_result ?? null))
+  const [sortCol, setSortCol] = useState<SortCol>('spend')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [filterStatus, setFilterStatus] = useState<string>('ALL')
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null)
-  const [adsetData, setAdsetData]   = useState<Record<string, AdSet[]>>({})
+  const [adsetData, setAdsetData] = useState<Record<string, AdSet[]>>({})
   const [loadingAdset, setLoadingAdset] = useState<string | null>(null)
   const [expandedAdset, setExpandedAdset] = useState<string | null>(null)
-  const [adsData, setAdsData]   = useState<Record<string, Ad[]>>({})
+  const [adsData, setAdsData] = useState<Record<string, Ad[]>>({})
   const [loadingAds, setLoadingAds] = useState<string | null>(null)
   const [creativeModal, setCreativeModal] = useState<Ad | null>(null)
-  const [previewHtml, setPreviewHtml]     = useState<string | null>(null)
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
 
   const handleSort = (col: SortCol) => {
@@ -86,7 +89,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
       const res = await apiFetch(`/api/meta/campaign/${id}?date_preset=${datePreset}`)
       const json = await res.json() as { adsets?: AdSet[] }
       setAdsetData(d => ({ ...d, [id]: json.adsets ?? [] }))
-    } catch {}
+    } catch { }
     setLoadingAdset(null)
   }, [expandedCampaign, adsetData, datePreset])
 
@@ -99,7 +102,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
       const res = await apiFetch(`/api/meta/adset/${adsetId}?date_preset=${datePreset}`)
       const json = await res.json() as { ads?: Ad[] }
       setAdsData(d => ({ ...d, [adsetId]: json.ads ?? [] }))
-    } catch {}
+    } catch { }
     setLoadingAds(null)
   }, [expandedAdset, adsData, datePreset])
 
@@ -109,13 +112,13 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
     .filter(c => filterStatus === 'ALL' || c.status === filterStatus)
     .sort((a, b) => {
       let av: number | string, bv: number | string
-      if (sortCol === 'name')      { av = a.name;      bv = b.name }
-      else if (sortCol === 'spend') { av = a.spend;     bv = b.spend }
+      if (sortCol === 'name') { av = a.name; bv = b.name }
+      else if (sortCol === 'spend') { av = a.spend; bv = b.spend }
       else if (sortCol === 'leads') { av = resolveDelivery(a, kind).count; bv = resolveDelivery(b, kind).count }
-      else if (sortCol === 'cpl')   { av = resolveDelivery(a, kind).cost ?? Infinity; bv = resolveDelivery(b, kind).cost ?? Infinity }
-      else if (sortCol === 'roas')  { av = a.roas ?? -1;         bv = b.roas ?? -1 }
-      else if (sortCol === 'ctr')   { av = a.ctr;       bv = b.ctr }
-      else                          { av = a.frequency; bv = b.frequency }
+      else if (sortCol === 'cpl') { av = resolveDelivery(a, kind).cost ?? Infinity; bv = resolveDelivery(b, kind).cost ?? Infinity }
+      else if (sortCol === 'roas') { av = a.roas ?? -1; bv = b.roas ?? -1 }
+      else if (sortCol === 'ctr') { av = a.ctr; bv = b.ctr }
+      else { av = a.frequency; bv = b.frequency }
       if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv as string) : (bv as string).localeCompare(av)
       return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number)
     })
@@ -178,13 +181,14 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
               {(['spend', 'leads', 'cpl', 'roas', 'ctr', 'frequency'] as SortCol[]).map(col => (
                 <th key={col} style={thStyle(col, true)} onClick={() => handleSort(col)}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end', width: '100%' }}>
+                    {col === 'frequency' ? 'Freq.' : col === 'leads' ? L.many.toUpperCase() : col === 'cpl' ? L.cost.toUpperCase() : col.toUpperCase()} {sortIcon(col)}
                     {col === 'frequency'
                       ? 'Freq.'
                       : col === 'leads'
-                      ? (kind === 'form' ? 'RESULTADOS / LEADS' : L.many.toUpperCase())
-                      : col === 'cpl'
-                      ? (kind === 'form' ? 'CUSTO / RES.' : L.cost.toUpperCase())
-                      : col.toUpperCase()} {sortIcon(col)}
+                        ? (kind === 'form' ? 'RESULTADOS / LEADS' : L.many.toUpperCase())
+                        : col === 'cpl'
+                          ? (kind === 'form' ? 'CUSTO / RES.' : L.cost.toUpperCase())
+                          : col.toUpperCase()} {sortIcon(col)}
                   </span>
                 </th>
               ))}
@@ -217,6 +221,8 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                       <StatusBadge status={c.status} />
                     </td>
                     <NumCell>{fmt(c.spend, currency)}</NumCell>
+                    <NumCell>{nRes(c) || '—'}</NumCell>
+                    <NumCell color={kind === 'form' && c.cpl && c.cpl > 200 ? 'var(--red)' : undefined}>{cRes(c) ? fmtSmall(cRes(c)!, currency) : '—'}</NumCell>
                     <NumCell>
                       {delivery.count > 0 ? (
                         <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.25 }}>
@@ -351,7 +357,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                                                             const r = await apiFetch(`/api/meta/ad/${ad.id}`)
                                                             const j = await r.json() as { html?: string }
                                                             setPreviewHtml(j.html ?? null)
-                                                          } catch {}
+                                                          } catch { }
                                                           setPreviewLoading(false)
                                                         }}
                                                         className="card card-interactive"
@@ -447,13 +453,13 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                     {[
-                      { label: 'Investido',  value: fmt(creativeModal.spend, currency) },
+                      { label: 'Investido', value: fmt(creativeModal.spend, currency) },
                       { label: 'Impressões', value: creativeModal.impressions.toLocaleString('pt-BR') },
                       {
                         label: modalDelivery.label ? (modalDelivery.label.charAt(0).toUpperCase() + modalDelivery.label.slice(1)) : L.many,
                         value: modalDelivery.count > 0 ? modalDelivery.count.toLocaleString('pt-BR') : '—',
                       },
-                      { label: 'Cliques',    value: String(creativeModal.clicks || '—') },
+                      { label: 'Cliques', value: String(creativeModal.clicks || '—') },
                       {
                         label: modalDelivery.costLabel ? `Custo (${modalDelivery.costLabel})` : L.cost,
                         value: modalDelivery.cost ? fmtSmall(modalDelivery.cost, currency) : '—',

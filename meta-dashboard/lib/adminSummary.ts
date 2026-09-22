@@ -50,7 +50,6 @@ export function applySummaries(base: ResultsSummary | null, sums: Partial<Record
     if (e && (p === selected || now - e.at < maxAgeMs)) periods[p] = totalsOfRow(e.row, now)
   }
   for (const p of ADMIN_PERIOD_KEYS) periods[p] ??= totalsOfRow(null, now)
-  // O tipo de resultado vem do período mais longo que tem dados (mais estável que "hoje").
   const ref = [periods[30], periods[14], periods[7], periods.month, periods.today].find(t => t && (t.formLeads + t.siteLeads + t.conversations + t.custom + t.purchases) > 0) ?? periods[selected]
   const kind = base?.kind && base.kind !== 'form' ? base.kind : detectKind({ form_leads: ref.formLeads, site_leads: ref.siteLeads, conversations: ref.conversations, custom_conversions: ref.custom, purchases: ref.purchases })
   return { kind, daily: base?.daily ?? Array(14).fill(0), periods, spanDays: base?.spanDays ?? 0 }

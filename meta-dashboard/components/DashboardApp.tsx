@@ -151,6 +151,21 @@ function Dashboard() {
     apiFetch('/api/me').then(r => r.ok ? r.json() : null).then(j => { if (j) { setMe(j); document.title = `Dashboard Don - ${j.name}` } }).catch(() => { })
   }, [])
 
+  useEffect(() => {
+    const iconUrl = me?.logoUrl || '/api/brand/icon'
+    const existing = document.querySelectorAll<HTMLLinkElement>("link[rel*='icon']")
+    if (existing.length > 0) {
+      existing.forEach(link => {
+        link.href = iconUrl
+      })
+    } else {
+      const link = document.createElement('link')
+      link.rel = 'icon'
+      link.href = iconUrl
+      document.head.appendChild(link)
+    }
+  }, [me?.logoUrl])
+
   async function backToAdmin() {
     await fetch('/api/admin/view', { method: 'DELETE' }).catch(() => { })
     window.location.assign('/admin')
@@ -190,6 +205,7 @@ function Dashboard() {
   const hasResults = (s?.results ?? 0) > 0
   const [storedKind, setStoredKind] = useState<ResultKind | null>(null)
   const kindKey = `resultKind:${me?.slug ?? 'default'}`
+  useEffect(() => { try { const v = localStorage.getItem(kindKey); if (v === 'form' || v === 'site' || v === 'conversa' || v === 'misto') setStoredKind(v) } catch { } }, [kindKey])
   useEffect(() => { try { const v = localStorage.getItem(kindKey); if (v === 'form' || v === 'site' || v === 'conversa' || v === 'custom' || v === 'sales' || v === 'misto') setStoredKind(v) } catch { } }, [kindKey])
   useEffect(() => { if (hasResults) { setStoredKind(detected); try { localStorage.setItem(kindKey, detected) } catch { } } }, [hasResults, detected, kindKey])
   const kind: ResultKind = hasResults ? detected : (storedKind ?? detected)

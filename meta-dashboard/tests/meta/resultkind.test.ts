@@ -127,9 +127,11 @@ describe('resultado do cliente no card do admin', () => {
     const { metaTotals } = await import('@/lib/adminResults')
     const NOW = Date.UTC(2026, 8, 21, 15)
     const y = new Date(NOW - 86_400_000).toISOString().slice(0, 10)
-    const t = metaTotals([{ date_start: y, spend: '100', impressions: '5000', clicks: '90',
+    const t = metaTotals([{
+      date_start: y, spend: '100', impressions: '5000', clicks: '90',
       actions: act({ 'onsite_conversion.lead_grouped': 3, 'offsite_conversion.custom.7': 5, 'onsite_conversion.messaging_conversation_started_7d': 4, link_click: 80, landing_page_view: 60, purchase: 2 }),
-      action_values: act({ purchase: 900 }) }], NOW, 7)
+      action_values: act({ purchase: 900 })
+    }], NOW, 7)
     expect(t).toMatchObject({ formLeads: 3, custom: 5, conversations: 4, linkClicks: 80, landingViews: 60, purchases: 2, purchaseValue: 900, results: 14 })
   })
   it('sem dados na semana: zeros e cai no padrão (formulário)', async () => {

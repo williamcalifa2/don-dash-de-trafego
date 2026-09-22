@@ -23,12 +23,12 @@ export interface KindLabels {
 }
 
 export const KIND_LABELS: Record<ResultKind, KindLabels> = {
-  form:     { one: 'lead',     many: 'Leads',            cost: 'CPL',           costFull: 'Custo por lead',            clickTo: 'Clique → Lead',     stage: 'Leads Gerados' },
-  site:     { one: 'lead do site', many: 'Leads do site', cost: 'CPL',           costFull: 'Custo por lead do site',    clickTo: 'Clique → Lead',     stage: 'Leads do Site' },
-  conversa: { one: 'conversa', many: 'Conversas',        cost: 'Custo/Conversa', costFull: 'Custo por conversa iniciada', clickTo: 'Clique → Conversa', stage: 'Conversas Iniciadas' },
-  custom:   { one: 'conversão', many: 'Conversões',  cost: 'Custo/Conversão', costFull: 'Custo por conversão',    clickTo: 'Clique → Conversão', stage: 'Conversões' },
-  sales:    { one: 'compra',   many: 'Compras',          cost: 'CPA',           costFull: 'Custo por compra (CPA)',    clickTo: 'Clique → Compra',   stage: 'Compras Realizadas' },
-  misto:    { one: 'resultado', many: 'Resultados',      cost: 'Custo/Resultado', costFull: 'Custo por resultado',      clickTo: 'Clique → Resultado', stage: 'Resultados' },
+  form: { one: 'lead', many: 'Leads', cost: 'CPL', costFull: 'Custo por lead', clickTo: 'Clique → Lead', stage: 'Leads Gerados' },
+  site: { one: 'lead do site', many: 'Leads do site', cost: 'CPL', costFull: 'Custo por lead do site', clickTo: 'Clique → Lead', stage: 'Leads do Site' },
+  conversa: { one: 'conversa', many: 'Conversas', cost: 'Custo/Conversa', costFull: 'Custo por conversa iniciada', clickTo: 'Clique → Conversa', stage: 'Conversas Iniciadas' },
+  custom: { one: 'conversão', many: 'Conversões', cost: 'Custo/Conversão', costFull: 'Custo por conversão', clickTo: 'Clique → Conversão', stage: 'Conversões' },
+  sales: { one: 'compra', many: 'Compras', cost: 'CPA', costFull: 'Custo por compra (CPA)', clickTo: 'Clique → Compra', stage: 'Compras Realizadas' },
+  misto: { one: 'resultado', many: 'Resultados', cost: 'Custo/Resultado', costFull: 'Custo por resultado', clickTo: 'Clique → Resultado', stage: 'Resultados' },
 }
 
 export interface ResultCounts {

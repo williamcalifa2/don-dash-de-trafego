@@ -10,9 +10,25 @@ export async function GET(req: Request) {
   if (db) {
     const { data } = await db.from('meta_settings').select('key, value').in('key', ['brand_icon', 'brand_logo'])
     const rows = (data ?? []) as Array<{ key: string; value: unknown }>
-    const stored = ['brand_icon', 'brand_logo'].map(k => rows.find(r => r.key === k)?.value).find(v => typeof v === 'string' && v.startsWith('data:')) as string | undefined
-    const img = stored ? decodeLogo(stored) : null
-    if (img) return new NextResponse(new Uint8Array(img.bytes), { headers: { 'Content-Type': img.mime, 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' } })
+    const stored = ['brand_icon', 'brand_logo']
+      .map(k => rows.find(r => r.key === k)?.value)
+      .find(v => typeof v === 'string' && (v.startsWith('data:') || v.startsWith('http://') || v.startsWith('https://'))) as string | undefined
+
+    if (stored) {
+      if (stored.startsWith('http://') || stored.startsWith('https://')) {
+        return NextResponse.redirect(stored, 302)
+      }
+      const img = decodeLogo(stored)
+      if (img) {
+        return new NextResponse(new Uint8Array(img.bytes), {
+          headers: {
+            'Content-Type': img.mime,
+            'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+            'X-Content-Type-Options': 'nosniff',
+          },
+        })
+      }
+    }
   }
   return NextResponse.redirect(new URL('/favicon.ico', req.url), 302)
 }
