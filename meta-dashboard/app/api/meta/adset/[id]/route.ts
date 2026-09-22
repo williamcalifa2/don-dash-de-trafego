@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireTenant } from '@/lib/tenant'
 import { tenantOwns } from '@/lib/metaAccess'
-import { getResults } from '@/lib/meta'
+import { getResults, listConversions } from '@/lib/meta'
 import { errMsg, legacyBatch, legacyGet } from '@/lib/meta/legacy'
 import { snapshotMode, snapshotGuard } from '@/lib/meta/mode'
 import { readAds } from '@/lib/meta/read'
@@ -48,6 +48,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const cpas = (ins.cost_per_action_type as Action[]) ?? []
     const leads = actions.find(a => a.action_type === 'lead' || a.action_type === 'onsite_conversion.lead_grouped')
     const cpl = cpas.find(a => a.action_type === 'lead' || a.action_type === 'onsite_conversion.lead_grouped')
+    const spend = Number(ins.spend ?? 0)
     return {
       id: ad.id,
       name: ad.name,
@@ -55,13 +56,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       thumb: thumbUrl,
       creative_name: (creative?.name ?? ad.name) as string,
       object_type: (creative?.object_type ?? '') as string,
-      spend: Number(ins.spend ?? 0),
+      spend,
       impressions: Number(ins.impressions ?? 0),
       clicks: Number(ins.clicks ?? 0),
       leads: leads ? Number(leads.value) : 0,
       cpl: cpl ? Number(cpl.value) : null,
       results: getResults(actions),
-      cost_per_result: getResults(actions) > 0 ? Number(ins.spend ?? 0) / getResults(actions) : null,
+      cost_per_result: getResults(actions) > 0 ? spend / getResults(actions) : null,
+      conversions: listConversions(actions, spend),
     }
   })
   return NextResponse.json({ ads: withInsights })

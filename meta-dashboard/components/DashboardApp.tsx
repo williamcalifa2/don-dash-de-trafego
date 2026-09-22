@@ -190,7 +190,7 @@ function Dashboard() {
   const hasResults = (s?.results ?? 0) > 0
   const [storedKind, setStoredKind] = useState<ResultKind | null>(null)
   const kindKey = `resultKind:${me?.slug ?? 'default'}`
-  useEffect(() => { try { const v = localStorage.getItem(kindKey); if (v === 'form' || v === 'site' || v === 'conversa' || v === 'misto') setStoredKind(v) } catch { } }, [kindKey])
+  useEffect(() => { try { const v = localStorage.getItem(kindKey); if (v === 'form' || v === 'site' || v === 'conversa' || v === 'custom' || v === 'sales' || v === 'misto') setStoredKind(v) } catch { } }, [kindKey])
   useEffect(() => { if (hasResults) { setStoredKind(detected); try { localStorage.setItem(kindKey, detected) } catch { } } }, [hasResults, detected, kindKey])
   const kind: ResultKind = hasResults ? detected : (storedKind ?? detected)
   const showCrm = kind === 'form' || kind === 'misto' || leadsApi.leads.length > 0

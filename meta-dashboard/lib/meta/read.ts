@@ -2,18 +2,13 @@
  * Leitura do painel a partir do banco (meta_snapshots). Nenhuma função aqui chama a Meta.
  * Usa as mesmas funções de montagem do modo ao vivo (assembleMetrics), então a tela é idêntica.
  */
-import { assembleMetrics, getResults, type DatePreset, type InsightRow, type MetricsResponse } from '../meta'
+import { assembleMetrics, getLeads, getResults, listConversions, type ConversionItem, type DatePreset, type InsightRow, type MetricsResponse } from '../meta'
 import type { MetaConfig } from './config'
 import type { AccountState } from './limits'
 import type { SnapshotStore } from './snapshots'
 
 type Action = { action_type: string; value: string }
 const isLead = (a: Action) => a.action_type === 'lead' || a.action_type === 'onsite_conversion.lead_grouped'
-const metaLeads = (actions: Action[] | undefined) => {
-  if (!actions) return 0
-  const g = actions.find(a => a.action_type === 'onsite_conversion.lead_grouped')
-  return g ? Number(g.value) : actions.filter(a => a.action_type === 'lead').reduce((s, a) => s + Number(a.value), 0)
-}
 
 export interface Freshness {
   /** ms da atualização mais antiga entre os dados usados; null = nunca sincronizou */
@@ -88,7 +83,7 @@ export const toPerfRows = (rows: Array<Record<string, unknown>>): AdPerfRow[] =>
   ad_id: String(r.ad_id ?? ''), ad_name: String(r.ad_name ?? ''), adset_name: String(r.adset_name ?? ''),
   campaign_id: String(r.campaign_id ?? ''), campaign_name: String(r.campaign_name ?? ''),
   spend: Number(r.spend ?? 0), impressions: Number(r.impressions ?? 0), clicks: Number(r.clicks ?? 0),
-  meta_leads: metaLeads(r.actions as Action[] | undefined),
+  meta_leads: getLeads(r.actions as Action[] | undefined),
   results: getResults(r.actions as Action[] | undefined),
 }))
 
@@ -105,12 +100,14 @@ export async function readAdsets(snaps: SnapshotStore, clientId: string, campaig
     const i = byId.get(a.id) ?? {}
     const leads = (i.actions as Action[] | undefined)?.find(isLead)
     const cpl = cost(i.cost_per_action_type as Action[] | undefined)
+    const spend = Number(i.spend ?? 0)
     return {
       id: a.id, name: a.name, status: a.effective_status, daily_budget: a.daily_budget ? Number(a.daily_budget) / 100 : null,
-      spend: Number(i.spend ?? 0), impressions: Number(i.impressions ?? 0), clicks: Number(i.clicks ?? 0),
+      spend, impressions: Number(i.impressions ?? 0), clicks: Number(i.clicks ?? 0),
       ctr: Number(i.ctr ?? 0), frequency: Number(i.frequency ?? 0), leads: leads ? Number(leads.value) : 0, cpl: cpl ? Number(cpl.value) : null,
       results: getResults(i.actions as Action[] | undefined),
-      cost_per_result: getResults(i.actions as Action[] | undefined) > 0 ? Number(i.spend ?? 0) / getResults(i.actions as Action[] | undefined) : null,
+      cost_per_result: getResults(i.actions as Action[] | undefined) > 0 ? spend / getResults(i.actions as Action[] | undefined) : null,
+      conversions: listConversions(i.actions as Action[] | undefined, spend),
     }
   })
 }
@@ -123,13 +120,15 @@ export async function readAds(snaps: SnapshotStore, clientId: string, adsetId: s
     const c = a.creative ?? {}
     const leads = (i.actions as Action[] | undefined)?.find(isLead)
     const cpl = cost(i.cost_per_action_type as Action[] | undefined)
+    const spend = Number(i.spend ?? 0)
     return {
       id: a.id, name: a.name, status: a.effective_status,
       thumb: String(c.thumbnail_url ?? c.image_url ?? ''), creative_name: String(c.name ?? a.name ?? ''), object_type: String(c.object_type ?? ''),
-      spend: Number(i.spend ?? 0), impressions: Number(i.impressions ?? 0), clicks: Number(i.clicks ?? 0),
+      spend, impressions: Number(i.impressions ?? 0), clicks: Number(i.clicks ?? 0),
       leads: leads ? Number(leads.value) : 0, cpl: cpl ? Number(cpl.value) : null,
       results: getResults(i.actions as Action[] | undefined),
-      cost_per_result: getResults(i.actions as Action[] | undefined) > 0 ? Number(i.spend ?? 0) / getResults(i.actions as Action[] | undefined) : null,
+      cost_per_result: getResults(i.actions as Action[] | undefined) > 0 ? spend / getResults(i.actions as Action[] | undefined) : null,
+      conversions: listConversions(i.actions as Action[] | undefined, spend),
     }
   })
 }

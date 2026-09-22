@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { detectKind, KIND_LABELS } from '@/lib/resultKind'
-import { assembleMetrics, getConversations, getFormLeads, getResults, getSiteLeads } from '@/lib/meta'
+import { assembleMetrics, getConversations, getFormLeads, getLeads, getResults, getSiteLeads, listConversions, resolveDelivery } from '@/lib/meta'
 import { collectLeads, type Account, type CollectDeps } from '@/lib/meta/collectors'
 import { MemoryLimitStore } from '@/lib/meta/memoryStore'
 import { MemorySnapshotStore } from '@/lib/meta/snapshots'
@@ -130,7 +130,7 @@ describe('resultado do cliente no card do admin', () => {
     const t = metaTotals([{ date_start: y, spend: '100', impressions: '5000', clicks: '90',
       actions: act({ 'onsite_conversion.lead_grouped': 3, 'offsite_conversion.custom.7': 5, 'onsite_conversion.messaging_conversation_started_7d': 4, link_click: 80, landing_page_view: 60, purchase: 2 }),
       action_values: act({ purchase: 900 }) }], NOW, 7)
-    expect(t).toMatchObject({ formLeads: 3, custom: 5, conversations: 4, linkClicks: 80, landingViews: 60, purchases: 2, purchaseValue: 900, results: 12 })
+    expect(t).toMatchObject({ formLeads: 3, custom: 5, conversations: 4, linkClicks: 80, landingViews: 60, purchases: 2, purchaseValue: 900, results: 14 })
   })
   it('sem dados na semana: zeros e cai no padrão (formulário)', async () => {
     const { summarizeDaily } = await import('@/lib/adminResults')
@@ -194,5 +194,107 @@ describe('conversões personalizadas e lista completa de ações', () => {
     expect(r.conversions[0]).toMatchObject({ label: 'Lead qualificado (personalizada)', value: 10, cost: 10 })
     expect(r.campaigns[0].conversions.map(c => c.type)).toEqual(['offsite_conversion.custom.777', 'link_click'])
     expect(r.summary.custom_conversions).toBe(10); expect(r.result_kind).toBe('custom')
+  })
+})
+
+describe('e-commerce e detecção de vendas (sales)', () => {
+  it('detecta tipo sales quando compras >= 75%', () => {
+    expect(detectKind({ form_leads: 0, site_leads: 0, conversations: 0, purchases: 50 })).toBe('sales')
+    expect(KIND_LABELS.sales.many).toBe('Compras')
+    expect(KIND_LABELS.sales.cost).toBe('CPA')
+  })
+
+  it('compras entram em getResults', () => {
+    const a = act({ purchase: 5, 'offsite_conversion.fb_pixel_purchase': 5 })
+    expect(getResults(a)).toBe(5) // não duplica entre pixel e generic
+  })
+})
+
+describe('conversões web (cadastros, agendamentos, contatos) e leads combinados', () => {
+  it('não descarta pixel lead se houver formulário instantâneo', () => {
+    const a = act({ 'onsite_conversion.lead_grouped': 10, 'offsite_conversion.fb_pixel_lead': 8, lead: 18 })
+    expect(getFormLeads(a)).toBe(10)
+    expect(getSiteLeads(a)).toBe(8)
+    expect(getLeads(a)).toBe(18)
+    expect(getResults(a)).toBe(18)
+  })
+
+  it('soma agendamentos, cadastros e contatos em getSiteLeads e getResults', () => {
+    const a = act({ schedule: 4, complete_registration: 6, contact_total: 2 })
+    expect(getSiteLeads(a)).toBe(12)
+    expect(getResults(a)).toBe(12)
+    expect(getLeads(a)).toBe(12)
+  })
+})
+
+describe('resolveDelivery: inteligência de entrega sem visão de túnel', () => {
+  it('campanha de formulário retorna leads e CPL', () => {
+    const res = resolveDelivery({
+      spend: 300,
+      leads: 15,
+      cpl: 20,
+      conversions: listConversions(act({ 'onsite_conversion.lead_grouped': 15, link_click: 200 }), 300),
+    }, 'form')
+    expect(res).toMatchObject({ count: 15, label: 'leads', cost: 20, costLabel: 'CPL', badge: 'Leads', type: 'form' })
+  })
+
+  it('campanha de tráfego / cliques no link em conta de formulário NÃO fica zerada', () => {
+    const res = resolveDelivery({
+      spend: 100,
+      leads: 0,
+      cpl: null,
+      results: 0,
+      conversions: listConversions(act({ link_click: 250, post_engagement: 80 }), 100),
+    }, 'form')
+    expect(res).toMatchObject({ count: 250, label: 'cliques no link', cost: 0.4, costLabel: 'CPC', badge: 'Cliques', type: 'link_click' })
+  })
+
+  it('campanha de vídeo NÃO fica zerada', () => {
+    const res = resolveDelivery({
+      spend: 50,
+      leads: 0,
+      results: 0,
+      conversions: listConversions(act({ video_view: 1000 }), 50),
+    }, 'form')
+    expect(res).toMatchObject({ count: 1000, label: 'views de vídeo', cost: 0.05, costLabel: 'CPV', badge: 'Views', type: 'video_view' })
+  })
+
+  it('campanha de e-commerce / compras retorna compras e CPA', () => {
+    const res = resolveDelivery({
+      spend: 400,
+      leads: 0,
+      results: 10,
+      conversions: listConversions(act({ purchase: 10, link_click: 300 }), 400),
+    }, 'form')
+    expect(res).toMatchObject({ count: 10, label: 'compras', cost: 40, costLabel: 'CPA', badge: 'Compras', type: 'sales' })
+  })
+
+  it('campanha de WhatsApp / conversa retorna conversas e Custo/conv.', () => {
+    const res = resolveDelivery({
+      spend: 150,
+      leads: 0,
+      conversions: listConversions(act({ 'onsite_conversion.messaging_conversation_started_7d': 15 }), 150),
+    }, 'form')
+    expect(res).toMatchObject({ count: 15, label: 'conversas', cost: 10, costLabel: 'Custo/conv.', badge: 'Conversas', type: 'conversa' })
+  })
+
+  it('campanha sem conversões mas com cliques usa cliques e CPC', () => {
+    const res = resolveDelivery({
+      spend: 60,
+      clicks: 120,
+      impressions: 4000,
+      conversions: [],
+    }, 'form')
+    expect(res).toMatchObject({ count: 120, label: 'cliques', cost: 0.5, costLabel: 'CPC', badge: 'Cliques', type: 'clicks' })
+  })
+
+  it('campanha com zero entrega retorna count 0 e custo null', () => {
+    const res = resolveDelivery({
+      spend: 0,
+      clicks: 0,
+      impressions: 0,
+      conversions: [],
+    }, 'form')
+    expect(res).toMatchObject({ count: 0, cost: null, type: 'none' })
   })
 })

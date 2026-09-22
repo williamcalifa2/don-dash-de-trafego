@@ -1,5 +1,5 @@
 import { legacyGet, errMsg } from './meta/legacy'
-import { detectKind, type ResultKind } from './resultKind'
+import { detectKind, KIND_LABELS, type ResultKind } from './resultKind'
 import { isCustomConversion, labelAction } from './actionLabels'
 export type DatePreset = 'today' | 'last_7d' | 'last_30d' | 'last_14d' | 'this_month' | 'last_month'
 
@@ -129,13 +129,41 @@ export function getFormLeads(actions: ActionRow[] | undefined): number {
   return actions ? getAction(actions, 'onsite_conversion.lead_grouped') : 0
 }
 
-/** Leads do site: evento Lead do pixel. Sem o evento específico, usa "lead" só quando não há formulário (evita contar 2x). */
+/** Conversões de captação e cadastro no site que não são lead padrão (cadastros, agendamentos, contatos, candidaturas). */
+export function getOtherWebConversions(actions: ActionRow[] | undefined): number {
+  if (!actions) return 0
+  const registrations = Math.max(
+    getAction(actions, 'complete_registration'),
+    getAction(actions, 'offsite_conversion.fb_pixel_complete_registration')
+  )
+  const schedules = Math.max(
+    getAction(actions, 'schedule'),
+    getAction(actions, 'offsite_conversion.fb_pixel_schedule')
+  )
+  const contacts = Math.max(
+    getAction(actions, 'contact_total'),
+    getAction(actions, 'contact_website'),
+    getAction(actions, 'contact'),
+    getAction(actions, 'offsite_conversion.fb_pixel_contact')
+  )
+  const applications = Math.max(
+    getAction(actions, 'submit_application'),
+    getAction(actions, 'offsite_conversion.fb_pixel_submit_application')
+  )
+  return registrations + schedules + contacts + applications
+}
+
+/** Leads do site: evento Lead do pixel + outras conversões de cadastro/contato. Sem o evento específico, usa "lead" só quando não há formulário (evita contar 2x). */
 export function getSiteLeads(actions: ActionRow[] | undefined): number {
   if (!actions) return 0
   const pixel = getActions(actions, ['offsite_conversion.fb_pixel_lead'])
-  if (pixel > 0) return pixel
-  if (getFormLeads(actions) > 0) return 0
-  return getAction(actions, 'lead')
+  const alt = getOtherWebConversions(actions)
+  if (pixel > 0) return pixel + alt
+  const genericLead = getAction(actions, 'lead')
+  const form = getFormLeads(actions)
+  if (genericLead > form) return (genericLead - form) + alt
+  if (form > 0) return alt
+  return alt > 0 ? alt : genericLead
 }
 
 /** Conversas iniciadas (mensagem). A Meta devolve com o prefixo onsite_conversion.; aceita também o nome curto. */
@@ -157,18 +185,25 @@ export function getCustomConversions(actions: ActionRow[] | undefined): number {
 /** Resultado do site: a conversão personalizada, quando existe (ela já inclui os leads do pixel: contar as duas repetiria); senão os leads do site. */
 export function getWebResult(actions: ActionRow[] | undefined): number {
   const custom = getCustomConversions(actions)
-  return custom > 0 ? custom : getSiteLeads(actions)
+  if (custom > 0) return custom
+  return getSiteLeads(actions)
 }
 
-/** Total de resultados: formulário + conversas iniciadas + resultado do site/personalizado. */
+/** Total de resultados: formulário + conversas iniciadas + resultado do site/personalizado + compras. */
 export function getResults(actions: ActionRow[] | undefined): number {
-  return getFormLeads(actions) + getConversations(actions) + getWebResult(actions)
+  return getFormLeads(actions) + getConversations(actions) + getWebResult(actions) + getPurchaseCount(actions)
 }
 
 /** Contagens por tipo, já sem repetição, para detectar o tipo de resultado da conta. */
 export function resultCounts(actions: ActionRow[] | undefined) {
   const custom = getCustomConversions(actions)
-  return { form_leads: getFormLeads(actions), site_leads: custom > 0 ? 0 : getSiteLeads(actions), conversations: getConversations(actions), custom_conversions: custom }
+  return {
+    form_leads: getFormLeads(actions),
+    site_leads: custom > 0 ? 0 : getSiteLeads(actions),
+    conversations: getConversations(actions),
+    custom_conversions: custom,
+    purchases: getPurchaseCount(actions),
+  }
 }
 
 /** Lista TODAS as ações da linha (conversões, cliques, engajamento...), com nome e custo por ação. */
@@ -181,21 +216,319 @@ export function listConversions(actions: ActionRow[] | undefined, spend: number,
     .sort((a, b) => Number(b.custom) - Number(a.custom) || b.value - a.value)
 }
 
-function getLeads(actions: ActionRow[] | undefined): number {
+export interface DeliveryItem {
+  spend: number
+  leads?: number
+  results?: number
+  cpl?: number | null
+  cost_per_result?: number | null
+  clicks?: number
+  impressions?: number
+  conversions?: ConversionItem[]
+}
+
+export interface DeliveryResolution {
+  count: number
+  label: string
+  cost: number | null
+  costLabel: string
+  badge: string
+  type: string
+}
+
+/** Resolve com inteligência a entrega real de uma campanha, conjunto ou anúncio (sem zerar tráfego, vídeo, compras, etc.). */
+export function resolveDelivery(
+  item: DeliveryItem,
+  accountKind: ResultKind = 'form',
+): DeliveryResolution {
+  const spend = item.spend || 0
+  const convs = item.conversions ?? []
+
+  const getConvVal = (types: string[]) => {
+    const hit = convs.find(c => types.includes(c.type))
+    return hit ? hit.value : 0
+  }
+
+  // 1. Alta intenção / conversões
+  const formLeads = getConvVal(['onsite_conversion.lead_grouped'])
+  const pixelLeads = getConvVal(['offsite_conversion.fb_pixel_lead'])
+  const genericLeads = getConvVal(['lead'])
+  const totalLeads = Math.max(formLeads + pixelLeads, genericLeads, item.leads ?? 0)
+
+  const conversations = getConvVal([
+    'onsite_conversion.messaging_conversation_started_7d',
+    'messaging_conversation_started_7d',
+    'onsite_conversion.total_messaging_connection',
+  ])
+
+  const purchases = Math.max(
+    getConvVal(['purchase']),
+    getConvVal(['offsite_conversion.fb_pixel_purchase']),
+    getConvVal(['omni_purchase']),
+  )
+
+  const customConv = convs.find(c => c.custom && c.value > 0)
+
+  const schedules = Math.max(
+    getConvVal(['schedule']),
+    getConvVal(['offsite_conversion.fb_pixel_schedule']),
+  )
+
+  const registrations = Math.max(
+    getConvVal(['complete_registration']),
+    getConvVal(['offsite_conversion.fb_pixel_complete_registration']),
+  )
+
+  const contacts = Math.max(
+    getConvVal(['contact_total']),
+    getConvVal(['contact_website']),
+    getConvVal(['contact']),
+    getConvVal(['offsite_conversion.fb_pixel_contact']),
+  )
+
+  const applications = Math.max(
+    getConvVal(['submit_application']),
+    getConvVal(['offsite_conversion.fb_pixel_submit_application']),
+  )
+
+  if (formLeads > 0 && formLeads >= pixelLeads && formLeads >= conversations && formLeads >= purchases) {
+    return {
+      count: formLeads,
+      label: 'leads',
+      cost: formLeads > 0 && spend > 0 ? spend / formLeads : null,
+      costLabel: 'CPL',
+      badge: 'Leads',
+      type: 'form',
+    }
+  }
+
+  if (pixelLeads > 0 && pixelLeads >= conversations && pixelLeads >= purchases) {
+    return {
+      count: pixelLeads,
+      label: 'leads do site',
+      cost: pixelLeads > 0 && spend > 0 ? spend / pixelLeads : null,
+      costLabel: 'CPL',
+      badge: 'Leads',
+      type: 'site',
+    }
+  }
+
+  if (conversations > 0 && conversations >= purchases) {
+    return {
+      count: conversations,
+      label: 'conversas',
+      cost: conversations > 0 && spend > 0 ? spend / conversations : null,
+      costLabel: 'Custo/conv.',
+      badge: 'Conversas',
+      type: 'conversa',
+    }
+  }
+
+  if (purchases > 0) {
+    return {
+      count: purchases,
+      label: 'compras',
+      cost: purchases > 0 && spend > 0 ? spend / purchases : null,
+      costLabel: 'CPA',
+      badge: 'Compras',
+      type: 'sales',
+    }
+  }
+
+  if (customConv) {
+    return {
+      count: customConv.value,
+      label: customConv.label.toLowerCase().replace(' (personalizada)', ''),
+      cost: customConv.cost ?? (spend > 0 ? spend / customConv.value : null),
+      costLabel: 'Custo/conv.',
+      badge: 'Conv.',
+      type: 'custom',
+    }
+  }
+
+  if (schedules > 0) {
+    return {
+      count: schedules,
+      label: 'agendamentos',
+      cost: spend > 0 ? spend / schedules : null,
+      costLabel: 'Custo/agend.',
+      badge: 'Agend.',
+      type: 'schedule',
+    }
+  }
+
+  if (registrations > 0) {
+    return {
+      count: registrations,
+      label: 'cadastros',
+      cost: spend > 0 ? spend / registrations : null,
+      costLabel: 'Custo/cad.',
+      badge: 'Cadastros',
+      type: 'registration',
+    }
+  }
+
+  if (contacts > 0) {
+    return {
+      count: contacts,
+      label: 'contatos',
+      cost: spend > 0 ? spend / contacts : null,
+      costLabel: 'Custo/cont.',
+      badge: 'Contatos',
+      type: 'contact',
+    }
+  }
+
+  if (applications > 0) {
+    return {
+      count: applications,
+      label: 'candidaturas',
+      cost: spend > 0 ? spend / applications : null,
+      costLabel: 'Custo/cand.',
+      badge: 'Cand.',
+      type: 'application',
+    }
+  }
+
+  if (totalLeads > 0) {
+    return {
+      count: totalLeads,
+      label: 'leads',
+      cost: item.cpl ?? (spend > 0 ? spend / totalLeads : null),
+      costLabel: 'CPL',
+      badge: 'Leads',
+      type: 'lead',
+    }
+  }
+
+  const res = item.results ?? 0
+  if (res > 0) {
+    const cost = item.cost_per_result ?? (spend > 0 ? spend / res : null)
+    const kl = KIND_LABELS[accountKind] ?? KIND_LABELS.misto
+    return {
+      count: res,
+      label: kl.many.toLowerCase(),
+      cost,
+      costLabel: kl.cost,
+      badge: kl.many,
+      type: accountKind,
+    }
+  }
+
+  // 2. Tráfego / Engajamento / Vídeo / Impressões
+  const landingViews = getConvVal(['landing_page_view'])
+  if (landingViews > 0) {
+    return {
+      count: landingViews,
+      label: 'visitas à página',
+      cost: spend > 0 ? spend / landingViews : null,
+      costLabel: 'Custo/visita',
+      badge: 'Visitas',
+      type: 'landing_page_view',
+    }
+  }
+
+  const linkClicks = Math.max(
+    getConvVal(['link_click']),
+    getConvVal(['outbound_click']),
+  )
+  if (linkClicks > 0) {
+    return {
+      count: linkClicks,
+      label: 'cliques no link',
+      cost: spend > 0 ? spend / linkClicks : null,
+      costLabel: 'CPC',
+      badge: 'Cliques',
+      type: 'link_click',
+    }
+  }
+
+  const videoViews = getConvVal(['video_view'])
+  if (videoViews > 0) {
+    return {
+      count: videoViews,
+      label: 'views de vídeo',
+      cost: spend > 0 ? spend / videoViews : null,
+      costLabel: 'CPV',
+      badge: 'Views',
+      type: 'video_view',
+    }
+  }
+
+  const postEngagements = Math.max(
+    getConvVal(['post_engagement']),
+    getConvVal(['page_engagement']),
+  )
+  if (postEngagements > 0) {
+    return {
+      count: postEngagements,
+      label: 'engajamentos',
+      cost: spend > 0 ? spend / postEngagements : null,
+      costLabel: 'CPE',
+      badge: 'Engaj.',
+      type: 'engagement',
+    }
+  }
+
+  const clicks = item.clicks ?? 0
+  if (clicks > 0) {
+    return {
+      count: clicks,
+      label: 'cliques',
+      cost: spend > 0 ? spend / clicks : null,
+      costLabel: 'CPC',
+      badge: 'Cliques',
+      type: 'clicks',
+    }
+  }
+
+  const impressions = item.impressions ?? 0
+  if (impressions > 0) {
+    return {
+      count: impressions,
+      label: 'impressões',
+      cost: spend > 0 ? (spend * 1000) / impressions : null,
+      costLabel: 'CPM',
+      badge: 'Imp.',
+      type: 'impressions',
+    }
+  }
+
+  return {
+    count: 0,
+    label: KIND_LABELS[accountKind]?.many.toLowerCase() ?? 'resultados',
+    cost: null,
+    costLabel: KIND_LABELS[accountKind]?.cost ?? 'Custo/res.',
+    badge: '—',
+    type: 'none',
+  }
+}
+
+/** Total de leads (formulário nativo + site/pixel + cadastros/agendamentos), sem descartar pixel se houver formulário. */
+export function getLeads(actions: ActionRow[] | undefined): number {
   if (!actions) return 0
-  const grouped = actions.find(a => a.action_type === 'onsite_conversion.lead_grouped')
-  if (grouped) return Number(grouped.value)
-  return getActions(actions, ['lead'])
+  const form = getFormLeads(actions)
+  const pixel = getActions(actions, ['offsite_conversion.fb_pixel_lead'])
+  const genericLead = getAction(actions, 'lead')
+  const standardLeads = Math.max(genericLead, form + pixel)
+  if (standardLeads > 0) return standardLeads
+  return getOtherWebConversions(actions)
 }
 
 export function getPurchaseValue(actionValues: ActionRow[] | undefined): number {
   if (!actionValues) return 0
-  return getActions(actionValues, ['purchase', 'offsite_conversion.fb_pixel_purchase'])
+  const pixel = getAction(actionValues, 'offsite_conversion.fb_pixel_purchase')
+  const generic = getAction(actionValues, 'purchase')
+  const omni = getAction(actionValues, 'omni_purchase')
+  return Math.max(generic, pixel, omni)
 }
 
 export function getPurchaseCount(actions: ActionRow[] | undefined): number {
   if (!actions) return 0
-  return getActions(actions, ['purchase', 'offsite_conversion.fb_pixel_purchase'])
+  const pixel = getAction(actions, 'offsite_conversion.fb_pixel_purchase')
+  const generic = getAction(actions, 'purchase')
+  const omni = getAction(actions, 'omni_purchase')
+  return Math.max(generic, pixel, omni)
 }
 
 function buildSummary(s: Record<string, unknown>): MetricsSummary {

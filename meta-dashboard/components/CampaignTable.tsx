@@ -4,7 +4,7 @@ import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
 import { ConversionChips } from '@/components/ConversionsCard'
 import { Fragment, useState, useCallback } from 'react'
 import { ChevronRight, ExternalLink, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
-import type { CampaignRow } from '@/lib/meta'
+import { resolveDelivery, type CampaignRow, type ConversionItem } from '@/lib/meta'
 import { apiFetch } from '@/lib/apiFetch'
 import { previewSrc } from '@/lib/adPreview'
 
@@ -41,11 +41,13 @@ type SortDir = 'asc' | 'desc'
 interface AdSet {
   id: string; name: string; status: string; spend: number
   impressions: number; clicks: number; ctr: number; frequency: number; leads: number; cpl: number | null; results?: number; cost_per_result?: number | null
+  conversions?: ConversionItem[]
 }
 
 interface Ad {
   id: string; name: string; status: string; thumb: string; creative_name: string
   object_type: string; spend: number; impressions: number; clicks: number; leads: number; cpl: number | null; results?: number; cost_per_result?: number | null
+  conversions?: ConversionItem[]
 }
 
 interface CampaignTableProps {
@@ -57,9 +59,6 @@ interface CampaignTableProps {
 
 export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kind = 'form' }: CampaignTableProps) {
   const L = KIND_LABELS[kind]
-  // Clientes de site/conversas: as colunas de lead/CPL mostram o resultado real (conversas, leads do site ou resultados).
-  const nRes = (r: { leads: number; results?: number }) => (kind === 'form' ? r.leads : (r.results ?? 0))
-  const cRes = (r: { cpl: number | null; cost_per_result?: number | null }) => (kind === 'form' ? r.cpl : (r.cost_per_result ?? null))
   const [sortCol, setSortCol]   = useState<SortCol>('spend')
   const [sortDir, setSortDir]   = useState<SortDir>('desc')
   const [filterStatus, setFilterStatus] = useState<string>('ALL')
@@ -112,8 +111,8 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
       let av: number | string, bv: number | string
       if (sortCol === 'name')      { av = a.name;      bv = b.name }
       else if (sortCol === 'spend') { av = a.spend;     bv = b.spend }
-      else if (sortCol === 'leads') { av = nRes(a);     bv = nRes(b) }
-      else if (sortCol === 'cpl')   { av = cRes(a) ?? Infinity;   bv = cRes(b) ?? Infinity }
+      else if (sortCol === 'leads') { av = resolveDelivery(a, kind).count; bv = resolveDelivery(b, kind).count }
+      else if (sortCol === 'cpl')   { av = resolveDelivery(a, kind).cost ?? Infinity; bv = resolveDelivery(b, kind).cost ?? Infinity }
       else if (sortCol === 'roas')  { av = a.roas ?? -1;         bv = b.roas ?? -1 }
       else if (sortCol === 'ctr')   { av = a.ctr;       bv = b.ctr }
       else                          { av = a.frequency; bv = b.frequency }
@@ -179,7 +178,13 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
               {(['spend', 'leads', 'cpl', 'roas', 'ctr', 'frequency'] as SortCol[]).map(col => (
                 <th key={col} style={thStyle(col, true)} onClick={() => handleSort(col)}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end', width: '100%' }}>
-                    {col === 'frequency' ? 'Freq.' : col === 'leads' ? L.many.toUpperCase() : col === 'cpl' ? L.cost.toUpperCase() : col.toUpperCase()} {sortIcon(col)}
+                    {col === 'frequency'
+                      ? 'Freq.'
+                      : col === 'leads'
+                      ? (kind === 'form' ? 'RESULTADOS / LEADS' : L.many.toUpperCase())
+                      : col === 'cpl'
+                      ? (kind === 'form' ? 'CUSTO / RES.' : L.cost.toUpperCase())
+                      : col.toUpperCase()} {sortIcon(col)}
                   </span>
                 </th>
               ))}
@@ -191,6 +196,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
               const isExpanded = expandedCampaign === c.id
               const adsets = adsetData[c.id]
               const isLoading = loadingAdset === c.id
+              const delivery = resolveDelivery(c, kind)
               return (
                 <Fragment key={c.id}>
                   <tr
@@ -211,8 +217,26 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                       <StatusBadge status={c.status} />
                     </td>
                     <NumCell>{fmt(c.spend, currency)}</NumCell>
-                    <NumCell>{nRes(c) || '—'}</NumCell>
-                    <NumCell color={kind === 'form' && c.cpl && c.cpl > 200 ? 'var(--red)' : undefined}>{cRes(c) ? fmtSmall(cRes(c)!, currency) : '—'}</NumCell>
+                    <NumCell>
+                      {delivery.count > 0 ? (
+                        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.25 }}>
+                          <span>{delivery.count.toLocaleString('pt-BR')}</span>
+                          <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 500 }}>{delivery.label}</span>
+                        </div>
+                      ) : (
+                        '—'
+                      )}
+                    </NumCell>
+                    <NumCell color={delivery.type === 'form' && delivery.cost && delivery.cost > 200 ? 'var(--red)' : undefined}>
+                      {delivery.cost != null && delivery.cost > 0 ? (
+                        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.25 }}>
+                          <span>{fmtSmall(delivery.cost, currency)}</span>
+                          <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 500 }}>{delivery.costLabel}</span>
+                        </div>
+                      ) : (
+                        '—'
+                      )}
+                    </NumCell>
                     <NumCell color={c.roas && c.roas >= 3 ? 'var(--green)' : c.roas && c.roas < 1.5 ? 'var(--red)' : undefined}>{c.roas ? `${c.roas.toFixed(1)}x` : '—'}</NumCell>
                     <NumCell>{c.ctr.toFixed(2)}%</NumCell>
                     <NumCell>{c.frequency.toFixed(1)}</NumCell>
@@ -242,7 +266,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                               <thead>
                                 <tr style={{ background: 'var(--bg-card2)' }}>
-                                  {['Conjunto de anúncio', 'Status', 'Investido', L.many, L.cost, 'CTR', 'Freq.', ''].map((h, i) => (
+                                  {['Conjunto de anúncio', 'Status', 'Investido', (kind === 'form' ? 'Resultados' : L.many), (kind === 'form' ? 'Custo / Res.' : L.cost), 'CTR', 'Freq.', ''].map((h, i) => (
                                     <th key={i} style={{
                                       padding: '8px 14px 8px ' + (i === 0 ? '40px' : '14px'),
                                       fontSize: 9, fontWeight: 700, letterSpacing: '.07em',
@@ -258,6 +282,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                                   const isAdsetExpanded = expandedAdset === as.id
                                   const ads = adsData[as.id]
                                   const isAdsLoading = loadingAds === as.id
+                                  const asDelivery = resolveDelivery(as, kind)
                                   return (
                                     <Fragment key={as.id}>
                                       <tr
@@ -276,8 +301,26 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                                           <StatusBadge status={as.status} />
                                         </td>
                                         <SubNum>{fmt(as.spend, currency)}</SubNum>
-                                        <SubNum>{nRes(as) || '—'}</SubNum>
-                                        <SubNum>{cRes(as) ? fmtSmall(cRes(as)!, currency) : '—'}</SubNum>
+                                        <SubNum>
+                                          {asDelivery.count > 0 ? (
+                                            <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.2 }}>
+                                              <span>{asDelivery.count.toLocaleString('pt-BR')}</span>
+                                              <span style={{ fontSize: 9, color: 'var(--text-3)' }}>{asDelivery.label}</span>
+                                            </div>
+                                          ) : (
+                                            '—'
+                                          )}
+                                        </SubNum>
+                                        <SubNum>
+                                          {asDelivery.cost != null && asDelivery.cost > 0 ? (
+                                            <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.2 }}>
+                                              <span>{fmtSmall(asDelivery.cost, currency)}</span>
+                                              <span style={{ fontSize: 9, color: 'var(--text-3)' }}>{asDelivery.costLabel}</span>
+                                            </div>
+                                          ) : (
+                                            '—'
+                                          )}
+                                        </SubNum>
                                         <SubNum>{as.ctr.toFixed(2)}%</SubNum>
                                         <SubNum>{as.frequency.toFixed(1)}</SubNum>
                                         <td style={{ padding: '9px 14px', borderBottom: isAdsetExpanded ? 'none' : '1px solid var(--border-soft)', textAlign: 'right' }}>
@@ -296,38 +339,48 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                                                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Nenhum anúncio encontrado.</span>
                                               ) : (
                                                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                                                  {ads.map(ad => (
-                                                    <div key={ad.id}
-                                                      onClick={async () => {
-                                                        setCreativeModal(ad)
-                                                        setPreviewHtml(null)
-                                                        setPreviewLoading(true)
-                                                        try {
-                                                          const r = await apiFetch(`/api/meta/ad/${ad.id}`)
-                                                          const j = await r.json() as { html?: string }
-                                                          setPreviewHtml(j.html ?? null)
-                                                        } catch {}
-                                                        setPreviewLoading(false)
-                                                      }}
-                                                      className="card card-interactive"
-                                                      style={{ width: 148, overflow: 'hidden' }}
-                                                    >
-                                                      <div style={{ height: 80, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                                                        {ad.thumb ? (
-                                                          <img src={ad.thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                        ) : (
-                                                          <span style={{ fontSize: 20 }}>🖼</span>
-                                                        )}
-                                                      </div>
-                                                      <div style={{ padding: 8 }}>
-                                                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ad.name}</div>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, alignItems: 'center' }}>
-                                                          <StatusBadge status={ad.status} />
-                                                          {nRes(ad) > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)' }}>{nRes(ad)}{kind === 'conversa' ? 'C' : 'L'}</span>}
+                                                  {ads.map(ad => {
+                                                    const adDelivery = resolveDelivery(ad, kind)
+                                                    return (
+                                                      <div key={ad.id}
+                                                        onClick={async () => {
+                                                          setCreativeModal(ad)
+                                                          setPreviewHtml(null)
+                                                          setPreviewLoading(true)
+                                                          try {
+                                                            const r = await apiFetch(`/api/meta/ad/${ad.id}`)
+                                                            const j = await r.json() as { html?: string }
+                                                            setPreviewHtml(j.html ?? null)
+                                                          } catch {}
+                                                          setPreviewLoading(false)
+                                                        }}
+                                                        className="card card-interactive"
+                                                        style={{ width: 148, overflow: 'hidden' }}
+                                                      >
+                                                        <div style={{ height: 80, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                                                          {ad.thumb ? (
+                                                            <img src={ad.thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                          ) : (
+                                                            <span style={{ fontSize: 20 }}>🖼</span>
+                                                          )}
+                                                        </div>
+                                                        <div style={{ padding: 8 }}>
+                                                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ad.name}</div>
+                                                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, alignItems: 'center' }}>
+                                                            <StatusBadge status={ad.status} />
+                                                            {adDelivery.count > 0 && (
+                                                              <span
+                                                                style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)' }}
+                                                                title={`${adDelivery.count} ${adDelivery.label}`}
+                                                              >
+                                                                {adDelivery.count} {adDelivery.badge}
+                                                              </span>
+                                                            )}
+                                                          </div>
                                                         </div>
                                                       </div>
-                                                    </div>
-                                                  ))}
+                                                    )
+                                                  })}
                                                 </div>
                                               )}
                                             </div>
@@ -389,20 +442,31 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
 
             {/* Metrics */}
             <div style={{ padding: 24 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                {[
-                  { label: 'Investido',  value: fmt(creativeModal.spend, currency) },
-                  { label: 'Impressões', value: creativeModal.impressions.toLocaleString('pt-BR') },
-                  { label: L.many,      value: String(nRes(creativeModal) || '—') },
-                  { label: 'Cliques',    value: String(creativeModal.clicks || '—') },
-                  { label: L.cost,        value: cRes(creativeModal) ? fmtSmall(cRes(creativeModal)!, currency) : '—' },
-                ].map(m => (
-                  <div key={m.label} style={{ background: 'var(--bg-card2)', borderRadius: 12, padding: 12 }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)', marginBottom: 4 }}>{m.label}</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>{m.value}</div>
+              {(() => {
+                const modalDelivery = resolveDelivery(creativeModal, kind)
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                    {[
+                      { label: 'Investido',  value: fmt(creativeModal.spend, currency) },
+                      { label: 'Impressões', value: creativeModal.impressions.toLocaleString('pt-BR') },
+                      {
+                        label: modalDelivery.label ? (modalDelivery.label.charAt(0).toUpperCase() + modalDelivery.label.slice(1)) : L.many,
+                        value: modalDelivery.count > 0 ? modalDelivery.count.toLocaleString('pt-BR') : '—',
+                      },
+                      { label: 'Cliques',    value: String(creativeModal.clicks || '—') },
+                      {
+                        label: modalDelivery.costLabel ? `Custo (${modalDelivery.costLabel})` : L.cost,
+                        value: modalDelivery.cost ? fmtSmall(modalDelivery.cost, currency) : '—',
+                      },
+                    ].map(m => (
+                      <div key={m.label} style={{ background: 'var(--bg-card2)', borderRadius: 12, padding: 12 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)', marginBottom: 4 }}>{m.label}</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>{m.value}</div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )
+              })()}
             </div>
           </div>
         </div>
