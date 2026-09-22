@@ -717,6 +717,7 @@ export function ReportStudio({
               onClick={() => { setMode('standard'); setCurrent(0) }}
             >
               Padrão (8 slides)
+              Padrão (10 slides)
             </button>
             <button
               type="button"
@@ -725,6 +726,7 @@ export function ReportStudio({
               onClick={() => { setMode('advanced'); setCurrent(0) }}
             >
               Avançado (11 slides)
+              Avançado (12 slides)
             </button>
           </div>
         </div>

@@ -423,6 +423,7 @@ function Dashboard() {
                 >
                   <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>Apresentação Padrão</span>
                   <span style={{ fontSize: 11, color: 'var(--text-3)' }}>8 slides · Resumo executivo tradicional</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>10 slides · Resumo, público e plataformas</span>
                 </button>
                 <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
                 <button
@@ -443,6 +444,7 @@ function Dashboard() {
                 >
                   <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>Relatório Avançado</span>
                   <span style={{ fontSize: 11, color: 'var(--text-3)' }}>11 slides · Funil, público e campanhas</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>12 slides · Funil, campanhas e criativos</span>
                 </button>
               </div>
             )}

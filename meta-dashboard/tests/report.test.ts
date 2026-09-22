@@ -135,6 +135,8 @@ describe('relatório mensal: slides', () => {
   const slides = buildSlides(data, data.notes)
   it('8 slides, capa com mês e cliente, textos da equipe editáveis', () => {
     expect(slides.map(s => s.id)).toEqual(['cover', 'objective', 'organic', 'content', 'paid', 'creatives', 'analysis', 'next'])
+  it('10 slides, capa com mês e cliente, público, plataformas e textos da equipe editáveis', () => {
+    expect(slides.map(s => s.id)).toEqual(['cover', 'objective', 'organic', 'content', 'paid', 'audience', 'platforms', 'creatives', 'analysis', 'next'])
     const cover = slides[0].els.filter(e => e.t === 'text').map(e => (e as { text: string }).text).join(' ')
     expect(cover).toContain('RESULTADOS DE AGOSTO DE 2026'); expect(cover).toContain('ADVOCACIA FONTANA')
     const editable = slides.flatMap(s => s.els).filter(e => e.t === 'text' && e.edit).map(e => (e as { edit: string }).edit)

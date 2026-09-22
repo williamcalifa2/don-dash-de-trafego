@@ -86,6 +86,7 @@ describe('Construção dos slides (buildSlides)', () => {
 
     const slides = buildSlides(data, notes)
     expect(slides).toHaveLength(8)
+    expect(slides).toHaveLength(10)
 
     // Capa
     const cover = slides.find(s => s.id === 'cover')!
@@ -167,6 +168,9 @@ describe('Construção dos slides (buildSlides)', () => {
 
     const standard = buildSlides(data, notes, 'standard')
     expect(standard).toHaveLength(8)
+    expect(standard).toHaveLength(10)
+    expect(standard.some(s => s.id === 'audience')).toBe(true)
+    expect(standard.some(s => s.id === 'platforms')).toBe(true)
 
     const advanced = buildSlides(data, notes, 'advanced')
     expect(advanced).toHaveLength(12)
@@ -180,6 +184,7 @@ describe('Construção dos slides (buildSlides)', () => {
 
     // Verifica presença de slides exclusivos do avançado
     expect(advanced.some(s => s.id === 'audience')).toBe(true)
+    // Verifica presença de slides exclusivos do avançado (funil e campanhas)
     expect(advanced.some(s => s.id === 'funnel')).toBe(true)
     expect(advanced.some(s => s.id === 'campaigns')).toBe(true)
 

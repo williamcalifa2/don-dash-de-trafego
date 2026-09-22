@@ -258,11 +258,156 @@ function modernCreativeCards(ads: ReportAd[], currency: string, resultLabel: str
 }
 
 /** Modelo Padrão: 8 slides clássicos consolidados no tema visual do estúdio. */
+function buildAudienceSlide(d: ReportData, paid: ReportData['paid']): SlideSpec {
+  const aud = d.audience
+  const ageLabels = aud?.ageBars?.map(b => b.label) ?? ['13-17', '18-24', '25-34', '35-44', '45-54', '55-64', '65+']
+  const genderLabels = aud?.genderBars?.map(b => b.label) ?? ['Feminino', 'Masculino', 'Desconhecido']
+
+  const ageImpressions = aud?.ageBars?.map(b => b.impressions) ?? [0, 1350, 3680, 3720, 3950, 2600, 850]
+  const ageReach = aud?.ageBars?.map(b => b.reach) ?? [0, 920, 2600, 2350, 2290, 1480, 470]
+  const ageResults = aud?.ageBars?.map(b => b.results) ?? [0, 1, 3, 4, 9, 6, 1]
+
+  const genderImpressions = aud?.genderBars?.map(b => b.impressions) ?? [11100, 4300, 1400]
+  const genderReach = aud?.genderBars?.map(b => b.reach) ?? [7100, 2400, 250]
+  const genderResults = aud?.genderBars?.map(b => b.results) ?? [10, 14, 0]
+
+  const costByAgeText = aud?.ageBars?.filter(b => b.results > 0 && b.costPerResult != null)
+    .map(b => `${b.label} R$ ${b.costPerResult!.toFixed(2).replace('.', ',')}`).join(' · ') || ''
+  const costByGenderText = aud?.genderBars?.filter(b => b.results > 0 && b.costPerResult != null)
+    .map(b => `${b.label} R$ ${b.costPerResult!.toFixed(2).replace('.', ',')}`).join(' · ') || ''
+
+  return {
+    id: 'audience', label: 'Demografia', dark: true,
+    els: [
+      ...corners(true),
+      title('Perfil do Público: Idade & Gênero', 54, 55, 'center'),
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Distribuição detalhada de impressões, alcance e conversões por faixa etária e gênero.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+
+      // Card 1 (Top Left): Impressões e alcance por idade
+      {
+        t: 'chart',
+        x: 50, y: 175, w: 575, h: 236,
+        chartType: 'bar',
+        title: 'Impressões e alcance por idade',
+        barGrouping: 'clustered',
+        data: [
+          { name: 'Impressões', labels: ageLabels, values: ageImpressions },
+          { name: 'Alcance', labels: ageLabels, values: ageReach },
+        ],
+        colors: ['#22C55E', '#818CF8'],
+        showLegend: true,
+      },
+
+      // Card 2 (Top Right): Impressões e alcance por gênero
+      {
+        t: 'chart',
+        x: 655, y: 175, w: 575, h: 236,
+        chartType: 'bar',
+        title: 'Impressões e alcance por gênero',
+        barGrouping: 'clustered',
+        data: [
+          { name: 'Impressões', labels: genderLabels, values: genderImpressions },
+          { name: 'Alcance', labels: genderLabels, values: genderReach },
+        ],
+        colors: ['#22C55E', '#818CF8'],
+        showLegend: true,
+      },
+
+      // Card 3 (Bottom Left): Resultados por idade
+      {
+        t: 'chart',
+        x: 50, y: 430, w: 575, h: 236,
+        chartType: 'bar',
+        title: `${paid.resultLabel} por idade`,
+        data: [
+          { name: paid.resultLabel, labels: ageLabels, values: ageResults },
+        ],
+        colors: ['#F59E0B'],
+        showLegend: false,
+        showValueLabels: true,
+        costSubtitle: costByAgeText ? `Custo por ${paid.resultLabel.toLowerCase()}: ${costByAgeText}` : undefined,
+      },
+
+      // Card 4 (Bottom Right): Resultados por gênero
+      {
+        t: 'chart',
+        x: 655, y: 430, w: 575, h: 236,
+        chartType: 'bar',
+        title: `${paid.resultLabel} por gênero`,
+        data: [
+          { name: paid.resultLabel, labels: genderLabels, values: genderResults },
+        ],
+        colors: ['#F59E0B'],
+        showLegend: false,
+        showValueLabels: true,
+        costSubtitle: costByGenderText ? `Custo por ${paid.resultLabel.toLowerCase()}: ${costByGenderText}` : undefined,
+      },
+
+      ...band(true),
+    ],
+  }
+}
+
+function buildPlatformsSlide(d: ReportData): SlideSpec {
+  const aud = d.audience
+  const platItems = aud?.platformDonut ?? [
+    { label: 'Instagram', pct: 74, reach: 7400 },
+    { label: 'Facebook', pct: 22, reach: 2200 },
+    { label: 'WhatsApp', pct: 3.7, reach: 370 },
+    { label: 'Audience Network', pct: 0.3, reach: 30 },
+  ]
+  const devItems = aud?.deviceDonut ?? [
+    { label: 'App mobile', pct: 99.8, reach: 9980 },
+    { label: 'Web mobile', pct: 0.2, reach: 20 },
+  ]
+
+  return {
+    id: 'platforms', label: 'Plataformas & Canais', dark: true,
+    els: [
+      ...corners(true),
+      title('Plataformas & Dispositivos', 54, 55, 'center'),
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Participação relativa de alcance nos canais e tipos de dispositivos utilizados.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+
+      // Card 1: Plataformas
+      {
+        t: 'chart',
+        x: 50, y: 175, w: 575, h: 485,
+        chartType: 'doughnut',
+        title: 'Alcance por plataforma',
+        holeSize: 60,
+        data: [
+          { name: 'Plataforma', labels: platItems.map(p => p.label), values: platItems.map(p => p.pct) },
+        ],
+        colors: ['#818CF8', '#22C55E', '#F59E0B', '#64748B'],
+        showLegend: true,
+      },
+
+      // Card 2: Dispositivos
+      {
+        t: 'chart',
+        x: 655, y: 175, w: 575, h: 485,
+        chartType: 'doughnut',
+        title: 'Alcance por dispositivo',
+        holeSize: 60,
+        data: [
+          { name: 'Dispositivo', labels: devItems.map(d => d.label), values: devItems.map(d => d.pct) },
+        ],
+        colors: ['#818CF8', '#22C55E', '#F59E0B'],
+        showLegend: true,
+      },
+
+      ...band(true),
+    ],
+  }
+}
+
+/** Modelo Padrão: 10 slides executivos (com público e plataformas) consolidados no tema visual moderno. */
 export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpec[] {
   const is7d = d.month.preset === 'last_7d'
   const period = `${fmtDay(d.month.since)} até ${fmtDay(d.month.until)}`
   const compLabel = is7d ? 'período anterior' : 'mês anterior'
   const slides: SlideSpec[] = []
+  const paid = d.paid
 
   // 1 — Capa
   const coverTitle = is7d ? 'Resultados dos últimos 7 dias' : `Resultados de ${d.month.label}`
@@ -274,6 +419,9 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
       { t: 'text', x: 440, y: 80, w: 400, h: 32, text: 'RELATÓRIO MENSAL DE PERFORMANCE', size: 12, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', lineHeight: 1.2 },
       { t: 'text', x: 60, y: 150, w: 1160, h: 230, text: upper(coverTitle), size: is7d ? 72 : 82, weight: 800, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.1 },
       { t: 'text', x: 60, y: 395, w: 1160, h: 30, text: `Período avaliado: ${period}`, size: 18, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      { t: 'text', x: 440, y: 80, w: 400, h: 32, text: is7d ? 'RELATÓRIO SEMANAL DE PERFORMANCE' : 'RELATÓRIO ESTRATÉGICO DE PERFORMANCE', size: 12, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', lineHeight: 1.2 },
+      { t: 'text', x: 60, y: 140, w: 1160, h: 230, text: upper(coverTitle), size: is7d ? 72 : 82, weight: 800, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.15 },
+      { t: 'text', x: 60, y: 385, w: 1160, h: 30, text: `Período avaliado: ${period}`, size: 18, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(d.client.logoUrl ? [{ t: 'img', x: 610, y: 440, w: 60, h: 60, src: d.client.logoUrl, radius: 12 } as El] : []),
       { t: 'text', x: 60, y: d.client.logoUrl ? 515 : 465, w: 1160, h: 44, text: upper(d.client.name), size: 30, weight: 600, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.2 },
       ...band(true),
@@ -288,10 +436,12 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
       title('Objetivo e metas', 70, 70),
       { t: 'box', x: 90, y: 180, w: 1100, h: 200, fill: P.card, line: P.cardBorder, radius: 16 },
       { t: 'text', x: 120, y: 200, w: 1040, h: 24, text: 'OBJETIVO ESTRATÉGICO', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 120, y: 200, w: 1040, h: 24, text: 'OBJETIVO ESTRATÉGICO DO CLIENTE', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
       { t: 'text', x: 120, y: 235, w: 1040, h: 125, text: notes.objective, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'objective', placeholder: 'Objetivo do cliente com o marketing digital (clique para escrever)' },
 
       { t: 'box', x: 90, y: 405, w: 1100, h: 235, fill: P.card, line: P.cardBorder, radius: 16 },
       { t: 'text', x: 120, y: 425, w: 1040, h: 24, text: 'METAS DO PERÍODO', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 120, y: 425, w: 1040, h: 24, text: 'METAS E DIRETRIZES DO PERÍODO', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
       { t: 'text', x: 120, y: 460, w: 1040, h: 160, text: notes.goals, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'goals', placeholder: 'Uma meta por linha (clique para escrever)' },
       ...band(true),
     ],
@@ -313,12 +463,14 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
   })
 
   // 4 — Conteúdo orgânico
+  // 4 — Conteúdo orgânico (Print 1: 5 cards no layout do app)
   slides.push({
     id: 'content', label: 'Conteúdo orgânico', dark: true,
     els: [
       ...corners(true),
       title('Conteúdo Orgânico', 60, 55, 'center'),
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Publicações com maior engajamento no Instagram e Facebook no período.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Publicações que mais geraram alcance e engajamento no período.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...modernOrganicCards(org.top),
       ...band(true),
     ],
@@ -326,6 +478,7 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
 
   // 5 — Métricas de anúncios
   const paid = d.paid
+  // 5 — Métricas de anúncios (Visão Geral)
   const cellsPaid = paid.stats.slice(0, 12).flatMap((s, i) => {
     const x = 50 + (i % 4) * 298, y = 205 + Math.floor(i / 4) * 145
     const good = s.delta == null ? true : s.lowerIsBetter ? s.delta <= 0 : s.delta >= 0
@@ -341,6 +494,7 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
     els: [
       ...corners(true),
       title('Métricas de anúncios', 60, 55, 'center'),
+      title('Visão Geral de Performance', 60, 55, 'center'),
       { t: 'text', x: 60, y: 135, w: 1160, h: 30, text: `Resultados de ${period} nos anúncios pagos da Meta, contra o ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(paid.status === 'ok' ? cellsPaid : [{ t: 'text', x: 160, y: 300, w: 960, h: 120, text: `Os números de anúncios ${is7d ? 'do período' : 'do mês fechado'} ainda não foram buscados. Use "Buscar dados" para atualizar.`, size: 20, weight: 500, color: P.soft, align: 'center', valign: 'middle', lineHeight: 1.2 } as El]),
       ...band(true),
@@ -348,6 +502,13 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
   })
 
   // 6 — Criativos campeões
+  // 6 — Demografia do Público: Idade & Gênero (Print 3: 4 bar charts)
+  slides.push(buildAudienceSlide(d, paid))
+
+  // 7 — Plataformas & Dispositivos (Print 2: 2 Donut charts)
+  slides.push(buildPlatformsSlide(d))
+
+  // 8 — Criativos campeões
   slides.push({
     id: 'creatives', label: 'Criativos campeões', dark: true,
     els: [
@@ -360,6 +521,7 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
   })
 
   // 7 — Análise
+  // 9 — Análise
   slides.push({
     id: 'analysis', label: 'Análise', dark: true,
     els: [
@@ -367,11 +529,14 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
       title(is7d ? 'Análise do período' : 'Análise do mês', 64, 55),
       { t: 'box', x: 90, y: 160, w: 1100, h: 480, fill: P.card, line: P.cardBorder, radius: 16 },
       { t: 'text', x: 120, y: 190, w: 1040, h: 420, text: notes.analysis, size: 22, weight: 400, color: P.white, lineHeight: 1.5, edit: 'analysis', placeholder: `O que aconteceu ${is7d ? 'no período' : 'no mês'} e por quê (clique para escrever)` },
+      { t: 'box', x: 80, y: 160, w: 1120, h: 480, fill: P.card, line: P.cardBorder, radius: 16 },
+      { t: 'text', x: 110, y: 190, w: 1060, h: 420, text: notes.analysis, size: 22, weight: 400, color: P.white, lineHeight: 1.5, edit: 'analysis', placeholder: `O que aconteceu ${is7d ? 'no período' : 'no mês'} e por quê (clique para escrever)` },
       ...band(true),
     ],
   })
 
   // 8 — Próximos passos
+  // 10 — Próximos passos & Otimizações
   slides.push({
     id: 'next', label: 'Próximos passos', dark: true,
     els: [
@@ -379,6 +544,9 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
       title('Próximos passos', 64, 55),
       { t: 'box', x: 90, y: 160, w: 1100, h: 480, fill: P.card, line: P.cardBorder, radius: 16 },
       { t: 'text', x: 120, y: 190, w: 1040, h: 420, text: notes.next, size: 22, weight: 400, color: P.white, lineHeight: 1.5, edit: 'next', placeholder: `O que vamos fazer ${is7d ? 'na próxima semana' : 'no próximo mês'} (clique para escrever)` },
+      title(is7d ? 'Próximos passos & Otimizações' : 'Próximos passos', 64, 55),
+      { t: 'box', x: 80, y: 160, w: 1120, h: 480, fill: P.card, line: P.cardBorder, radius: 16 },
+      { t: 'text', x: 110, y: 190, w: 1060, h: 420, text: notes.next, size: 22, weight: 400, color: P.white, lineHeight: 1.5, edit: 'next', placeholder: `O que vamos fazer ${is7d ? 'na próxima semana' : 'no próximo mês'} (clique para escrever)` },
       ...band(true),
     ],
   })
@@ -481,6 +649,7 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
   const aud = d.audience
   const ageLabels = aud?.ageBars?.map(b => b.label) ?? ['13-17', '18-24', '25-34', '35-44', '45-54', '55-64', '65+']
   const genderLabels = aud?.genderBars?.map(b => b.label) ?? ['Feminino', 'Masculino', 'Desconhecido']
+  slides.push(buildAudienceSlide(d, paid))
 
   const ageImpressions = aud?.ageBars?.map(b => b.impressions) ?? [0, 1350, 3680, 3720, 3950, 2600, 850]
   const ageReach = aud?.ageBars?.map(b => b.reach) ?? [0, 920, 2600, 2350, 2290, 1480, 470]
@@ -577,6 +746,7 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
     { label: 'App mobile', pct: 99.8, reach: 9980 },
     { label: 'Web mobile', pct: 0.2, reach: 20 },
   ]
+  slides.push(buildPlatformsSlide(d))
 
   slides.push({
     id: 'platforms', label: 'Plataformas & Canais', dark: true,
