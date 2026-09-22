@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireRole } from '@/lib/admin'
+import { denyReader } from '@/lib/admin'
 import { requireTenant } from '@/lib/tenant'
 import { allow } from '@/lib/rateLimit'
 import { metaConfig } from '@/lib/meta/config'
@@ -25,8 +25,6 @@ async function loadNotes(slug: string, periodKey: string): Promise<ReportNotes> 
 }
 
 export async function GET(req: NextRequest) {
-  const denied = await requireRole(req, 'member')
-  if (denied) return denied
   const tenant = await requireTenant(req)
   if (tenant instanceof NextResponse) return tenant
   if (!(await snapshotMode())) return NextResponse.json({ error: 'O relatório usa os dados guardados e só funciona com a sincronização central ligada.' }, { status: 409 })
@@ -71,7 +69,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const denied = await requireRole(req, 'member')
+  const denied = await denyReader(req)
   if (denied) return denied
   const tenant = await requireTenant(req)
   if (tenant instanceof NextResponse) return tenant

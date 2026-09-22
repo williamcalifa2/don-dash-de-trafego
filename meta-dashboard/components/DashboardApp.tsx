@@ -316,16 +316,126 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Abas sublinhadas */}
-      <div className="tabs no-print" role="tablist" style={{ marginBottom: 24 }}>
-        {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['retorno', 'Retorno'], ['simulator', 'Simulador'], ['leads', 'Leads']] as const).filter(([key]) => (showCrm || key !== 'retorno') && (key !== 'simulator' || !!me?.admin)).map(([key, label]) => (
-          <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
-            {label}
-            {key === 'leads' && staleCount > 0 && (
-              <span className="badge" title={`${staleCount} lead(s) sem contato`} style={{ marginLeft: 8, padding: '0 8px', background: 'var(--amber-soft)', color: 'var(--text-1)' }}>{staleCount}</span>
+      {/* Abas sublinhadas com Ações de Relatório */}
+      <div className="no-print" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+        <div className="tabs" role="tablist" style={{ borderBottom: 'none', marginBottom: 0 }}>
+          {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['retorno', 'Retorno'], ['simulator', 'Simulador'], ['leads', 'Leads']] as const).filter(([key]) => (showCrm || key !== 'retorno') && (key !== 'simulator' || !!me?.admin)).map(([key, label]) => (
+            <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
+              {label}
+              {key === 'leads' && staleCount > 0 && (
+                <span className="badge" title={`${staleCount} lead(s) sem contato`} style={{ marginLeft: 8, padding: '0 8px', background: 'var(--amber-soft)', color: 'var(--text-1)' }}>{staleCount}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 6 }}>
+          <div ref={reportMenuRef} style={{ position: 'relative', display: 'inline-flex' }}>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => { setMonthlyMode('standard'); setMonthlyOpen(true); setReportMenuOpen(false) }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                borderTopRightRadius: 0,
+                borderBottomRightRadius: 0,
+                borderRight: 'none',
+              }}
+              title="Gerar Apresentação PPTX (Padrão)"
+            >
+              <FileBarChart size={16} strokeWidth={1.75} />
+              <span>Apresentação PPTX</span>
+            </button>
+            <button
+              className="btn btn-outline btn-sm btn-icon"
+              onClick={() => setReportMenuOpen(v => !v)}
+              aria-expanded={reportMenuOpen}
+              aria-haspopup="menu"
+              aria-label="Opções de relatório PPTX"
+              style={{
+                borderTopLeftRadius: 0,
+                borderBottomLeftRadius: 0,
+                padding: '0 8px',
+              }}
+              title="Ver opções de relatório (Padrão ou Avançado)"
+            >
+              <ChevronDown
+                size={14}
+                strokeWidth={2}
+                style={{
+                  transform: reportMenuOpen ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 0.15s ease',
+                }}
+              />
+            </button>
+
+            {reportMenuOpen && (
+              <div
+                role="menu"
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: 0,
+                  zIndex: 50,
+                  minWidth: 270,
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.35)',
+                  padding: 6,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                }}
+              >
+                <button
+                  role="menuitem"
+                  onClick={() => { setMonthlyMode('standard'); setMonthlyOpen(true); setReportMenuOpen(false) }}
+                  className="btn btn-ghost btn-sm"
+                  style={{
+                    justifyContent: 'flex-start',
+                    textAlign: 'left',
+                    padding: '8px 10px',
+                    height: 'auto',
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: 2,
+                  }}
+                >
+                  <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>Apresentação Padrão</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>8 slides · Resumo executivo tradicional</span>
+                </button>
+                <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+                <button
+                  role="menuitem"
+                  onClick={() => { setMonthlyMode('advanced'); setMonthlyOpen(true); setReportMenuOpen(false) }}
+                  className="btn btn-ghost btn-sm"
+                  style={{
+                    justifyContent: 'flex-start',
+                    textAlign: 'left',
+                    padding: '8px 10px',
+                    height: 'auto',
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: 2,
+                  }}
+                >
+                  <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>Relatório Avançado</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>11 slides · Funil, público e campanhas</span>
+                </button>
+              </div>
             )}
+          </div>
+
+          <button className="btn btn-outline btn-sm" onClick={() => setReportOpen(true)} disabled={reportOpen || !data}>
+            <Download size={16} strokeWidth={1.75} /> {reportOpen ? 'Preparando…' : 'Baixar relatório'}
           </button>
-        ))}
+        </div>
       </div>
 
       {/* Erro */}
@@ -375,97 +485,7 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Baixar relatório: monta o relatório fora da tela e abre a impressão (Salvar como PDF) */}
-      {!isLoading && s && tab === 'metrics' && (
-        <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-          {me?.admin && me.role !== 'reader' && (
-            <div ref={reportMenuRef} style={{ position: 'relative', display: 'inline-flex', marginRight: 8 }}>
-              <button
-                className="btn btn-outline btn-sm"
-                onClick={() => setReportMenuOpen(v => !v)}
-                aria-expanded={reportMenuOpen}
-                aria-haspopup="menu"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                title="Escolha o modelo de apresentação para exportar"
-              >
-                <FileBarChart size={16} strokeWidth={1.75} />
-                <span>Apresentação PPTX</span>
-                <ChevronDown
-                  size={14}
-                  strokeWidth={2}
-                  style={{
-                    transform: reportMenuOpen ? 'rotate(180deg)' : 'none',
-                    transition: 'transform 0.15s ease',
-                  }}
-                />
-              </button>
-              {reportMenuOpen && (
-                <div
-                  role="menu"
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 6px)',
-                    right: 0,
-                    zIndex: 50,
-                    minWidth: 260,
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 8,
-                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.35)',
-                    padding: 6,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 4,
-                  }}
-                >
-                  <button
-                    role="menuitem"
-                    onClick={() => { setMonthlyMode('standard'); setMonthlyOpen(true); setReportMenuOpen(false) }}
-                    className="btn btn-ghost btn-sm"
-                    style={{
-                      justifyContent: 'flex-start',
-                      textAlign: 'left',
-                      padding: '8px 10px',
-                      height: 'auto',
-                      width: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      gap: 2,
-                    }}
-                  >
-                    <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>Apresentação Padrão</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-3)' }}>8 slides · Resumo executivo tradicional</span>
-                  </button>
-                  <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
-                  <button
-                    role="menuitem"
-                    onClick={() => { setMonthlyMode('advanced'); setMonthlyOpen(true); setReportMenuOpen(false) }}
-                    className="btn btn-ghost btn-sm"
-                    style={{
-                      justifyContent: 'flex-start',
-                      textAlign: 'left',
-                      padding: '8px 10px',
-                      height: 'auto',
-                      width: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      gap: 2,
-                    }}
-                  >
-                    <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>Relatório Avançado</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-3)' }}>11 slides · Funil, público e campanhas</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-          <button className="btn btn-outline btn-sm" onClick={() => setReportOpen(true)} disabled={reportOpen}>
-            <Download size={16} strokeWidth={1.75} /> {reportOpen ? 'Preparando…' : 'Baixar relatório'}
-          </button>
-        </div>
-      )}
+
 
       {/* Metric tiles */}
       {!isLoading && s && tab === 'metrics' && (
