@@ -53,7 +53,7 @@ async function legacyLeads(owned: Set<string>): Promise<Array<{ slug: string; im
     }
     try {
       lastRun.set(slug, Date.now())
-      const r = await syncLeads(t, 2)
+      const r = await syncLeads(t, 7)
       results.push(r.error ? { slug, error: r.error } : { slug, imported: r.imported })
     } catch (e) {
       results.push({ slug, error: e instanceof Error ? e.message : 'erro' })
@@ -88,7 +88,7 @@ async function execute() {
   } catch (e) { if (!(e instanceof StoreNotMigrated)) console.error('[cron] organico:', e instanceof Error ? e.message : e) }
 
   // Mantém guardada a lista de contas do cadastro de clientes (2 consultas a cada 12 h; falha em silêncio).
-  await refreshAccountsIfStale(await liveOrigin()).catch(() => {})
+  await refreshAccountsIfStale(await liveOrigin()).catch(() => { })
 
   // Eventos de webhook que ficaram pendentes (falha ou limite): reprocessa com o mesmo controle de limites.
   let webhook: unknown = null

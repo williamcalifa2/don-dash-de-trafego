@@ -16,18 +16,28 @@ export function LeadsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { refetchRef.current = value.refetch })
 
   // Enquanto o painel está aberto, importa do Meta os leads recentes (cobre webhook que falhou ou ainda não foi ativado).
-  // O servidor limita a 1 reconferência a cada 2 min por cliente, então várias abas não multiplicam as consultas.
-  const sync = useCallback(async () => {
+  const sync = useCallback(async (days = 7) => {
     try {
-      const res = await apiFetch('/api/leads/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days: 2 }) })
+      const res = await apiFetch('/api/leads/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days }),
+      })
       const json = await res.json() as { imported?: number }
       if ((json.imported ?? 0) > 0) refetchRef.current()
-    } catch {}
+    } catch { }
   }, [])
-  useEffect(() => { sync() }, [sync])
-  usePoll(sync, SYNC_EVERY_MS)
+  useEffect(() => { sync(7) }, [sync])
+  usePoll(() => sync(7), SYNC_EVERY_MS)
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
+  const handleRefetch = useCallback(async () => {
+    await sync(7)
+    return value.refetch()
+  }, [sync, value.refetch])
+
+  const contextValue = { ...value, refetch: handleRefetch }
+
+  return <Ctx.Provider value={contextValue}>{children}</Ctx.Provider>
 }
 
 export function useLeadsData(): LeadsValue {

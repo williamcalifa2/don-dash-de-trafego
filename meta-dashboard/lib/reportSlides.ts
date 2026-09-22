@@ -19,7 +19,7 @@ export const PALETTE = {
   violetSoft: 'rgba(99,102,241,0.16)',
   ink: '#0B0B14',
   soft: '#E2E8F0',
-  muted: '#CBD5E1',
+  muted: '#94A3B8',
   white: '#F8FAFC',
   green: '#22C55E',
   greenSoft: 'rgba(34,197,94,0.16)',
