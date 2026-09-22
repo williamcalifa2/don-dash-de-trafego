@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { getSupabase } from '@/lib/supabase'
+import { apiFetch } from '@/lib/apiFetch'
+import { usePoll } from '@/lib/usePoll'
 import type { MetricsResponse, DatePreset } from '@/lib/meta'
 
 interface State {
@@ -19,7 +20,7 @@ export function useMetricsRealtime(datePreset: DatePreset) {
   const fetchAndUpdate = useCallback(async (preset: DatePreset) => {
     setState(s => ({ ...s, isValidating: true, error: null }))
     try {
-      const res = await fetch(`/api/meta/metrics?date_preset=${preset}`)
+      const res = await apiFetch(`/api/meta/metrics?date_preset=${preset}`)
       const json: MetricsResponse = await res.json()
       setState({ data: json, isLoading: false, isValidating: false, error: null })
     } catch (e) {
@@ -32,33 +33,14 @@ export function useMetricsRealtime(datePreset: DatePreset) {
     fetchAndUpdate(datePreset)
   }, [datePreset, fetchAndUpdate])
 
-  // Subscribe to Supabase Realtime WebSocket
-  useEffect(() => {
-    const db = getSupabase()
-    if (!db) return
+  // A cada 5 min (com variação), só com a aba visível: aba esquecida em segundo plano não gasta consulta.
+  usePoll(() => { fetchAndUpdate(presetsRef.current) }, 5 * 60 * 1000, { pauseWhenHidden: true })
 
-    const accountId = 'act_4430467137184616'
-    const channel = db
-      .channel('metrics-live')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'metrics_cache',
-          filter: `id=eq.${accountId}:${datePreset}`,
-        },
-        (payload) => {
-          const incoming = payload.new as { data: MetricsResponse }
-          setState(s => ({ ...s, data: incoming.data, isValidating: false }))
-        }
-      )
-      .subscribe()
-
-    return () => { db.removeChannel(channel) }
-  }, [datePreset])
-
-  const mutate = useCallback(() => fetchAndUpdate(presetsRef.current), [fetchAndUpdate])
+  // "Atualizar": pede à fila (com resfriamento) e relê o banco. O painel nunca chama a Meta.
+  const mutate = useCallback(async () => {
+    await apiFetch('/api/meta/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ preset: presetsRef.current }) }).catch(() => {})
+    return fetchAndUpdate(presetsRef.current)
+  }, [fetchAndUpdate])
 
   return { ...state, mutate }
 }
