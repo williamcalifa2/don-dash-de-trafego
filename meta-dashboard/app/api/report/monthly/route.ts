@@ -8,7 +8,7 @@ import { snapshotMode, accountStateOrNull, snapshotGuard } from '@/lib/meta/mode
 import { readMetrics, readPerformance } from '@/lib/meta/read'
 import { readOrganic } from '@/lib/meta/organicRead'
 import { refreshNow, refreshOrganicNow } from '@/lib/meta/refreshNow'
-import { cleanNotes, draftAnalysis, EMPTY_NOTES, monthEndsAt, organicSection, paidSection, reportPeriodOf, type ReportData, type ReportNotes, type ReportPreset } from '@/lib/report'
+import { cleanNotes, draftAnalysis, EMPTY_NOTES, extractCampaigns, extractDaily, extractFunnel, monthEndsAt, organicSection, paidSection, reportPeriodOf, type ReportData, type ReportNotes, type ReportPreset } from '@/lib/report'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -57,7 +57,11 @@ export async function GET(req: NextRequest) {
     const { currency, ...paidOut } = paid
     const data: ReportData = {
       month: period, client: { name: tenant.name, logoUrl: tenant.logoUrl }, currency,
-      organic: organicSection(organic, notBefore), paid: paidOut, notes,
+      organic: organicSection(organic, notBefore), paid: paidOut,
+      campaigns: extractCampaigns(hasPaid ? metrics : null),
+      daily: extractDaily(hasPaid ? metrics : null),
+      funnel: extractFunnel(hasPaid ? metrics : null),
+      notes,
     }
     return NextResponse.json({ ...data, draftAnalysis: draftAnalysis(data) }, { headers: { 'Cache-Control': 'no-store' } })
   })

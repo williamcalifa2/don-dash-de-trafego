@@ -39,6 +39,59 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
         const data = el.src ? await toData(el.src) : null
         if (data) slide.addImage({ data, ...pos, sizing: { type: 'cover', w: pos.w, h: pos.h } })
         else slide.addShape(pptx.ShapeType.rect, { ...pos, fill: { color: 'D9D9E6' }, line: { type: 'none' } })
+      } else if (el.t === 'chart') {
+        const chartType = el.chartType === 'line' ? pptx.ChartType.line : pptx.ChartType.bar
+        slide.addChart(chartType, el.data, {
+          ...pos,
+          showTitle: !!el.title,
+          title: el.title ?? '',
+          titleFontSize: pt(14),
+          titleColor: hex(PALETTE.ink),
+          titleFontFace: FONT,
+          chartColors: el.colors.map(hex),
+          showLegend: true,
+          legendPos: 'b',
+          legendFontSize: pt(11),
+          legendFontFace: FONT,
+          lineSmooth: true,
+          lineDataSymbol: 'circle',
+          lineDataSymbolSize: 6,
+          valAxisLineShow: true,
+          catAxisLineShow: true,
+        })
+      } else if (el.t === 'table') {
+        const headerRow = el.headers.map((h, i) => ({
+          text: h,
+          options: {
+            fontFace: FONT,
+            fontSize: pt(13),
+            bold: true,
+            color: 'FFFFFF',
+            fill: { color: hex(PALETTE.violet) },
+            align: (i === 0 ? 'left' : 'right') as 'left' | 'right' | 'center',
+            valign: 'middle' as const,
+          },
+        }))
+        const dataRows = el.rows.map((row, rIdx) =>
+          row.map(cell => ({
+            text: cell.text,
+            options: {
+              fontFace: FONT,
+              fontSize: pt(12),
+              bold: !!cell.bold,
+              color: hex(cell.color ?? PALETTE.ink),
+              fill: { color: rIdx % 2 === 0 ? 'FFFFFF' : 'F7F7FA' },
+              align: (cell.align ?? 'left') as 'left' | 'right' | 'center',
+              valign: 'middle' as const,
+            },
+          }))
+        )
+        slide.addTable([headerRow, ...dataRows], {
+          ...pos,
+          colW: el.colWidths.map(inch),
+          border: { type: 'solid', pt: 1, color: 'E2E2EA' },
+          margin: [4, 8, 4, 8],
+        })
       } else if (el.text.trim()) {
         const lines = el.text.split('\n')
         slide.addText(lines.map((line, i) => ({ text: line, options: { breakLine: i < lines.length - 1 } })), {

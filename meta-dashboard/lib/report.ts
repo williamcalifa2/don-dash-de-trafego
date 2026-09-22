@@ -71,12 +71,37 @@ export interface ReportPost { platform: 'ig' | 'fb'; type: string; caption: stri
 export interface ReportAd { id: string; name: string; thumb: string | null; results: number; spend: number; clicks: number; impressions: number; costPerResult: number | null; ctr: number | null }
 export interface ReportNotes { objective: string; goals: string; analysis: string; next: string }
 
+export type ReportMode = 'standard' | 'advanced'
+
+export interface ReportCampaign {
+  id: string
+  name: string
+  status: string
+  spend: number
+  results: number
+  costPerResult: number | null
+  ctr: number
+}
+
+export interface ReportFunnel {
+  impressions: number
+  clicks: number
+  results: number
+  resultLabel: string
+  costPerResult: number | null
+  ctr: number
+  clickToResultRate: number
+}
+
 export interface ReportData {
   month: ReportMonth
   client: { name: string; logoUrl: string | null }
   currency: string
   organic: { status: OrganicView['status'] | 'incomplete'; handle: string | null; stats: ReportStat[]; top: ReportPost[] }
   paid: { status: 'ok' | 'pending'; resultLabel: string; stats: ReportStat[]; top: ReportAd[] }
+  campaigns?: ReportCampaign[]
+  daily?: { dates: string[]; spend: number[]; results: number[] }
+  funnel?: ReportFunnel
   notes: ReportNotes
 }
 
@@ -198,4 +223,118 @@ export function cleanNotes(v: unknown): ReportNotes {
   const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
   const t = (k: keyof ReportNotes) => (typeof o[k] === 'string' ? (o[k] as string).slice(0, 1500) : '')
   return { objective: t('objective'), goals: t('goals'), analysis: t('analysis'), next: t('next') }
+}
+
+export function extractCampaigns(m: MetricsResponse | null): ReportCampaign[] {
+  if (!m?.campaigns) return []
+  return m.campaigns
+    .filter(c => (c.spend ?? 0) > 0 || (c.results ?? 0) > 0)
+    .sort((a, b) => (b.results ?? 0) - (a.results ?? 0) || (b.spend ?? 0) - (a.spend ?? 0))
+    .slice(0, 5)
+    .map(c => ({
+      id: c.id,
+      name: c.name,
+      status: c.status,
+      spend: c.spend ?? 0,
+      results: c.results ?? 0,
+      costPerResult: c.cost_per_result ?? null,
+      ctr: c.ctr ?? 0,
+    }))
+}
+
+export function extractDaily(m: MetricsResponse | null): ReportData['daily'] | undefined {
+  if (!m?.daily?.dates?.length) return undefined
+  const d = m.daily
+  const results = d.metrics?.results ?? d.leads
+  return {
+    dates: d.dates.map(iso => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`),
+    spend: d.spend,
+    results,
+  }
+}
+
+export function extractFunnel(m: MetricsResponse | null): ReportFunnel | undefined {
+  if (!m?.summary) return undefined
+  const s = m.summary
+  const kl = KIND_LABELS[m.result_kind] ?? KIND_LABELS.misto
+  const imp = s.impressions ?? 0
+  const clicks = s.link_clicks || s.clicks || 0
+  const results = s.results ?? 0
+  const ctr = imp > 0 ? (clicks / imp) * 100 : 0
+  const cvr = clicks > 0 ? (results / clicks) * 100 : 0
+  return {
+    impressions: imp,
+    clicks,
+    results,
+    resultLabel: kl.many,
+    costPerResult: s.cost_per_result,
+    ctr: Math.round(ctr * 100) / 100,
+    clickToResultRate: Math.round(cvr * 100) / 100,
+  }
+}
+
+export function generateSmartAnalysis(d: ReportData): { analysis: string; next: string } {
+  const p = (label: string) => d.paid.stats.find(s => s.label === label)
+  const inv = p('Investimento'), res = p(d.paid.resultLabel), cpl = d.paid.stats.find(s => s.lowerIsBetter && s.label.toLowerCase().startsWith('custo'))
+  const ctr = p('CTR'), freq = p('Frequência')
+
+  const analysisLines: string[] = []
+  const nextLines: string[] = []
+
+  if (inv && res && inv.value !== '—' && res.value !== '—') {
+    analysisLines.push(`• Performance Geral: O investimento total foi de ${inv.value}, gerando ${res.value} ${d.paid.resultLabel.toLowerCase()}${cpl && cpl.value !== '—' ? ` a um custo médio de ${cpl.value} cada` : ''}.`)
+  }
+
+  if (cpl?.delta != null) {
+    if (cpl.delta < -5) {
+      analysisLines.push(`• Eficiência Elevada: O ${cpl.label.toLowerCase()} reduziu ${Math.abs(cpl.delta)}% contra o período anterior, indicando boa aceitação dos criativos e alta taxa de conversão.`)
+      nextLines.push(`• Otimização de Escala: Aumentar o investimento em 15% a 20% nas campanhas com menor custo por resultado para maximizar o volume de conversões.`)
+    } else if (cpl.delta > 10) {
+      analysisLines.push(`• Variação de Custo: O ${cpl.label.toLowerCase()} subiu ${cpl.delta}% em relação ao período anterior, refletindo maior concorrência no leilão ou saturação da base impactada.`)
+      nextLines.push(`• Testes de Segmentação: Abrir novos públicos de interesse e testar públicos semelhantes (Lookalike) para diminuir a pressão de custo por resultado.`)
+    } else {
+      analysisLines.push(`• Estabilidade de Custo: O ${cpl.label.toLowerCase()} manteve-se equilibrado com variação de ${deltaLabel(cpl.delta)}, sem oscilações bruscas no custo de aquisição.`)
+    }
+  }
+
+  const freqVal = freq ? parseFloat(freq.value.replace(',', '.')) : 0
+  if (freqVal >= 2.8) {
+    analysisLines.push(`• Frequência de Exibição: A frequência média atingiu ${freq.value}, sinalizando que o público já foi impactado múltiplas vezes pelos mesmos anúncios.`)
+    nextLines.push(`• Renovação de Criativos: Inserir de 2 a 4 novos criativos (revezando vídeos curtos e peças estáticas) para reduzir o desgaste visual.`)
+  } else if (freqVal > 0) {
+    analysisLines.push(`• Cobertura de Público: A frequência média de ${freq.value} demonstra entrega balanceada, com ampla captura de pessoas novas sem saturação.`)
+  }
+
+  if (ctr && ctr.value !== '—') {
+    const ctrVal = parseFloat(ctr.value.replace(',', '.').replace('%', ''))
+    if (ctrVal >= 1.5) {
+      analysisLines.push(`• Taxa de Cliques (CTR): O CTR de ${ctr.value} indica alto poder de atração dos anúncios no feed e stories.`)
+    }
+  }
+
+  const topAd = d.paid.top[0]
+  if (topAd) {
+    analysisLines.push(`• Anúncio Destaque: A peça "${topAd.name}" liderou as conversões com ${compact(topAd.results)} resultados.`)
+    nextLines.push(`• Variações do Campeão: Produzir variações diretas da peça "${topAd.name}" testando novos ganchos (3 primeiros segundos) e chamadas para ação.`)
+  }
+
+  const topCamp = d.campaigns?.[0]
+  if (topCamp) {
+    analysisLines.push(`• Campanha Principal: A campanha "${topCamp.name}" foi a mais produtiva, concentrando ${compact(topCamp.results)} resultados.`)
+  }
+
+  const reachOrg = d.organic.stats.find(s => s.label === 'Alcance')
+  if (d.organic.status === 'ok' && reachOrg && reachOrg.value !== '—') {
+    analysisLines.push(`• Sinergia Orgânica: No Instagram e Facebook, o alcance orgânico atingiu ${reachOrg.value}, servindo de base sólida para os anúncios pagos.`)
+  }
+
+  if (nextLines.length === 0) {
+    nextLines.push('• Monitorar diariamente a estabilidade do CPL e o ritmo de entrega das campanhas principais.')
+    nextLines.push('• Manter o plano de testes contínuos de criativos para garantir consistência no próximo período.')
+  }
+
+  return {
+    analysis: analysisLines.join('\n\n'),
+    next: nextLines.join('\n\n'),
+  }
 }

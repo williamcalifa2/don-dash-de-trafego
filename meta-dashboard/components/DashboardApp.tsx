@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Download, FileBarChart, RefreshCw, TrendingUp, AlertCircle, Moon, Sun, Settings2, Tv, Bell, BellOff, LogOut, Shield } from 'lucide-react'
+import { Download, FileBarChart, RefreshCw, TrendingUp, AlertCircle, Moon, Sun, Settings2, Tv, Bell, BellOff, LogOut, Shield, Sparkles } from 'lucide-react'
 import { MetricTile } from '@/components/MetricTile'
 import { CampaignTable } from '@/components/CampaignTable'
 import { DailyChart } from '@/components/DailyChart'
@@ -21,6 +21,7 @@ import { apiFetch } from '@/lib/apiFetch'
 import { useMetricsRealtime } from '@/lib/useMetricsRealtime'
 import type { DatePreset, MetricsSummary } from '@/lib/meta'
 import type { PlatformKey } from '@/lib/platforms'
+import type { ReportMode } from '@/lib/report'
 import { PlatformBadges } from '@/components/PlatformBadges'
 import { OrganicTab } from '@/components/OrganicTab'
 import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
@@ -109,6 +110,7 @@ function Dashboard() {
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [reportOpen, setReportOpen] = useState(false)
   const [monthlyOpen, setMonthlyOpen] = useState(false)
+  const [monthlyMode, setMonthlyMode] = useState<ReportMode>('standard')
   const [tab, setTab] = useState<'metrics' | 'funnel' | 'audience' | 'organic' | 'retorno' | 'simulator' | 'leads'>('metrics')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [tv, setTv] = useState(false)
@@ -363,9 +365,23 @@ function Dashboard() {
       {!isLoading && s && tab === 'metrics' && (
         <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
           {me?.admin && me.role !== 'reader' && (
-            <button className="btn btn-outline btn-sm" style={{ marginRight: 8 }} onClick={() => setMonthlyOpen(true)}>
-              <FileBarChart size={16} strokeWidth={1.75} /> Apresentação (PPTX)
-            </button>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginRight: 8, flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={() => { setMonthlyMode('standard'); setMonthlyOpen(true) }}
+                title="Apresentação padrão de 8 slides"
+              >
+                <FileBarChart size={16} strokeWidth={1.75} /> Relatório Padrão (PPTX)
+              </button>
+              <button
+                className="btn btn-primary btn-sm"
+                style={{ background: 'linear-gradient(135deg, #6F6DF7 0%, #4F46E5 100%)', border: 'none', color: '#FFF' }}
+                onClick={() => { setMonthlyMode('advanced'); setMonthlyOpen(true) }}
+                title="Relatório executivo avançado de 11 slides com funil de conversão, gráficos nativos e análise inteligente"
+              >
+                <Sparkles size={15} strokeWidth={2} /> Relatório Avançado ✨
+              </button>
+            </div>
           )}
           <button className="btn btn-outline btn-sm" onClick={() => setReportOpen(true)} disabled={reportOpen}>
             <Download size={16} strokeWidth={1.75} /> {reportOpen ? 'Preparando…' : 'Baixar relatório'}
@@ -429,7 +445,13 @@ function Dashboard() {
         />
       )}
 
-      {monthlyOpen && <ReportStudio onClose={() => setMonthlyOpen(false)} initialPreset={preset === 'last_7d' ? 'last_7d' : 'last_month'} />}
+      {monthlyOpen && (
+        <ReportStudio
+          onClose={() => setMonthlyOpen(false)}
+          initialPreset={preset === 'last_7d' ? 'last_7d' : 'last_month'}
+          initialMode={monthlyMode}
+        />
+      )}
 
       {tv && (
         <TvMode

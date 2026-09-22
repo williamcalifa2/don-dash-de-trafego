@@ -126,5 +126,100 @@ describe('Construção dos slides (buildSlides)', () => {
     const analysisTitle = analysis.els.find(el => el.t === 'text' && el.text.includes('ANÁLISE DO MÊS'))
     expect(analysisTitle).toBeDefined()
   })
+
+  it('gera relatório avançado com 11 slides e elementos nativos (gráfico e tabela)', () => {
+    const data: ReportData = {
+      month: lastMonthOf(NOW),
+      client: { name: 'Cliente Teste', logoUrl: null },
+      currency: 'BRL',
+      organic: { status: 'ok', handle: '@teste', stats: [], top: [] },
+      paid: { status: 'ok', resultLabel: 'Leads', stats: [], top: [] },
+      notes,
+      daily: {
+        dates: ['01/08', '02/08'],
+        spend: [100, 150],
+        results: [10, 15],
+      },
+      funnel: {
+        impressions: 50000,
+        clicks: 2500,
+        results: 150,
+        resultLabel: 'Leads',
+        ctr: 5.0,
+        clickToResultRate: 6.0,
+      },
+      campaigns: [
+        { id: '1', name: 'Campanha Conversão', status: 'ACTIVE', spend: 1000, results: 100, costPerResult: 10, ctr: 4.5 },
+      ],
+    }
+
+    const standard = buildSlides(data, notes, 'standard')
+    expect(standard).toHaveLength(8)
+
+    const advanced = buildSlides(data, notes, 'advanced')
+    expect(advanced).toHaveLength(11)
+
+    // Verifica presença de slides exclusivos do avançado
+    expect(advanced.some(s => s.id === 'evolution')).toBe(true)
+    expect(advanced.some(s => s.id === 'funnel')).toBe(true)
+    expect(advanced.some(s => s.id === 'campaigns')).toBe(true)
+
+    // Verifica que o slide de evolução tem o elemento nativo de gráfico
+    const evolutionSlide = advanced.find(s => s.id === 'evolution')!
+    const chartEl = evolutionSlide.els.find(el => el.t === 'chart')
+    expect(chartEl).toBeDefined()
+    if (chartEl && chartEl.t === 'chart') {
+      expect(chartEl.chartType).toBe('line')
+      expect(chartEl.data).toHaveLength(2)
+    }
+
+    // Verifica que o slide de campanhas tem o elemento nativo de tabela
+    const campaignsSlide = advanced.find(s => s.id === 'campaigns')!
+    const tableEl = campaignsSlide.els.find(el => el.t === 'table')
+    expect(tableEl).toBeDefined()
+    if (tableEl && tableEl.t === 'table') {
+      expect(tableEl.headers).toContain('Campanha')
+      expect(tableEl.rows).toHaveLength(1)
+    }
+  })
+})
+
+describe('Geração de análise inteligente (generateSmartAnalysis)', () => {
+  it('gera análise detalhada e próximos passos estratégicos a partir das métricas', async () => {
+    const { generateSmartAnalysis } = await import('@/lib/report')
+    const data: ReportData = {
+      month: lastMonthOf(NOW),
+      client: { name: 'Cliente Teste', logoUrl: null },
+      currency: 'BRL',
+      organic: { status: 'ok', handle: '@teste', stats: [{ label: 'Alcance', value: '45.000', delta: 15 }], top: [] },
+      paid: {
+        status: 'ok',
+        resultLabel: 'Leads',
+        stats: [
+          { label: 'Investimento', value: 'R$ 5.000' },
+          { label: 'Leads', value: '500' },
+          { label: 'Custo por lead', value: 'R$ 10,00', delta: -12, lowerIsBetter: true },
+          { label: 'Frequência', value: '3,2' },
+          { label: 'CTR', value: '2,1%' },
+        ],
+        top: [
+          { id: 'ad1', name: 'Vídeo Gancho A', thumb: null, results: 320, spend: 3000, clicks: 1200, impressions: 50000, costPerResult: 9.37, ctr: 2.4 },
+        ],
+      },
+      campaigns: [
+        { id: 'c1', name: 'Topo Funil - Vídeo', status: 'ACTIVE', spend: 3000, results: 320, costPerResult: 9.37, ctr: 2.4 },
+      ],
+      notes: { objective: '', goals: '', analysis: '', next: '' },
+    }
+
+    const { analysis, next } = generateSmartAnalysis(data)
+    expect(analysis).toContain('Performance Geral: O investimento total foi de R$ 5.000')
+    expect(analysis).toContain('Eficiência Elevada: O custo por lead reduziu 12%')
+    expect(analysis).toContain('Frequência de Exibição')
+    expect(analysis).toContain('Taxa de Cliques (CTR)')
+    expect(analysis).toContain('Anúncio Destaque: A peça "Vídeo Gancho A"')
+    expect(next).toContain('Otimização de Escala')
+    expect(next).toContain('Renovação de Criativos')
+  })
 })
 
