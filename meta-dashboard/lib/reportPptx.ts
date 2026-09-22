@@ -160,14 +160,15 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
             showLegend: el.showLegend ?? true,
             legendPos: 't',
             legendFontSize: pt(10),
-            legendColor: hex(PALETTE.soft),
+            legendColor: 'F8FAFC',
             legendFontFace: FONT,
-            valAxisLabelColor: hex(PALETTE.muted),
-            catAxisLabelColor: hex(PALETTE.soft),
+            valAxisLabelColor: 'CBD5E1',
+            catAxisLabelColor: 'F8FAFC',
             valAxisLineShow: false,
             catAxisLineShow: true,
+            catAxisLineColor: '334155',
             showValue: el.showValueLabels ?? false,
-            dataLabelColor: hex(PALETTE.white),
+            dataLabelColor: 'FFFFFF',
             dataLabelFontSize: pt(9),
           })
           if (el.costSubtitle) {
@@ -177,7 +178,7 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
               w: pos.w - inch(30),
               h: inch(20),
               fontSize: pt(10),
-              color: hex(PALETTE.muted),
+              color: 'CBD5E1',
               fontFace: FONT,
               align: 'center',
             })

@@ -18,8 +18,8 @@ export const PALETTE = {
   violetLight: '#818CF8',
   violetSoft: 'rgba(99,102,241,0.16)',
   ink: '#0B0B14',
-  soft: '#94A3B8',
-  muted: '#64748B',
+  soft: '#E2E8F0',
+  muted: '#CBD5E1',
   white: '#F8FAFC',
   green: '#22C55E',
   greenSoft: 'rgba(34,197,94,0.16)',
@@ -251,8 +251,9 @@ function modernCreativeCards(ads: ReportAd[], currency: string, resultLabel: str
     // Rodapé: Status e Botão Abrir
     out.push({ t: 'text', x: x + 12, y: y0 + 416, w: 90, h: 26, text: '● Ativo', size: 11, weight: 600, color: P.green, valign: 'middle' })
 
-    out.push({ t: 'box', x: x + cardW - 84, y: y0 + 414, w: 74, h: 28, fill: P.violetSoft, line: P.violet, radius: 14, url: a.url ?? undefined })
-    out.push({ t: 'text', x: x + cardW - 84, y: y0 + 414, w: 74, h: 28, text: 'Abrir ↗', size: 11, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', url: a.url ?? undefined })
+    const previewUrl = a.url || `https://www.facebook.com/ads/preview/?ad_id=${a.id}`
+    out.push({ t: 'box', x: x + cardW - 96, y: y0 + 414, w: 86, h: 28, fill: P.violetSoft, line: P.violet, radius: 14, url: previewUrl })
+    out.push({ t: 'text', x: x + cardW - 96, y: y0 + 414, w: 86, h: 28, text: 'Ver prévia ↗', size: 10.5, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', url: previewUrl })
   })
   return out
 }
@@ -378,7 +379,7 @@ function buildPlatformsSlide(d: ReportData): SlideSpec {
         data: [
           { name: 'Plataforma', labels: platItems.map(p => p.label), values: platItems.map(p => p.pct) },
         ],
-        colors: ['#818CF8', '#22C55E', '#F59E0B', '#64748B'],
+        colors: ['#818CF8', '#22C55E', '#F59E0B', '#38BDF8'],
         showLegend: true,
       },
 

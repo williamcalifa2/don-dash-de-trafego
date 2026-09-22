@@ -11,7 +11,7 @@ import { buildAudience, type AudienceRaw } from './audience'
 const BR = 3 * 3_600_000
 const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 
-export type ReportPreset = 'last_month' | 'last_7d'
+export type ReportPreset = 'last_month' | 'this_month' | 'last_7d'
 
 export interface ReportMonth {
   key: string
@@ -55,8 +55,25 @@ export function lastMonthOf(now: number): ReportMonth {
   }
 }
 
+/** O mês atual até o momento (hora do Brasil). */
+export function thisMonthOf(now: number): ReportMonth {
+  const br = new Date(now - BR)
+  const first = new Date(Date.UTC(br.getUTCFullYear(), br.getUTCMonth(), 1))
+  const yesterday = new Date(Date.UTC(br.getUTCFullYear(), br.getUTCMonth(), Math.max(1, br.getUTCDate() - 1)))
+  const y = first.getUTCFullYear(), m = first.getUTCMonth()
+  return {
+    key: `${y}-${String(m + 1).padStart(2, '0')}-parcial`,
+    label: `${MONTHS[m]} de ${y} (até o momento)`,
+    since: first.toISOString().slice(0, 10),
+    until: yesterday.toISOString().slice(0, 10),
+    preset: 'this_month',
+  }
+}
+
 export function reportPeriodOf(preset: ReportPreset, now: number): ReportMonth {
-  return preset === 'last_7d' ? last7DaysOf(now) : lastMonthOf(now)
+  if (preset === 'last_7d') return last7DaysOf(now)
+  if (preset === 'this_month') return thisMonthOf(now)
+  return lastMonthOf(now)
 }
 
 export interface ReportStat {
@@ -262,7 +279,7 @@ export function topAds(rows: AdPerfRow[], structure: StructAd[], overrides?: Rec
       id: r.ad_id,
       name: r.ad_name,
       thumb: overrides?.[r.ad_id] || creativeThumb(byId.get(r.ad_id)),
-      url: `https://adsmanager.facebook.com/adsmanager/manage/ads?selected_ad_ids=${r.ad_id}`,
+      url: `https://www.facebook.com/ads/preview/?ad_id=${r.ad_id}`,
       results: r.results,
       spend: r.spend,
       clicks: r.clicks,

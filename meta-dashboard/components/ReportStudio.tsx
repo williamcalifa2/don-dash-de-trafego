@@ -212,7 +212,7 @@ function SvgBarChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {seriesCount > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 20, fontSize: 11, color: '#94A3B8', marginBottom: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 20, fontSize: 11, color: '#E2E8F0', marginBottom: 6 }}>
           {data.map((s, idx) => (
             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors[idx % colors.length] }} />
@@ -231,7 +231,7 @@ function SvgBarChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
             return (
               <g key={t}>
                 <line x1={PL} x2={W - PR} y1={y} y2={y} stroke="#1E293B" strokeWidth={1} strokeDasharray="3 3" />
-                <text x={PL - 6} y={y + 3} textAnchor="end" fontSize="9" fill="#64748B">{tickLabel}</text>
+                <text x={PL - 6} y={y + 3} textAnchor="end" fontSize="9" fill="#CBD5E1">{tickLabel}</text>
               </g>
             )
           })}
@@ -258,7 +258,7 @@ function SvgBarChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
                     </g>
                   )
                 })}
-                <text x={cx} y={H - 6} textAnchor="middle" fontSize="9.5" fill="#94A3B8">{lbl}</text>
+                <text x={cx} y={H - 6} textAnchor="middle" fontSize="9.5" fill="#E2E8F0">{lbl}</text>
               </g>
             )
           })}
@@ -266,7 +266,7 @@ function SvgBarChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
       </div>
 
       {costSubtitle && (
-        <div style={{ fontSize: 11, color: '#64748B', textAlign: 'center', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ fontSize: 11, color: '#CBD5E1', textAlign: 'center', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {costSubtitle}
         </div>
       )}
@@ -697,14 +697,25 @@ export function ReportStudio({
               className={`btn btn-sm ${preset === 'last_month' ? 'btn-primary' : 'btn-ghost'}`}
               style={{ height: 28, padding: '0 10px', fontSize: 12, borderRadius: 6 }}
               onClick={() => switchPreset('last_month')}
+              title="Relatório do mês anterior fechado"
             >
-              Último mês
+              Mês passado
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${preset === 'this_month' ? 'btn-primary' : 'btn-ghost'}`}
+              style={{ height: 28, padding: '0 10px', fontSize: 12, borderRadius: 6 }}
+              onClick={() => switchPreset('this_month')}
+              title="Relatório do mês atual até o momento"
+            >
+              Este mês
             </button>
             <button
               type="button"
               className={`btn btn-sm ${preset === 'last_7d' ? 'btn-primary' : 'btn-ghost'}`}
               style={{ height: 28, padding: '0 10px', fontSize: 12, borderRadius: 6 }}
               onClick={() => switchPreset('last_7d')}
+              title="Relatório dos últimos 7 dias"
             >
               Últimos 7 dias
             </button>
@@ -716,7 +727,6 @@ export function ReportStudio({
               style={{ height: 28, padding: '0 10px', fontSize: 12, borderRadius: 6 }}
               onClick={() => { setMode('standard'); setCurrent(0) }}
             >
-              Padrão (8 slides)
               Padrão (10 slides)
             </button>
             <button
@@ -725,7 +735,6 @@ export function ReportStudio({
               style={{ height: 28, padding: '0 10px', fontSize: 12, borderRadius: 6 }}
               onClick={() => { setMode('advanced'); setCurrent(0) }}
             >
-              Avançado (11 slides)
               Avançado (12 slides)
             </button>
           </div>
@@ -733,7 +742,6 @@ export function ReportStudio({
         {data && <span aria-live="polite" style={{ fontSize: 12, color: saved === 'error' ? 'var(--red)' : 'var(--text-3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           {saved === 'saving' && <><Loader2 size={13} className="spin" /> Salvando…</>}{saved === 'saved' && <><Check size={13} /> Textos salvos</>}{saved === 'error' && 'Não foi possível salvar os textos'}
         </span>}
-        {data && <button className="btn btn-outline btn-sm" onClick={() => { setPhase({ kind: 'loading', text: 'Atualizando os números…' }); void load({ prepare: true }) }} title="Busca os números do período de novo na Meta"><RefreshCw size={14} strokeWidth={1.75} /> Buscar dados</button>}
         {data && <button className="btn btn-outline btn-sm" onClick={exportPdf} disabled={!!exporting}><FileText size={14} strokeWidth={1.75} /> {exporting === 'pdf' ? 'Preparando…' : 'Baixar PDF'}</button>}
         {data && <button className="btn btn-primary btn-sm" onClick={exportPptx} disabled={!!exporting}><Download size={14} strokeWidth={1.75} /> {exporting === 'pptx' ? 'Gerando…' : 'Baixar PowerPoint'}</button>}
         <button className="btn btn-outline btn-icon btn-sm" onClick={close} aria-label="Fechar"><X size={16} strokeWidth={1.75} /></button>

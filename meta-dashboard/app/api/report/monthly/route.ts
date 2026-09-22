@@ -32,7 +32,8 @@ export async function GET(req: NextRequest) {
   const account = tenant.adAccountId
 
   const { searchParams } = new URL(req.url)
-  const preset: ReportPreset = searchParams.get('preset') === 'last_7d' ? 'last_7d' : 'last_month'
+  const p = searchParams.get('preset')
+  const preset: ReportPreset = p === 'last_7d' ? 'last_7d' : p === 'this_month' ? 'this_month' : 'last_month'
 
   return snapshotGuard(async () => {
     const period = reportPeriodOf(preset, Date.now())
@@ -74,7 +75,8 @@ export async function POST(req: NextRequest) {
   const tenant = await requireTenant(req)
   if (tenant instanceof NextResponse) return tenant
   const body = await req.json().catch(() => ({})) as { action?: string; notes?: unknown; preset?: string }
-  const preset: ReportPreset = body.preset === 'last_7d' ? 'last_7d' : 'last_month'
+  const p = body.preset
+  const preset: ReportPreset = p === 'last_7d' ? 'last_7d' : p === 'this_month' ? 'this_month' : 'last_month'
   const period = reportPeriodOf(preset, Date.now())
 
   if (body.action === 'save') {

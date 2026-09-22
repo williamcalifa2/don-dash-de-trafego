@@ -33,6 +33,7 @@ const PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'last_14d', label: '14 dias' },
   { value: 'last_30d', label: '30 dias' },
   { value: 'this_month', label: 'Este mês' },
+  { value: 'last_month', label: 'Mês passado' },
 ]
 
 function fmt(v: number | null | undefined, currency: string) {
@@ -564,7 +565,7 @@ function Dashboard() {
       {monthlyOpen && (
         <ReportStudio
           onClose={() => setMonthlyOpen(false)}
-          initialPreset={preset === 'last_7d' ? 'last_7d' : 'last_month'}
+          initialPreset={preset === 'last_7d' ? 'last_7d' : preset === 'this_month' ? 'this_month' : 'last_month'}
           initialMode={monthlyMode}
         />
       )}

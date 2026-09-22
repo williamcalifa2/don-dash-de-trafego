@@ -27,8 +27,11 @@ describe('Cálculo de períodos para relatórios (reportPeriodOf)', () => {
   it('reportPeriodOf despacha corretamente de acordo com o preset', () => {
     const p7 = reportPeriodOf('last_7d', NOW)
     const pm = reportPeriodOf('last_month', NOW)
+    const tm = reportPeriodOf('this_month', NOW)
     expect(p7.preset).toBe('last_7d')
     expect(pm.preset).toBe('last_month')
+    expect(tm.preset).toBe('this_month')
+    expect(tm.label).toContain('setembro de 2026')
   })
 })
 
