@@ -284,13 +284,13 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                       background: isSelected
                         ? 'var(--accent-soft)'
                         : cell.isCurrentMonth
-                        ? 'var(--bg-card2)'
-                        : 'transparent',
+                          ? 'var(--bg-card2)'
+                          : 'transparent',
                       border: isSelected
                         ? '2px solid var(--accent)'
                         : cell.isToday
-                        ? '2px solid var(--green)'
-                        : '1px solid var(--border-soft)',
+                          ? '2px solid var(--green)'
+                          : '1px solid var(--border-soft)',
                       opacity: cell.isCurrentMonth ? 1 : 0.45,
                       cursor: 'pointer',
                       display: 'flex',

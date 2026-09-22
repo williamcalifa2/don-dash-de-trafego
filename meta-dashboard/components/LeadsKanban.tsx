@@ -4,13 +4,13 @@ import { useState } from 'react'
 import type { Lead, LeadStatus } from '@/lib/leadTypes'
 import { STATUS_META } from './LeadsTab'
 import { isStale, timeAgo, waLink, fmtPhone } from '@/lib/leadUtils'
-import { MessageSquare, DollarSign, Clock, AlertTriangle, ArrowRight, ArrowLeft, ChevronRight } from 'lucide-react'
+import { MessageSquare, DollarSign, Clock, AlertTriangle, ArrowRight, ArrowLeft, StickyNote } from 'lucide-react'
 
 const KANBAN_COLUMNS: LeadStatus[] = ['Novo', 'Em andamento', 'Convertido', 'Perdido']
 
 function fmtBRL(v: number | null | undefined) {
   if (!v && v !== 0) return ''
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }).format(v)
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v)
 }
 
 interface LeadsKanbanProps {
@@ -55,7 +55,6 @@ export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = fa
     setDraggedLeadId(null)
   }
 
-  // Quick move to next/prev column
   const getNextStatus = (current: LeadStatus): LeadStatus | null => {
     const idx = KANBAN_COLUMNS.indexOf(current)
     if (idx === -1 || idx === KANBAN_COLUMNS.length - 1) return null
@@ -72,7 +71,7 @@ export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = fa
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(4, minmax(280px, 1fr))',
+        gridTemplateColumns: 'repeat(4, minmax(270px, 1fr))',
         gap: 14,
         alignItems: 'start',
         overflowX: 'auto',
@@ -97,9 +96,9 @@ export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = fa
               borderRadius: 14,
               display: 'flex',
               flexDirection: 'column',
-              minHeight: 480,
+              minHeight: 460,
               maxHeight: 'calc(100vh - 240px)',
-              transition: 'background 0.2s, border-color 0.2s',
+              transition: 'background 0.15s, border-color 0.15s',
               overflow: 'hidden',
             }}
           >
@@ -117,11 +116,10 @@ export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = fa
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span
                   style={{
-                    width: 9,
-                    height: 9,
+                    width: 8,
+                    height: 8,
                     borderRadius: '50%',
                     background: colMeta.dot,
-                    boxShadow: `0 0 8px ${colMeta.dot}66`,
                   }}
                 />
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>
@@ -131,8 +129,8 @@ export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = fa
                   style={{
                     fontSize: 11,
                     fontWeight: 700,
-                    padding: '1px 7px',
-                    borderRadius: 10,
+                    padding: '1px 6px',
+                    borderRadius: 8,
                     background: colMeta.bg,
                     color: colMeta.dot,
                   }}
@@ -151,10 +149,10 @@ export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = fa
             {/* Column Body / Cards List */}
             <div
               style={{
-                padding: 10,
+                padding: '10px 8px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 10,
+                gap: 8,
                 overflowY: 'auto',
                 flex: 1,
               }}
@@ -162,13 +160,13 @@ export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = fa
               {colLeads.length === 0 ? (
                 <div
                   style={{
-                    padding: '32px 16px',
+                    padding: '28px 14px',
                     textAlign: 'center',
                     color: 'var(--text-3)',
-                    fontSize: 12,
+                    fontSize: 11,
                     border: '1px dashed var(--border-soft)',
-                    borderRadius: 10,
-                    marginTop: 8,
+                    borderRadius: 8,
+                    marginTop: 6,
                   }}
                 >
                   Nenhum lead nesta etapa
@@ -188,225 +186,160 @@ export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = fa
                       onClick={() => onSelectLead(lead)}
                       style={{
                         background: 'var(--bg-card)',
-                        border: stale ? '1px solid var(--amber)' : '1px solid var(--border-soft)',
+                        border: '1px solid var(--border)',
+                        borderLeft: stale ? '3px solid var(--amber)' : '1px solid var(--border)',
                         borderRadius: 10,
-                        padding: '12px 14px',
+                        padding: '10px 12px',
                         cursor: 'pointer',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                        transition: 'transform 0.15s, box-shadow 0.15s, border-color 0.15s',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                        transition: 'transform 0.12s, box-shadow 0.12s, border-color 0.12s',
                         userSelect: 'none',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6,
                       }}
                       onMouseEnter={e => {
-                        e.currentTarget.style.transform = 'translateY(-2px)'
-                        e.currentTarget.style.boxShadow = '0 6px 14px rgba(0,0,0,0.08)'
+                        e.currentTarget.style.transform = 'translateY(-1px)'
+                        e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.06)'
                       }}
                       onMouseLeave={e => {
                         e.currentTarget.style.transform = 'translateY(0)'
-                        e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.04)'
+                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.03)'
                       }}
                     >
-                      {/* Top: Name & Time */}
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.3 }}>
-                          {lead.nome || 'Lead sem nome'}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 10,
-                            color: 'var(--text-3)',
-                            whiteSpace: 'nowrap',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 3,
-                          }}
-                        >
-                          <Clock size={10} />
-                          {timeAgo(lead.date || lead.created_at)}
-                        </div>
-                      </div>
-
-                      {/* Stale Alert */}
-                      {stale && (
-                        <div
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            fontSize: 10,
-                            fontWeight: 600,
-                            color: 'var(--amber)',
-                            background: 'var(--amber-soft)',
-                            padding: '2px 6px',
-                            borderRadius: 6,
-                            marginBottom: 8,
-                          }}
-                        >
-                          <AlertTriangle size={11} />
-                          Parado há +2h
-                        </div>
-                      )}
-
-                      {/* Phone & Direct WhatsApp Action */}
-                      {lead.telefone && (
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            marginBottom: 8,
-                            padding: '4px 8px',
-                            borderRadius: 6,
-                            background: 'var(--bg-card2)',
-                          }}
-                        >
-                          <span style={{ fontSize: 11, color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
-                            {fmtPhone(lead.telefone)}
+                      {/* Top: Name & Time / WhatsApp */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {lead.nome || 'Lead sem nome'}
                           </span>
+                          {stale && (
+                            <span
+                              title="Sem contato há mais de 2 horas"
+                              style={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: '50%',
+                                background: 'var(--amber)',
+                                flexShrink: 0,
+                              }}
+                            />
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                           {wa && (
                             <a
                               href={wa}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={e => e.stopPropagation()}
-                              title="Abrir WhatsApp direto"
+                              title="Chamar no WhatsApp"
                               style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                fontSize: 11,
-                                fontWeight: 700,
-                                color: '#16a34a',
-                                textDecoration: 'none',
-                                padding: '2px 6px',
-                                borderRadius: 4,
+                                width: 22,
+                                height: 22,
+                                borderRadius: '50%',
                                 background: 'rgba(34, 197, 94, 0.12)',
+                                color: '#16a34a',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                textDecoration: 'none',
                               }}
                             >
                               <MessageSquare size={11} />
-                              Chamar
                             </a>
                           )}
+                          <span style={{ fontSize: 10, color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>
+                            {timeAgo(lead.date || lead.created_at)}
+                          </span>
                         </div>
-                      )}
+                      </div>
 
-                      {/* Campaign / Ad Source */}
-                      {(lead.campanha || lead.ad_name) && (
-                        <div
-                          style={{
-                            fontSize: 10,
-                            color: 'var(--text-3)',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            marginBottom: 6,
-                          }}
-                          title={`${lead.campanha || ''} / ${lead.ad_name || ''}`}
-                        >
-                          📣 {lead.campanha || lead.ad_name}
-                        </div>
-                      )}
+                      {/* Middle: Phone & Source */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, fontSize: 11 }}>
+                        <span style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
+                          {lead.telefone ? fmtPhone(lead.telefone) : (lead.email || 'Sem contato')}
+                        </span>
+                        {(lead.campanha || lead.ad_name) && (
+                          <span
+                            style={{
+                              color: 'var(--text-3)',
+                              fontSize: 10,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: 120,
+                            }}
+                            title={`${lead.campanha || ''} / ${lead.ad_name || ''}`}
+                          >
+                            {lead.ad_name || lead.campanha}
+                          </span>
+                        )}
+                      </div>
 
-                      {/* Value / Revenue Badge */}
-                      {lead.valor_pedido != null && lead.valor_pedido > 0 && (
-                        <div
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: lead.status === 'Convertido' ? 'var(--green)' : 'var(--text-1)',
-                            background: lead.status === 'Convertido' ? 'var(--green-soft)' : 'var(--bg-card2)',
-                            padding: '2px 8px',
-                            borderRadius: 6,
-                            marginBottom: 8,
-                          }}
-                        >
-                          <DollarSign size={11} />
-                          {fmtBRL(lead.valor_pedido)}
-                        </div>
-                      )}
-
-                      {/* Notes snippet */}
-                      {lead.notas && (
-                        <div
-                          style={{
-                            fontSize: 10,
-                            color: 'var(--text-2)',
-                            fontStyle: 'italic',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            borderLeft: '2px solid var(--border-soft)',
-                            paddingLeft: 6,
-                            marginBottom: 8,
-                          }}
-                        >
-                          &ldquo;{lead.notas}&rdquo;
-                        </div>
-                      )}
-
-                      {/* Card Footer: Quick Move Controls */}
-                      {!readOnly && (
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'flex-end',
-                            gap: 6,
-                            marginTop: 4,
-                            paddingTop: 6,
-                            borderTop: '1px solid var(--border-soft)',
-                          }}
-                          onClick={e => e.stopPropagation()}
-                        >
-                          {prev && (
-                            <button
-                              type="button"
-                              onClick={() => onChangeStatus(lead, prev)}
-                              title={`Voltar para ${prev}`}
+                      {/* Bottom line: Value, Note & Quick column move */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingTop: 4,
+                          borderTop: '1px solid var(--border-soft)',
+                          marginTop: 2,
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {lead.valor_pedido != null && lead.valor_pedido > 0 ? (
+                            <span
                               style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 2,
-                                background: 'transparent',
-                                border: '1px solid var(--border-soft)',
-                                borderRadius: 4,
-                                padding: '2px 6px',
-                                fontSize: 10,
-                                color: 'var(--text-3)',
-                                cursor: 'pointer',
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color: lead.status === 'Convertido' ? 'var(--green)' : 'var(--text-1)',
+                                fontVariantNumeric: 'tabular-nums',
                               }}
                             >
-                              <ArrowLeft size={10} />
-                              {prev}
-                            </button>
-                          )}
-                          {next && (
-                            <button
-                              type="button"
-                              onClick={() => onChangeStatus(lead, next)}
-                              title={`Avançar para ${next}`}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 2,
-                                background: 'var(--accent-soft)',
-                                border: '1px solid var(--accent)',
-                                borderRadius: 4,
-                                padding: '2px 6px',
-                                fontSize: 10,
-                                fontWeight: 600,
-                                color: 'var(--accent)',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {next}
-                              <ArrowRight size={10} />
-                            </button>
-                          )}
+                              {fmtBRL(lead.valor_pedido)}
+                            </span>
+                          ) : null}
+                          {lead.notas ? (
+                            <span title={lead.notas} style={{ color: 'var(--text-3)', display: 'inline-flex' }}>
+                              <StickyNote size={11} />
+                            </span>
+                          ) : null}
                         </div>
-                      )}
+
+                        {/* Subtle move controls */}
+                        {!readOnly && (
+                          <div
+                            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                            onClick={e => e.stopPropagation()}
+                          >
+                            {prev && (
+                              <button
+                                type="button"
+                                onClick={() => onChangeStatus(lead, prev)}
+                                title={`Mover para ${prev}`}
+                                className="btn btn-ghost btn-icon btn-sm"
+                                style={{ width: 18, height: 18, padding: 0, color: 'var(--text-3)' }}
+                              >
+                                <ArrowLeft size={11} />
+                              </button>
+                            )}
+                            {next && (
+                              <button
+                                type="button"
+                                onClick={() => onChangeStatus(lead, next)}
+                                title={`Avançar para ${next}`}
+                                className="btn btn-ghost btn-icon btn-sm"
+                                style={{ width: 18, height: 18, padding: 0, color: 'var(--accent)' }}
+                              >
+                                <ArrowRight size={11} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )
                 })

@@ -135,6 +135,8 @@ function Dashboard() {
 
   const [reportMenuOpen, setReportMenuOpen] = useState(false)
   const reportMenuRef = useRef<HTMLDivElement>(null)
+  const [presetMenuOpen, setPresetMenuOpen] = useState(false)
+  const presetMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!reportMenuOpen) return
@@ -146,6 +148,17 @@ function Dashboard() {
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [reportMenuOpen])
+
+  useEffect(() => {
+    if (!presetMenuOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (presetMenuRef.current && !presetMenuRef.current.contains(e.target as Node)) {
+        setPresetMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [presetMenuOpen])
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('tv') === '1') setTv(true)
@@ -298,27 +311,94 @@ function Dashboard() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {/* O orgânico só tem "Este mês": os dados são coletados uma vez por dia e não há atualização manual. */}
-            {(tab === 'organic' ? PRESETS.filter(pr => pr.value === 'this_month') : PRESETS).map((pr) => (
-              <button key={pr.value} onClick={() => setPreset(pr.value)} aria-pressed={tab === 'organic' ? true : undefined}
-                className={`btn btn-sm ${preset === pr.value || tab === 'organic' ? 'btn-primary' : 'btn-outline'}`}>
-                {pr.label}
-              </button>
-            ))}
+          {/* Seletor de Período Único Dropdown */}
+          <div ref={presetMenuRef} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setPresetMenuOpen(v => !v)}
+              className="btn btn-outline btn-sm"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '0 12px',
+                height: 32,
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--text-1)',
+              }}
+              title="Selecionar período"
+              aria-expanded={presetMenuOpen}
+              aria-haspopup="listbox"
+            >
+              <span>{PRESETS.find(p => p.value === (tab === 'organic' ? 'this_month' : preset))?.label ?? 'Período'}</span>
+              <ChevronDown size={14} style={{ opacity: 0.7, transform: presetMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+            </button>
+
+            {presetMenuOpen && (
+              <div
+                role="listbox"
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 4px)',
+                  left: 0,
+                  zIndex: 100,
+                  minWidth: 150,
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 12,
+                  boxShadow: 'var(--shadow-soft)',
+                  padding: 4,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                }}
+              >
+                {(tab === 'organic' ? PRESETS.filter(pr => pr.value === 'this_month') : PRESETS).map(pr => {
+                  const active = (tab === 'organic' ? 'this_month' : preset) === pr.value
+                  return (
+                    <button
+                      key={pr.value}
+                      type="button"
+                      role="option"
+                      aria-selected={active}
+                      onClick={() => {
+                        setPreset(pr.value)
+                        setPresetMenuOpen(false)
+                      }}
+                      className="btn btn-ghost btn-sm"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        textAlign: 'left',
+                        padding: '6px 10px',
+                        fontSize: 12,
+                        fontWeight: active ? 700 : 500,
+                        color: active ? 'var(--accent)' : 'var(--text-1)',
+                        background: active ? 'var(--accent-soft)' : 'transparent',
+                        borderRadius: 8,
+                      }}
+                    >
+                      <span>{pr.label}</span>
+                      {active && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           <div className="hdr-sep" style={{ width: 1, height: 24, background: 'var(--border)' }} />
 
+          {/* Botão Calendário redondo igual aos outros */}
           <button
             onClick={() => setCalendarOpen(true)}
-            title="Abrir Calendário de Performance"
-            aria-label="Abrir Calendário de Performance"
-            className="btn btn-outline btn-sm"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            title="Calendário de Performance"
+            aria-label="Calendário de Performance"
+            className="btn btn-outline btn-icon btn-sm"
           >
             <CalendarDays size={16} strokeWidth={1.75} />
-            <span>Calendário</span>
           </button>
 
           <button onClick={() => setPickerOpen(true)} title="Personalizar métricas" aria-label="Personalizar métricas" className="btn btn-outline btn-icon btn-sm">

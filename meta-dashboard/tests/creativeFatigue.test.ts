@@ -44,3 +44,4 @@ describe('creativeFatigue', () => {
     expect(summary.critical).toBe(1)
   })
 })
+

@@ -85,3 +85,4 @@ export function summarizeFatigue(ads: Array<{ frequency?: number | null; ctr?: n
 
   return { total: ads.length, critical, warning, healthy }
 }
+

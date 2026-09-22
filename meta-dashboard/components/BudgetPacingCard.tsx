@@ -49,7 +49,7 @@ export function BudgetPacingCard({ campaigns, currentSpend, currency, clientSlug
           return
         }
       }
-    } catch {}
+    } catch { }
     if (autoTarget > 0) setTargetBudget(autoTarget)
   }, [storageKey, autoTarget])
 
@@ -59,7 +59,7 @@ export function BudgetPacingCard({ campaigns, currentSpend, currency, clientSlug
       setTargetBudget(val)
       try {
         localStorage.setItem(storageKey, String(val))
-      } catch {}
+      } catch { }
     }
     setIsEditing(false)
   }
@@ -314,3 +314,4 @@ export function BudgetPacingCard({ campaigns, currentSpend, currency, clientSlug
     </div>
   )
 }
+
