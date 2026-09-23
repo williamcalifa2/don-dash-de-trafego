@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import type { DailySummary } from '@/lib/meta'
 
 import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
@@ -18,7 +18,7 @@ function normalize(arr: number[]): number[] {
   return arr.map((v) => (v - min) / range)
 }
 
-export function DailyChart({ daily: raw, currency, kind = 'form' }: DailyChartProps) {
+export const DailyChart = memo(function DailyChart({ daily: raw, currency, kind = 'form' }: DailyChartProps) {
   const L = KIND_LABELS[kind]
   // Clientes de site/conversas: a linha tracejada é o resultado real do dia (conversas, leads do site ou resultados).
   const daily = kind === 'form' || !raw.metrics?.results ? raw : { ...raw, leads: raw.metrics.results }
@@ -220,4 +220,4 @@ export function DailyChart({ daily: raw, currency, kind = 'form' }: DailyChartPr
       </div>
     </div>
   )
-}
+})

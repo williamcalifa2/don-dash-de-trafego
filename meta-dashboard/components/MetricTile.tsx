@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { Sparkline } from './Sparkline'
 
 interface MetricTileProps {
@@ -33,7 +34,7 @@ function Delta({ current, prev, lowerIsBetter }: { current: number; prev: number
   )
 }
 
-export function MetricTile({ label, value, sparkData, prevValue, currentRaw, lowerIsBetter, note }: MetricTileProps) {
+export const MetricTile = memo(function MetricTile({ label, value, sparkData, prevValue, currentRaw, lowerIsBetter, note }: MetricTileProps) {
   const hasDelta = currentRaw != null && prevValue != null && prevValue !== 0
   const hasSpark = sparkData && sparkData.length > 1
 
@@ -77,4 +78,4 @@ export function MetricTile({ label, value, sparkData, prevValue, currentRaw, low
       </div>
     </div>
   )
-}
+})

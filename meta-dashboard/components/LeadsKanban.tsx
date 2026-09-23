@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, memo } from 'react'
 import type { Lead, LeadStatus } from '@/lib/leadTypes'
 import { STATUS_META } from './LeadsTab'
 import { isStale, timeAgo, waLink, fmtPhone } from '@/lib/leadUtils'
@@ -20,7 +20,7 @@ interface LeadsKanbanProps {
   readOnly?: boolean
 }
 
-export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = false }: LeadsKanbanProps) {
+export const LeadsKanban = memo(function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = false }: LeadsKanbanProps) {
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null)
   const [dragOverCol, setDragOverCol] = useState<LeadStatus | null>(null)
 
@@ -67,6 +67,23 @@ export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = fa
     return KANBAN_COLUMNS[idx - 1]
   }
 
+  const leadsByCol = useMemo(() => {
+    const map: Record<LeadStatus, { leads: Lead[]; totalValue: number }> = {
+      'Novo': { leads: [], totalValue: 0 },
+      'Em andamento': { leads: [], totalValue: 0 },
+      'Convertido': { leads: [], totalValue: 0 },
+      'Perdido': { leads: [], totalValue: 0 },
+    }
+    for (let i = 0; i < leads.length; i++) {
+      const l = leads[i]
+      if (map[l.status]) {
+        map[l.status].leads.push(l)
+        map[l.status].totalValue += (l.valor_pedido || 0)
+      }
+    }
+    return map
+  }, [leads])
+
   return (
     <div
       style={{
@@ -80,8 +97,8 @@ export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = fa
     >
       {KANBAN_COLUMNS.map(colStatus => {
         const colMeta = STATUS_META[colStatus]
-        const colLeads = leads.filter(l => l.status === colStatus)
-        const colValue = colLeads.reduce((acc, l) => acc + (l.valor_pedido || 0), 0)
+        const colLeads = leadsByCol[colStatus]?.leads ?? []
+        const colValue = leadsByCol[colStatus]?.totalValue ?? 0
         const isTarget = dragOverCol === colStatus
 
         return (
@@ -334,4 +351,4 @@ export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = fa
       })}
     </div>
   )
-}
+})

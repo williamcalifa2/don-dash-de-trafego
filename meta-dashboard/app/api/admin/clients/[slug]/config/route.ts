@@ -20,17 +20,20 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
+  // Only admin/member can update client configuration
+  const denied = await requireRole(req, 'member')
+  if (denied) return denied
   const { slug } = await ctx.params
   const tenant = await getTenant(req)
   const isAdmin = !await requireAdmin(req)
   const isMember = !await requireRole(req, 'member')
   const isOwnTenant = Boolean(tenant && tenant.slug === slug)
-
   if (!isAdmin && !isMember && !isOwnTenant) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
   const body = await req.json().catch(() => ({})) as Record<string, unknown>
+
   const patch: Partial<ClientConfig> = {}
 
   if ((isAdmin || isMember) && 'active' in body && typeof body.active === 'boolean') {

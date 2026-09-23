@@ -578,7 +578,51 @@ function Element({
     )
   }
   if (el.edit && onEdit) {
-    return <EditableTextElement el={el} pos={pos} onEdit={onEdit} />
+    const key = el.edit
+    return (
+      <div style={{ ...pos, position: 'absolute' }}>
+        <textarea
+          aria-label={el.placeholder ?? 'Texto'}
+          value={el.text}
+          placeholder={el.placeholder}
+          onChange={e => onEdit(key, e.target.value)}
+          spellCheck
+          style={{
+            ...text,
+            width: '100%',
+            height: '100%',
+            display: 'block',
+            background: 'transparent',
+            border: '1px dashed transparent',
+            borderRadius: 8,
+            padding: 8,
+            resize: 'none',
+            outline: 'none',
+            overflow: 'auto',
+            boxSizing: 'border-box',
+            transition: 'border-color 0.15s, background-color 0.15s',
+          }}
+          onFocus={e => {
+            e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.6)'
+            e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.06)'
+          }}
+          onBlur={e => {
+            e.currentTarget.style.borderColor = 'transparent'
+            e.currentTarget.style.backgroundColor = 'transparent'
+          }}
+          onMouseEnter={e => {
+            if (document.activeElement !== e.currentTarget) {
+              e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.3)'
+            }
+          }}
+          onMouseLeave={e => {
+            if (document.activeElement !== e.currentTarget) {
+              e.currentTarget.style.borderColor = 'transparent'
+            }
+          }}
+        />
+      </div>
+    )
   }
   return <div style={text}><span style={{ width: '100%' }}>{el.text}</span></div>
 }

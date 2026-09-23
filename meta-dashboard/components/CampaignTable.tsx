@@ -2,7 +2,7 @@
 
 import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
 import { ConversionChips } from '@/components/ConversionsCard'
-import { Fragment, useState, useCallback } from 'react'
+import { Fragment, useState, useCallback, useMemo, memo } from 'react'
 import { ChevronRight, ExternalLink, X, ArrowUpDown, ArrowUp, ArrowDown, Activity } from 'lucide-react'
 import { resolveDelivery, type CampaignRow, type ConversionItem } from '@/lib/meta'
 import { apiFetch } from '@/lib/apiFetch'
@@ -58,7 +58,7 @@ interface CampaignTableProps {
   kind?: ResultKind
 }
 
-export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kind = 'form' }: CampaignTableProps) {
+export const CampaignTable = memo(function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kind = 'form' }: CampaignTableProps) {
   const L = KIND_LABELS[kind]
   // Clientes de site/conversas: as colunas de lead/CPL mostram o resultado real (conversas, leads do site ou resultados).
   const nRes = (r: { leads: number; results?: number }) => (kind === 'form' ? r.leads : (r.results ?? 0))
@@ -107,22 +107,24 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
     setLoadingAds(null)
   }, [expandedAdset, adsData, datePreset])
 
-  const statuses = ['ALL', ...Array.from(new Set(campaigns.map(c => c.status)))]
+  const statuses = useMemo(() => ['ALL', ...Array.from(new Set(campaigns.map(c => c.status)))], [campaigns])
 
-  const sorted = [...campaigns]
-    .filter(c => filterStatus === 'ALL' || c.status === filterStatus)
-    .sort((a, b) => {
-      let av: number | string, bv: number | string
-      if (sortCol === 'name') { av = a.name; bv = b.name }
-      else if (sortCol === 'spend') { av = a.spend; bv = b.spend }
-      else if (sortCol === 'leads') { av = resolveDelivery(a, kind).count; bv = resolveDelivery(b, kind).count }
-      else if (sortCol === 'cpl') { av = resolveDelivery(a, kind).cost ?? Infinity; bv = resolveDelivery(b, kind).cost ?? Infinity }
-      else if (sortCol === 'roas') { av = a.roas ?? -1; bv = b.roas ?? -1 }
-      else if (sortCol === 'ctr') { av = a.ctr; bv = b.ctr }
-      else { av = a.frequency; bv = b.frequency }
-      if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv as string) : (bv as string).localeCompare(av)
-      return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number)
-    })
+  const sorted = useMemo(() => {
+    return [...campaigns]
+      .filter(c => filterStatus === 'ALL' || c.status === filterStatus)
+      .sort((a, b) => {
+        let av: number | string, bv: number | string
+        if (sortCol === 'name') { av = a.name; bv = b.name }
+        else if (sortCol === 'spend') { av = a.spend; bv = b.spend }
+        else if (sortCol === 'leads') { av = resolveDelivery(a, kind).count; bv = resolveDelivery(b, kind).count }
+        else if (sortCol === 'cpl') { av = resolveDelivery(a, kind).cost ?? Infinity; bv = resolveDelivery(b, kind).cost ?? Infinity }
+        else if (sortCol === 'roas') { av = a.roas ?? -1; bv = b.roas ?? -1 }
+        else if (sortCol === 'ctr') { av = a.ctr; bv = b.ctr }
+        else { av = a.frequency; bv = b.frequency }
+        if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv as string) : (bv as string).localeCompare(av)
+        return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number)
+      })
+  }, [campaigns, filterStatus, sortCol, sortDir, kind])
 
   function sortIcon(col: SortCol) {
     if (sortCol !== col) return <ArrowUpDown size={11} style={{ opacity: 0.4 }} />
@@ -530,7 +532,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
       )}
     </div>
   )
-}
+})
 
 function NumCell({ children, color }: { children: React.ReactNode; color?: string }) {
   return (
