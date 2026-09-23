@@ -130,7 +130,7 @@ function Dashboard() {
   const [reportOpen, setReportOpen] = useState(false)
   const [monthlyOpen, setMonthlyOpen] = useState(false)
   const [monthlyMode, setMonthlyMode] = useState<ReportMode>('standard')
-  const [tab, setTab] = useState<'metrics' | 'funnel' | 'audience' | 'organic' | 'leads' | 'reports'>('metrics')
+  const [tab, setTab] = useState<'metrics' | 'funnel' | 'audience' | 'organic' | 'simulator' | 'leads' | 'reports'>('metrics')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -550,7 +550,7 @@ function Dashboard() {
       {/* Abas */}
       <div className="no-print" style={{ borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
         <div className="tabs" role="tablist" style={{ borderBottom: 'none', marginBottom: 0 }}>
-          {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['leads', 'Leads'], ['reports', 'Report Studio']] as const).map(([key, label]) => (
+          {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads'], ['reports', 'Report Studio']] as const).map(([key, label]) => (
             <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
               {label}
               {key === 'leads' && staleCount > 0 && (
@@ -589,6 +589,7 @@ function Dashboard() {
       {!isLoading && tab === 'funnel' && s && <FunnelTab summary={s} currency={currency} kind={kind} />}
       {tab === 'audience' && <AudienceTab preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} kind={kind} />}
       {tab === 'organic' && <OrganicTab preset="this_month" presetLabel="Este mês" canLink={me?.role === 'owner' || me?.role === 'admin'} slug={me?.slug} />}
+      {tab === 'simulator' && <SimuladorTab summary={s ? (kind === 'form' ? s : { ...s, leads: s.results }) : undefined} currency={currency} />}
       {tab === 'leads' && <LeadsTab openId={openLeadId} onOpenConsumed={() => setOpenLeadId(null)} readOnly={me?.role === 'reader'} />}
       {tab === 'reports' && (
         <ReportStudioTab
