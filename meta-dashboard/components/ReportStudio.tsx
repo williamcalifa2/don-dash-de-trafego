@@ -763,8 +763,18 @@ export function ReportStudio({
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   // Modo Apresentador com Próximo Slide
+  // Modo Apresentador com Próximo Slide e Carrossel
   const [presenterMode, setPresenterMode] = useState(false)
   const [presentationTime, setPresentationTime] = useState(0)
+  const carouselRef = useRef<HTMLDivElement>(null)
+
+  // Cores de alto contraste garantido para containers escuros / claros
+  const isDark = reportTheme === 'dark'
+  const dockBg = isDark ? '#0F172A' : '#FFFFFF'
+  const dockBorder = isDark ? '#1E293B' : '#E2E8F0'
+  const dockText1 = isDark ? '#FFFFFF' : '#0F172A'
+  const dockText2 = isDark ? '#CBD5E1' : '#475569'
+  const dockText3 = isDark ? '#94A3B8' : '#64748B'
 
   // Dropdown de Download Unificado
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false)
@@ -774,7 +784,25 @@ export function ReportStudio({
   const [textFont, setTextFont] = useState<'sans' | 'display' | 'serif' | 'mono'>('sans')
   const [textSize, setTextSize] = useState<number>(26)
   const [activeTextInput, setActiveTextInput] = useState<{ x: number; y: number; text: string } | null>(null)
+  const [activeTextInput, setActiveTextInput] = useState<{ x: number; y: number; text: string; createdAt: number } | null>(null)
   const textInputRef = useRef<HTMLInputElement>(null)
+
+  // Foca o campo de texto automaticamente ao abrir
+  useEffect(() => {
+    if (activeTextInput && textInputRef.current) {
+      textInputRef.current.focus()
+      textInputRef.current.select()
+    }
+  }, [activeTextInput])
+
+  // Rola suavemente o carrossel inferior do apresentador para centralizar o slide ativo
+  useEffect(() => {
+    if (!presenterMode) return
+    const el = document.getElementById(`presenter-thumb-${current}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+    }
+  }, [current, presenterMode])
 
   // Cronômetro da Apresentação
   useEffect(() => {
@@ -987,7 +1015,12 @@ export function ReportStudio({
         ctx.font = `700 ${s.fontSize || 26}px ${fontFam}`
         ctx.fillStyle = s.color
         ctx.textBaseline = 'top'
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.75)'
+        ctx.shadowBlur = 5
+        ctx.shadowOffsetX = 1
+        ctx.shadowOffsetY = 1
         ctx.fillText(s.text, s.points[0].x, s.points[0].y)
+        ctx.shadowColor = 'transparent'
       }
       ctx.restore()
     }
@@ -1017,10 +1050,13 @@ export function ReportStudio({
       return
     }
     if (drawTool === 'text') {
+      e.preventDefault()
+      e.stopPropagation()
       if (activeTextInput && activeTextInput.text.trim()) {
         commitTextInput()
       }
       setActiveTextInput({ x: pt.x, y: pt.y, text: '' })
+      setActiveTextInput({ x: pt.x, y: pt.y, text: '', createdAt: Date.now() })
       return
     }
     currentStrokeRef.current = {
@@ -1155,6 +1191,7 @@ export function ReportStudio({
     const fit = () => {
       const extraW = drawingOpen ? 104 : 36
       const extraH = presenterMode ? 140 : 48
+      const extraH = presenterMode ? 190 : 48
       setScale(Math.max(0.3, Math.min(1, (el.clientWidth - extraW) / STAGE.w, (el.clientHeight - extraH) / STAGE.h)))
     }
     fit()
@@ -1681,11 +1718,24 @@ export function ReportStudio({
                 {/* Input Flutuante para Inserção de Texto */}
                 {activeTextInput && (
                   <div
+                    onMouseDown={e => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
                     style={{
                       position: 'absolute',
                       left: activeTextInput.x * scale,
                       top: activeTextInput.y * scale,
+                      left: Math.min(STAGE.w * scale - 260, Math.max(10, activeTextInput.x * scale)),
+                      top: Math.min(STAGE.h * scale - 60, Math.max(10, activeTextInput.y * scale)),
                       zIndex: 60,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: '#0F172A',
+                      border: `2px solid ${drawColor || PALETTE.violet}`,
+                      borderRadius: 10,
+                      padding: '5px 8px',
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+                      pointerEvents: 'auto',
                     }}
                   >
                     <input
@@ -1695,15 +1745,24 @@ export function ReportStudio({
                       value={activeTextInput.text}
                       onChange={e => setActiveTextInput(prev => prev ? { ...prev, text: e.target.value } : null)}
                       onKeyDown={e => {
+                        e.stopPropagation()
                         if (e.key === 'Enter') {
                           e.preventDefault()
                           commitTextInput()
                         } else if (e.key === 'Escape') {
+                          e.preventDefault()
                           setActiveTextInput(null)
                         }
                       }}
                       onBlur={commitTextInput}
                       placeholder="Digite seu texto…"
+                      onBlur={() => {
+                        if (Date.now() - activeTextInput.createdAt < 600) return
+                        if (activeTextInput.text.trim()) {
+                          commitTextInput()
+                        }
+                      }}
+                      placeholder="Digite sua anotação…"
                       style={{
                         background: 'rgba(0, 0, 0, 0.75)',
                         border: `2px dashed ${drawColor}`,
@@ -1711,13 +1770,56 @@ export function ReportStudio({
                         padding: '4px 8px',
                         color: drawColor,
                         fontSize: Math.max(13, textSize * scale),
+                        background: 'transparent',
+                        border: 'none',
+                        color: drawColor || '#FFFFFF',
+                        fontSize: Math.max(14, textSize * scale),
                         fontFamily: textFont === 'serif' ? 'Georgia, serif' : textFont === 'mono' ? 'monospace' : textFont === 'display' ? 'Outfit, sans-serif' : 'Inter, sans-serif',
                         fontWeight: 700,
                         outline: 'none',
                         minWidth: 140,
                         boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                        minWidth: 160,
                       }}
                     />
+                    <button
+                      type="button"
+                      onClick={commitTextInput}
+                      style={{
+                        background: drawColor || PALETTE.violet,
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: 6,
+                        padding: '4px 8px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 2,
+                      }}
+                      title="Salvar anotação (Enter)"
+                    >
+                      <Check size={13} strokeWidth={2.5} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTextInput(null)}
+                      style={{
+                        background: 'rgba(255,255,255,0.1)',
+                        color: '#94A3B8',
+                        border: 'none',
+                        borderRadius: 6,
+                        padding: '4px 6px',
+                        fontSize: 11,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                      }}
+                      title="Cancelar (Esc)"
+                    >
+                      <X size={13} strokeWidth={2} />
+                    </button>
                   </div>
                 )}
 
@@ -1784,8 +1886,11 @@ export function ReportStudio({
                     padding: '10px 8px',
                     background: reportTheme === 'dark' ? '#131927' : '#FFFFFF',
                     border: `1.5px solid ${reportTheme === 'dark' ? '#1E293B' : '#E2E8F0'}`,
+                    background: dockBg,
+                    border: `1.5px solid ${dockBorder}`,
                     borderRadius: 16,
                     boxShadow: '0 12px 36px rgba(0,0,0,0.18)',
+                    boxShadow: '0 12px 36px rgba(0,0,0,0.35)',
                     backdropFilter: 'blur(10px)',
                     zIndex: 50,
                     userSelect: 'none',
@@ -1807,6 +1912,8 @@ export function ReportStudio({
                       border: 'none',
                       background: laserActive || drawTool === 'laser' ? 'rgba(239,68,68,0.15)' : 'transparent',
                       color: laserActive || drawTool === 'laser' ? '#EF4444' : 'var(--text-2)',
+                      background: laserActive || drawTool === 'laser' ? 'rgba(239,68,68,0.2)' : 'transparent',
+                      color: laserActive || drawTool === 'laser' ? '#EF4444' : dockText2,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1833,6 +1940,8 @@ export function ReportStudio({
                       border: 'none',
                       background: drawTool === 'pointer' ? 'var(--bg-card2, rgba(99,102,241,0.12))' : 'transparent',
                       color: drawTool === 'pointer' ? PALETTE.violet : 'var(--text-2)',
+                      background: drawTool === 'pointer' ? 'rgba(99,102,241,0.2)' : 'transparent',
+                      color: drawTool === 'pointer' ? PALETTE.violet : dockText2,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1844,6 +1953,7 @@ export function ReportStudio({
                   </button>
 
                   <div style={{ width: 24, height: 1, background: reportTheme === 'dark' ? '#1E293B' : '#E2E8F0', margin: '2px 0' }} />
+                  <div style={{ width: 24, height: 1, background: dockBorder, margin: '2px 0' }} />
 
                   {/* Caneta */}
                   <button
@@ -1857,6 +1967,8 @@ export function ReportStudio({
                       border: 'none',
                       background: drawTool === 'pen' ? 'var(--bg-card2, rgba(99,102,241,0.12))' : 'transparent',
                       color: drawTool === 'pen' ? PALETTE.violet : 'var(--text-2)',
+                      background: drawTool === 'pen' ? 'rgba(99,102,241,0.2)' : 'transparent',
+                      color: drawTool === 'pen' ? PALETTE.violet : dockText2,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1879,6 +1991,8 @@ export function ReportStudio({
                       border: 'none',
                       background: drawTool === 'highlighter' ? 'var(--bg-card2, rgba(99,102,241,0.12))' : 'transparent',
                       color: drawTool === 'highlighter' ? PALETTE.violet : 'var(--text-2)',
+                      background: drawTool === 'highlighter' ? 'rgba(99,102,241,0.2)' : 'transparent',
+                      color: drawTool === 'highlighter' ? PALETTE.violet : dockText2,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1901,6 +2015,8 @@ export function ReportStudio({
                       border: 'none',
                       background: drawTool === 'rect' ? 'var(--bg-card2, rgba(99,102,241,0.12))' : 'transparent',
                       color: drawTool === 'rect' ? PALETTE.violet : 'var(--text-2)',
+                      background: drawTool === 'rect' ? 'rgba(99,102,241,0.2)' : 'transparent',
+                      color: drawTool === 'rect' ? PALETTE.violet : dockText2,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1923,6 +2039,8 @@ export function ReportStudio({
                       border: 'none',
                       background: drawTool === 'circle' ? 'var(--bg-card2, rgba(99,102,241,0.12))' : 'transparent',
                       color: drawTool === 'circle' ? PALETTE.violet : 'var(--text-2)',
+                      background: drawTool === 'circle' ? 'rgba(99,102,241,0.2)' : 'transparent',
+                      color: drawTool === 'circle' ? PALETTE.violet : dockText2,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1945,6 +2063,8 @@ export function ReportStudio({
                       border: 'none',
                       background: drawTool === 'arrow' ? 'var(--bg-card2, rgba(99,102,241,0.12))' : 'transparent',
                       color: drawTool === 'arrow' ? PALETTE.violet : 'var(--text-2)',
+                      background: drawTool === 'arrow' ? 'rgba(99,102,241,0.2)' : 'transparent',
+                      color: drawTool === 'arrow' ? PALETTE.violet : dockText2,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1967,6 +2087,8 @@ export function ReportStudio({
                       border: 'none',
                       background: drawTool === 'text' ? 'var(--bg-card2, rgba(99,102,241,0.12))' : 'transparent',
                       color: drawTool === 'text' ? PALETTE.violet : 'var(--text-2)',
+                      background: drawTool === 'text' ? 'rgba(99,102,241,0.2)' : 'transparent',
+                      color: drawTool === 'text' ? PALETTE.violet : dockText2,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1993,6 +2115,7 @@ export function ReportStudio({
                               border: 'none',
                               background: textSize === s.size ? PALETTE.violet : 'transparent',
                               color: textSize === s.size ? '#FFFFFF' : 'var(--text-2)',
+                              color: textSize === s.size ? '#FFFFFF' : dockText2,
                               fontSize: 10,
                               fontWeight: 700,
                               cursor: 'pointer',
@@ -2009,12 +2132,18 @@ export function ReportStudio({
                         onChange={e => setTextFont(e.target.value as any)}
                         style={{
                           width: 48,
+                          width: 58,
                           fontSize: 10,
+                          fontWeight: 600,
                           borderRadius: 6,
                           background: reportTheme === 'dark' ? '#1E293B' : '#F1F5F9',
                           color: 'var(--text-1)',
                           border: `1px solid ${reportTheme === 'dark' ? '#334155' : '#CBD5E1'}`,
                           padding: '2px 1px',
+                          background: isDark ? '#1E293B' : '#F1F5F9',
+                          color: dockText1,
+                          border: `1px solid ${dockBorder}`,
+                          padding: '3px 4px',
                           outline: 'none',
                           cursor: 'pointer',
                         }}
@@ -2024,11 +2153,16 @@ export function ReportStudio({
                         <option value="display">Outfit</option>
                         <option value="serif">Serif</option>
                         <option value="mono">Mono</option>
+                        <option value="sans" style={{ background: isDark ? '#1E293B' : '#FFFFFF', color: dockText1 }}>Inter</option>
+                        <option value="display" style={{ background: isDark ? '#1E293B' : '#FFFFFF', color: dockText1 }}>Outfit</option>
+                        <option value="serif" style={{ background: isDark ? '#1E293B' : '#FFFFFF', color: dockText1 }}>Serif</option>
+                        <option value="mono" style={{ background: isDark ? '#1E293B' : '#FFFFFF', color: dockText1 }}>Mono</option>
                       </select>
                     </div>
                   )}
 
                   <div style={{ width: 24, height: 1, background: reportTheme === 'dark' ? '#1E293B' : '#E2E8F0', margin: '2px 0' }} />
+                  <div style={{ width: 24, height: 1, background: dockBorder, margin: '2px 0' }} />
 
                   {/* Cores */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5, padding: '2px 0' }}>
@@ -2046,6 +2180,7 @@ export function ReportStudio({
                             borderRadius: '50%',
                             background: c.value,
                             border: isSel ? '2px solid #6366F1' : `1px solid ${reportTheme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}`,
+                            border: isSel ? '2px solid #6366F1' : `1px solid ${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}`,
                             boxShadow: isSel ? `0 0 0 2px rgba(99,102,241,0.4)` : 'none',
                             cursor: 'pointer',
                             padding: 0,
@@ -2058,6 +2193,7 @@ export function ReportStudio({
                   </div>
 
                   <div style={{ width: 24, height: 1, background: reportTheme === 'dark' ? '#1E293B' : '#E2E8F0', margin: '2px 0' }} />
+                  <div style={{ width: 24, height: 1, background: dockBorder, margin: '2px 0' }} />
 
                   {/* Espessuras */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
@@ -2075,6 +2211,7 @@ export function ReportStudio({
                             borderRadius: 6,
                             border: 'none',
                             background: isSel ? 'var(--bg-card2, rgba(99,102,241,0.15))' : 'transparent',
+                            background: isSel ? 'rgba(99,102,241,0.2)' : 'transparent',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -2087,6 +2224,7 @@ export function ReportStudio({
                               height: w.value === 3 ? 2 : w.value === 6 ? 4 : 7,
                               borderRadius: 999,
                               background: isSel ? PALETTE.violet : 'var(--text-3)',
+                              background: isSel ? PALETTE.violet : dockText3,
                             }}
                           />
                         </button>
@@ -2095,6 +2233,7 @@ export function ReportStudio({
                   </div>
 
                   <div style={{ width: 24, height: 1, background: reportTheme === 'dark' ? '#1E293B' : '#E2E8F0', margin: '2px 0' }} />
+                  <div style={{ width: 24, height: 1, background: dockBorder, margin: '2px 0' }} />
 
                   {/* Desfazer */}
                   <button
@@ -2109,6 +2248,7 @@ export function ReportStudio({
                       border: 'none',
                       background: 'transparent',
                       color: (active && drawingsBySlide[active.id]?.length) ? 'var(--text-1)' : 'var(--text-4, #94A3B8)',
+                      color: (active && drawingsBySlide[active.id]?.length) ? dockText1 : dockText3,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -2133,6 +2273,7 @@ export function ReportStudio({
                       border: 'none',
                       background: 'transparent',
                       color: (active && drawingsBySlide[active.id]?.length) ? '#EF4444' : 'var(--text-4, #94A3B8)',
+                      color: (active && drawingsBySlide[active.id]?.length) ? '#EF4444' : dockText3,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -2155,13 +2296,20 @@ export function ReportStudio({
                   maxWidth: 960,
                   background: reportTheme === 'dark' ? '#131927' : '#FFFFFF',
                   border: `1.5px solid ${reportTheme === 'dark' ? '#1E293B' : '#E2E8F0'}`,
+                  maxWidth: 1100,
+                  background: dockBg,
+                  border: `1.5px solid ${dockBorder}`,
                   borderRadius: 16,
                   padding: '8px 16px',
+                  padding: '10px 16px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   gap: 16,
                   boxShadow: '0 12px 32px rgba(0,0,0,0.2)',
+                  flexDirection: 'column',
+                  gap: 10,
+                  boxShadow: '0 12px 36px rgba(0,0,0,0.3)',
                   marginTop: 6,
                   zIndex: 50,
                   userSelect: 'none',
@@ -2170,6 +2318,46 @@ export function ReportStudio({
               >
                 {/* Controles de Navegação */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {/* Barra Superior de Controles do Apresentador */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                  {/* Navegação Anterior / Próximo */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      style={{ height: 32, padding: '0 12px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 4, color: dockText1, borderColor: dockBorder }}
+                      onClick={() => setCurrent(curr => Math.max(0, curr - 1))}
+                      disabled={current === 0}
+                      title="Slide Anterior (←)"
+                    >
+                      <ChevronLeft size={16} />
+                      <span>Anterior</span>
+                    </button>
+
+                    <span style={{ fontSize: 13, fontWeight: 700, color: dockText1, minWidth: 90, textAlign: 'center' }}>
+                      Slide {current + 1} de {slides.length}
+                    </span>
+
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      style={{ height: 32, padding: '0 12px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      onClick={() => setCurrent(curr => Math.min(slides.length - 1, curr + 1))}
+                      disabled={current === slides.length - 1}
+                      title="Próximo Slide (→)"
+                    >
+                      <span>Próximo</span>
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+
+                  {/* Cronômetro da Apresentação */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: dockText2, fontSize: 13, fontWeight: 600 }}>
+                    <Clock size={15} style={{ color: PALETTE.violet }} />
+                    <span>{formatPresentationTime(presentationTime)}</span>
+                  </div>
+
+                  {/* Sair do Modo Apresentador */}
                   <button
                     type="button"
                     className="btn btn-outline btn-sm"
@@ -2177,6 +2365,35 @@ export function ReportStudio({
                     onClick={() => setCurrent(curr => Math.max(0, curr - 1))}
                     disabled={current === 0}
                     title="Slide Anterior (←)"
+                    className="btn btn-ghost btn-sm"
+                    style={{ height: 32, padding: '0 12px', borderRadius: 10, color: dockText3, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    onClick={() => setPresenterMode(false)}
+                    title="Sair do modo apresentação (Esc)"
+                  >
+                    <X size={15} />
+                    <span>Sair (Esc)</span>
+                  </button>
+                </div>
+
+                {/* Carrossel Horizontal de Slides (Filmstrip de Navegação e Próximos Slides) */}
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    type="button"
+                    aria-label="Rolar carrossel para a esquerda"
+                    onClick={() => carouselRef.current?.scrollBy({ left: -240, behavior: 'smooth' })}
+                    style={{
+                      width: 28,
+                      height: 60,
+                      borderRadius: 6,
+                      background: isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(241, 245, 249, 0.9)',
+                      border: `1px solid ${dockBorder}`,
+                      color: dockText1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
                   >
                     <ChevronLeft size={16} />
                     <span>Anterior</span>
@@ -2185,6 +2402,115 @@ export function ReportStudio({
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', minWidth: 90, textAlign: 'center' }}>
                     Slide {current + 1} de {slides.length}
                   </span>
+                  <div
+                    ref={carouselRef}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      overflowX: 'auto',
+                      padding: '4px 2px',
+                      scrollbarWidth: 'none',
+                      scrollBehavior: 'smooth',
+                      flex: 1,
+                    }}
+                  >
+                    {slides.map((s, idx) => {
+                      const isCurrent = idx === current
+                      const isNext = idx === current + 1
+                      return (
+                        <div
+                          key={s.id}
+                          id={`presenter-thumb-${idx}`}
+                          onClick={() => setCurrent(idx)}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 4,
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                            opacity: isCurrent ? 1 : isNext ? 0.95 : 0.6,
+                            transform: isCurrent ? 'scale(1.03)' : 'scale(1)',
+                            transition: 'all 0.15s ease',
+                          }}
+                          title={`Slide ${idx + 1}: ${s.label}`}
+                        >
+                          <div
+                            style={{
+                              width: 120,
+                              height: 68,
+                              borderRadius: 8,
+                              overflow: 'hidden',
+                              position: 'relative',
+                              border: isCurrent
+                                ? `2px solid ${PALETTE.violet}`
+                                : isNext
+                                  ? '2px dashed rgba(99, 102, 241, 0.7)'
+                                  : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                              boxShadow: isCurrent
+                                ? '0 0 14px rgba(99, 102, 241, 0.45)'
+                                : '0 2px 8px rgba(0,0,0,0.15)',
+                            }}
+                          >
+                            <Slide spec={s} scale={0.094} />
+                            {isCurrent && (
+                              <span
+                                style={{
+                                  position: 'absolute',
+                                  top: 4,
+                                  left: 4,
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  background: PALETTE.violet,
+                                  color: '#FFFFFF',
+                                  padding: '1px 5px',
+                                  borderRadius: 4,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.4px',
+                                }}
+                              >
+                                Atual
+                              </span>
+                            )}
+                            {isNext && (
+                              <span
+                                style={{
+                                  position: 'absolute',
+                                  top: 4,
+                                  left: 4,
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  background: 'rgba(99, 102, 241, 0.85)',
+                                  color: '#FFFFFF',
+                                  padding: '1px 5px',
+                                  borderRadius: 4,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.4px',
+                                }}
+                              >
+                                Próximo
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: isCurrent ? 700 : 500,
+                              color: isCurrent ? PALETTE.violet : isNext ? dockText1 : dockText3,
+                              maxWidth: 120,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              textAlign: 'center',
+                            }}
+                          >
+                            {idx + 1}. {s.label}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
 
                   <button
                     type="button"
@@ -2193,6 +2519,21 @@ export function ReportStudio({
                     onClick={() => setCurrent(curr => Math.min(slides.length - 1, curr + 1))}
                     disabled={current === slides.length - 1}
                     title="Próximo Slide (→)"
+                    aria-label="Rolar carrossel para a direita"
+                    onClick={() => carouselRef.current?.scrollBy({ left: 240, behavior: 'smooth' })}
+                    style={{
+                      width: 28,
+                      height: 60,
+                      borderRadius: 6,
+                      background: isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(241, 245, 249, 0.9)',
+                      border: `1px solid ${dockBorder}`,
+                      color: dockText1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
                   >
                     <span>Próximo</span>
                     <ChevronRight size={16} />
