@@ -782,16 +782,15 @@ export function ReportStudio({
   // Opções de Texto para Anotações
   const [textFont, setTextFont] = useState<'sans' | 'display' | 'serif' | 'mono'>('sans')
   const [textSize, setTextSize] = useState<number>(26)
-  const [activeTextInput, setActiveTextInput] = useState<{ x: number; y: number; text: string; createdAt: number } | null>(null)
+  const [activeTextInput, setActiveTextInput] = useState<{ x: number; y: number; text: string } | null>(null)
   const textInputRef = useRef<HTMLInputElement>(null)
 
-  // Foca o campo de texto automaticamente ao abrir
+  // Foca o campo de texto ao abrir em nova posição (sem .select() para permitir digitação natural contínua)
   useEffect(() => {
     if (activeTextInput && textInputRef.current) {
       textInputRef.current.focus()
-      textInputRef.current.select()
     }
-  }, [activeTextInput])
+  }, [activeTextInput?.x, activeTextInput?.y])
 
   // Rola suavemente o carrossel inferior do apresentador para centralizar o slide ativo
   useEffect(() => {
@@ -907,26 +906,28 @@ export function ReportStudio({
   }, [active])
 
   // Salva o texto digitado nas anotações do slide
-  const commitTextInput = useCallback(() => {
-    if (!activeTextInput || !active) return
-    const trimmed = activeTextInput.text.trim()
-    if (trimmed) {
-      const textStroke: DrawStroke = {
-        tool: 'text',
-        color: drawColor,
-        width: 2,
-        points: [{ x: activeTextInput.x, y: activeTextInput.y }],
-        text: trimmed,
-        fontSize: textSize,
-        fontFamily: textFont,
+  const commitTextInput = useCallback((customText?: string) => {
+    setActiveTextInput(prev => {
+      if (!prev || !active) return null
+      const txt = (customText !== undefined ? customText : prev.text).trim()
+      if (txt) {
+        const textStroke: DrawStroke = {
+          tool: 'text',
+          color: drawColor,
+          width: 2,
+          points: [{ x: prev.x, y: prev.y }],
+          text: txt,
+          fontSize: textSize,
+          fontFamily: textFont,
+        }
+        setDrawingsBySlide(ds => ({
+          ...ds,
+          [active.id]: [...(ds[active.id] || []), textStroke],
+        }))
       }
-      setDrawingsBySlide(prev => ({
-        ...prev,
-        [active.id]: [...(prev[active.id] || []), textStroke],
-      }))
-    }
-    setActiveTextInput(null)
-  }, [activeTextInput, active, drawColor, textSize, textFont])
+      return null
+    })
+  }, [active, drawColor, textSize, textFont])
 
   // Redesenha todos os traços no canvas do slide
   const redrawCanvas = useCallback(() => {
@@ -1053,7 +1054,7 @@ export function ReportStudio({
       if (activeTextInput && activeTextInput.text.trim()) {
         commitTextInput()
       }
-      setActiveTextInput({ x: pt.x, y: pt.y, text: '', createdAt: Date.now() })
+      setActiveTextInput({ x: pt.x, y: pt.y, text: '' })
       return
     }
     currentStrokeRef.current = {
@@ -1711,24 +1712,16 @@ export function ReportStudio({
                   }}
                 />
 
-                {/* Input Flutuante para Inserção de Texto */}
+                {/* Input Direto no Slide para Digitação Natural */}
                 {activeTextInput && (
                   <div
                     onMouseDown={e => e.stopPropagation()}
                     onClick={e => e.stopPropagation()}
                     style={{
                       position: 'absolute',
-                      left: Math.min(STAGE.w * scale - 260, Math.max(10, activeTextInput.x * scale)),
-                      top: Math.min(STAGE.h * scale - 60, Math.max(10, activeTextInput.y * scale)),
+                      left: Math.max(4, Math.min(STAGE.w * scale - 180, activeTextInput.x * scale)),
+                      top: Math.max(4, Math.min(STAGE.h * scale - 40, activeTextInput.y * scale)),
                       zIndex: 60,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      background: '#0F172A',
-                      border: `2px solid ${drawColor || PALETTE.violet}`,
-                      borderRadius: 10,
-                      padding: '5px 8px',
-                      boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
                       pointerEvents: 'auto',
                     }}
                   >
@@ -1737,7 +1730,10 @@ export function ReportStudio({
                       autoFocus
                       type="text"
                       value={activeTextInput.text}
-                      onChange={e => setActiveTextInput(prev => prev ? { ...prev, text: e.target.value } : null)}
+                      onChange={e => {
+                        const val = e.target.value
+                        setActiveTextInput(prev => prev ? { ...prev, text: val } : null)
+                      }}
                       onKeyDown={e => {
                         e.stopPropagation()
                         if (e.key === 'Enter') {
@@ -1749,61 +1745,26 @@ export function ReportStudio({
                         }
                       }}
                       onBlur={() => {
-                        if (Date.now() - activeTextInput.createdAt < 600) return
-                        if (activeTextInput.text.trim()) {
-                          commitTextInput()
-                        }
+                        commitTextInput()
                       }}
-                      placeholder="Digite sua anotação…"
+                      placeholder="Digite aqui…"
                       style={{
-                        background: 'transparent',
-                        border: 'none',
+                        background: 'rgba(15, 23, 42, 0.55)',
+                        backdropFilter: 'blur(4px)',
+                        border: '1.5px dashed rgba(255, 255, 255, 0.45)',
+                        borderRadius: 6,
+                        padding: '4px 10px',
                         color: drawColor || '#FFFFFF',
-                        fontSize: Math.max(14, textSize * scale),
-                        fontFamily: textFont === 'serif' ? 'Georgia, serif' : textFont === 'mono' ? 'monospace' : textFont === 'display' ? 'Outfit, sans-serif' : 'Inter, sans-serif',
+                        fontSize: Math.max(15, textSize * scale),
+                        fontFamily: textFont === 'serif' ? 'Georgia, "Playfair Display", serif' : textFont === 'mono' ? '"JetBrains Mono", monospace' : textFont === 'display' ? '"Outfit", "Arial Black", sans-serif' : 'Inter, sans-serif',
                         fontWeight: 700,
                         outline: 'none',
-                        minWidth: 160,
+                        minWidth: 140,
+                        maxWidth: Math.max(200, STAGE.w * scale - (activeTextInput.x * scale) - 20),
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.35)',
+                        textShadow: '0 1px 4px rgba(0, 0, 0, 0.9)',
                       }}
                     />
-                    <button
-                      type="button"
-                      onClick={commitTextInput}
-                      style={{
-                        background: drawColor || PALETTE.violet,
-                        color: '#FFFFFF',
-                        border: 'none',
-                        borderRadius: 6,
-                        padding: '4px 8px',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 2,
-                      }}
-                      title="Salvar anotação (Enter)"
-                    >
-                      <Check size={13} strokeWidth={2.5} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTextInput(null)}
-                      style={{
-                        background: 'rgba(255,255,255,0.1)',
-                        color: '#94A3B8',
-                        border: 'none',
-                        borderRadius: 6,
-                        padding: '4px 6px',
-                        fontSize: 11,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                      }}
-                      title="Cancelar (Esc)"
-                    >
-                      <X size={13} strokeWidth={2} />
-                    </button>
                   </div>
                 )}
 
@@ -2259,11 +2220,25 @@ export function ReportStudio({
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <button
                       type="button"
-                      className="btn btn-outline btn-sm"
-                      style={{ height: 32, padding: '0 12px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 4, color: dockText1, borderColor: dockBorder }}
                       onClick={() => setCurrent(curr => Math.max(0, curr - 1))}
                       disabled={current === 0}
                       title="Slide Anterior (←)"
+                      style={{
+                        height: 32,
+                        padding: '0 12px',
+                        borderRadius: 10,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: current === 0 ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s ease',
+                        background: current === 0 ? 'rgba(255, 255, 255, 0.1)' : '#FFFFFF',
+                        color: current === 0 ? 'rgba(255, 255, 255, 0.35)' : '#0F172A',
+                        border: 'none',
+                        boxShadow: current === 0 ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.25)',
+                      }}
                     >
                       <ChevronLeft size={16} />
                       <span>Anterior</span>
@@ -2275,11 +2250,25 @@ export function ReportStudio({
 
                     <button
                       type="button"
-                      className="btn btn-primary btn-sm"
-                      style={{ height: 32, padding: '0 12px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 4 }}
                       onClick={() => setCurrent(curr => Math.min(slides.length - 1, curr + 1))}
                       disabled={current === slides.length - 1}
                       title="Próximo Slide (→)"
+                      style={{
+                        height: 32,
+                        padding: '0 14px',
+                        borderRadius: 10,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: current === slides.length - 1 ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s ease',
+                        background: current === slides.length - 1 ? 'rgba(99, 102, 241, 0.2)' : (PALETTE.violet || '#6366F1'),
+                        color: current === slides.length - 1 ? 'rgba(255, 255, 255, 0.4)' : '#FFFFFF',
+                        border: 'none',
+                        boxShadow: current === slides.length - 1 ? 'none' : '0 2px 10px rgba(99, 102, 241, 0.4)',
+                      }}
                     >
                       <span>Próximo</span>
                       <ChevronRight size={16} />
@@ -2295,10 +2284,23 @@ export function ReportStudio({
                   {/* Sair do Modo Apresentador */}
                   <button
                     type="button"
-                    className="btn btn-ghost btn-sm"
-                    style={{ height: 32, padding: '0 12px', borderRadius: 10, color: dockText3, display: 'inline-flex', alignItems: 'center', gap: 6 }}
                     onClick={() => setPresenterMode(false)}
                     title="Sair do modo apresentação (Esc)"
+                    style={{
+                      height: 32,
+                      padding: '0 12px',
+                      borderRadius: 10,
+                      color: '#CBD5E1',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
                   >
                     <X size={15} />
                     <span>Sair (Esc)</span>
