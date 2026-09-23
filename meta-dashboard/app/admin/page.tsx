@@ -834,7 +834,7 @@ export default function AdminPage() {
           <MetaSyncPopover logoUrl={brandLogo} onLogoChange={canManage ? setBrandLogo : undefined} canEditBrand={canManage} />
           <div style={{ flex: 1, minWidth: 160 }}>
             <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2 }}>Painel de controle</h1>
-            <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>Acompanhe os clientes, os leads e os acessos em um só lugar</p>
+            <p className="desktop-only" style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>Acompanhe os clientes, os leads e os acessos em um só lugar</p>
           </div>
           <div className="admin-header-quick-actions">
             {themeButton}
@@ -957,10 +957,15 @@ export default function AdminPage() {
                         })}
                       </div>
                       <div className="admin-card-sparkline-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 32 }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                        <span className="desktop-only" style={{ fontSize: 12, color: 'var(--text-2)' }}>
                           {source === 'meta'
                             ? (c.resultsAt ? `${periodNoun} · Meta ${period === 'today' ? 'hoje' : 'até ontem'}, ${timeAgo(c.resultsAt)}${typeof period === 'number' && period > c.resultsSpanDays && c.resultsSpanDays > 0 ? ` · só ${c.resultsSpanDays} dias disponíveis` : ''}` : 'Sem dados da Meta ainda')
                             : `${periodNoun} · ${c.lastLeadAt ? `último lead ${timeAgo(c.lastLeadAt)}` : 'nenhum lead ainda'}`}
+                        </span>
+                        <span className="mobile-only" style={{ fontSize: 11, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
+                          {source === 'meta'
+                            ? (c.resultsAt ? `Meta · ${timeAgo(c.resultsAt)}` : 'Sem dados')
+                            : (c.lastLeadAt ? `Lead ${timeAgo(c.lastLeadAt)}` : 'Sem leads')}
                         </span>
                         <Sparkline data={(source === 'meta' ? c.resultsDaily : null) ?? c.daily} width={112} height={32} />
                       </div>

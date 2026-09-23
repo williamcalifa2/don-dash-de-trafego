@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { Check, Download } from 'lucide-react'
 import type { MetricsSummary } from '@/lib/meta'
 
 interface SimuladorTabProps {
@@ -179,7 +180,15 @@ export function SimuladorTab({ summary, currency = 'BRL' }: SimuladorTabProps) {
         {summary && (
           <button onClick={prefillFromReal} className="btn btn-soft btn-sm"
             style={prefilled ? { background: 'var(--green)', color: '#fff' } : undefined}>
-            {prefilled ? '✓ Dados preenchidos' : '↙ Pré-preencher com dados reais'}
+            {prefilled ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Check size={14} strokeWidth={2.2} /> Dados preenchidos
+              </span>
+            ) : (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Download size={14} strokeWidth={2} /> Pré-preencher com dados reais
+              </span>
+            )}
           </button>
         )}
       </div>

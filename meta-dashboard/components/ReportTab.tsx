@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef } from 'react'
+import { TrendingUp, TrendingDown } from 'lucide-react'
 import { useLeadsData } from '@/lib/leadsContext'
 import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
 import { buildPerf, isStale, leadsInPeriod, timeAgo, STALE_HOURS, type Perf } from '@/lib/leadUtils'
@@ -28,9 +29,12 @@ function Delta({ cur, prev, lowerIsBetter, neutral }: { cur: number | null; prev
   if (cur == null || prev == null || prev === 0) return <span style={{ fontSize: 12, color: 'var(--text-2)' }}>sem comparação</span>
   const d = ((cur - prev) / Math.abs(prev)) * 100
   const good = lowerIsBetter ? d <= 0 : d >= 0
+  const up = d >= 0
+  const Icon = up ? TrendingUp : TrendingDown
   return (
-    <span style={{ fontSize: 12, fontWeight: 600, color: neutral ? 'var(--text-1)' : good ? 'var(--green)' : 'var(--red)' }}>
-      {d >= 0 ? '↑' : '↓'} {Math.abs(d).toFixed(1).replace('.', ',')}% <span style={{ fontWeight: 400, color: 'var(--text-2)' }}>vs anterior</span>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 600, color: neutral ? 'var(--text-1)' : good ? 'var(--green)' : 'var(--red)' }}>
+      <Icon size={12} strokeWidth={2.2} aria-hidden="true" />
+      <span>{Math.abs(d).toFixed(1).replace('.', ',')}%</span> <span style={{ fontWeight: 400, color: 'var(--text-2)', marginLeft: 2 }}>vs anterior</span>
     </span>
   )
 }

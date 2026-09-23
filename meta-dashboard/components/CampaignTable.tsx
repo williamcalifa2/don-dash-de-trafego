@@ -3,7 +3,7 @@
 import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
 import { ConversionChips } from '@/components/ConversionsCard'
 import { Fragment, useState, useCallback } from 'react'
-import { ChevronRight, ExternalLink, X, ArrowUpDown, ArrowUp, ArrowDown, Activity } from 'lucide-react'
+import { ChevronRight, ExternalLink, X, ArrowUpDown, ArrowUp, ArrowDown, Activity, Image as ImageIcon } from 'lucide-react'
 import { resolveDelivery, type CampaignRow, type ConversionItem } from '@/lib/meta'
 import { apiFetch } from '@/lib/apiFetch'
 import { previewSrc } from '@/lib/adPreview'
@@ -193,7 +193,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                   </span>
                 </th>
               ))}
-              <th style={{ ...thStyle('spend'), textAlign: 'center' }}>↓</th>
+              <th style={{ ...thStyle('spend'), width: 44, textAlign: 'center' }}><span className="sr-only">Ações</span></th>
             </tr>
           </thead>
           <tbody>
@@ -369,7 +369,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                                                           {ad.thumb ? (
                                                             <img src={ad.thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                           ) : (
-                                                            <span style={{ fontSize: 20 }}>🖼</span>
+                                                            <ImageIcon size={22} strokeWidth={1.5} color="var(--text-3)" />
                                                           )}
                                                         </div>
                                                         <div style={{ padding: 8 }}>
@@ -459,7 +459,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
               ) : creativeModal.thumb ? (
                 <img src={creativeModal.thumb} alt="" style={{ maxWidth: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 8 }} />
               ) : (
-                <span style={{ fontSize: 32 }}>🖼</span>
+                <ImageIcon size={36} strokeWidth={1.5} color="var(--text-3)" />
               )}
             </div>
 

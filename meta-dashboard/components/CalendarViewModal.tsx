@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, X, Calendar as CalendarIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, Eye, Target, X, Calendar as CalendarIcon } from 'lucide-react'
 import type { DailySummary } from '@/lib/meta'
 import type { ResultKind } from '@/lib/resultKind'
 import { KIND_LABELS } from '@/lib/resultKind'
@@ -256,7 +256,7 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                 title="Clique para escolher o mês"
               >
                 <span>{MONTH_NAMES[currentMonth]} {currentYear}</span>
-                <span style={{ fontSize: 10, color: 'var(--text-3)' }}>▼</span>
+                <ChevronDown size={13} strokeWidth={2} style={{ opacity: 0.7 }} />
               </button>
 
               <button
@@ -580,8 +580,14 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
 
                   {/* Secondary row */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--text-2)' }}>
-                    <span>👁 {selectedMetrics.impressions.toLocaleString('pt-BR')} impressões</span>
-                    <span>🎯 {selectedMetrics.leads > 0 ? `${((selectedMetrics.leads / (selectedMetrics.impressions || 1)) * 100).toFixed(2)}% taxa` : '0%'}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                      <Eye size={13} strokeWidth={1.75} />
+                      {selectedMetrics.impressions.toLocaleString('pt-BR')} impressões
+                    </span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                      <Target size={13} strokeWidth={1.75} />
+                      {selectedMetrics.leads > 0 ? `${((selectedMetrics.leads / (selectedMetrics.impressions || 1)) * 100).toFixed(2)}% taxa` : '0%'}
+                    </span>
                   </div>
                 </>
               ) : (

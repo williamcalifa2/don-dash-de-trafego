@@ -297,7 +297,7 @@ function Dashboard() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6, minHeight: 22 }}>
               <PlatformBadges platforms={me?.platforms ?? []} />
               {data?.account_name && !data.is_mock && (
-                <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--text-1)' }}>
+                <span className="badge desktop-only" style={{ background: 'var(--accent-soft)', color: 'var(--text-1)' }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', flexShrink: 0 }} />
                   {data.account_name}
                 </span>
@@ -464,7 +464,7 @@ function Dashboard() {
       {/* Abas sublinhadas com Ações de Relatório */}
       <div className="no-print dash-tabs-bar">
         <div className="tabs dash-tabs-nav" role="tablist">
-          {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads'], ['goals', 'Metas']] as const).filter(([key]) => (key !== 'simulator' || !!me?.admin)).map(([key, label]) => (
+          {([['metrics', 'Métricas'], ['funnel', 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads'], ['goals', 'Metas']] as const).filter(([key]) => (key !== 'simulator' || !!me?.admin)).map(([key, label]) => (
             <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
               {label}
               {key === 'leads' && staleCount > 0 && (
@@ -693,7 +693,7 @@ function Dashboard() {
         </div>
       )}
       {!isLoading && s && tab === 'metrics' && (
-        <div style={{ fontSize: 12, color: 'var(--text-2)', textAlign: 'right', margin: '8px 0 24px' }}>
+        <div className="mobile-hide" style={{ fontSize: 12, color: 'var(--text-2)', textAlign: 'right', margin: '8px 0 24px' }}>
           ↑↓ vs período anterior equivalente
         </div>
       )}
@@ -708,7 +708,7 @@ function Dashboard() {
 
       {/* Last update */}
       {data?.generated_at && !isLoading && tab === 'metrics' && (
-        <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 24, textAlign: 'right' }}>
+        <div className="mobile-hide" style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 24, textAlign: 'right' }}>
           Atualizado em {new Date(data.generated_at).toLocaleString('pt-BR')}{data.freshness ? '' : ' · atualiza a cada 1 min'}
           {data.freshness?.note && <div style={{ color: 'var(--amber)', marginTop: 4 }} role="status">{data.freshness.note}</div>}
         </div>

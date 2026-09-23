@@ -80,7 +80,7 @@ export default function AdminOverview({ days, refreshKey = 0, clients = [] }: { 
                   <MetricTile key={x.label} label={x.label} value={x.value} sparkData={x.spark} currentRaw={x.cur ?? undefined} prevValue={x.prev ?? undefined} lowerIsBetter={x.lower} />
                 ))}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text-2)', textAlign: 'right', margin: '8px 0 16px' }}>
+              <div className="mobile-hide" style={{ fontSize: 12, color: 'var(--text-2)', textAlign: 'right', margin: '8px 0 16px' }}>
                 {p ? '↑↓ vs período anterior equivalente · ' : ''}{days === 'today' ? 'dados de hoje, até agora' : days === 'month' ? 'do dia 1 até hoje' : 'dados até ontem'}
                 {o.partial && typeof days === 'number' ? ` · histórico disponível menor que ${o.days} dias` : ''}
                 {!client && o.clientsWithData < o.clientsTotal ? ` · ${o.clientsTotal - o.clientsWithData} cliente(s) ainda sem dados` : ''}
