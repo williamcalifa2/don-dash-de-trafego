@@ -388,4 +388,3 @@ export function BudgetPacingPopover({ campaigns = [], currentSpend, currency, cl
     </div>
   )
 }
-

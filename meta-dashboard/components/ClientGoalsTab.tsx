@@ -357,4 +357,3 @@ export function ClientGoalsTab({ slug, isStaff = true }: ClientGoalsTabProps) {
     </div>
   )
 }
-

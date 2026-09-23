@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Plus, RefreshCw, Search, Users, TrendingUp, DollarSign, StickyNote, Clock, LayoutGrid, Table as TableIcon, MessageSquare } from 'lucide-react'
 import { useLeadsData as useLeads } from '@/lib/leadsContext'
 import type { Lead, LeadStatus } from '@/lib/leadTypes'
@@ -164,8 +164,8 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
     if (openId) { setDrawer({ id: openId, focus: null }); onOpenConsumed?.() }
   }, [openId, onOpenConsumed])
 
-  const staleCount = useMemo(() => leads.filter(l => isStale(l)).length, [leads])
-  const drawerLead = useMemo(() => drawer ? leads.find(l => l.id === drawer.id) ?? null : null, [drawer, leads])
+  const staleCount = leads.filter(l => isStale(l)).length
+  const drawerLead = drawer ? leads.find(l => l.id === drawer.id) ?? null : null
 
   function changeStatus(lead: Lead, status: LeadStatus) {
     patchLead(lead.id, { status })
@@ -173,28 +173,20 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
     else if (status === 'Convertido' && lead.valor_pedido == null) setDrawer({ id: lead.id, focus: 'valor' })
   }
 
-  const filtered = useMemo(() => leads.filter(l => {
+  const filtered = leads.filter(l => {
     const matchStatus = filterStatus === 'Todos' || (filterStatus === 'Parados' ? isStale(l) : l.status === filterStatus)
     const q = search.toLowerCase()
     const matchSearch = !q || [l.nome, l.email, l.telefone, l.campanha, l.ad_name]
       .some(v => v?.toLowerCase().includes(q))
     return matchStatus && matchSearch
-  }), [leads, filterStatus, search])
+  })
 
-  const stats = useMemo(() => {
-    const total = leads.length
-    let convertido = 0
-    let revenue = 0
-    for (let i = 0; i < total; i++) {
-      const l = leads[i]
-      if (l.status === 'Convertido') {
-        convertido++
-        revenue += (l.valor_pedido ?? 0)
-      }
-    }
-    const convRate = total ? (convertido / total) * 100 : 0
-    return { total, convertido, revenue, convRate }
-  }, [leads])
+  const stats = {
+    total: leads.length,
+    convertido: leads.filter(l => l.status === 'Convertido').length,
+    revenue: leads.reduce((s, l) => s + (l.status === 'Convertido' ? (l.valor_pedido ?? 0) : 0), 0),
+    convRate: leads.length ? (leads.filter(l => l.status === 'Convertido').length / leads.length) * 100 : 0,
+  }
 
   function getCellText(lead: Lead, key: string): string {
     switch (key) {

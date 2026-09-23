@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useCallback } from 'react'
+import { useState } from 'react'
 import { ChevronLeft, ChevronRight, X, Calendar as CalendarIcon } from 'lucide-react'
 import type { DailySummary } from '@/lib/meta'
 import type { ResultKind } from '@/lib/resultKind'
@@ -30,326 +30,112 @@ function fmtDec(v: number, currency: string) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)
 }
 
-function fmtDateKey(year: number, month: number, day: number): string {
-  const m = month + 1
-  return `${year}-${m < 10 ? '0' : ''}${m}-${day < 10 ? '0' : ''}${day}`
-}
-
-interface CellData {
-  spend: number
-  leads: number
-  cpl: number | null
-  impressions: number
-  ctr: number
-}
-
-interface DayCellProps {
-  day: number
-  dateStr: string
-  isCurrentMonth: boolean
-  isToday: boolean
-  isSelected: boolean
-  data?: CellData
-  currency: string
-  resultLabel: string
-  costLabel: string
-  onSelect: (dateStr: string) => void
-}
-
-const CalendarDayCell = React.memo(function CalendarDayCell({
-  day,
-  dateStr,
-  isCurrentMonth,
-  isToday,
-  isSelected,
-  data,
-  currency,
-  resultLabel,
-  costLabel,
-  onSelect,
-}: DayCellProps) {
-  const handleClick = useCallback(() => {
-    onSelect(dateStr)
-  }, [onSelect, dateStr])
-
-  return (
-    <div
-      onClick={handleClick}
-      style={{
-        minHeight: 84,
-        padding: '8px 6px',
-        borderRadius: 12,
-        background: isSelected
-          ? 'var(--accent-soft)'
-          : isCurrentMonth
-            ? 'var(--bg-card2)'
-            : 'transparent',
-        border: isSelected
-          ? '2px solid var(--accent)'
-          : isToday
-            ? '2px solid var(--green)'
-            : '1px solid var(--border-soft)',
-        opacity: isCurrentMonth ? 1 : 0.38,
-        cursor: 'pointer',
-        display: 'flex',
-        flexDirection: 'column',
-        userSelect: 'none',
-        position: 'relative',
-        transition: 'background-color 0.1s ease, border-color 0.1s ease',
-      }}
-    >
-      {/* Day Number Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: isToday || isSelected ? 800 : 600,
-            width: 22,
-            height: 22,
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: isToday ? 'var(--green)' : isSelected ? 'var(--accent)' : 'transparent',
-            color: isToday || isSelected ? '#fff' : 'var(--text-1)',
-          }}
-        >
-          {day}
-        </span>
-
-        {data && data.spend > 0 && (
-          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-2)' }}>
-            {fmtCurrency(data.spend, currency)}
-          </span>
-        )}
-      </div>
-
-      {/* Results / Metric Pills */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, justifyContent: 'flex-start' }}>
-        {data && data.leads > 0 && (
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              padding: '2px 6px',
-              borderRadius: 6,
-              background: 'rgba(34, 197, 94, 0.14)',
-              color: '#16a34a',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-            title={`${data.leads} ${resultLabel}`}
-          >
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#16a34a' }} />
-            {data.leads} {resultLabel}
-          </div>
-        )}
-
-        {data && data.cpl != null && data.cpl > 0 && (
-          <div
-            style={{
-              fontSize: 9,
-              fontWeight: 600,
-              padding: '2px 6px',
-              borderRadius: 6,
-              background: 'var(--accent-soft)',
-              color: 'var(--accent)',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-            title={`Custo médio: ${fmtDec(data.cpl, currency)}`}
-          >
-            {costLabel}: {fmtCurrency(data.cpl, currency)}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-})
-
 export function CalendarViewModal({ onClose, daily, currency, kind = 'form', leads = [] }: CalendarViewModalProps) {
   const L = KIND_LABELS[kind]
-  const today = useMemo(() => new Date(), [])
-  const todayStr = useMemo(() => fmtDateKey(today.getFullYear(), today.getMonth(), today.getDate()), [today])
-
-  const [currentYear, setCurrentYear] = useState<number>(() => today.getFullYear())
-  const [currentMonth, setCurrentMonth] = useState<number>(() => today.getMonth())
-  const [selectedDateStr, setSelectedDateStr] = useState<string | null>(todayStr)
+  const today = new Date()
+  const [currentDate, setCurrentDate] = useState<Date>(new Date())
+  const [selectedDateStr, setSelectedDateStr] = useState<string | null>(today.toISOString().slice(0, 10))
   const [monthPickerOpen, setMonthPickerOpen] = useState(false)
 
-  // 1. Build daily data lookup map: 'YYYY-MM-DD' -> metrics (MEMOIZED)
-  const dailyMap = useMemo(() => {
-    const map = new Map<string, CellData>()
-    if (!daily?.dates) return map
-    const dates = daily.dates
-    const len = dates.length
-    const isForm = kind === 'form' || !daily.metrics?.results
-    const results = daily.metrics?.results
-    const leadsArr = daily.leads
-    const spendArr = daily.spend
-    const cplArr = daily.cpl
-    const impArr = daily.impressions
-    const ctrArr = daily.ctr
+  const currentYear = currentDate.getFullYear()
+  const currentMonth = currentDate.getMonth()
 
-    for (let idx = 0; idx < len; idx++) {
-      const key = dates[idx].slice(0, 10)
-      const resVal = isForm ? (leadsArr?.[idx] ?? 0) : (results?.[idx] ?? 0)
-      map.set(key, {
-        spend: spendArr?.[idx] ?? 0,
+  // Build daily data lookup map: 'YYYY-MM-DD' -> metrics
+  const dailyMap = new Map<string, { spend: number; leads: number; cpl: number | null; impressions: number; ctr: number }>()
+  const availableMonths = new Set<string>()
+
+  if (daily && daily.dates) {
+    daily.dates.forEach((d, idx) => {
+      const key = d.slice(0, 10)
+      if (key.length >= 7) availableMonths.add(key.slice(0, 7))
+      const resVal = kind === 'form' || !daily.metrics?.results ? (daily.leads?.[idx] ?? 0) : (daily.metrics.results[idx] ?? 0)
+      dailyMap.set(key, {
+        spend: daily.spend?.[idx] ?? 0,
         leads: resVal,
-        cpl: cplArr?.[idx] ?? null,
-        impressions: impArr?.[idx] ?? 0,
-        ctr: ctrArr?.[idx] ?? 0,
+        cpl: daily.cpl?.[idx] ?? null,
+        impressions: daily.impressions?.[idx] ?? 0,
+        ctr: daily.ctr?.[idx] ?? 0,
       })
-    }
-    return map
-  }, [daily, kind])
-
-  // 2. Index leads by date string: 'YYYY-MM-DD' -> Lead[] (MEMOIZED O(1) LOOKUP)
-  const leadsByDate = useMemo(() => {
-    const map = new Map<string, Lead[]>()
-    if (!leads || leads.length === 0) return map
-    const len = leads.length
-    for (let i = 0; i < len; i++) {
-      const l = leads[i]
-      const raw = l.date || l.created_at
-      if (!raw) continue
-      const key = raw.slice(0, 10)
-      const existing = map.get(key)
-      if (existing) {
-        existing.push(l)
-      } else {
-        map.set(key, [l])
-      }
-    }
-    return map
-  }, [leads])
-
-  // 3. Available months set (MEMOIZED)
-  const availableMonths = useMemo(() => {
-    const set = new Set<string>()
-    if (daily?.dates) {
-      for (let i = 0; i < daily.dates.length; i++) {
-        const d = daily.dates[i]
-        if (d && d.length >= 7) set.add(d.slice(0, 7))
-      }
-    }
-    if (leads) {
-      for (let i = 0; i < leads.length; i++) {
-        const d = leads[i].date || leads[i].created_at
-        if (d && d.length >= 7) set.add(d.slice(0, 7))
-      }
-    }
-    set.add(fmtDateKey(today.getFullYear(), today.getMonth(), 1).slice(0, 7))
-    return set
-  }, [daily, leads, today])
-
-  // 4. Navigation callbacks
-  const prevMonth = useCallback(() => {
-    setCurrentMonth(m => {
-      if (m === 0) {
-        setCurrentYear(y => y - 1)
-        return 11
-      }
-      return m - 1
     })
-  }, [])
+  }
 
-  const nextMonth = useCallback(() => {
-    setCurrentMonth(m => {
-      if (m === 11) {
-        setCurrentYear(y => y + 1)
-        return 0
-      }
-      return m + 1
+  if (leads && leads.length > 0) {
+    leads.forEach(l => {
+      const d = l.date || l.created_at
+      if (d && d.length >= 7) availableMonths.add(d.slice(0, 7))
     })
-  }, [])
+  }
 
-  const goToToday = useCallback(() => {
-    setCurrentYear(today.getFullYear())
-    setCurrentMonth(today.getMonth())
-    setSelectedDateStr(todayStr)
+  // Also ensure current month is always discoverable
+  availableMonths.add(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`)
+
+  // First day of current month
+  const firstDay = new Date(currentYear, currentMonth, 1)
+  const startingDayOfWeek = firstDay.getDay()
+  const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
+  const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate()
+
+  // Navigation
+  const prevMonth = () => setCurrentDate(new Date(currentYear, currentMonth - 1, 1))
+  const nextMonth = () => setCurrentDate(new Date(currentYear, currentMonth + 1, 1))
+  const goToToday = () => {
+    setCurrentDate(new Date())
+    setSelectedDateStr(today.toISOString().slice(0, 10))
     setMonthPickerOpen(false)
-  }, [today, todayStr])
+  }
 
-  const selectMonth = useCallback((monthIdx: number) => {
-    setCurrentMonth(monthIdx)
+  const selectMonth = (monthIdx: number) => {
+    setCurrentDate(new Date(currentYear, monthIdx, 1))
     setMonthPickerOpen(false)
-  }, [])
+  }
 
-  // 5. Generate calendar cells without slow Date object allocations (MEMOIZED)
-  const cells = useMemo(() => {
-    const list: Array<{ day: number; dateStr: string; isCurrentMonth: boolean; isToday: boolean }> = []
-    const firstDay = new Date(currentYear, currentMonth, 1)
-    const startingDayOfWeek = firstDay.getDay()
-    const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
-    const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate()
+  // Generate cells
+  const cells: Array<{ day: number; dateStr: string; isCurrentMonth: boolean; isToday: boolean }> = []
 
-    const nowY = today.getFullYear()
-    const nowM = today.getMonth()
-    const nowD = today.getDate()
+  // Prev month padding
+  for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+    const day = daysInPrevMonth - i
+    const d = new Date(currentYear, currentMonth - 1, day)
+    cells.push({
+      day,
+      dateStr: d.toISOString().slice(0, 10),
+      isCurrentMonth: false,
+      isToday: false,
+    })
+  }
 
-    // Prev month padding
-    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear
-    const prevMonthIdx = currentMonth === 0 ? 11 : currentMonth - 1
-    for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-      const day = daysInPrevMonth - i
-      list.push({
-        day,
-        dateStr: fmtDateKey(prevYear, prevMonthIdx, day),
-        isCurrentMonth: false,
-        isToday: false,
-      })
-    }
+  // Current month
+  for (let day = 1; day <= daysInCurrentMonth; day++) {
+    const d = new Date(currentYear, currentMonth, day)
+    const isToday =
+      today.getFullYear() === currentYear &&
+      today.getMonth() === currentMonth &&
+      today.getDate() === day
 
-    // Current month
-    for (let day = 1; day <= daysInCurrentMonth; day++) {
-      const isToday = nowY === currentYear && nowM === currentMonth && nowD === day
-      list.push({
-        day,
-        dateStr: fmtDateKey(currentYear, currentMonth, day),
-        isCurrentMonth: true,
-        isToday,
-      })
-    }
+    cells.push({
+      day,
+      dateStr: d.toISOString().slice(0, 10),
+      isCurrentMonth: true,
+      isToday,
+    })
+  }
 
-    // Next month padding
-    const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear
-    const nextMonthIdx = currentMonth === 11 ? 0 : currentMonth + 1
-    const totalCells = Math.ceil(list.length / 7) * 7
-    const nextDays = totalCells - list.length
-    for (let day = 1; day <= nextDays; day++) {
-      list.push({
-        day,
-        dateStr: fmtDateKey(nextYear, nextMonthIdx, day),
-        isCurrentMonth: false,
-        isToday: false,
-      })
-    }
+  // Next month padding
+  const totalCells = Math.ceil(cells.length / 7) * 7
+  const nextDays = totalCells - cells.length
+  for (let day = 1; day <= nextDays; day++) {
+    const d = new Date(currentYear, currentMonth + 1, day)
+    cells.push({
+      day,
+      dateStr: d.toISOString().slice(0, 10),
+      isCurrentMonth: false,
+      isToday: false,
+    })
+  }
 
-    return list
-  }, [currentYear, currentMonth, today])
-
-  const handleSelectDate = useCallback((dateStr: string) => {
-    setSelectedDateStr(dateStr)
-  }, [])
-
-  // Selected Day Details (Instant O(1) Lookups)
+  // Selected Day Details
   const selectedMetrics = selectedDateStr ? dailyMap.get(selectedDateStr) : null
-  const selectedLeads = (selectedDateStr ? leadsByDate.get(selectedDateStr) : null) ?? []
-
-  const formattedSelectedDate = useMemo(() => {
-    if (!selectedDateStr) return ''
-    const parts = selectedDateStr.split('-').map(Number)
-    if (parts.length < 3) return selectedDateStr
-    const d = new Date(parts[0], parts[1] - 1, parts[2], 12)
-    return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
-  }, [selectedDateStr])
+  const selectedLeads = selectedDateStr ? leads.filter(l => (l.date || l.created_at).startsWith(selectedDateStr)) : []
 
   return (
     <div
@@ -601,7 +387,7 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
               ))}
             </div>
 
-            {/* Days Grid with Memoized Cells */}
+            {/* Days Grid */}
             <div
               style={{
                 display: 'grid',
@@ -610,21 +396,115 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                 flex: 1,
               }}
             >
-              {cells.map(cell => (
-                <CalendarDayCell
-                  key={cell.dateStr}
-                  day={cell.day}
-                  dateStr={cell.dateStr}
-                  isCurrentMonth={cell.isCurrentMonth}
-                  isToday={cell.isToday}
-                  isSelected={selectedDateStr === cell.dateStr}
-                  data={dailyMap.get(cell.dateStr)}
-                  currency={currency}
-                  resultLabel={L.many}
-                  costLabel={L.cost}
-                  onSelect={handleSelectDate}
-                />
-              ))}
+              {cells.map(cell => {
+                const data = dailyMap.get(cell.dateStr)
+                const isSelected = selectedDateStr === cell.dateStr
+
+                return (
+                  <div
+                    key={cell.dateStr}
+                    onClick={() => setSelectedDateStr(cell.dateStr)}
+                    style={{
+                      minHeight: 84,
+                      padding: '8px 6px',
+                      borderRadius: 12,
+                      background: isSelected
+                        ? 'var(--accent-soft)'
+                        : cell.isCurrentMonth
+                          ? 'var(--bg-card2)'
+                          : 'transparent',
+                      border: isSelected
+                        ? '2px solid var(--accent)'
+                        : cell.isToday
+                          ? '2px solid var(--green)'
+                          : '1px solid var(--border-soft)',
+                      opacity: cell.isCurrentMonth ? 1 : 0.4,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      transition: 'all 0.15s ease',
+                      position: 'relative',
+                    }}
+                    onMouseEnter={e => {
+                      if (!isSelected) e.currentTarget.style.borderColor = 'var(--accent-glow)'
+                    }}
+                    onMouseLeave={e => {
+                      if (!isSelected) e.currentTarget.style.borderColor = cell.isToday ? 'var(--green)' : 'var(--border-soft)'
+                    }}
+                  >
+                    {/* Day Number Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: cell.isToday || isSelected ? 800 : 600,
+                          width: 22,
+                          height: 22,
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: cell.isToday ? 'var(--green)' : isSelected ? 'var(--accent)' : 'transparent',
+                          color: cell.isToday || isSelected ? '#fff' : 'var(--text-1)',
+                        }}
+                      >
+                        {cell.day}
+                      </span>
+
+                      {data && data.spend > 0 && (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-2)' }}>
+                          {fmtCurrency(data.spend, currency)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Results / Metric Pills */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, justifyContent: 'flex-start' }}>
+                      {data && data.leads > 0 && (
+                        <div
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: '2px 6px',
+                            borderRadius: 6,
+                            background: 'rgba(34, 197, 94, 0.14)',
+                            color: '#16a34a',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                          title={`${data.leads} ${L.many}`}
+                        >
+                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#16a34a' }} />
+                          {data.leads} {L.many}
+                        </div>
+                      )}
+
+                      {data && data.cpl != null && data.cpl > 0 && (
+                        <div
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 600,
+                            padding: '2px 6px',
+                            borderRadius: 6,
+                            background: 'var(--accent-soft)',
+                            color: 'var(--accent)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                          title={`Custo médio: ${fmtDec(data.cpl, currency)}`}
+                        >
+                          {L.cost}: {fmtCurrency(data.cpl, currency)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
 
@@ -650,7 +530,7 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                     Métricas do Dia
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>
-                    {formattedSelectedDate}
+                    {new Date(selectedDateStr + 'T12:00:00Z').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
                   </div>
                 </div>
                 <button
@@ -720,7 +600,7 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {selectedLeads.slice(0, 50).map(l => {
+                    {selectedLeads.map(l => {
                       const wa = l.telefone ? waLink(l.telefone) : null
                       return (
                         <div
