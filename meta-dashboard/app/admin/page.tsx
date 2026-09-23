@@ -5,7 +5,7 @@ import ClientCodesMenu from '@/components/ClientCodesMenu'
 import AdminOverview from '@/components/AdminOverview'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Shield, Plus, Copy, Check, ExternalLink, Settings2, Pencil, KeyRound, UserPlus, Trash2, Ban, LockOpen, Link2, X, LogOut, Moon, Sun, Search, GripVertical, Users, RefreshCw, CalendarDays, ChevronDown, TrendingUp, DollarSign, Clock } from 'lucide-react'
+import { Shield, Plus, Copy, Check, ExternalLink, Settings2, Pencil, KeyRound, UserPlus, Trash2, Ban, LockOpen, Link2, X, LogOut, Moon, Sun, Search, GripVertical, Users, RefreshCw, CalendarDays, ChevronDown, TrendingUp, DollarSign, Clock, ArrowRight, Loader2 } from 'lucide-react'
 import { Sparkline } from '@/components/Sparkline'
 import { STATUS_META } from '@/components/LeadsTab'
 import { timeAgo } from '@/lib/leadUtils'
@@ -710,47 +710,32 @@ export default function AdminPage() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '24px 16px',
+        padding: '32px 16px',
         position: 'relative',
-        background: 'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99, 102, 241, 0.18), transparent 70%), var(--bg)',
+        background: 'radial-gradient(ellipse 70% 50% at 50% -5%, rgba(99, 102, 241, 0.12), transparent 70%), var(--bg)',
       }}
     >
-      <div style={{ position: 'absolute', top: 20, right: 20 }}>{themeButton}</div>
+      {/* Theme toggle */}
+      <button
+        onClick={toggle}
+        className="btn btn-outline btn-icon btn-sm"
+        style={{ position: 'absolute', top: 20, right: 20, borderRadius: 10 }}
+        aria-label="Alternar tema"
+        title="Alternar tema"
+      >
+        {theme === 'dark' ? <Sun size={15} strokeWidth={1.8} /> : <Moon size={15} strokeWidth={1.8} />}
+      </button>
 
-      <div style={{ width: '100%', maxWidth: 440, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
-        {/* Top Agency Branding & Logo with Radius */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center' }}>
-          <div
-            style={{
-              width: 60,
-              height: 60,
-              borderRadius: 18,
-              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(99, 102, 241, 0.05))',
-              border: '1.5px solid rgba(99, 102, 241, 0.35)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 8px 24px -4px rgba(99, 102, 241, 0.3)',
-              overflow: 'hidden',
-            }}
-          >
-            <img
-              src="/brand-icon.png"
-              alt="Don Digital"
-              onError={e => {
-                (e.currentTarget as HTMLImageElement).src = '/icon-192.png'
-              }}
-              style={{ width: 42, height: 42, objectFit: 'contain', borderRadius: 12 }}
-            />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.14em', color: 'var(--accent)', textTransform: 'uppercase' }}>
-              Don Digital
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 2 }}>
-              Painel Administrativo
-            </div>
-          </div>
+      {/* Main Container */}
+      <div style={{ width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+        {/* Top Grupo Don Logo */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
+          <img
+            src={theme === 'dark' ? '/logo-grupo-don-white.png' : '/logo-grupo-don-dark.png'}
+            srcSet={theme === 'dark' ? '/logo-grupo-don-white.png 1x, /logo-grupo-don@2x.png 2x' : '/logo-grupo-don-dark.png 1x, /logo-grupo-don-dark@2x.png 2x'}
+            alt="Grupo Don"
+            style={{ height: 28, width: 'auto', objectFit: 'contain' }}
+          />
         </div>
 
         {/* Card de Login */}
@@ -759,63 +744,154 @@ export default function AdminPage() {
           className="card"
           style={{
             width: '100%',
-            maxWidth: 440,
-            padding: 28,
+            padding: '32px 28px',
             display: 'flex',
             flexDirection: 'column',
-            gap: 18,
+            gap: 22,
+            background: 'var(--bg-card)',
             borderRadius: 20,
             border: '1px solid var(--border)',
-            boxShadow: '0 20px 50px -10px rgba(0,0,0,0.5)',
-            background: 'var(--bg-card)',
+            boxShadow: 'var(--shadow-elegant)',
+            backdropFilter: 'blur(10px)',
           }}
         >
-          <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-1)', margin: '0 0 4px' }}>
-              Entrar na Gestão
-            </h1>
-            <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
-              Acesso exclusivo da equipe para controle de contas e clientes
-            </p>
+          {/* Header Info */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 10 }}>
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 14,
+                background: 'var(--accent-soft)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Shield size={22} color="var(--accent)" strokeWidth={1.8} />
+            </div>
+
+            <div>
+              <h1 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, color: 'var(--text-1)', margin: 0 }}>
+                Acesso Administrativo
+              </h1>
+              <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '4px 0 0' }}>
+                Digite suas credenciais para entrar no painel
+              </p>
+            </div>
           </div>
 
-          <div>
-            <label htmlFor="admin-email" style={labelStyle}>E-mail</label>
-            <input
-              id="admin-email"
-              type="email"
-              className="field"
-              autoFocus
-              autoComplete="username"
-              placeholder="seu@don.com.br"
-              value={loginEmail}
-              onChange={e => setLoginEmail(e.target.value)}
-            />
-          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <label
+                htmlFor="admin-email"
+                style={{
+                  display: 'block',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  color: 'var(--text-2)',
+                  marginBottom: 6,
+                }}
+              >
+                E-mail de Acesso
+              </label>
+              <input
+                id="admin-email"
+                type="email"
+                className="field"
+                autoFocus
+                autoComplete="username"
+                placeholder="seu@don.com.br"
+                value={loginEmail}
+                onChange={e => {
+                  setLoginEmail(e.target.value)
+                  if (loginError) setLoginError(null)
+                }}
+                disabled={busy}
+                style={{ width: '100%', height: 42, borderRadius: 10, fontSize: 14 }}
+              />
+            </div>
 
-          <div>
-            <label htmlFor="admin-password" style={labelStyle}>Senha ou token de acesso</label>
-            <input
-              id="admin-password"
-              type="password"
-              className="field"
-              autoComplete="current-password"
-              placeholder="••••••••••••"
-              value={loginPassword}
-              onChange={e => setLoginPassword(e.target.value)}
-            />
-            {loginError && <p role="alert" style={{ fontSize: 12, color: 'var(--red)', marginTop: 6 }}>{loginError}</p>}
+            <div>
+              <label
+                htmlFor="admin-password"
+                style={{
+                  display: 'block',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  color: 'var(--text-2)',
+                  marginBottom: 6,
+                }}
+              >
+                Senha ou Token de Acesso
+              </label>
+              <input
+                id="admin-password"
+                type="password"
+                className="field"
+                autoComplete="current-password"
+                placeholder="••••••••••••"
+                value={loginPassword}
+                onChange={e => {
+                  setLoginPassword(e.target.value)
+                  if (loginError) setLoginError(null)
+                }}
+                disabled={busy}
+                style={{ width: '100%', height: 42, borderRadius: 10, fontSize: 14 }}
+              />
+            </div>
+
+            {loginError && (
+              <p role="alert" style={{ fontSize: 12, color: 'var(--red)', marginTop: 4, textAlign: 'center', fontWeight: 600 }}>
+                {loginError}
+              </p>
+            )}
           </div>
 
           <button
             type="submit"
             className="btn btn-primary"
             disabled={busy || !loginEmail || !loginPassword}
-            style={{ height: 44, fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}
+            style={{
+              width: '100%',
+              height: 44,
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.28)',
+            }}
           >
-            {busy ? 'Entrando…' : 'Acessar Painel'}
+            {busy ? (
+              <>
+                <Loader2 size={16} className="spin" />
+                <span>Entrando no painel…</span>
+              </>
+            ) : (
+              <>
+                <span>Acessar Painel</span>
+                <ArrowRight size={15} strokeWidth={2.2} />
+              </>
+            )}
           </button>
+
+          <p style={{ fontSize: 12, color: 'var(--text-3)', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
+            Acesso restrito à equipe e gestores do <strong>Grupo Don</strong>.
+          </p>
         </form>
+
+        {/* Footer */}
+        <div style={{ fontSize: 11, color: 'var(--text-3)', textAlign: 'center' }}>
+          Grupo Don © 2026 · Painel de Performance & Tráfego
+        </div>
       </div>
     </main>
   )
