@@ -59,10 +59,15 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
     })
   }
 
+  // Contagem direta por data a partir da lista de leads
+  const leadsCountByDate = new Map<string, number>()
   if (leads && leads.length > 0) {
     leads.forEach(l => {
-      const d = l.date || l.created_at
-      if (d && d.length >= 7) availableMonths.add(d.slice(0, 7))
+      const d = (l.date || l.created_at || '').slice(0, 10)
+      if (d) {
+        leadsCountByDate.set(d, (leadsCountByDate.get(d) ?? 0) + 1)
+        if (d.length >= 7) availableMonths.add(d.slice(0, 7))
+      }
     })
   }
 
@@ -302,7 +307,7 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                 Selecione o Mês ({currentYear})
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                Meses em cinza não possuem dados sincronizados
+                Clique em qualquer mês para visualizar o histórico
               </div>
             </div>
 
@@ -316,7 +321,6 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                   <button
                     key={name}
                     type="button"
-                    disabled={!hasData}
                     onClick={() => selectMonth(idx)}
                     style={{
                       padding: '10px 12px',
@@ -325,7 +329,7 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                         ? '2px solid var(--accent)'
                         : hasData
                           ? '1px solid var(--border-soft)'
-                          : '1px dashed var(--border-soft)',
+                          : '1px solid var(--border-soft)',
                       background: isSelected
                         ? 'var(--accent-soft)'
                         : hasData
@@ -335,9 +339,8 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                         ? 'var(--accent)'
                         : hasData
                           ? 'var(--text-1)'
-                          : 'var(--text-3)',
-                      opacity: hasData ? 1 : 0.4,
-                      cursor: hasData ? 'pointer' : 'not-allowed',
+                          : 'var(--text-2)',
+                      cursor: 'pointer',
                       fontSize: 13,
                       fontWeight: isSelected ? 800 : hasData ? 600 : 400,
                       textAlign: 'center',
@@ -350,7 +353,7 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                   >
                     <span>{name}</span>
                     <span style={{ fontSize: 10, color: hasData ? 'var(--green)' : 'var(--text-3)' }}>
-                      {hasData ? (isSelected ? '● Selecionado' : '● Com dados') : 'Bloqueado'}
+                      {isSelected ? '● Selecionado' : hasData ? '● Com dados' : '○ Visualizar'}
                     </span>
                   </button>
                 )
@@ -398,6 +401,8 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
             >
               {cells.map(cell => {
                 const data = dailyMap.get(cell.dateStr)
+                const fromLeads = leadsCountByDate.get(cell.dateStr) ?? 0
+                const dayCount = Math.max(data?.leads ?? 0, fromLeads)
                 const isSelected = selectedDateStr === cell.dateStr
 
                 return (
@@ -405,8 +410,8 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                     key={cell.dateStr}
                     onClick={() => setSelectedDateStr(cell.dateStr)}
                     style={{
-                      minHeight: 84,
-                      padding: '8px 6px',
+                      minHeight: 88,
+                      padding: '8px 8px',
                       borderRadius: 12,
                       background: isSelected
                         ? 'var(--accent-soft)'
@@ -418,10 +423,11 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                         : cell.isToday
                           ? '2px solid var(--green)'
                           : '1px solid var(--border-soft)',
-                      opacity: cell.isCurrentMonth ? 1 : 0.4,
+                      opacity: cell.isCurrentMonth ? 1 : 0.35,
                       cursor: 'pointer',
                       display: 'flex',
                       flexDirection: 'column',
+                      justifyContent: 'space-between',
                       transition: 'all 0.15s ease',
                       position: 'relative',
                     }}
@@ -432,8 +438,8 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                       if (!isSelected) e.currentTarget.style.borderColor = cell.isToday ? 'var(--green)' : 'var(--border-soft)'
                     }}
                   >
-                    {/* Day Number Header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    {/* Day Number Header & Spend */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span
                         style={{
                           fontSize: 12,
@@ -458,37 +464,40 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                       )}
                     </div>
 
-                    {/* Results / Metric Pills */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, justifyContent: 'flex-start' }}>
-                      {data && data.leads > 0 && (
-                        <div
-                          style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            padding: '2px 6px',
-                            borderRadius: 6,
-                            background: 'rgba(34, 197, 94, 0.14)',
-                            color: '#16a34a',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4,
-                          }}
-                          title={`${data.leads} ${L.many}`}
-                        >
-                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#16a34a' }} />
-                          {data.leads} {L.many}
-                        </div>
-                      )}
+                    {/* Central Highlight: Quantity with colored background circle/pill */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '6px 0' }}>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: 24,
+                          height: 24,
+                          padding: '0 6px',
+                          borderRadius: 999,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          background: dayCount > 0 ? 'rgba(34, 197, 94, 0.18)' : 'rgba(148, 163, 184, 0.12)',
+                          color: dayCount > 0 ? '#16a34a' : 'var(--text-3)',
+                          border: dayCount > 0 ? '1px solid rgba(34, 197, 94, 0.35)' : '1px solid transparent',
+                        }}
+                        title={`${dayCount} ${dayCount === 1 ? L.one : L.many}`}
+                      >
+                        {dayCount}
+                      </span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: dayCount > 0 ? 'var(--text-1)' : 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {dayCount === 1 ? L.one : L.many}
+                      </span>
+                    </div>
 
+                    {/* Secondary: CPL if present */}
+                    <div>
                       {data && data.cpl != null && data.cpl > 0 && (
                         <div
                           style={{
-                            fontSize: 9,
+                            fontSize: 9.5,
                             fontWeight: 600,
-                            padding: '2px 6px',
+                            padding: '2px 5px',
                             borderRadius: 6,
                             background: 'var(--accent-soft)',
                             color: 'var(--accent)',

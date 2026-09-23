@@ -89,13 +89,53 @@ function ModalShell({ title, onClose, children, maxWidth = 512 }: { title: strin
     return () => window.removeEventListener('keydown', k)
   }, [onClose])
   return (
-    <div className="overlay" style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflowY: 'auto' }}>
-      <div className="card" role="dialog" aria-label={title} style={{ width: '100%', maxWidth, padding: 24, display: 'flex', flexDirection: 'column', gap: 16, boxShadow: 'var(--shadow-elegant)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600 }}>{title}</h2>
-          {onClose && <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose} aria-label="Fechar"><X size={16} strokeWidth={1.75} /></button>}
+    <div
+      className="overlay"
+      onClick={e => {
+        if (e.target === e.currentTarget && onClose) onClose()
+      }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        overflowY: 'auto',
+      }}
+    >
+      <div
+        className="card"
+        role="dialog"
+        aria-label={title}
+        style={{
+          width: '100%',
+          maxWidth,
+          maxHeight: 'min(90vh, 760px)',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: 'var(--shadow-elegant)',
+          overflow: 'hidden',
+          padding: 0,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '16px 20px', borderBottom: '1px solid var(--border-soft)', flexShrink: 0 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>{title}</h2>
+          {onClose && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-icon btn-sm"
+              onClick={onClose}
+              aria-label="Fechar"
+            >
+              <X size={18} strokeWidth={1.75} />
+            </button>
+          )}
         </div>
-        {children}
+        <div style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {children}
+        </div>
       </div>
     </div>
   )
@@ -162,42 +202,134 @@ function TeamModal({ onClose, onToken }: { onClose: () => void; onToken: (email:
   }
 
   return (
-    <ModalShell title="Equipe" onClose={onClose}>
-      <p style={{ fontSize: 13, color: 'var(--text-2)' }}>Cada pessoa entra só com o e-mail cadastrado aqui e o token que você gerar, que funciona como senha. Escolha o nível de acesso dela.</p>
+    <ModalShell title="Equipe" onClose={onClose} maxWidth={780}>
+      <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
+        Cada pessoa entra só com o e-mail cadastrado aqui e o token que você gerar, que funciona como senha. Escolha o nível de acesso dela.
+      </p>
       <form onSubmit={add} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <input id="team-email" type="email" className="field" style={{ flex: '1 1 200px', minWidth: 0 }} placeholder="email@colega.com" aria-label="E-mail do colega" autoComplete="off" value={email} onChange={e => setEmail(e.target.value)} />
-        <select id="team-role" className="field" style={{ flex: '0 0 auto', width: 'auto' }} aria-label="Nível de acesso" value={role} onChange={e => setRole(e.target.value as TeamRole)}>
-          {(Object.keys(ROLE_INFO) as TeamRole[]).map(r => <option key={r} value={r} disabled={r === 'admin' && !canManageAdmins}>{ROLE_INFO[r].label}</option>)}
+        <input
+          id="team-email"
+          type="email"
+          className="field"
+          style={{ flex: '1 1 240px', minWidth: 0 }}
+          placeholder="email@colega.com"
+          aria-label="E-mail do colega"
+          autoComplete="off"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+        />
+        <select
+          id="team-role"
+          className="field"
+          style={{ flex: '0 0 auto', width: 'auto' }}
+          aria-label="Nível de acesso"
+          value={role}
+          onChange={e => setRole(e.target.value as TeamRole)}
+        >
+          {(Object.keys(ROLE_INFO) as TeamRole[]).map(r => (
+            <option key={r} value={r} disabled={r === 'admin' && !canManageAdmins}>
+              {ROLE_INFO[r].label}
+            </option>
+          ))}
         </select>
         <button className="btn btn-primary" disabled={busy || !email.trim()}>Adicionar</button>
       </form>
       <p style={{ fontSize: 12, color: 'var(--text-2)', marginTop: -6 }}>{ROLE_INFO[role].text}</p>
       {err && <p role="alert" style={{ fontSize: 12, color: 'var(--red)' }}>{err}</p>}
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>
+          Membros da equipe ({members?.length ?? 0})
+        </div>
         {members === null && !err && <p style={{ fontSize: 13, color: 'var(--text-2)' }}>Carregando…</p>}
         {members?.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-2)', padding: '12px 0' }}>Ninguém na equipe ainda.</p>}
-        {members?.map(m => (
-          <div key={m.email} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0', borderTop: '1px solid var(--border-soft)' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.email}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{m.lastLoginAt ? `Último acesso em ${fmtShort(m.lastLoginAt)}` : 'Ainda não entrou'} · adicionado em {fmtShort(m.createdAt)}</div>
-            </div>
-            <select className="field" style={{ width: 'auto', height: 32, fontSize: 12 }} aria-label={`Nível de ${m.email}`} value={m.role} disabled={busy || (m.role === 'admin' && !canManageAdmins)} onChange={e => changeRole(m, e.target.value as TeamRole)}>
-              {(Object.keys(ROLE_INFO) as TeamRole[]).map(r => <option key={r} value={r} disabled={r === 'admin' && !canManageAdmins}>{ROLE_INFO[r].label}</option>)}
-            </select>
-            {confirm === m.email ? (
-              <>
-                <button className="btn btn-outline btn-sm" onClick={() => setConfirm(null)}>Cancelar</button>
-                <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => remove(m)}>Remover</button>
-              </>
-            ) : (
-              <>
-                <button className="btn btn-ghost btn-icon btn-sm" disabled={busy} onClick={() => regenerate(m)} aria-label={`Gerar novo token para ${m.email}`} title="Gerar novo token"><KeyRound size={16} strokeWidth={1.75} /></button>
-                <button className="btn btn-ghost btn-icon btn-sm" disabled={busy} onClick={() => setConfirm(m.email)} aria-label={`Remover ${m.email}`} title="Remover da equipe"><Trash2 size={16} strokeWidth={1.75} /></button>
-              </>
-            )}
+        {members && members.length > 0 && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: 12,
+              maxHeight: 'min(50vh, 420px)',
+              overflowY: 'auto',
+              paddingRight: 4,
+            }}
+          >
+            {members.map(m => (
+              <div
+                key={m.email}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                  padding: '12px 14px',
+                  background: 'var(--bg-card2, rgba(0,0,0,0.03))',
+                  border: '1px solid var(--border-soft)',
+                  borderRadius: 'var(--radius)',
+                }}
+              >
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={m.email}>
+                    {m.email}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                    {m.lastLoginAt ? `Último acesso em ${fmtShort(m.lastLoginAt)}` : 'Ainda não entrou'} · Criado em {fmtShort(m.createdAt)}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 'auto', paddingTop: 8, borderTop: '1px solid var(--border-soft)' }}>
+                  <select
+                    className="field"
+                    style={{ width: 'auto', height: 30, fontSize: 12, padding: '0 8px', flex: 1, minWidth: 0 }}
+                    aria-label={`Nível de ${m.email}`}
+                    value={m.role}
+                    disabled={busy || (m.role === 'admin' && !canManageAdmins)}
+                    onChange={e => changeRole(m, e.target.value as TeamRole)}
+                  >
+                    {(Object.keys(ROLE_INFO) as TeamRole[]).map(r => (
+                      <option key={r} value={r} disabled={r === 'admin' && !canManageAdmins}>
+                        {ROLE_INFO[r].label}
+                      </option>
+                    ))}
+                  </select>
+
+                  {confirm === m.email ? (
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      <button className="btn btn-outline btn-sm" style={{ height: 30, padding: '0 8px', fontSize: 11 }} onClick={() => setConfirm(null)}>
+                        Cancelar
+                      </button>
+                      <button className="btn btn-primary btn-sm" style={{ height: 30, padding: '0 8px', fontSize: 11 }} disabled={busy} onClick={() => remove(m)}>
+                        Confirmar
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      <button
+                        className="btn btn-ghost btn-icon btn-sm"
+                        style={{ height: 30, width: 30 }}
+                        disabled={busy}
+                        onClick={() => regenerate(m)}
+                        aria-label={`Gerar novo token para ${m.email}`}
+                        title="Gerar novo token"
+                      >
+                        <KeyRound size={15} strokeWidth={1.75} />
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-icon btn-sm"
+                        style={{ height: 30, width: 30 }}
+                        disabled={busy}
+                        onClick={() => setConfirm(m.email)}
+                        aria-label={`Remover ${m.email}`}
+                        title="Remover da equipe"
+                      >
+                        <Trash2 size={15} strokeWidth={1.75} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
     </ModalShell>
   )
@@ -588,7 +720,8 @@ export default function AdminPage() {
   const setPeriod = (p: AdminPeriod) => { setPeriodState(p); try { localStorage.setItem('adminPeriod', String(p)) } catch { } }
   const periodNoun = ADMIN_PERIODS.find(x => x.v === period)?.noun ?? '7 dias'
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<'todos' | 'ativos' | 'pausados' | 'acesso' | 'sem' | 'bloqueados'>('todos')
+  const [filter, setFilter] = useState<'todos' | 'ativos' | 'pausados' | 'bloqueados'>('todos')
+  const [openingSlug, setOpeningSlug] = useState<string | null>(null)
 
   useEffect(() => { document.title = 'Painel de controle' }, [])
 
@@ -646,9 +779,13 @@ export default function AdminPage() {
   }
 
   async function openPanel(slug: string) {
+    setOpeningSlug(slug)
     const r = await api('/api/admin/view', 'POST', { slug })
     if (r.ok) window.location.assign(`/dashboard/${slug}`)
-    else setNotice(r.data.error ?? 'Não foi possível abrir o painel.')
+    else {
+      setOpeningSlug(null)
+      setNotice(r.data.error ?? 'Não foi possível abrir o painel.')
+    }
   }
 
   async function runAction(action: 'rotate' | 'revoke' | 'unlock', client: AdminClient) {
@@ -665,25 +802,28 @@ export default function AdminPage() {
     else { setModal(null); setNotice(action === 'revoke' ? `Acesso de ${client.name} desativado.` : `${client.name} desbloqueado.`) }
   }
 
-  const stats = useMemo(() => ({
-    total: clients.length,
-    withAccess: clients.filter(c => c.hasCode).length,
-    leadsP: clients.reduce((s, c) => s + (isResultsView(c) ? c.periods[period].results : c.periods[period].crmLeads), 0),
-    leadsToday: clients.reduce((s, c) => s + c.leadsToday, 0),
-    vendasP: clients.reduce((s, c) => s + c.periods[period].vendas, 0),
-    receitaP: clients.reduce((s, c) => s + c.periods[period].receita, 0),
-    parados: clients.reduce((s, c) => s + c.parados, 0),
-  }), [clients, period])
+  const stats = useMemo(() => {
+    const activeCount = clients.filter(c => c.active !== false && !c.locked).length
+    const pausedCount = clients.filter(c => c.active === false && !c.locked).length
+    return {
+      total: clients.length,
+      activeCount,
+      pausedCount,
+      leadsP: clients.reduce((s, c) => s + (isResultsView(c) ? c.periods[period].results : c.periods[period].crmLeads), 0),
+      leadsToday: clients.reduce((s, c) => s + c.leadsToday, 0),
+      vendasP: clients.reduce((s, c) => s + c.periods[period].vendas, 0),
+      receitaP: clients.reduce((s, c) => s + c.periods[period].receita, 0),
+      parados: clients.reduce((s, c) => s + c.parados, 0),
+    }
+  }, [clients, period])
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
     return clients.filter(c =>
       (!q || c.name.toLowerCase().includes(q) || c.slug.includes(q)) &&
       (filter === 'todos' ||
-        (filter === 'ativos' && c.active !== false) ||
-        (filter === 'pausados' && c.active === false) ||
-        (filter === 'acesso' && c.hasCode) ||
-        (filter === 'sem' && !c.hasCode) ||
+        (filter === 'ativos' && c.active !== false && !c.locked) ||
+        (filter === 'pausados' && c.active === false && !c.locked) ||
         (filter === 'bloqueados' && c.locked)))
   }, [clients, query, filter])
 
@@ -880,7 +1020,7 @@ export default function AdminPage() {
   )
 
   const kpis = [
-    { icon: <Users size={16} strokeWidth={1.75} />, label: 'Clientes', value: String(stats.total), sub: `${stats.withAccess} com acesso`, warn: false },
+    { icon: <Users size={16} strokeWidth={1.75} />, label: 'Clientes', value: String(stats.total), sub: `${stats.activeCount} ativos · ${stats.pausedCount} pausados`, warn: false },
     { icon: <TrendingUp size={16} strokeWidth={1.75} />, label: `Leads e conversas · ${periodNoun}`, value: String(stats.leadsP), sub: `${stats.leadsToday} hoje`, warn: false },
     { icon: <DollarSign size={16} strokeWidth={1.75} />, label: `Vendas · ${periodNoun}`, value: String(stats.vendasP), sub: brl(stats.receitaP), warn: false },
     { icon: <Clock size={16} strokeWidth={1.75} />, label: 'Sem contato', value: String(stats.parados), sub: 'leads esperando retorno', warn: stats.parados > 0 },
@@ -940,7 +1080,7 @@ export default function AdminPage() {
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente" />
         </label>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {([['todos', 'Todos'], ['ativos', 'Ativos'], ['pausados', 'Pausados'], ['acesso', 'Com acesso'], ['sem', 'Sem acesso'], ['bloqueados', 'Bloqueados']] as const).map(([k, l]) => (
+          {([['todos', 'Todos'], ['ativos', 'Ativos'], ['pausados', 'Pausados'], ['bloqueados', 'Bloqueados']] as const).map(([k, l]) => (
             <button key={k} className="pill-btn" aria-pressed={filter === k} onClick={() => setFilter(k)}>{l}</button>
           ))}
         </div>
@@ -960,9 +1100,7 @@ export default function AdminPage() {
               ? { bg: 'var(--red-soft)', dot: 'var(--red)', text: 'Bloqueado' }
               : c.active === false
                 ? { bg: 'rgba(245, 158, 11, 0.15)', dot: 'var(--amber)', text: 'Pausado' }
-                : c.hasCode
-                  ? { bg: 'var(--green-soft)', dot: 'var(--green)', text: 'Com acesso' }
-                  : { bg: 'var(--amber-soft)', dot: 'var(--amber)', text: 'Sem acesso' }
+                : { bg: 'var(--green-soft)', dot: 'var(--green)', text: 'Ativo' }
             const items: MenuItem[] = [
               ...(canManage ? [{ icon: <Pencil size={16} strokeWidth={1.75} />, text: 'Editar cliente e metas', onClick: () => setModal({ kind: 'edit', client: c }) }] : []),
               ...(canOperate ? [{ icon: <Settings2 size={16} strokeWidth={1.75} />, text: 'Métricas do card', onClick: () => setModal({ kind: 'metrics', client: c }) }] : []),
@@ -1016,8 +1154,17 @@ export default function AdminPage() {
                 })()}
 
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => openPanel(c.slug)}>
-                    <ExternalLink size={16} strokeWidth={1.75} /> Acessar dashboard
+                  <button
+                    className="btn btn-primary btn-sm"
+                    style={{ flex: 1 }}
+                    disabled={openingSlug === c.slug}
+                    onClick={() => openPanel(c.slug)}
+                  >
+                    {openingSlug === c.slug ? (
+                      <><Loader2 size={16} className="spin" /> Abrindo painel…</>
+                    ) : (
+                      <><ExternalLink size={16} strokeWidth={1.75} /> Acessar dashboard</>
+                    )}
                   </button>
                   <GearMenu label={`Mais opções de ${c.name}`} items={items} />
                 </div>

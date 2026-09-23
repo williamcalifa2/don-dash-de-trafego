@@ -265,6 +265,51 @@ function Dashboard() {
 
   const hasEnvError = data?.error?.includes('META_ACCESS_TOKEN')
 
+  if (isLoading && !data) {
+    return (
+      <div className="page" style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+        <div
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: 20,
+            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0.04))',
+            border: '1.5px solid rgba(99, 102, 241, 0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 12px 28px -6px rgba(99, 102, 241, 0.28)',
+            overflow: 'hidden',
+          }}
+        >
+          {me?.logoUrl ? (
+            <img
+              src={me.logoUrl}
+              alt=""
+              style={{ width: 44, height: 44, objectFit: 'contain', borderRadius: 12 }}
+            />
+          ) : (
+            <img
+              src="/brand-icon.png"
+              alt=""
+              onError={e => { (e.currentTarget as HTMLImageElement).src = '/icon-192.png' }}
+              style={{ width: 44, height: 44, objectFit: 'contain', borderRadius: 12 }}
+            />
+          )}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 600, color: 'var(--text-1)' }}>
+            <RefreshCw size={16} className="spin" style={{ color: 'var(--accent)' }} />
+            <span>Carregando painel de {me?.name || 'performance'}…</span>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-3)', margin: 0 }}>
+            Sincronizando métricas e campanhas da conta
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="page">
 

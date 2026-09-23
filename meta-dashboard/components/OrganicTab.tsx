@@ -75,19 +75,73 @@ function Bars({ items, color = 'var(--accent)', total }: { items: Array<{ label:
 const GENDER: Record<string, string> = { F: 'Feminino', M: 'Masculino', U: 'Não informado' }
 
 function PostCard({ p }: { p: OrganicPost }) {
+  const [hovered, setHovered] = useState(false)
   const stat = (label: string, v: number | null) => v == null ? null : (
     <div key={label} style={{ minWidth: 0 }}><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--text-3)' }}>{label}</div><div style={{ fontSize: 14, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{compact(v)}</div></div>
   )
+
+  const imgContent = (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: 'relative',
+        aspectRatio: '1 / 1',
+        background: 'var(--bg-card2)',
+        display: 'grid',
+        placeItems: 'center',
+        overflow: 'hidden',
+        cursor: p.url ? 'pointer' : undefined,
+      }}
+    >
+      {p.thumb ? (
+        <img
+          src={p.thumb}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transform: hovered && p.url ? 'scale(1.04)' : 'none',
+            transition: 'transform 0.25s ease',
+          }}
+        />
+      ) : <ImageOff size={28} strokeWidth={1.5} color="var(--text-3)" />}
+      <span className="badge" style={{ position: 'absolute', top: 8, left: 8, background: 'var(--bg-card)', color: 'var(--text-1)', display: 'inline-flex', gap: 6, alignItems: 'center', zIndex: 2 }}>
+        {p.platform === 'ig' ? <IgMark size={12} /> : <FbMark size={12} />}{p.type}
+      </span>
+      {p.url && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.38)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: hovered ? 1 : 0,
+            transition: 'opacity 0.2s ease',
+            zIndex: 3,
+            pointerEvents: 'none',
+          }}
+        >
+          <span style={{ background: 'rgba(0,0,0,0.75)', color: '#fff', padding: '6px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6, backdropFilter: 'blur(4px)' }}>
+            Abrir post <ExternalLink size={12} strokeWidth={2} />
+          </span>
+        </div>
+      )}
+    </div>
+  )
+
   return (
     <article className="card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-      <div style={{ position: 'relative', aspectRatio: '1 / 1', background: 'var(--bg-card2)', display: 'grid', placeItems: 'center' }}>
-        {p.thumb ? (
-          <img src={p.thumb} alt="" loading="lazy" referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : <ImageOff size={28} strokeWidth={1.5} color="var(--text-3)" />}
-        <span className="badge" style={{ position: 'absolute', top: 8, left: 8, background: 'var(--bg-card)', color: 'var(--text-1)', display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-          {p.platform === 'ig' ? <IgMark size={12} /> : <FbMark size={12} />}{p.type}
-        </span>
-      </div>
+      {p.url ? (
+        <a href={p.url} target="_blank" rel="noreferrer" title="Abrir publicação original" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+          {imgContent}
+        </a>
+      ) : imgContent}
       <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
         <p style={{ fontSize: 13, lineHeight: 1.4, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: 36, color: p.caption ? 'var(--text-1)' : 'var(--text-3)' }}>{p.caption || 'Sem legenda'}</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
@@ -95,7 +149,7 @@ function PostCard({ p }: { p: OrganicPost }) {
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', fontSize: 12, color: 'var(--text-2)' }}>
           <span>{p.at ? new Date(p.at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : ''}</span>
-          {p.url && <a href={p.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--accent)', textDecoration: 'none' }}>Abrir <ExternalLink size={12} strokeWidth={1.75} /></a>}
+          {p.url && <a href={p.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Abrir <ExternalLink size={12} strokeWidth={1.75} /></a>}
         </div>
       </div>
     </article>
@@ -196,9 +250,51 @@ export function OrganicTab({ preset, presetLabel, canLink = false, slug }: { pre
               {([['all', 'Todas'], ['ig', 'Instagram'], ['fb', 'Facebook']] as const).map(([k, l]) => <button key={k} className="pill-btn" aria-pressed={plat === k} onClick={() => setPlatform(k)}>{l}</button>)}
             </div>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 13, color: 'var(--text-2)', flexWrap: 'wrap' }}>
-            {v.profile?.ig && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><IgMark /> @{v.profile.ig.username}</span>}
-            {v.profile?.fb && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FbMark /> {v.profile.fb.name}</span>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-2)', flexWrap: 'wrap' }}>
+            {v.profile?.ig && (
+              <a
+                href={`https://www.instagram.com/${v.profile.ig.username}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  textDecoration: 'none',
+                  color: 'inherit',
+                  padding: '4px 10px',
+                  borderRadius: 999,
+                  background: 'var(--bg-card2)',
+                  border: '1px solid var(--border-soft)',
+                  fontWeight: 600,
+                }}
+                title="Abrir perfil no Instagram"
+              >
+                <IgMark /> @{v.profile.ig.username} <ExternalLink size={12} strokeWidth={1.75} style={{ opacity: 0.6 }} />
+              </a>
+            )}
+            {v.profile?.fb && (
+              <a
+                href={v.profile.fb.link || `https://www.facebook.com/${v.profile.fb.id}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  textDecoration: 'none',
+                  color: 'inherit',
+                  padding: '4px 10px',
+                  borderRadius: 999,
+                  background: 'var(--bg-card2)',
+                  border: '1px solid var(--border-soft)',
+                  fontWeight: 600,
+                }}
+                title="Abrir página no Facebook"
+              >
+                <FbMark /> {v.profile.fb.name} <ExternalLink size={12} strokeWidth={1.75} style={{ opacity: 0.6 }} />
+              </a>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--text-2)' }}>
@@ -239,9 +335,9 @@ export function OrganicTab({ preset, presetLabel, canLink = false, slug }: { pre
         {posts.length === 0 ? <Empty title="Nenhuma publicação neste período" text="Escolha um período maior no topo para ver mais publicações." /> : (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
-              {(more ? posts : posts.slice(0, 8)).map(p => <PostCard key={p.key} p={p} />)}
+              {(more ? posts : posts.slice(0, 10)).map(p => <PostCard key={p.key} p={p} />)}
             </div>
-            {posts.length > 8 && <div style={{ textAlign: 'center', marginTop: 12 }}><button className="btn btn-outline btn-sm" onClick={() => setMore(m => !m)}>{more ? 'Ver menos' : `Ver todas (${posts.length})`}</button></div>}
+            {posts.length > 10 && <div style={{ textAlign: 'center', marginTop: 12 }}><button className="btn btn-outline btn-sm" onClick={() => setMore(m => !m)}>{more ? 'Ver menos' : `Ver todas (${posts.length})`}</button></div>}
             <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 8 }}>Alcance, visualizações e salvos aparecem para as publicações mais recentes de cada plataforma.</p>
           </>
         )}
