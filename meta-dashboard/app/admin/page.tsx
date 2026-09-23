@@ -755,31 +755,14 @@ export default function AdminPage() {
             backdropFilter: 'blur(10px)',
           }}
         >
-          {/* Header Info */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
-                background: 'var(--accent-soft)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <Shield size={22} color="var(--accent)" strokeWidth={1.8} />
-            </div>
-
-            <div>
-              <h1 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, color: 'var(--text-1)', margin: 0 }}>
-                Acesso Administrativo
-              </h1>
-              <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '4px 0 0' }}>
-                Digite suas credenciais para entrar no painel
-              </p>
-            </div>
+          {/* Header Info - Clean title without shield */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 6 }}>
+            <h1 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, color: 'var(--text-1)', margin: 0 }}>
+              Acesso Administrativo
+            </h1>
+            <p style={{ fontSize: 13, color: 'var(--text-3)', margin: 0 }}>
+              Digite suas credenciais para entrar no painel
+            </p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

@@ -2,17 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, Download, Eye, EyeOff, FileText, Loader2, RefreshCw, X, UploadCloud, RotateCcw } from 'lucide-react'
+import { Check, Download, Eye, EyeOff, FileText, Loader2, RefreshCw, X, UploadCloud, RotateCcw, Sun, Moon, ChevronDown } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import { compact, type ReportData, type ReportMode, type ReportNotes, type ReportPreset } from '@/lib/report'
-import { buildSlides, FONT, PALETTE, STAGE, type El, type SlideSpec } from '@/lib/reportSlides'
+import { buildSlides, FONT, PALETTE, PALETTE_LIGHT, STAGE, type El, type SlideSpec } from '@/lib/reportSlides'
+import { useTheme } from '@/lib/useTheme'
 
 type Loaded = ReportData & { draftAnalysis: string }
 type Phase = { kind: 'loading'; text: string } | { kind: 'error'; text: string } | { kind: 'ready'; data: Loaded }
 
 const needsPrepare = (d: Loaded) => d.paid.status === 'pending' || d.organic.status === 'incomplete' || d.organic.status === 'pending'
 
-function SvgChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
+function SvgChart({ el, dark = true }: { el: Extract<El, { t: 'chart' }>; dark?: boolean }) {
   const { data, colors } = el
   if (!data || data.length === 0 || !data[0]?.labels || data[0].labels.length === 0) {
     return <div style={{ display: 'grid', placeItems: 'center', height: '100%', color: '#9A9AB8', fontSize: 14 }}>Sem dados para exibir no gráfico</div>
@@ -72,7 +73,7 @@ function SvgChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
 
         {gridLines.map((g, idx) => (
           <g key={idx}>
-            <line x1={padLeft} y1={g.y} x2={padLeft + plotW} y2={g.y} stroke="#EAEAEF" strokeDasharray="4 4" strokeWidth="1" />
+            <line x1={padLeft} y1={g.y} x2={padLeft + plotW} y2={g.y} stroke={dark ? '#1E293B' : '#EAEAEF'} strokeDasharray="4 4" strokeWidth="1" />
             <text x={padLeft - 10} y={g.y + 4} textAnchor="end" fontSize="11" fill={color0} fontWeight="600" fontFamily="sans-serif">
               R$ {g.v0}
             </text>
@@ -102,7 +103,7 @@ function SvgChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
         {labels.map((lbl, i) => {
           if (!showLabelIdx(i)) return null
           return (
-            <text key={`lbl-${i}`} x={getX(i)} y={padTop + plotH + 22} textAnchor="middle" fontSize="11" fill="#71717A" fontFamily="sans-serif">
+            <text key={`lbl-${i}`} x={getX(i)} y={padTop + plotH + 22} textAnchor="middle" fontSize="11" fill={dark ? '#CBD5E1' : '#71717A'} fontFamily="sans-serif">
               {lbl}
             </text>
           )
@@ -110,12 +111,12 @@ function SvgChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
       </svg>
 
       <div style={{ display: 'flex', justifyContent: 'center', gap: 28, marginTop: 6, fontSize: 13, fontWeight: 600 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0B0B14' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: dark ? '#F8FAFC' : '#0B0B14' }}>
           <span style={{ width: 12, height: 12, borderRadius: '50%', background: color0 }} />
           <span>{s0.name} (Eixo esquerdo)</span>
         </div>
         {s1 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0B0B14' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: dark ? '#F8FAFC' : '#0B0B14' }}>
             <span style={{ width: 12, height: 12, borderRadius: '50%', background: color1 }} />
             <span>{s1.name} (Eixo direito)</span>
           </div>
@@ -125,7 +126,7 @@ function SvgChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
   )
 }
 
-function SvgDoughnut({ el }: { el: Extract<El, { t: 'chart' }> }) {
+function SvgDoughnut({ el, dark = true }: { el: Extract<El, { t: 'chart' }>; dark?: boolean }) {
   const { data, colors } = el
   const s0 = data[0]
   if (!s0 || !s0.values.length) return null
@@ -139,7 +140,7 @@ function SvgDoughnut({ el }: { el: Extract<El, { t: 'chart' }> }) {
     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '10px 15px', boxSizing: 'border-box' }}>
       <div style={{ position: 'relative', width: 170, height: 170, flexShrink: 0 }}>
         <svg viewBox="0 0 180 180" width="100%" height="100%">
-          <circle cx={90} cy={90} r={R} fill="none" stroke="#1E293B" strokeWidth={24} />
+          <circle cx={90} cy={90} r={R} fill="none" stroke={dark ? '#1E293B' : '#E2E8F0'} strokeWidth={24} />
           {total > 0 && s0.values.map((v, i) => {
             const val = Number(v || 0)
             const len = (val / total) * C
@@ -172,11 +173,11 @@ function SvgDoughnut({ el }: { el: Extract<El, { t: 'chart' }> }) {
           const dotColor = colors[i % colors.length] || '#818CF8'
           return (
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, fontSize: 13 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#E2E8F0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: dark ? '#E2E8F0' : '#475569' }}>
                 <span style={{ width: 9, height: 9, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
                 <span>{lbl}</span>
               </div>
-              <span style={{ fontWeight: 700, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ fontWeight: 700, color: dark ? '#FFFFFF' : '#0F172A', fontVariantNumeric: 'tabular-nums' }}>
                 {val.toFixed(val >= 10 ? 0 : 1).replace('.', ',')}%
               </span>
             </div>
@@ -187,7 +188,7 @@ function SvgDoughnut({ el }: { el: Extract<El, { t: 'chart' }> }) {
   )
 }
 
-function SvgBarChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
+function SvgBarChart({ el, dark = true }: { el: Extract<El, { t: 'chart' }>; dark?: boolean }) {
   const { data, colors, showValueLabels, costSubtitle } = el
   if (!data || !data.length || !data[0].labels.length) return null
 
@@ -212,7 +213,7 @@ function SvgBarChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {seriesCount > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 20, fontSize: 11, color: '#E2E8F0', marginBottom: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 20, fontSize: 11, color: dark ? '#E2E8F0' : '#475569', marginBottom: 6 }}>
           {data.map((s, idx) => (
             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors[idx % colors.length] }} />
@@ -230,8 +231,8 @@ function SvgBarChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
             const tickLabel = tickVal >= 1000 ? `${(tickVal / 1000).toFixed(1)}k` : String(tickVal)
             return (
               <g key={t}>
-                <line x1={PL} x2={W - PR} y1={y} y2={y} stroke="#1E293B" strokeWidth={1} strokeDasharray="3 3" />
-                <text x={PL - 6} y={y + 3} textAnchor="end" fontSize="9" fill="#CBD5E1">{tickLabel}</text>
+                <line x1={PL} x2={W - PR} y1={y} y2={y} stroke={dark ? '#1E293B' : '#E2E8F0'} strokeWidth={1} strokeDasharray="3 3" />
+                <text x={PL - 6} y={y + 3} textAnchor="end" fontSize="9" fill={dark ? '#CBD5E1' : '#64748B'}>{tickLabel}</text>
               </g>
             )
           })}
@@ -251,14 +252,14 @@ function SvgBarChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
                     <g key={sIdx}>
                       <rect x={x} y={y} width={bw} height={h} rx={2} fill={barColor} />
                       {showValueLabels && val > 0 && (
-                        <text x={x + bw / 2} y={y - 4} textAnchor="middle" fontSize="9" fontWeight={700} fill="#F8FAFC">
+                        <text x={x + bw / 2} y={y - 4} textAnchor="middle" fontSize="9" fontWeight={700} fill={dark ? '#F8FAFC' : '#0F172A'}>
                           {val}
                         </text>
                       )}
                     </g>
                   )
                 })}
-                <text x={cx} y={H - 6} textAnchor="middle" fontSize="9.5" fill="#E2E8F0">{lbl}</text>
+                <text x={cx} y={H - 6} textAnchor="middle" fontSize="9.5" fill={dark ? '#E2E8F0' : '#475569'}>{lbl}</text>
               </g>
             )
           })}
@@ -266,7 +267,7 @@ function SvgBarChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
       </div>
 
       {costSubtitle && (
-        <div style={{ fontSize: 11, color: '#CBD5E1', textAlign: 'center', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ fontSize: 11, color: dark ? '#CBD5E1' : '#64748B', textAlign: 'center', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {costSubtitle}
         </div>
       )}
@@ -274,7 +275,7 @@ function SvgBarChart({ el }: { el: Extract<El, { t: 'chart' }> }) {
   )
 }
 
-function SvgFunnel({ el }: { el: Extract<El, { t: 'funnel' }> }) {
+function SvgFunnel({ el, dark = true }: { el: Extract<El, { t: 'funnel' }>; dark?: boolean }) {
   const { impressions, clicks, results, conversions, ctr, clickToResultRate, resultLabel, roas, costPerResult } = el
 
   const W = 1160
@@ -307,61 +308,61 @@ function SvgFunnel({ el }: { el: Extract<El, { t: 'funnel' }> }) {
     L ${waveW} ${ys[3]} L ${waveW} ${waveH} L 0 ${waveH} Z`
 
   return (
-    <div style={{ position: 'relative', width: W, height: H, background: '#0F172A', border: '1.5px solid #1E293B', borderRadius: 16, overflow: 'hidden', padding: 20, boxSizing: 'border-box' }}>
+    <div style={{ position: 'relative', width: W, height: H, background: dark ? '#0F172A' : '#FFFFFF', border: `1.5px solid ${dark ? '#1E293B' : '#E2E8F0'}`, borderRadius: 16, overflow: 'hidden', padding: 20, boxSizing: 'border-box', boxShadow: dark ? undefined : '0 4px 16px rgba(0,0,0,0.05)' }}>
       {/* Top KPI Header */}
-      <div style={{ display: 'flex', alignItems: 'center', height: topH - 20, borderBottom: '1px solid #1E293B', paddingBottom: 15 }}>
+      <div style={{ display: 'flex', alignItems: 'center', height: topH - 20, borderBottom: `1px solid ${dark ? '#1E293B' : '#E2E8F0'}`, paddingBottom: 15 }}>
         <div style={{ display: 'flex', flex: 1, gap: 15 }}>
           {stages.map((stg, i) => (
             <div key={i} style={{ flex: 1, position: 'relative' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', color: i === 2 ? '#22C55E' : '#64748B' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', color: i === 2 ? '#22C55E' : (dark ? '#64748B' : '#64748B') }}>
                 {stg.label}
               </div>
-              <div style={{ fontSize: 30, fontWeight: 800, color: i === 2 ? '#22C55E' : '#F8FAFC', lineHeight: 1.15, marginTop: 4 }}>
+              <div style={{ fontSize: 30, fontWeight: 800, color: i === 2 ? '#22C55E' : (dark ? '#F8FAFC' : '#0F172A'), lineHeight: 1.15, marginTop: 4 }}>
                 {stg.val}
               </div>
-              <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: dark ? '#94A3B8' : '#64748B', marginTop: 4 }}>
                 {stg.sub}
               </div>
-              {i < 3 && <div style={{ position: 'absolute', right: -7, top: 8, bottom: 8, width: 1, background: '#1E293B' }} />}
+              {i < 3 && <div style={{ position: 'absolute', right: -7, top: 8, bottom: 8, width: 1, background: dark ? '#1E293B' : '#E2E8F0' }} />}
             </div>
           ))}
         </div>
 
         {/* ROAS Badge */}
-        <div style={{ width: 140, background: '#131927', border: '1px solid #1E293B', borderRadius: 10, padding: '10px 14px', textAlign: 'center' }}>
+        <div style={{ width: 140, background: dark ? '#131927' : '#F8FAFC', border: `1px solid ${dark ? '#1E293B' : '#E2E8F0'}`, borderRadius: 10, padding: '10px 14px', textAlign: 'center' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#64748B' }}>RETORNO GERAL</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#FFFFFF', marginTop: 2 }}>{roas ? `${roas}x` : '0,0%'}</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: dark ? '#FFFFFF' : '#0F172A', marginTop: 2 }}>{roas ? `${roas}x` : '0,0%'}</div>
         </div>
       </div>
 
       {/* Wave Graphic */}
-      <div style={{ position: 'relative', width: waveW, height: waveH, marginTop: 15, background: '#131927', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ position: 'relative', width: waveW, height: waveH, marginTop: 15, background: dark ? '#131927' : '#F8FAFC', borderRadius: 12, overflow: 'hidden' }}>
         <svg viewBox={`0 0 ${waveW} ${waveH}`} width="100%" height="100%" preserveAspectRatio="none" style={{ display: 'block' }}>
           <defs>
             <linearGradient id="funnelWaveGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#818CF8" stopOpacity="0.55" />
-              <stop offset="60%" stopColor="#4F46E5" stopOpacity="0.30" />
-              <stop offset="100%" stopColor="#1E1B4B" stopOpacity="0.10" />
+              <stop offset="0%" stopColor="#818CF8" stopOpacity={dark ? 0.55 : 0.45} />
+              <stop offset="60%" stopColor="#4F46E5" stopOpacity={dark ? 0.30 : 0.22} />
+              <stop offset="100%" stopColor={dark ? '#1E1B4B' : '#EEF2FF'} stopOpacity={dark ? 0.10 : 0.05} />
             </linearGradient>
           </defs>
 
           {[xs[1], xs[2], xs[3]].map((x, idx) => (
-            <line key={idx} x1={x} x2={x} y1={0} y2={waveH} stroke="rgba(255,255,255,0.08)" strokeWidth={1.5} strokeDasharray="4 4" />
+            <line key={idx} x1={x} x2={x} y1={0} y2={waveH} stroke={dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'} strokeWidth={1.5} strokeDasharray="4 4" />
           ))}
 
           <path d={wavePath} fill="url(#funnelWaveGrad)" />
         </svg>
 
         {/* Drop-off Conversion rate pill tags */}
-        <div style={{ position: 'absolute', left: xs[1] - 65, top: ys[1] - 20, background: '#0F172A', border: '1.5px solid #6366F1', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#818CF8', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', zIndex: 5 }}>
+        <div style={{ position: 'absolute', left: xs[1] - 65, top: ys[1] - 20, background: dark ? '#0F172A' : '#FFFFFF', border: '1.5px solid #6366F1', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#6366F1', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 5 }}>
           {ctr}% CTR
         </div>
 
-        <div style={{ position: 'absolute', left: xs[2] - 75, top: ys[2] - 20, background: '#0F172A', border: '1.5px solid #22C55E', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#22C55E', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', zIndex: 5 }}>
+        <div style={{ position: 'absolute', left: xs[2] - 75, top: ys[2] - 20, background: dark ? '#0F172A' : '#FFFFFF', border: '1.5px solid #22C55E', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#16A34A', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 5 }}>
           {clickToResultRate}% {resultLabel}
         </div>
 
-        <div style={{ position: 'absolute', left: xs[3] - 60, top: ys[3] - 20, background: '#0F172A', border: '1.5px solid #F59E0B', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#F59E0B', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', zIndex: 5 }}>
+        <div style={{ position: 'absolute', left: xs[3] - 60, top: ys[3] - 20, background: dark ? '#0F172A' : '#FFFFFF', border: '1.5px solid #F59E0B', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#D97706', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 5 }}>
           0,0% Venda
         </div>
       </div>
@@ -477,9 +478,11 @@ function EditableTextElement({
 function Element({
   el,
   onEdit,
+  dark = true,
 }: {
   el: El
   onEdit?: (key: NonNullable<Extract<El, { t: 'text' }>['edit']>, value: string) => void
+  dark?: boolean
 }) {
   const pos = { position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h } as const
   if (el.t === 'box') {
@@ -496,7 +499,7 @@ function Element({
     const imgContent = el.src ? (
       <img src={el.src} alt="" style={{ ...pos, objectFit: 'cover', borderRadius: el.radius, cursor: el.url ? 'pointer' : undefined }} />
     ) : (
-      <div style={{ ...pos, background: '#1E293B', borderRadius: el.radius }} />
+      <div style={{ ...pos, background: dark ? '#1E293B' : '#E2E8F0', borderRadius: el.radius }} />
     )
     return el.url ? (
       <a href={el.url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
@@ -506,26 +509,26 @@ function Element({
   }
   if (el.t === 'chart') {
     return (
-      <div style={{ ...pos, background: '#0F172A', borderRadius: 16, border: '1.5px solid #1E293B', padding: '16px 20px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
-        {el.title && <div style={{ fontSize: 15, fontWeight: 700, color: '#F8FAFC', marginBottom: 8, fontFamily: `${FONT}, sans-serif` }}>{el.title}</div>}
+      <div style={{ ...pos, background: dark ? '#0F172A' : '#FFFFFF', borderRadius: 16, border: `1.5px solid ${dark ? '#1E293B' : '#E2E8F0'}`, padding: '16px 20px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', boxShadow: dark ? '0 4px 16px rgba(0,0,0,0.2)' : '0 4px 16px rgba(0,0,0,0.06)' }}>
+        {el.title && <div style={{ fontSize: 15, fontWeight: 700, color: dark ? '#F8FAFC' : '#0F172A', marginBottom: 8, fontFamily: `${FONT}, sans-serif` }}>{el.title}</div>}
         <div style={{ flex: 1, minHeight: 0 }}>
           {el.chartType === 'doughnut' ? (
-            <SvgDoughnut el={el} />
+            <SvgDoughnut el={el} dark={dark} />
           ) : el.chartType === 'bar' ? (
-            <SvgBarChart el={el} />
+            <SvgBarChart el={el} dark={dark} />
           ) : (
-            <SvgChart el={el} />
+            <SvgChart el={el} dark={dark} />
           )}
         </div>
       </div>
     )
   }
   if (el.t === 'funnel') {
-    return <div style={pos}><SvgFunnel el={el} /></div>
+    return <div style={pos}><SvgFunnel el={el} dark={dark} /></div>
   }
   if (el.t === 'table') {
     return (
-      <div style={{ ...pos, background: '#0F172A', borderRadius: 14, border: '1.5px solid #1E293B', overflow: 'hidden', boxSizing: 'border-box', boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
+      <div style={{ ...pos, background: dark ? '#0F172A' : '#FFFFFF', borderRadius: 14, border: `1.5px solid ${dark ? '#1E293B' : '#E2E8F0'}`, overflow: 'hidden', boxSizing: 'border-box', boxShadow: dark ? '0 4px 16px rgba(0,0,0,0.2)' : '0 4px 16px rgba(0,0,0,0.06)' }}>
         <table style={{ width: '100%', height: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontFamily: `${FONT}, system-ui, sans-serif` }}>
           <thead>
             <tr style={{ background: PALETTE.violet, color: '#FFFFFF', height: 46 }}>
@@ -547,7 +550,7 @@ function Element({
           </thead>
           <tbody>
             {el.rows.map((row, rIdx) => (
-              <tr key={rIdx} style={{ background: rIdx % 2 === 0 ? '#0F172A' : '#131927', borderBottom: '1px solid #1E293B' }}>
+              <tr key={rIdx} style={{ background: rIdx % 2 === 0 ? (dark ? '#0F172A' : '#FFFFFF') : (dark ? '#131927' : '#F8FAFC'), borderBottom: `1px solid ${dark ? '#1E293B' : '#E2E8F0'}` }}>
                 {row.map((cell, cIdx) => (
                   <td
                     key={cIdx}
@@ -555,7 +558,7 @@ function Element({
                       padding: '12px 16px',
                       fontSize: 12,
                       fontWeight: cell.bold ? 700 : 400,
-                      color: cell.color ?? '#F8FAFC',
+                      color: cell.color ?? (dark ? '#F8FAFC' : '#0F172A'),
                       textAlign: cell.align ?? 'left',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
@@ -599,10 +602,11 @@ export function Slide({
   scale: number
   onEdit?: Parameters<typeof Element>[0]['onEdit']
 }) {
+  const isDark = spec.dark !== false
   return (
     <div style={{ width: STAGE.w * scale, height: STAGE.h * scale, position: 'relative', overflow: 'hidden', borderRadius: scale < 0.5 ? 4 : 8, flexShrink: 0 }}>
-      <div style={{ width: STAGE.w, height: STAGE.h, position: 'absolute', left: 0, top: 0, transform: `scale(${scale})`, transformOrigin: 'top left', background: spec.dark ? PALETTE.dark : PALETTE.light, overflow: 'hidden', transition: 'background-color 0.2s ease, opacity 0.2s ease' }}>
-        {spec.els.map((el, i) => <Element key={i} el={el} onEdit={onEdit} />)}
+      <div style={{ width: STAGE.w, height: STAGE.h, position: 'absolute', left: 0, top: 0, transform: `scale(${scale})`, transformOrigin: 'top left', background: isDark ? PALETTE.dark : '#FFFFFF', overflow: 'hidden', transition: 'background-color 0.2s ease, opacity 0.2s ease' }}>
+        {spec.els.map((el, i) => <Element key={i} el={el} onEdit={onEdit} dark={isDark} />)}
       </div>
     </div>
   )
@@ -619,6 +623,16 @@ export function ReportStudio({
 }) {
   const [preset, setPreset] = useState<ReportPreset>(initialPreset)
   const [mode, setMode] = useState<ReportMode>(initialMode)
+  const [reportTheme, setReportTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('report_theme')
+      if (stored === 'light' || stored === 'dark') return stored
+    }
+    return 'light'
+  })
+  const [formatMenuOpen, setFormatMenuOpen] = useState(false)
+  const formatMenuRef = useRef<HTMLDivElement>(null)
+
   const [phase, setPhase] = useState<Phase>({ kind: 'loading', text: 'Carregando o relatório…' })
   const [notes, setNotes] = useState<ReportNotes | null>(null)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
@@ -629,6 +643,14 @@ export function ReportStudio({
   const stageBox = useRef<HTMLDivElement>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dirty = useRef(false)
+
+  const toggleReportTheme = () => {
+    setReportTheme(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark'
+      if (typeof window !== 'undefined') localStorage.setItem('report_theme', next)
+      return next
+    })
+  }
 
   const load = useCallback(async (opts: { prepare?: boolean; targetPreset?: ReportPreset } = {}) => {
     const p = opts.targetPreset ?? preset
@@ -653,7 +675,56 @@ export function ReportStudio({
   }, [preset])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => { const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h) }, [onClose])
+
+  const data = phase.kind === 'ready' ? phase.data : null
+  const slides = useMemo(() => (data && notes ? buildSlides(data, notes, mode, reportTheme) : []), [data, notes, mode, reportTheme])
+  const included = slides.filter(s => !hidden.has(s.id))
+
+  // Contagem dinâmica e precisa de slides por formato
+  const modeCounts = useMemo(() => {
+    if (!data || !notes) return { standard: 9, advanced: 11, organic: 10 }
+    return {
+      standard: buildSlides(data, notes, 'standard', reportTheme).length,
+      advanced: buildSlides(data, notes, 'advanced', reportTheme).length,
+      organic: buildSlides(data, notes, 'organic', reportTheme).length,
+    }
+  }, [data, notes, reportTheme])
+
+  // Teclado: Escape fecha, Setas passam slides (com proteção para inputs/textareas)
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      const activeEl = document.activeElement
+      const tag = activeEl?.tagName?.toLowerCase()
+      if (tag === 'input' || tag === 'textarea' || (activeEl as HTMLElement)?.isContentEditable) {
+        return
+      }
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        setCurrent(curr => Math.min(slides.length - 1, curr + 1))
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        setCurrent(curr => Math.max(0, curr - 1))
+      }
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [slides.length, onClose])
+
+  // Fecha dropdown de formatos ao clicar fora
+  useEffect(() => {
+    if (!formatMenuOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (formatMenuRef.current && !formatMenuRef.current.contains(e.target as Node)) {
+        setFormatMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [formatMenuOpen])
 
   // ajusta o palco à largura disponível
   useEffect(() => {
@@ -665,10 +736,6 @@ export function ReportStudio({
     ro.observe(el)
     return () => ro.disconnect()
   }, [phase.kind])
-
-  const data = phase.kind === 'ready' ? phase.data : null
-  const slides = useMemo(() => (data && notes ? buildSlides(data, notes, mode) : []), [data, notes, mode])
-  const included = slides.filter(s => !hidden.has(s.id))
 
   const save = useCallback(async (n: ReportNotes, p = preset) => {
     setSaved('saving')
@@ -733,11 +800,11 @@ export function ReportStudio({
             </div>
             {data && <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{data.client.name} · {included.length} de {slides.length} slides</div>}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--bg-card2, rgba(0,0,0,0.06))', padding: '3px 4px', borderRadius: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--bg-card2, rgba(0,0,0,0.06))', padding: '3px 4px', borderRadius: 20 }}>
             <button
               type="button"
               className={`btn btn-sm ${preset === 'last_month' ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ height: 28, padding: '0 10px', fontSize: 12, borderRadius: 6 }}
+              style={{ height: 28, padding: '0 12px', fontSize: 12, borderRadius: 16 }}
               onClick={() => switchPreset('last_month')}
               title="Relatório do mês anterior fechado"
             >
@@ -746,7 +813,7 @@ export function ReportStudio({
             <button
               type="button"
               className={`btn btn-sm ${preset === 'this_month' ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ height: 28, padding: '0 10px', fontSize: 12, borderRadius: 6 }}
+              style={{ height: 28, padding: '0 12px', fontSize: 12, borderRadius: 16 }}
               onClick={() => switchPreset('this_month')}
               title="Relatório do mês atual até o momento"
             >
@@ -755,47 +822,129 @@ export function ReportStudio({
             <button
               type="button"
               className={`btn btn-sm ${preset === 'last_7d' ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ height: 28, padding: '0 10px', fontSize: 12, borderRadius: 6 }}
+              style={{ height: 28, padding: '0 12px', fontSize: 12, borderRadius: 16 }}
               onClick={() => switchPreset('last_7d')}
               title="Relatório dos últimos 7 dias"
             >
               Últimos 7 dias
             </button>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--bg-card2, rgba(0,0,0,0.06))', padding: '3px 4px', borderRadius: 8 }}>
-            <button
-              type="button"
-              className={`btn btn-sm ${mode === 'standard' ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ height: 28, padding: '0 10px', fontSize: 12, borderRadius: 6 }}
-              onClick={() => { setMode('standard'); setCurrent(0) }}
-            >
-              Padrão (10 slides)
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm ${mode === 'advanced' ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ height: 28, padding: '0 10px', fontSize: 12, borderRadius: 6 }}
-              onClick={() => { setMode('advanced'); setCurrent(0) }}
-            >
-              Avançado (12 slides)
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm ${mode === 'organic' ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ height: 28, padding: '0 10px', fontSize: 12, borderRadius: 6 }}
-              onClick={() => { setMode('organic'); setCurrent(0) }}
-              title="Relatório focado exclusivamente em resultados orgânicos"
-            >
-              Orgânico (6 slides)
-            </button>
-          </div>
         </div>
+
         {data && <span aria-live="polite" style={{ fontSize: 12, color: saved === 'error' ? 'var(--red)' : 'var(--text-3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           {saved === 'saving' && <><Loader2 size={13} className="spin" /> Salvando…</>}{saved === 'saved' && <><Check size={13} /> Textos salvos</>}{saved === 'error' && 'Não foi possível salvar os textos'}
         </span>}
-        {data && <button className="btn btn-outline btn-sm" onClick={exportPdf} disabled={!!exporting}><FileText size={14} strokeWidth={1.75} /> {exporting === 'pdf' ? 'Preparando…' : 'Baixar PDF'}</button>}
-        {data && <button className="btn btn-primary btn-sm" onClick={exportPptx} disabled={!!exporting}><Download size={14} strokeWidth={1.75} /> {exporting === 'pptx' ? 'Gerando…' : 'Baixar PowerPoint'}</button>}
-        <button className="btn btn-outline btn-icon btn-sm" onClick={close} aria-label="Fechar"><X size={16} strokeWidth={1.75} /></button>
+
+        {/* Dropdown de Formato ao lado de Baixar PDF com flecha para baixo */}
+        {data && (
+          <div ref={formatMenuRef} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              style={{ borderRadius: 20, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, padding: '0 14px' }}
+              onClick={() => setFormatMenuOpen(o => !o)}
+              aria-haspopup="true"
+              aria-expanded={formatMenuOpen}
+              title="Selecionar formato do relatório"
+            >
+              <span>
+                {mode === 'standard' && `Padrão (${modeCounts.standard} slides)`}
+                {mode === 'advanced' && `Avançado (${modeCounts.advanced} slides)`}
+                {mode === 'organic' && `Orgânico (${modeCounts.organic} slides)`}
+              </span>
+              <ChevronDown size={14} style={{ transform: formatMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+            </button>
+            {formatMenuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: 0,
+                  minWidth: 230,
+                  background: 'var(--bg-card, #FFFFFF)',
+                  border: '1px solid var(--border, #E2E8F0)',
+                  borderRadius: 14,
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.12)',
+                  padding: 6,
+                  zIndex: 50,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                }}
+              >
+                {[
+                  { id: 'standard' as const, label: 'Padrão', count: modeCounts.standard, desc: 'Visão executiva com KPIs e criativos' },
+                  { id: 'advanced' as const, label: 'Avançado', count: modeCounts.advanced, desc: 'Completo com público, plataformas e funil' },
+                  { id: 'organic' as const, label: 'Orgânico', count: modeCounts.organic, desc: 'Exclusivo para engajamento e métricas orgânicas' },
+                ].map(item => {
+                  const isSel = mode === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setMode(item.id)
+                        setCurrent(0)
+                        setFormatMenuOpen(false)
+                      }}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        textAlign: 'left',
+                        padding: '8px 12px',
+                        borderRadius: 10,
+                        background: isSel ? 'var(--bg-card2, rgba(99,102,241,0.1))' : 'transparent',
+                        border: isSel ? '1px solid rgba(99,102,241,0.2)' : '1px solid transparent',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: isSel ? PALETTE.violet : 'var(--text-1)' }}>
+                          {item.label}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', background: 'var(--bg-card2, rgba(0,0,0,0.06))', padding: '2px 8px', borderRadius: 999 }}>
+                          {item.count} slides
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                        {item.desc}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {data && (
+          <button className="btn btn-outline btn-sm" style={{ borderRadius: 20, padding: '0 14px' }} onClick={exportPdf} disabled={!!exporting}>
+            <FileText size={14} strokeWidth={1.75} /> {exporting === 'pdf' ? 'Preparando…' : 'Baixar PDF'}
+          </button>
+        )}
+        {data && (
+          <button className="btn btn-primary btn-sm" style={{ borderRadius: 20, padding: '0 14px' }} onClick={exportPptx} disabled={!!exporting}>
+            <Download size={14} strokeWidth={1.75} /> {exporting === 'pptx' ? 'Gerando…' : 'Baixar PowerPoint'}
+          </button>
+        )}
+
+        {/* Botão de Alternar Light / Dark Mode nos Relatórios */}
+        <button
+          type="button"
+          className="btn btn-outline btn-icon btn-sm"
+          style={{ borderRadius: 20, width: 32, height: 32 }}
+          onClick={toggleReportTheme}
+          title={reportTheme === 'dark' ? 'Mudar relatório para Tema Claro' : 'Mudar relatório para Tema Escuro'}
+          aria-label="Alternar tema do relatório"
+        >
+          {reportTheme === 'dark' ? <Sun size={15} strokeWidth={1.8} /> : <Moon size={15} strokeWidth={1.8} />}
+        </button>
+
+        <button className="btn btn-outline btn-icon btn-sm" style={{ borderRadius: 20, width: 32, height: 32 }} onClick={close} aria-label="Fechar">
+          <X size={16} strokeWidth={1.75} />
+        </button>
       </header>
 
       {phase.kind === 'loading' && <div style={{ flex: 1, display: 'grid', placeItems: 'center', color: 'var(--text-2)', fontSize: 14 }}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><Loader2 size={16} className="spin" /> {phase.text}</span></div>}

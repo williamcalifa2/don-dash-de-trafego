@@ -28,6 +28,33 @@ export const PALETTE = {
   red: '#EF4444',
   phone: '#0F172A',
 }
+
+export const PALETTE_LIGHT: typeof PALETTE = {
+  dark: '#F8FAFC',
+  light: '#FFFFFF',
+  card: '#FFFFFF',
+  cardBorder: '#E2E8F0',
+  cardSoft: '#F1F5F9',
+  violet: '#6366F1',
+  violetLight: '#4F46E5',
+  violetSoft: 'rgba(99,102,241,0.08)',
+  ink: '#0F172A',
+  soft: '#475569',
+  muted: '#64748B',
+  white: '#0F172A',
+  green: '#16A34A',
+  greenSoft: 'rgba(22,163,74,0.10)',
+  amber: '#D97706',
+  amberSoft: 'rgba(217,119,6,0.10)',
+  red: '#DC2626',
+  phone: '#F8FAFC',
+}
+
+export type Palette = typeof PALETTE
+
+export function getPalette(theme: 'light' | 'dark' = 'dark'): Palette {
+  return theme === 'light' ? PALETTE_LIGHT : PALETTE
+}
 export const FONT = 'Montserrat'
 
 export type NoteKey = keyof ReportNotes
@@ -76,7 +103,7 @@ const upper = (s: string) => s.toLocaleUpperCase('pt-BR')
 const fmtDay = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 export const proxied = (u: string | null) => (u ? `/api/report/img?u=${encodeURIComponent(u)}` : null)
 
-function corners(dark: boolean): El[] {
+function corners(dark: boolean, p = dark ? PALETTE : PALETTE_LIGHT): El[] {
   const c = dark ? '#64748B' : '#94A3B8'
   const s = 10
   return [
@@ -86,32 +113,32 @@ function corners(dark: boolean): El[] {
     { t: 'text', x: 820, y: 676, w: 400, h: 20, text: 'Confidencial', size: s, weight: 500, color: c, align: 'right', lineHeight: 1.2 },
   ]
 }
-const band = (_dark: boolean): El[] => [{ t: 'box', x: 0, y: 710, w: 1280, h: 10, fill: P.violet }]
-const title = (text: string, size: number, y: number, align: 'left' | 'center' = 'left', h = Math.round(size * 1.3) + 20): El => ({
-  t: 'text', x: 60, y, w: 1160, h, text: upper(text), size, weight: 800, color: P.white, align, lineHeight: 1.15,
+const band = (_dark: boolean, p = PALETTE): El[] => [{ t: 'box', x: 0, y: 710, w: 1280, h: 10, fill: p.violet }]
+const title = (text: string, size: number, y: number, align: 'left' | 'center' = 'left', h = Math.round(size * 1.3) + 20, p = PALETTE): El => ({
+  t: 'text', x: 60, y, w: 1160, h, text: upper(text), size, weight: 800, color: p.white, align, lineHeight: 1.15,
 })
 
-function statCell(s: ReportStat, x: number, y: number, dark = true): El[] {
+function statCell(s: ReportStat, x: number, y: number, dark = true, p = dark ? PALETTE : PALETTE_LIGHT): El[] {
   const d = s.delta == null ? '' : deltaLabel(s.delta)
   const good = s.delta == null ? true : s.lowerIsBetter ? s.delta <= 0 : s.delta >= 0
-  const boxFill = dark ? P.card : '#F8FAFC'
-  const boxLine = dark ? P.cardBorder : '#E2E8F0'
-  const valColor = dark ? P.white : P.ink
-  const lblColor = dark ? P.soft : P.muted
+  const boxFill = p.card
+  const boxLine = p.cardBorder
+  const valColor = p.white
+  const lblColor = p.muted
   return [
     { t: 'box', x: x - 170, y, w: 340, h: 126, fill: boxFill, line: boxLine, radius: 14 },
     { t: 'text', x: x - 150, y: y + 14, w: 300, h: 20, text: upper(s.label), size: 12, weight: 700, color: lblColor, align: 'center', lineHeight: 1.2 },
     { t: 'text', x: x - 150, y: y + 36, w: 300, h: 54, text: s.value, size: 44, weight: 700, color: valColor, align: 'center', valign: 'middle', lineHeight: 1.1 },
-    ...(d ? [{ t: 'text', x: x - 150, y: y + 92, w: 300, h: 22, text: d, size: 13, weight: 700, color: good ? P.green : P.red, align: 'center', lineHeight: 1.2 } as El] : []),
+    ...(d ? [{ t: 'text', x: x - 150, y: y + 92, w: 300, h: 22, text: d, size: 13, weight: 700, color: good ? p.green : p.red, align: 'center', lineHeight: 1.2 } as El] : []),
   ]
 }
 
-function modernOrganicCards(posts: ReportPost[]): El[] {
+function modernOrganicCards(posts: ReportPost[], p = PALETTE): El[] {
   const out: El[] = []
   const items = posts.slice(0, 5)
   if (!items.length) {
     out.push({
-      t: 'text', x: 160, y: 300, w: 960, h: 100, text: 'Nenhuma publicação orgânica encontrada neste período.', size: 18, weight: 500, color: P.soft, align: 'center', valign: 'middle', lineHeight: 1.2,
+      t: 'text', x: 160, y: 300, w: 960, h: 100, text: 'Nenhuma publicação orgânica encontrada neste período.', size: 18, weight: 500, color: p.soft, align: 'center', valign: 'middle', lineHeight: 1.2,
     })
     return out
   }
@@ -123,23 +150,23 @@ function modernOrganicCards(posts: ReportPost[]): El[] {
   const totalW = items.length * cardW + (items.length - 1) * gap
   const startX = Math.round((STAGE.w - totalW) / 2)
 
-  items.forEach((p, i) => {
+  items.forEach((post, i) => {
     const x = startX + i * (cardW + gap)
     // Container do card
-    out.push({ t: 'box', x, y: y0, w: cardW, h: cardH, fill: P.card, line: P.cardBorder, radius: 14 })
+    out.push({ t: 'box', x, y: y0, w: cardW, h: cardH, fill: p.card, line: p.cardBorder, radius: 14 })
 
     // Imagem da mídia
-    out.push({ t: 'img', x: x + 6, y: y0 + 6, w: cardW - 12, h: 220, src: proxied(p.thumb), radius: 10 })
+    out.push({ t: 'img', x: x + 6, y: y0 + 6, w: cardW - 12, h: 220, src: proxied(post.thumb), radius: 10 })
 
-    // Tag flutuante (Reels / Foto)
-    const isReels = p.type?.toLowerCase().includes('reel') || p.type?.toLowerCase().includes('video')
+    // Tag discreta (Reels / Foto)
+    const isReels = post.type?.toLowerCase().includes('reel') || post.type?.toLowerCase().includes('video')
     out.push({ t: 'box', x: x + 10, y: y0 + 10, w: 52, h: 20, fill: 'rgba(15,23,42,0.85)', radius: 4 })
     out.push({ t: 'text', x: x + 10, y: y0 + 10, w: 52, h: 20, text: isReels ? 'REELS' : 'FOTO', size: 9, weight: 700, color: '#FFFFFF', align: 'center', valign: 'middle' })
 
     // Legenda (2 linhas)
-    const rawCap = (p.caption || 'Publicação').replace(/\s+/g, ' ').trim()
+    const rawCap = (post.caption || 'Publicação').replace(/\s+/g, ' ').trim()
     const capSnippet = rawCap.slice(0, 70) + (rawCap.length > 70 ? '…' : '')
-    out.push({ t: 'text', x: x + 10, y: y0 + 234, w: cardW - 20, h: 36, text: capSnippet, size: 11, weight: 400, color: '#CBD5E1', lineHeight: 1.25 })
+    out.push({ t: 'text', x: x + 10, y: y0 + 234, w: cardW - 20, h: 36, text: capSnippet, size: 11, weight: 400, color: p.soft, lineHeight: 1.25 })
 
     // Grid de métricas 2x3
     const colW = 66
@@ -147,44 +174,44 @@ function modernOrganicCards(posts: ReportPost[]): El[] {
     const row2Y = y0 + 336
 
     // Row 1: ALCANCE, VISUALIZ., CURTIDAS
-    out.push({ t: 'text', x: x + 8, y: row1Y, w: colW, h: 14, text: 'ALCANCE', size: 8, weight: 700, color: P.muted })
-    out.push({ t: 'text', x: x + 8, y: row1Y + 14, w: colW, h: 22, text: compact(p.reach), size: 13, weight: 700, color: P.white })
+    out.push({ t: 'text', x: x + 8, y: row1Y, w: colW, h: 14, text: 'ALCANCE', size: 8, weight: 700, color: p.muted })
+    out.push({ t: 'text', x: x + 8, y: row1Y + 14, w: colW, h: 22, text: compact(post.reach), size: 13, weight: 700, color: p.white })
 
-    out.push({ t: 'text', x: x + 8 + colW + 4, y: row1Y, w: colW, h: 14, text: 'VISUALIZ.', size: 8, weight: 700, color: P.muted })
-    out.push({ t: 'text', x: x + 8 + colW + 4, y: row1Y + 14, w: colW, h: 22, text: compact(p.views), size: 13, weight: 700, color: P.white })
+    out.push({ t: 'text', x: x + 8 + colW + 4, y: row1Y, w: colW, h: 14, text: 'VISUALIZ.', size: 8, weight: 700, color: p.muted })
+    out.push({ t: 'text', x: x + 8 + colW + 4, y: row1Y + 14, w: colW, h: 22, text: compact(post.views), size: 13, weight: 700, color: p.white })
 
-    out.push({ t: 'text', x: x + 8 + (colW + 4) * 2, y: row1Y, w: colW, h: 14, text: 'CURTIDAS', size: 8, weight: 700, color: P.muted })
-    out.push({ t: 'text', x: x + 8 + (colW + 4) * 2, y: row1Y + 14, w: colW, h: 22, text: compact(p.likes ?? p.interactions), size: 13, weight: 700, color: P.white })
+    out.push({ t: 'text', x: x + 8 + (colW + 4) * 2, y: row1Y, w: colW, h: 14, text: 'CURTIDAS', size: 8, weight: 700, color: p.muted })
+    out.push({ t: 'text', x: x + 8 + (colW + 4) * 2, y: row1Y + 14, w: colW, h: 22, text: compact(post.likes ?? post.interactions), size: 13, weight: 700, color: p.white })
 
     // Row 2: COMENT., COMPART., SALVOS
-    out.push({ t: 'text', x: x + 8, y: row2Y, w: colW, h: 14, text: 'COMENT.', size: 8, weight: 700, color: P.muted })
-    out.push({ t: 'text', x: x + 8, y: row2Y + 14, w: colW, h: 22, text: compact(p.comments ?? 0), size: 13, weight: 700, color: P.white })
+    out.push({ t: 'text', x: x + 8, y: row2Y, w: colW, h: 14, text: 'COMENT.', size: 8, weight: 700, color: p.muted })
+    out.push({ t: 'text', x: x + 8, y: row2Y + 14, w: colW, h: 22, text: compact(post.comments ?? 0), size: 13, weight: 700, color: p.white })
 
-    out.push({ t: 'text', x: x + 8 + colW + 4, y: row2Y, w: colW, h: 14, text: 'COMPART.', size: 8, weight: 700, color: P.muted })
-    out.push({ t: 'text', x: x + 8 + colW + 4, y: row2Y + 14, w: colW, h: 22, text: compact(p.shares ?? 0), size: 13, weight: 700, color: P.white })
+    out.push({ t: 'text', x: x + 8 + colW + 4, y: row2Y, w: colW, h: 14, text: 'COMPART.', size: 8, weight: 700, color: p.muted })
+    out.push({ t: 'text', x: x + 8 + colW + 4, y: row2Y + 14, w: colW, h: 22, text: compact(post.shares ?? 0), size: 13, weight: 700, color: p.white })
 
-    out.push({ t: 'text', x: x + 8 + (colW + 4) * 2, y: row2Y, w: colW, h: 14, text: 'SALVOS', size: 8, weight: 700, color: P.muted })
-    out.push({ t: 'text', x: x + 8 + (colW + 4) * 2, y: row2Y + 14, w: colW, h: 22, text: compact(p.saves ?? 0), size: 13, weight: 700, color: P.white })
+    out.push({ t: 'text', x: x + 8 + (colW + 4) * 2, y: row2Y, w: colW, h: 14, text: 'SALVOS', size: 8, weight: 700, color: p.muted })
+    out.push({ t: 'text', x: x + 8 + (colW + 4) * 2, y: row2Y + 14, w: colW, h: 22, text: compact(post.saves ?? 0), size: 13, weight: 700, color: p.white })
 
     // Divisor
-    out.push({ t: 'box', x: x + 10, y: y0 + 396, w: cardW - 20, h: 1, fill: P.cardBorder })
+    out.push({ t: 'box', x: x + 10, y: y0 + 396, w: cardW - 20, h: 1, fill: p.cardBorder })
 
     // Rodapé: Data e Botão Abrir
-    const dateLabel = p.at ? fmtDay(p.at) : ''
-    out.push({ t: 'text', x: x + 10, y: y0 + 416, w: 90, h: 26, text: dateLabel, size: 11, weight: 500, color: P.muted, valign: 'middle' })
+    const dateLabel = post.at ? fmtDay(post.at) : ''
+    out.push({ t: 'text', x: x + 10, y: y0 + 416, w: 90, h: 26, text: dateLabel, size: 11, weight: 500, color: p.muted, valign: 'middle' })
 
-    out.push({ t: 'box', x: x + cardW - 84, y: y0 + 414, w: 74, h: 28, fill: P.violetSoft, line: P.violet, radius: 6, url: p.url ?? undefined })
-    out.push({ t: 'text', x: x + cardW - 84, y: y0 + 414, w: 74, h: 28, text: 'Abrir ↗', size: 11, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', url: p.url ?? undefined })
+    out.push({ t: 'box', x: x + cardW - 84, y: y0 + 414, w: 74, h: 28, fill: p.violetSoft, line: p.violet, radius: 6, url: post.url ?? undefined })
+    out.push({ t: 'text', x: x + cardW - 84, y: y0 + 414, w: 74, h: 28, text: 'Abrir ↗', size: 11, weight: 700, color: p.violetLight, align: 'center', valign: 'middle', url: post.url ?? undefined })
   })
   return out
 }
 
-function modernCreativeCards(ads: ReportAd[], currency: string, resultLabel: string): El[] {
+function modernCreativeCards(ads: ReportAd[], currency: string, resultLabel: string, p = PALETTE): El[] {
   const out: El[] = []
   const items = ads.slice(0, 4)
   if (!items.length) {
     out.push({
-      t: 'text', x: 160, y: 300, w: 960, h: 100, text: 'Nenhum anúncio com entrega registrado neste período.', size: 18, weight: 500, color: P.soft, align: 'center', valign: 'middle', lineHeight: 1.2,
+      t: 'text', x: 160, y: 300, w: 960, h: 100, text: 'Nenhum anúncio com entrega registrado neste período.', size: 18, weight: 500, color: p.soft, align: 'center', valign: 'middle', lineHeight: 1.2,
     })
     return out
   }
@@ -200,7 +227,7 @@ function modernCreativeCards(ads: ReportAd[], currency: string, resultLabel: str
   items.forEach((a, i) => {
     const x = startX + i * (cardW + gap)
     // Container do card
-    out.push({ t: 'box', x, y: y0, w: cardW, h: cardH, fill: P.card, line: P.cardBorder, radius: 14 })
+    out.push({ t: 'box', x, y: y0, w: cardW, h: cardH, fill: p.card, line: p.cardBorder, radius: 14 })
 
     const previewUrl = a.url || `/api/meta/ad/${a.id}/preview`
 
@@ -216,7 +243,7 @@ function modernCreativeCards(ads: ReportAd[], currency: string, resultLabel: str
     // Nome do anúncio (2 linhas, clicável)
     const rawName = (a.name || 'Anúncio Meta').replace(/\s+/g, ' ').trim()
     const nameSnippet = rawName.slice(0, 60) + (rawName.length > 60 ? '…' : '')
-    out.push({ t: 'text', x: x + 12, y: y0 + 234, w: cardW - 24, h: 36, text: nameSnippet, size: 12, weight: 600, color: P.white, lineHeight: 1.25, url: previewUrl })
+    out.push({ t: 'text', x: x + 12, y: y0 + 234, w: cardW - 24, h: 36, text: nameSnippet, size: 12, weight: 600, color: p.white, lineHeight: 1.25, url: previewUrl })
 
     // Grid de métricas 2x3
     const colW = 78
@@ -226,41 +253,43 @@ function modernCreativeCards(ads: ReportAd[], currency: string, resultLabel: str
     // Row 1: RESULTADOS, INVESTIMENTO, CUSTO/RES
     const resTitle = hasConv ? (resultLabel.length > 9 ? 'RESULTADOS' : upper(resultLabel)) : 'CLIQUES'
     const resVal = hasConv ? compact(a.results) : compact(a.clicks)
-    out.push({ t: 'text', x: x + 10, y: row1Y, w: colW, h: 14, text: resTitle, size: 8, weight: 700, color: hasConv ? P.green : P.violetLight })
-    out.push({ t: 'text', x: x + 10, y: row1Y + 14, w: colW, h: 22, text: resVal, size: 14, weight: 700, color: hasConv ? P.green : P.white })
+    out.push({ t: 'text', x: x + 10, y: row1Y, w: colW, h: 14, text: resTitle, size: 8, weight: 700, color: hasConv ? p.green : p.violetLight })
+    out.push({ t: 'text', x: x + 10, y: row1Y + 14, w: colW, h: 22, text: resVal, size: 14, weight: 700, color: hasConv ? p.green : p.white })
 
-    out.push({ t: 'text', x: x + 10 + colW + 4, y: row1Y, w: colW + 8, h: 14, text: 'INVESTIMENTO', size: 8, weight: 700, color: P.muted })
-    out.push({ t: 'text', x: x + 10 + colW + 4, y: row1Y + 14, w: colW + 8, h: 22, text: money(a.spend), size: 12, weight: 700, color: P.white })
+    out.push({ t: 'text', x: x + 10 + colW + 4, y: row1Y, w: colW + 8, h: 14, text: 'INVESTIMENTO', size: 8, weight: 700, color: p.muted })
+    out.push({ t: 'text', x: x + 10 + colW + 4, y: row1Y + 14, w: colW + 8, h: 22, text: money(a.spend), size: 12, weight: 700, color: p.white })
 
     const costLabel = hasConv ? 'CUSTO/RES.' : 'CUSTO/CLIQUE'
     const costVal = hasConv && a.costPerResult != null ? money(a.costPerResult) : (a.spend > 0 && a.clicks > 0 ? money(a.spend / a.clicks) : '—')
-    out.push({ t: 'text', x: x + 10 + (colW + 6) * 2, y: row1Y, w: colW, h: 14, text: costLabel, size: 8, weight: 700, color: P.muted })
-    out.push({ t: 'text', x: x + 10 + (colW + 6) * 2, y: row1Y + 14, w: colW, h: 22, text: costVal, size: 12, weight: 700, color: P.white })
+    out.push({ t: 'text', x: x + 10 + (colW + 6) * 2, y: row1Y, w: colW, h: 14, text: costLabel, size: 8, weight: 700, color: p.muted })
+    out.push({ t: 'text', x: x + 10 + (colW + 6) * 2, y: row1Y + 14, w: colW, h: 22, text: costVal, size: 12, weight: 700, color: p.white })
 
     // Row 2: CLIQUES, CTR, IMPRESSÕES
-    out.push({ t: 'text', x: x + 10, y: row2Y, w: colW, h: 14, text: 'CLIQUES', size: 8, weight: 700, color: P.muted })
-    out.push({ t: 'text', x: x + 10, y: row2Y + 14, w: colW, h: 22, text: compact(a.clicks), size: 13, weight: 700, color: P.white })
+    out.push({ t: 'text', x: x + 10, y: row2Y, w: colW, h: 14, text: 'CLIQUES', size: 8, weight: 700, color: p.muted })
+    out.push({ t: 'text', x: x + 10, y: row2Y + 14, w: colW, h: 22, text: compact(a.clicks), size: 13, weight: 700, color: p.white })
 
-    out.push({ t: 'text', x: x + 10 + colW + 4, y: row2Y, w: colW, h: 14, text: 'CTR', size: 8, weight: 700, color: P.muted })
-    out.push({ t: 'text', x: x + 10 + colW + 4, y: row2Y + 14, w: colW + 8, h: 22, text: pct(a.ctr), size: 13, weight: 700, color: P.white })
+    out.push({ t: 'text', x: x + 10 + colW + 4, y: row2Y, w: colW, h: 14, text: 'CTR', size: 8, weight: 700, color: p.muted })
+    out.push({ t: 'text', x: x + 10 + colW + 4, y: row2Y + 14, w: colW, h: 22, text: pct(a.ctr), size: 13, weight: 700, color: p.white })
 
-    out.push({ t: 'text', x: x + 10 + (colW + 6) * 2, y: row2Y, w: colW, h: 14, text: 'IMPRESSÕES', size: 8, weight: 700, color: P.muted })
-    out.push({ t: 'text', x: x + 10 + (colW + 6) * 2, y: row2Y + 14, w: colW, h: 22, text: compact(a.impressions), size: 13, weight: 700, color: P.white })
+    out.push({ t: 'text', x: x + 10 + (colW + 6) * 2, y: row2Y, w: colW, h: 14, text: 'IMPRESSÕES', size: 8, weight: 700, color: p.muted })
+    out.push({ t: 'text', x: x + 10 + (colW + 6) * 2, y: row2Y + 14, w: colW, h: 22, text: compact(a.impressions), size: 13, weight: 700, color: p.white })
 
     // Divisor
-    out.push({ t: 'box', x: x + 10, y: y0 + 396, w: cardW - 20, h: 1, fill: P.cardBorder })
+    out.push({ t: 'box', x: x + 10, y: y0 + 396, w: cardW - 20, h: 1, fill: p.cardBorder })
 
     // Rodapé: Status e Botão Abrir
-    out.push({ t: 'text', x: x + 12, y: y0 + 416, w: 90, h: 26, text: '● Ativo', size: 11, weight: 600, color: P.green, valign: 'middle' })
+    out.push({ t: 'text', x: x + 12, y: y0 + 416, w: 90, h: 26, text: '● Ativo', size: 11, weight: 600, color: p.green, valign: 'middle' })
 
-    out.push({ t: 'box', x: x + cardW - 96, y: y0 + 414, w: 86, h: 28, fill: P.violetSoft, line: P.violet, radius: 6, url: previewUrl })
-    out.push({ t: 'text', x: x + cardW - 96, y: y0 + 414, w: 86, h: 28, text: 'Ver prévia ↗', size: 10.5, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', url: previewUrl })
+    out.push({ t: 'box', x: x + cardW - 96, y: y0 + 414, w: 86, h: 28, fill: p.violetSoft, line: p.violet, radius: 6, url: previewUrl })
+    out.push({ t: 'text', x: x + cardW - 96, y: y0 + 414, w: 86, h: 28, text: 'Ver prévia ↗', size: 10.5, weight: 700, color: p.violetLight, align: 'center', valign: 'middle', url: previewUrl })
   })
   return out
 }
 
 /** Modelo Padrão: 8 slides clássicos consolidados no tema visual do estúdio. */
-function buildAudienceSlide(d: ReportData, paid: ReportData['paid']): SlideSpec {
+function buildAudienceSlide(d: ReportData, paid: ReportData['paid'], theme: 'light' | 'dark' = 'dark'): SlideSpec {
+  const isDark = theme === 'dark'
+  const P = getPalette(theme)
   const aud = d.audience
   const ageLabels = aud?.ageBars?.map(b => b.label) ?? ['13-17', '18-24', '25-34', '35-44', '45-54', '55-64', '65+']
   const genderLabels = aud?.genderBars?.map(b => b.label) ?? ['Feminino', 'Masculino', 'Desconhecido']
@@ -279,10 +308,10 @@ function buildAudienceSlide(d: ReportData, paid: ReportData['paid']): SlideSpec 
     .map(b => `${b.label} R$ ${b.costPerResult!.toFixed(2).replace('.', ',')}`).join(' · ') || ''
 
   return {
-    id: 'audience', label: 'Demografia', dark: true,
+    id: 'audience', label: 'Demografia', dark: isDark,
     els: [
-      ...corners(true),
-      title('Perfil do Público: Idade & Gênero', 54, 55, 'center'),
+      ...corners(isDark, P),
+      title('Perfil do Público: Idade & Gênero', 54, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Distribuição detalhada de impressões, alcance e conversões por faixa etária e gênero.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
 
       // Card 1 (Top Left): Impressões e alcance por idade
@@ -345,12 +374,14 @@ function buildAudienceSlide(d: ReportData, paid: ReportData['paid']): SlideSpec 
         costSubtitle: costByGenderText ? `Custo por ${paid.resultLabel.toLowerCase()}: ${costByGenderText}` : undefined,
       },
 
-      ...band(true),
+      ...band(isDark, P),
     ],
   }
 }
 
-function buildPlatformsSlide(d: ReportData): SlideSpec {
+function buildPlatformsSlide(d: ReportData, theme: 'light' | 'dark' = 'dark'): SlideSpec {
+  const isDark = theme === 'dark'
+  const P = getPalette(theme)
   const aud = d.audience
   const platItems = aud?.platformDonut ?? [
     { label: 'Instagram', pct: 74, reach: 7400 },
@@ -364,10 +395,10 @@ function buildPlatformsSlide(d: ReportData): SlideSpec {
   ]
 
   return {
-    id: 'platforms', label: 'Plataformas & Canais', dark: true,
+    id: 'platforms', label: 'Plataformas & Canais', dark: isDark,
     els: [
-      ...corners(true),
-      title('Plataformas & Dispositivos', 54, 55, 'center'),
+      ...corners(isDark, P),
+      title('Plataformas & Dispositivos', 54, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Participação relativa de alcance nos canais e tipos de dispositivos utilizados.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
 
       // Card 1: Plataformas
@@ -398,13 +429,15 @@ function buildPlatformsSlide(d: ReportData): SlideSpec {
         showLegend: true,
       },
 
-      ...band(true),
+      ...band(isDark, P),
     ],
   }
 }
 
-/** Modelo Padrão: 10 slides executivos (com público e plataformas) consolidados no tema visual moderno. */
-export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpec[] {
+/** Modelo Padrão: 9 slides executivos consolidados no tema visual moderno. */
+export function buildStandardSlides(d: ReportData, notes: ReportNotes, theme: 'light' | 'dark' = 'dark'): SlideSpec[] {
+  const isDark = theme === 'dark'
+  const P = getPalette(theme)
   const is7d = d.month.preset === 'last_7d'
   const period = `${fmtDay(d.month.since)} até ${fmtDay(d.month.until)}`
   const compLabel = is7d ? 'período anterior' : 'mês anterior'
@@ -414,24 +447,24 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
   // 1 — Capa
   const coverTitle = is7d ? 'ÚLTIMOS 7 DIAS' : `Resultados de ${d.month.label}`
   slides.push({
-    id: 'cover', label: 'Capa', dark: true,
+    id: 'cover', label: 'Capa', dark: isDark,
     els: [
-      ...corners(true),
+      ...corners(isDark, P),
       { t: 'text', x: 60, y: 88, w: 1160, h: 24, text: is7d ? 'ACOMPANHAMENTO SEMANAL' : 'FECHAMENTO MENSAL DE RESULTADOS', size: 13, weight: 700, color: P.violetLight, align: 'center', lineHeight: 1.2 },
       { t: 'text', x: 60, y: 140, w: 1160, h: 230, text: upper(coverTitle), size: is7d ? 72 : 82, weight: 800, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.15 },
       { t: 'text', x: 60, y: 385, w: 1160, h: 30, text: `Período: ${period}`, size: 18, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(d.client.logoUrl ? [{ t: 'img', x: 610, y: 440, w: 60, h: 60, src: d.client.logoUrl, radius: 12 } as El] : []),
       { t: 'text', x: 60, y: d.client.logoUrl ? 515 : 465, w: 1160, h: 44, text: upper(d.client.name), size: 30, weight: 600, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.2 },
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
   // 2 — Objetivo e metas
   slides.push({
-    id: 'objective', label: 'Objetivo e metas', dark: true,
+    id: 'objective', label: 'Objetivo e metas', dark: isDark,
     els: [
-      ...corners(true),
-      title('Objetivo e Metas', 70, 70),
+      ...corners(isDark, P),
+      title('Objetivo e Metas', 70, 70, 'left', undefined, P),
       { t: 'box', x: 90, y: 180, w: 1100, h: 200, fill: P.card, line: P.cardBorder, radius: 16 },
       { t: 'text', x: 120, y: 200, w: 1040, h: 24, text: 'OBJETIVO PRINCIPAL DO NEGÓCIO', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
       { t: 'text', x: 120, y: 235, w: 1040, h: 125, text: notes.objective, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'objective', placeholder: 'Qual o foco principal deste ciclo? Ex: Gerar 80 contatos qualificados para o time de vendas' },
@@ -439,34 +472,34 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
       { t: 'box', x: 90, y: 405, w: 1100, h: 235, fill: P.card, line: P.cardBorder, radius: 16 },
       { t: 'text', x: 120, y: 425, w: 1040, h: 24, text: 'METAS PRÁTICAS DO PERÍODO', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
       { t: 'text', x: 120, y: 460, w: 1040, h: 160, text: notes.goals, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'goals', placeholder: 'Metas combinadas (uma por linha). Ex: Manter o CPL abaixo de R$ 25' },
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
   // 3 — Métricas orgânicas
   const org = d.organic
   const orgOk = org.status === 'ok'
-  const cellsOrg = org.stats.slice(0, 6).flatMap((s, i) => statCell(s, i % 2 ? 940 : 340, 232 + Math.floor(i / 2) * 150, true))
+  const cellsOrg = org.stats.slice(0, 6).flatMap((s, i) => statCell(s, i % 2 ? 940 : 340, 232 + Math.floor(i / 2) * 150, isDark, P))
   slides.push({
-    id: 'organic', label: 'Métricas orgânicas', dark: true,
+    id: 'organic', label: 'Métricas orgânicas', dark: isDark,
     els: [
-      ...corners(true),
-      title('Redes Sociais (Orgânico)', 60, 60, 'center'),
+      ...corners(isDark, P),
+      title('Redes Sociais (Orgânico)', 60, 60, 'center', undefined, P),
       { t: 'text', x: 60, y: 145, w: 1160, h: 30, text: `Números do Instagram${org.handle ? ` (${org.handle})` : ''} de ${period}, comparado ao ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(orgOk ? cellsOrg : [{ t: 'text', x: 160, y: 300, w: 960, h: 120, text: org.status === 'incomplete' ? `Os números ${is7d ? 'do período' : 'do mês fechado'} ainda não foram coletados. Use "Buscar dados" para atualizar.` : 'Sem dados orgânicos para este cliente (Página ou Instagram não vinculados).', size: 20, weight: 500, color: P.soft, align: 'center', valign: 'middle', lineHeight: 1.2 } as El]),
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
   // 4 — Conteúdo orgânico (Print 1: 5 cards no layout do app)
   slides.push({
-    id: 'content', label: 'Conteúdo orgânico', dark: true,
+    id: 'content', label: 'Conteúdo orgânico', dark: isDark,
     els: [
-      ...corners(true),
-      title('Publicações em Destaque', 60, 55, 'center'),
+      ...corners(isDark, P),
+      title('Publicações em Destaque', 60, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Posts com maior alcance e engajamento do público no período.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
-      ...modernOrganicCards(org.top),
-      ...band(true),
+      ...modernOrganicCards(org.top, P),
+      ...band(isDark, P),
     ],
   })
 
@@ -482,42 +515,44 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
     ] as El[]
   })
   slides.push({
-    id: 'paid', label: 'Anúncios', dark: true,
+    id: 'paid', label: 'Anúncios', dark: isDark,
     els: [
-      ...corners(true),
-      title('Visão Geral dos Anúncios', 60, 55, 'center'),
+      ...corners(isDark, P),
+      title('Visão Geral dos Anúncios', 60, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 135, w: 1160, h: 30, text: `Resumo consolidado de investimento, alcance e conversões de ${period}, contra o ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(paid.status === 'ok' ? cellsPaid : [{ t: 'text', x: 160, y: 300, w: 960, h: 120, text: `Os números de anúncios ${is7d ? 'do período' : 'do mês fechado'} ainda não foram buscados. Use "Buscar dados" para atualizar.`, size: 20, weight: 500, color: P.soft, align: 'center', valign: 'middle', lineHeight: 1.2 } as El]),
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
   // 6 — Demografia do Público: Idade & Gênero (Print 3: 4 bar charts)
-  slides.push(buildAudienceSlide(d, paid))
+  slides.push(buildAudienceSlide(d, paid, theme))
 
   // 7 — Plataformas & Dispositivos (Print 2: 2 Donut charts)
-  slides.push(buildPlatformsSlide(d))
+  slides.push(buildPlatformsSlide(d, theme))
 
   // 8 — Criativos campeões
   slides.push({
-    id: 'creatives', label: 'Criativos campeões', dark: true,
+    id: 'creatives', label: 'Criativos campeões', dark: isDark,
     els: [
-      ...corners(true),
-      title('Criativos Campeões', 60, 55, 'center'),
+      ...corners(isDark, P),
+      title('Criativos Campeões', 60, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: is7d ? 'Criativos campeões da semana com maior retorno e volume.' : 'Criativos campeões do mês com maior retorno e volume.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
-      ...modernCreativeCards(paid.top, d.currency, paid.resultLabel),
-      ...band(true),
+      ...modernCreativeCards(paid.top, d.currency, paid.resultLabel, P),
+      ...band(isDark, P),
     ],
   })
 
   // 9 — Próximos passos & Otimizações
-  slides.push(makeNextStepsSlide(is7d, notes))
+  slides.push(makeNextStepsSlide(is7d, notes, theme))
 
   return slides
 }
 
-/** Modelo Avançado: 12 slides executivos alinhados com o Dashboard (Orgânico antes de Pago, Perfil de Público, Canais, Funil, Campanhas e Criativos). */
-export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpec[] {
+/** Modelo Avançado: 11 slides executivos alinhados com o Dashboard (Orgânico antes de Pago, Perfil de Público, Canais, Funil, Campanhas e Criativos). */
+export function buildAdvancedSlides(d: ReportData, notes: ReportNotes, theme: 'light' | 'dark' = 'dark'): SlideSpec[] {
+  const isDark = theme === 'dark'
+  const P = getPalette(theme)
   const is7d = d.month.preset === 'last_7d'
   const period = `${fmtDay(d.month.since)} até ${fmtDay(d.month.until)}`
   const compLabel = is7d ? 'período anterior' : 'mês anterior'
@@ -528,24 +563,24 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
   // 1 — Capa Executiva
   const coverTitle = is7d ? 'ÚLTIMOS 7 DIAS' : `Resultados de ${d.month.label}`
   slides.push({
-    id: 'cover', label: 'Capa', dark: true,
+    id: 'cover', label: 'Capa', dark: isDark,
     els: [
-      ...corners(true),
+      ...corners(isDark, P),
       { t: 'text', x: 60, y: 88, w: 1160, h: 24, text: is7d ? 'ACOMPANHAMENTO SEMANAL' : 'FECHAMENTO MENSAL DE RESULTADOS', size: 13, weight: 700, color: P.violetLight, align: 'center', lineHeight: 1.2 },
       { t: 'text', x: 60, y: 140, w: 1160, h: 230, text: upper(coverTitle), size: is7d ? 72 : 82, weight: 800, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.15 },
       { t: 'text', x: 60, y: 385, w: 1160, h: 30, text: `Período: ${period}`, size: 18, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(d.client.logoUrl ? [{ t: 'img', x: 610, y: 440, w: 60, h: 60, src: d.client.logoUrl, radius: 12 } as El] : []),
       { t: 'text', x: 60, y: d.client.logoUrl ? 515 : 465, w: 1160, h: 44, text: upper(d.client.name), size: 30, weight: 600, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.2 },
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
   // 2 — Objetivo e metas
   slides.push({
-    id: 'objective', label: 'Objetivo e metas', dark: true,
+    id: 'objective', label: 'Objetivo e metas', dark: isDark,
     els: [
-      ...corners(true),
-      title('Objetivo e Metas', 70, 70),
+      ...corners(isDark, P),
+      title('Objetivo e Metas', 70, 70, 'left', undefined, P),
       { t: 'box', x: 90, y: 180, w: 1100, h: 200, fill: P.card, line: P.cardBorder, radius: 16 },
       { t: 'text', x: 120, y: 200, w: 1040, h: 24, text: 'OBJETIVO PRINCIPAL DO NEGÓCIO', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
       { t: 'text', x: 120, y: 235, w: 1040, h: 125, text: notes.objective, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'objective', placeholder: 'Qual o foco principal deste ciclo? Ex: Gerar 80 contatos qualificados para o time de vendas' },
@@ -553,34 +588,34 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
       { t: 'box', x: 90, y: 405, w: 1100, h: 235, fill: P.card, line: P.cardBorder, radius: 16 },
       { t: 'text', x: 120, y: 425, w: 1040, h: 24, text: 'METAS PRÁTICAS DO PERÍODO', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
       { t: 'text', x: 120, y: 460, w: 1040, h: 160, text: notes.goals, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'goals', placeholder: 'Metas combinadas (uma por linha). Ex: Manter o CPL abaixo de R$ 25' },
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
   // 3 — Métricas Orgânicas (Regra: Orgânico sempre antes do pago)
   const org = d.organic
   const orgOk = org.status === 'ok'
-  const cellsOrg = org.stats.slice(0, 6).flatMap((s, i) => statCell(s, i % 2 ? 940 : 340, 232 + Math.floor(i / 2) * 150, true))
+  const cellsOrg = org.stats.slice(0, 6).flatMap((s, i) => statCell(s, i % 2 ? 940 : 340, 232 + Math.floor(i / 2) * 150, isDark, P))
   slides.push({
-    id: 'organic', label: 'Métricas orgânicas', dark: true,
+    id: 'organic', label: 'Métricas orgânicas', dark: isDark,
     els: [
-      ...corners(true),
-      title('Redes Sociais (Orgânico)', 60, 60, 'center'),
+      ...corners(isDark, P),
+      title('Redes Sociais (Orgânico)', 60, 60, 'center', undefined, P),
       { t: 'text', x: 60, y: 145, w: 1160, h: 30, text: `Números do Instagram${org.handle ? ` (${org.handle})` : ''} de ${period}, comparado ao ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(orgOk ? cellsOrg : [{ t: 'text', x: 160, y: 300, w: 960, h: 120, text: org.status === 'incomplete' ? `Os números ${is7d ? 'do período' : 'do mês fechado'} ainda não foram coletados. Use "Buscar dados" para atualizar.` : 'Sem dados orgânicos para este cliente (Página ou Instagram não vinculados).', size: 20, weight: 500, color: P.soft, align: 'center', valign: 'middle', lineHeight: 1.2 } as El]),
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
   // 4 — Conteúdo Orgânico (Print 1: 5 cards no layout do app)
   slides.push({
-    id: 'content', label: 'Conteúdo Orgânico', dark: true,
+    id: 'content', label: 'Conteúdo Orgânico', dark: isDark,
     els: [
-      ...corners(true),
-      title('Publicações em Destaque', 60, 55, 'center'),
+      ...corners(isDark, P),
+      title('Publicações em Destaque', 60, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Posts com maior alcance e engajamento do público no período.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
-      ...modernOrganicCards(org.top),
-      ...band(true),
+      ...modernOrganicCards(org.top, P),
+      ...band(isDark, P),
     ],
   })
 
@@ -596,30 +631,30 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
     ] as El[]
   })
   slides.push({
-    id: 'overview', label: 'Visão Geral', dark: true,
+    id: 'overview', label: 'Visão Geral', dark: isDark,
     els: [
-      ...corners(true),
-      title('Visão Geral dos Anúncios', 60, 55, 'center'),
+      ...corners(isDark, P),
+      title('Visão Geral dos Anúncios', 60, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 135, w: 1160, h: 30, text: `Resumo consolidado de investimento, alcance e conversões de ${period}, contra o ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(paid.status === 'ok' ? cellsPaid : [{ t: 'text', x: 160, y: 300, w: 960, h: 120, text: `Os números de anúncios ${is7d ? 'do período' : 'do mês fechado'} ainda não foram buscados. Use "Buscar dados" para atualizar.`, size: 20, weight: 500, color: P.soft, align: 'center', valign: 'middle', lineHeight: 1.2 } as El]),
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
   // 6 — Demografia do Público: Idade & Gênero (Print 3: Grid 2x2 com barras agrupadas e âmbar)
-  slides.push(buildAudienceSlide(d, paid))
+  slides.push(buildAudienceSlide(d, paid, theme))
 
   // 7 — Plataformas & Dispositivos (Print 2: 2 Donut charts com porcentagens)
-  slides.push(buildPlatformsSlide(d))
+  slides.push(buildPlatformsSlide(d, theme))
 
   // 8 — Funil de Conversão (Print 4: barra superior de KPIs + curva fluida + pílulas)
   const f = d.funnel
   const cplStat = paid.stats.find(s => s.lowerIsBetter && s.label.toLowerCase().startsWith('custo'))
   slides.push({
-    id: 'funnel', label: 'Funil de Vendas', dark: true,
+    id: 'funnel', label: 'Funil de Vendas', dark: isDark,
     els: [
-      ...corners(true),
-      title('Funil de Conversão', 54, 55, 'center'),
+      ...corners(isDark, P),
+      title('Funil de Conversão', 54, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: `Do primeiro impacto até a conversão: avanço do público em cada etapa.`, size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
 
       {
@@ -636,7 +671,7 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
         costPerResult: cplStat?.value,
       },
 
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
@@ -644,10 +679,10 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
   const camps = d.campaigns ?? []
   const hasCamps = camps.length > 0
   slides.push({
-    id: 'campaigns', label: 'Campanhas', dark: true,
+    id: 'campaigns', label: 'Campanhas', dark: isDark,
     els: [
-      ...corners(true),
-      title('Campanhas em Destaque', 54, 55, 'center'),
+      ...corners(isDark, P),
+      title('Campanhas em Destaque', 54, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: `Onde a verba foi investida e o volume de retorno gerado por cada campanha.`, size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 } as El,
       ...(hasCamps ? [
         {
@@ -667,29 +702,31 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
       ] : [
         { t: 'text', x: 160, y: 320, w: 960, h: 100, text: 'Sem campanhas ativas registradas neste período.', size: 18, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 } as El
       ]),
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
   // 10 — Criativos Campeões
   slides.push({
-    id: 'creatives', label: 'Criativos', dark: true,
+    id: 'creatives', label: 'Criativos', dark: isDark,
     els: [
-      ...corners(true),
-      title('Criativos Campeões', 54, 55, 'center'),
+      ...corners(isDark, P),
+      title('Criativos Campeões', 54, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: is7d ? 'Criativos campeões da semana com maior retorno e volume.' : 'Criativos campeões do mês com maior retorno e volume.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 } as El,
-      ...modernCreativeCards(paid.top, d.currency, paid.resultLabel),
-      ...band(true),
+      ...modernCreativeCards(paid.top, d.currency, paid.resultLabel, P),
+      ...band(isDark, P),
     ],
   })
 
   // 11 — Próximos passos & Otimizações
-  slides.push(makeNextStepsSlide(is7d, notes))
+  slides.push(makeNextStepsSlide(is7d, notes, theme))
 
   return slides
 }
 
-function makeNextStepsSlide(is7d: boolean, notes: ReportNotes): SlideSpec {
+function makeNextStepsSlide(is7d: boolean, notes: ReportNotes, theme: 'light' | 'dark' = 'dark'): SlideSpec {
+  const isDark = theme === 'dark'
+  const P = getPalette(theme)
   const p1 = notes.pillar1 || 'Gravar e colocar no ar 2 a 3 variações novas atacando a dor principal do cliente, mantendo os anúncios que já estão convertendo.'
   const p2 = notes.pillar2 || 'Testar novos públicos de interesse e semelhantes (Lookalike de compradores), mantendo exclusão de quem já converteu.'
   const p3 = notes.pillar3 || 'Subir a verba gradualmente nos anúncios com menor custo por lead e pausar os conjuntos que não estão trazendo retorno.'
@@ -709,22 +746,24 @@ function makeNextStepsSlide(is7d: boolean, notes: ReportNotes): SlideSpec {
   ]
 
   return {
-    id: 'next', label: 'Próximos passos', dark: true,
+    id: 'next', label: 'Próximos passos', dark: isDark,
     els: [
-      ...corners(true),
-      title('Próximos Passos', 60, 50),
+      ...corners(isDark, P),
+      title('Próximos Passos', 60, 50, 'left', undefined, P),
       { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: `Ações práticas planejadas para ${is7d ? 'a próxima semana' : 'o próximo mês'}.`, size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
       ...pillars,
       { t: 'box', x: 80, y: 315, w: 1120, h: 335, fill: P.card, line: P.cardBorder, radius: 16 },
       { t: 'text', x: 110, y: 335, w: 1060, h: 22, text: 'PLANO PRÁTICO COMBINADO COM O CLIENTE', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
       { t: 'text', x: 105, y: 365, w: 1070, h: 265, text: notes.next, size: 18, weight: 400, color: P.white, lineHeight: 1.55, edit: 'next', placeholder: `O que vamos executar ${is7d ? 'na próxima semana' : 'no próximo mês'} (clique para escrever)` },
-      ...band(true),
+      ...band(isDark, P),
     ],
   }
 }
 
-/** Modelo Orgânico Completo: 8 slides executivos aprofundados para gestão de redes sociais. */
-export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec[] {
+/** Modelo Orgânico Completo: 10 slides executivos aprofundados para gestão de redes sociais. */
+export function buildOrganicSlides(d: ReportData, notes: ReportNotes, theme: 'light' | 'dark' = 'dark'): SlideSpec[] {
+  const isDark = theme === 'dark'
+  const P = getPalette(theme)
   const is7d = d.month.preset === 'last_7d'
   const period = `${fmtDay(d.month.since)} até ${fmtDay(d.month.until)}`
   const compLabel = is7d ? 'período anterior' : 'mês anterior'
@@ -734,24 +773,24 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
 
   // 1 — Capa
   slides.push({
-    id: 'cover', label: 'Capa', dark: true,
+    id: 'cover', label: 'Capa', dark: isDark,
     els: [
-      ...corners(true),
+      ...corners(isDark, P),
       { t: 'text', x: 60, y: 88, w: 1160, h: 24, text: 'RELATÓRIO DE RESULTADOS ORGÂNICOS', size: 13, weight: 700, color: P.violetLight, align: 'center', lineHeight: 1.2 },
       { t: 'text', x: 60, y: 140, w: 1160, h: 230, text: upper(is7d ? 'Resultados dos últimos 7 dias' : `Resultados de ${d.month.label}`), size: is7d ? 72 : 82, weight: 800, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.15 },
       { t: 'text', x: 60, y: 385, w: 1160, h: 30, text: `Período avaliado: ${period}`, size: 18, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(d.client.logoUrl ? [{ t: 'img', x: 610, y: 440, w: 60, h: 60, src: d.client.logoUrl, radius: 12 } as El] : []),
       { t: 'text', x: 60, y: d.client.logoUrl ? 515 : 465, w: 1160, h: 44, text: upper(d.client.name), size: 30, weight: 600, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.2 },
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
   // 2 — Objetivo e metas
   slides.push({
-    id: 'objective', label: 'Objetivo e metas', dark: true,
+    id: 'objective', label: 'Objetivo e metas', dark: isDark,
     els: [
-      ...corners(true),
-      title('Objetivo e metas', 70, 70),
+      ...corners(isDark, P),
+      title('Objetivo e metas', 70, 70, 'left', undefined, P),
       { t: 'box', x: 90, y: 180, w: 1100, h: 200, fill: P.card, line: P.cardBorder, radius: 16 },
       { t: 'text', x: 120, y: 200, w: 1040, h: 24, text: 'OBJETIVO ESTRATÉGICO DO CLIENTE', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
       { t: 'text', x: 120, y: 235, w: 1040, h: 125, text: notes.objective, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'objective', placeholder: 'Objetivo do cliente com as redes sociais (clique para escrever)' },
@@ -759,20 +798,20 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
       { t: 'box', x: 90, y: 405, w: 1100, h: 235, fill: P.card, line: P.cardBorder, radius: 16 },
       { t: 'text', x: 120, y: 425, w: 1040, h: 24, text: 'METAS E DIRETRIZES DO PERÍODO', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
       { t: 'text', x: 120, y: 460, w: 1040, h: 160, text: notes.goals, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'goals', placeholder: 'Uma meta por linha (clique para escrever)' },
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
   // 3 — Visão Geral Orgânica
-  const cellsOrg = org.stats.slice(0, 6).flatMap((s, i) => statCell(s, i % 2 ? 940 : 340, 232 + Math.floor(i / 2) * 150, true))
+  const cellsOrg = org.stats.slice(0, 6).flatMap((s, i) => statCell(s, i % 2 ? 940 : 340, 232 + Math.floor(i / 2) * 150, isDark, P))
   slides.push({
-    id: 'organic', label: 'Visão Geral', dark: true,
+    id: 'organic', label: 'Visão Geral', dark: isDark,
     els: [
-      ...corners(true),
-      title('Visão Geral Orgânica', 60, 60, 'center'),
+      ...corners(isDark, P),
+      title('Visão Geral Orgânica', 60, 60, 'center', undefined, P),
       { t: 'text', x: 60, y: 145, w: 1160, h: 30, text: `Resultados consolidados de ${period} no Instagram${org.handle ? ` (${org.handle})` : ''}, contra o ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(orgOk ? cellsOrg : [{ t: 'text', x: 160, y: 300, w: 960, h: 120, text: org.status === 'incomplete' ? `Os números ${is7d ? 'do período' : 'do mês fechado'} ainda não foram coletados.` : 'Sem dados orgânicos para este cliente.', size: 20, weight: 500, color: P.soft, align: 'center', valign: 'middle', lineHeight: 1.2 } as El]),
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
@@ -781,10 +820,10 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
   const newFollowers = org.stats.find(s => s.label.toLowerCase().includes('seguidor'))?.value || '—'
   const interactionsStat = org.stats.find(s => s.label.toLowerCase().includes('interações'))?.value || '—'
   slides.push({
-    id: 'growth', label: 'Crescimento', dark: true,
+    id: 'growth', label: 'Crescimento', dark: isDark,
     els: [
-      ...corners(true),
-      title('Crescimento & Audiência', 54, 55, 'center'),
+      ...corners(isDark, P),
+      title('Crescimento & Audiência', 54, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Evolução da base de seguidores, alcance da marca e taxas de engajamento no Instagram.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
 
       { t: 'box', x: 80, y: 185, w: 355, h: 210, fill: P.card, line: P.cardBorder, radius: 16 },
@@ -806,15 +845,15 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
       { t: 'text', x: 110, y: 445, w: 1060, h: 22, text: 'DIAGNÓSTICO ESTRATÉGICO DE AUDIÊNCIA', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
       { t: 'text', x: 110, y: 475, w: 1060, h: 145, text: 'O crescimento orgânico consistente reflete publicações com temas de alta relevância para a persona. A proporção positiva de interações sobre o alcance demonstra que os seguidores ativos estão retidos e engajados com a proposta de valor do perfil.', size: 16, weight: 400, color: P.white, lineHeight: 1.6 },
 
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
   // 5 — Perfil de Público Orgânico (Idades & Gênero)
-  slides.push(buildOrganicAudienceSlide(d))
+  slides.push(buildOrganicAudienceSlide(d, theme))
 
   // 6 — Melhores Dias & Horários para Postar
-  slides.push(buildBestTimesSlide())
+  slides.push(buildBestTimesSlide(theme))
 
   // 7 — Performance por Formatos (Reels vs Fotos/Carrossel)
   const reelsPosts = org.top.filter(p => p.type?.toLowerCase().includes('reel') || p.type?.toLowerCase().includes('video'))
@@ -822,10 +861,10 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
   const reelsAvgReach = reelsPosts.length > 0 ? Math.round(reelsPosts.reduce((acc, p) => acc + (p.reach || 0), 0) / reelsPosts.length) : 0
   const staticAvgReach = staticPosts.length > 0 ? Math.round(staticPosts.reduce((acc, p) => acc + (p.reach || 0), 0) / staticPosts.length) : 0
   slides.push({
-    id: 'formats', label: 'Formatos', dark: true,
+    id: 'formats', label: 'Formatos', dark: isDark,
     els: [
-      ...corners(true),
-      title('Performance por Formatos', 54, 55, 'center'),
+      ...corners(isDark, P),
+      title('Performance por Formatos', 54, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Comparação estratégica entre conteúdos em vídeo (Reels) e postagens estáticas/carrossel.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
 
       { t: 'box', x: 80, y: 185, w: 540, h: 460, fill: P.card, line: P.cardBorder, radius: 16 },
@@ -840,32 +879,32 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
       { t: 'text', x: 690, y: 280, w: 480, h: 48, text: staticAvgReach > 0 ? `${compact(staticAvgReach)} contas` : 'Em consolidação', size: 32, weight: 800, color: P.white },
       { t: 'text', x: 690, y: 350, w: 480, h: 100, text: '• Formato com maior taxa de RETENÇÃO e SALVAMENTOS.\n• Consolida autoridade e aprofunda temas técnicos para a base atual.\n• Gera maior probabilidade de compartilhamento no direct.', size: 14, weight: 400, color: P.soft, lineHeight: 1.6 },
 
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
   // 8 — Destaques de Conteúdo (Top 5)
   slides.push({
-    id: 'content', label: 'Top Conteúdos', dark: true,
+    id: 'content', label: 'Top Conteúdos', dark: isDark,
     els: [
-      ...corners(true),
-      title('Destaques de Conteúdo', 54, 55, 'center'),
+      ...corners(isDark, P),
+      title('Destaques de Conteúdo', 54, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Publicações que lideraram em alcance, retenção e engajamento no Instagram.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
-      ...modernOrganicCards(org.top),
-      ...band(true),
+      ...modernOrganicCards(org.top, P),
+      ...band(isDark, P),
     ],
   })
 
   // 9 — Melhores Reels & Vídeos
   const topReels = reelsPosts.slice(0, 3)
   slides.push({
-    id: 'reels', label: 'Reels em Alta', dark: true,
+    id: 'reels', label: 'Reels em Alta', dark: isDark,
     els: [
-      ...corners(true),
-      title('Reels em Alta', 54, 55, 'center'),
+      ...corners(isDark, P),
+      title('Reels em Alta', 54, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Conteúdos em formato de vídeo curto que obtiveram maior tração orgânica no período.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
-      ...(topReels.length > 0 ? modernOrganicCards(topReels) : modernOrganicCards(org.top.slice(0, 3))),
-      ...band(true),
+      ...(topReels.length > 0 ? modernOrganicCards(topReels, P) : modernOrganicCards(org.top.slice(0, 3), P)),
+      ...band(isDark, P),
     ],
   })
 
@@ -889,23 +928,25 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
   ]
 
   slides.push({
-    id: 'next', label: 'Próximos passos', dark: true,
+    id: 'next', label: 'Próximos passos', dark: isDark,
     els: [
-      ...corners(true),
-      title('Próximos Passos', 60, 50),
+      ...corners(isDark, P),
+      title('Próximos Passos', 60, 50, 'left', undefined, P),
       { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: `Planejamento editorial e ações prioritárias para ${is7d ? 'a próxima semana' : 'o próximo mês'}.`, size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
       ...pillars,
       { t: 'box', x: 80, y: 315, w: 1120, h: 335, fill: P.card, line: P.cardBorder, radius: 16 },
       { t: 'text', x: 110, y: 335, w: 1060, h: 22, text: 'PLANO EDITORIAL E AÇÕES PRÁTICAS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
       { t: 'text', x: 105, y: 365, w: 1070, h: 265, text: notes.next, size: 18, weight: 400, color: P.white, lineHeight: 1.55, edit: 'next', placeholder: 'Temas para os próximos posts e ações combinadas (clique para escrever)' },
-      ...band(true),
+      ...band(isDark, P),
     ],
   })
 
   return slides
 }
 
-function buildOrganicAudienceSlide(d: ReportData): SlideSpec {
+function buildOrganicAudienceSlide(d: ReportData, theme: 'light' | 'dark' = 'dark'): SlideSpec {
+  const isDark = theme === 'dark'
+  const P = getPalette(theme)
   const aud = d.audience
   const ageLabels = aud?.ageBars?.map(b => b.label) ?? ['18-24', '25-34', '35-44', '45-54', '55-64', '65+']
   const ageReach = aud?.ageBars?.map(b => b.reach) ?? [920, 2600, 2350, 2290, 1480, 470]
@@ -916,10 +957,10 @@ function buildOrganicAudienceSlide(d: ReportData): SlideSpec {
   return {
     id: 'audience_org',
     label: 'Público Orgânico',
-    dark: true,
+    dark: isDark,
     els: [
-      ...corners(true),
-      title('Perfil do Público: Idade & Gênero', 54, 55, 'center'),
+      ...corners(isDark, P),
+      title('Perfil do Público: Idade & Gênero', 54, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Distribuição demográfica da base de seguidores e pessoas alcançadas no Instagram.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
 
       // Card 1: Idades
@@ -950,19 +991,21 @@ function buildOrganicAudienceSlide(d: ReportData): SlideSpec {
         showLegend: true,
       },
 
-      ...band(true),
+      ...band(isDark, P),
     ],
   }
 }
 
-function buildBestTimesSlide(): SlideSpec {
+function buildBestTimesSlide(theme: 'light' | 'dark' = 'dark'): SlideSpec {
+  const isDark = theme === 'dark'
+  const P = getPalette(theme)
   return {
     id: 'best_times',
     label: 'Melhores Horários',
-    dark: true,
+    dark: isDark,
     els: [
-      ...corners(true),
-      title('Melhores Dias & Horários para Postar', 54, 55, 'center'),
+      ...corners(isDark, P),
+      title('Melhores Dias & Horários para Postar', 54, 55, 'center', undefined, P),
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Mapeamento de engajamento semanal e janelas de maior pico de atividade da audiência.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
 
       // Card 1: Gráfico de engajamento por dia da semana
@@ -1007,13 +1050,13 @@ function buildBestTimesSlide(): SlideSpec {
       { t: 'text', x: 725, y: 548, w: 450, h: 20, text: 'RECOMENDAÇÃO PRÁTICA', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
       { t: 'text', x: 725, y: 572, w: 450, h: 54, text: 'Concentrar as postagens principais entre terça e quinta-feira, no final da tarde. O público tem mais tempo para interagir e o conteúdo ganha tração contínua.', size: 11.5, weight: 400, color: P.white, lineHeight: 1.4 },
 
-      ...band(true),
+      ...band(isDark, P),
     ],
   }
 }
 
-/** Retorna os slides correspondentes ao modo selecionado (padrão, avançado ou orgânico). */
-export function buildSlides(d: ReportData, notes: ReportNotes, mode: ReportMode = 'standard'): SlideSpec[] {
-  if (mode === 'organic') return buildOrganicSlides(d, notes)
-  return mode === 'advanced' ? buildAdvancedSlides(d, notes) : buildStandardSlides(d, notes)
+/** Retorna os slides correspondentes ao modo selecionado (padrão, avançado ou orgânico) no tema escolhido. */
+export function buildSlides(d: ReportData, notes: ReportNotes, mode: ReportMode = 'standard', theme: 'light' | 'dark' = 'dark'): SlideSpec[] {
+  if (mode === 'organic') return buildOrganicSlides(d, notes, theme)
+  return mode === 'advanced' ? buildAdvancedSlides(d, notes, theme) : buildStandardSlides(d, notes, theme)
 }

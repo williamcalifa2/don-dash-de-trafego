@@ -314,7 +314,7 @@ function Dashboard() {
                     <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: isValidating ? 'var(--accent)' : 'var(--green)', animation: 'live-ping 1.4s ease-out infinite' }} />
                     <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: isValidating ? 'var(--accent)' : 'var(--green)' }} />
                   </span>
-                  {isValidating ? 'Atualizando…' : 'Ao vivo · 5 min'}
+                  {isValidating ? 'Atualizando…' : 'Ao vivo'}
                 </span>
               )}
             </div>

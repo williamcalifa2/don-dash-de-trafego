@@ -1,5 +1,5 @@
 /** Gera o PowerPoint (.pptx) a partir dos mesmos slides do editor. Roda no navegador; textos ficam editáveis no PowerPoint e no Canva. */
-import { compact, FONT, PALETTE, STAGE, type SlideSpec } from './reportSlides'
+import { compact, FONT, PALETTE, PALETTE_LIGHT, STAGE, type SlideSpec } from './reportSlides'
 
 const IN = 96 // px do palco por polegada (1280 px = 13,333 pol)
 const inch = (px: number) => px / IN
@@ -64,8 +64,10 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
   pptx.company = 'Grupo Don'
 
   for (const spec of slides) {
+    const isDark = spec.dark
+    const P = isDark ? PALETTE : PALETTE_LIGHT
     const slide = pptx.addSlide()
-    slide.background = { color: hex(spec.dark ? PALETTE.dark : PALETTE.light) }
+    slide.background = { color: hex(isDark ? PALETTE.dark : PALETTE_LIGHT.light) }
 
     for (const el of spec.els) {
       const pos = { x: inch(el.x), y: inch(el.y), w: inch(el.w), h: inch(el.h) }
@@ -86,8 +88,8 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
         } else {
           slide.addShape(pptx.ShapeType.roundRect, {
             ...pos,
-            fill: { color: hex(PALETTE.card) },
-            line: { color: hex(PALETTE.cardBorder), width: 1 },
+            fill: { color: hex(P.card) },
+            line: { color: hex(P.cardBorder), width: 1 },
             rectRadius: inch(8),
           })
         }
@@ -97,8 +99,8 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
           // Card de fundo
           slide.addShape(pptx.ShapeType.roundRect, {
             ...pos,
-            fill: { color: hex(PALETTE.card) },
-            line: { color: hex(PALETTE.cardBorder), width: 1.5 },
+            fill: { color: hex(P.card) },
+            line: { color: hex(P.cardBorder), width: 1.5 },
             rectRadius: inch(14),
           })
           slide.addText(el.title ?? '', {
@@ -108,7 +110,7 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
             h: inch(30),
             fontSize: pt(15),
             bold: true,
-            color: hex(PALETTE.white),
+            color: hex(P.white),
             fontFace: FONT,
           })
           slide.addChart(pptx.ChartType.doughnut, el.data, {
@@ -121,10 +123,10 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
             showLegend: el.showLegend ?? true,
             legendPos: 'r',
             legendFontSize: pt(11),
-            legendColor: hex(PALETTE.white),
+            legendColor: hex(P.white),
             legendFontFace: FONT,
             showPercent: true,
-            dataLabelColor: hex(PALETTE.white),
+            dataLabelColor: hex(P.white),
             dataLabelFontSize: pt(10),
           })
         } else {
@@ -132,8 +134,8 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
           // Card de fundo
           slide.addShape(pptx.ShapeType.roundRect, {
             ...pos,
-            fill: { color: hex(PALETTE.card) },
-            line: { color: hex(PALETTE.cardBorder), width: 1.5 },
+            fill: { color: hex(P.card) },
+            line: { color: hex(P.cardBorder), width: 1.5 },
             rectRadius: inch(14),
           })
           if (el.title) {
@@ -144,7 +146,7 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
               h: inch(26),
               fontSize: pt(14),
               bold: true,
-              color: hex(PALETTE.white),
+              color: hex(P.white),
               fontFace: FONT,
             })
           }
@@ -160,15 +162,15 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
             showLegend: el.showLegend ?? true,
             legendPos: 't',
             legendFontSize: pt(10),
-            legendColor: 'F8FAFC',
+            legendColor: hex(P.white),
             legendFontFace: FONT,
-            valAxisLabelColor: 'CBD5E1',
-            catAxisLabelColor: 'F8FAFC',
+            valAxisLabelColor: hex(P.muted),
+            catAxisLabelColor: hex(P.white),
             valAxisLineShow: false,
             catAxisLineShow: true,
-            catAxisLineColor: '334155',
+            catAxisLineColor: hex(P.cardBorder),
             showValue: el.showValueLabels ?? false,
-            dataLabelColor: 'FFFFFF',
+            dataLabelColor: hex(P.white),
             dataLabelFontSize: pt(9),
           })
           if (el.costSubtitle) {
@@ -178,18 +180,18 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
               w: pos.w - inch(30),
               h: inch(20),
               fontSize: pt(10),
-              color: 'CBD5E1',
+              color: hex(P.muted),
               fontFace: FONT,
               align: 'center',
             })
           }
         }
       } else if (el.t === 'funnel') {
-        // Container escuro do Funil
+        // Container do Funil
         slide.addShape(pptx.ShapeType.roundRect, {
           ...pos,
-          fill: { color: hex(PALETTE.card) },
-          line: { color: hex(PALETTE.cardBorder), width: 1.5 },
+          fill: { color: hex(P.card) },
+          line: { color: hex(P.cardBorder), width: 1.5 },
           rectRadius: inch(16),
         })
 
@@ -206,22 +208,22 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
           const sx = pos.x + inch(20) + sIdx * colW
           slide.addText(stg.label, {
             x: sx, y: pos.y + inch(14), w: colW, h: inch(20),
-            fontSize: pt(11), bold: true, color: hex(sIdx === 2 ? PALETTE.green : PALETTE.muted), fontFace: FONT,
+            fontSize: pt(11), bold: true, color: hex(sIdx === 2 ? P.green : P.muted), fontFace: FONT,
           })
           slide.addText(stg.val, {
             x: sx, y: pos.y + inch(34), w: colW, h: inch(36),
-            fontSize: pt(28), bold: true, color: hex(sIdx === 2 ? PALETTE.green : PALETTE.white), fontFace: FONT,
+            fontSize: pt(28), bold: true, color: hex(sIdx === 2 ? P.green : P.white), fontFace: FONT,
           })
           slide.addText(stg.sub, {
             x: sx, y: pos.y + inch(70), w: colW, h: inch(18),
-            fontSize: pt(10), color: hex(PALETTE.soft), fontFace: FONT,
+            fontSize: pt(10), color: hex(P.soft), fontFace: FONT,
           })
 
           // Linhas divisórias entre colunas
           if (sIdx < 3) {
             slide.addShape(pptx.ShapeType.rect, {
               x: sx + colW - inch(5), y: pos.y + inch(18), w: inch(1), h: inch(65),
-              fill: { color: hex(PALETTE.cardBorder) }, line: { type: 'none' },
+              fill: { color: hex(P.cardBorder) }, line: { type: 'none' },
             })
           }
         })
@@ -230,22 +232,22 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
         const roasVal = el.roas ? `${el.roas}x` : '0,0%'
         slide.addShape(pptx.ShapeType.roundRect, {
           x: pos.x + pos.w - inch(150), y: pos.y + inch(18), w: inch(130), h: inch(64),
-          fill: { color: hex(PALETTE.cardSoft) }, line: { color: hex(PALETTE.cardBorder), width: 1 },
+          fill: { color: hex(P.cardSoft) }, line: { color: hex(P.cardBorder), width: 1 },
           rectRadius: inch(10),
         })
         slide.addText('RETORNO GERAL', {
           x: pos.x + pos.w - inch(150), y: pos.y + inch(24), w: inch(130), h: inch(18),
-          fontSize: pt(9), bold: true, color: hex(PALETTE.muted), align: 'center', fontFace: FONT,
+          fontSize: pt(9), bold: true, color: hex(P.muted), align: 'center', fontFace: FONT,
         })
         slide.addText(roasVal, {
           x: pos.x + pos.w - inch(150), y: pos.y + inch(42), w: inch(130), h: inch(32),
-          fontSize: pt(20), bold: true, color: hex(PALETTE.white), align: 'center', fontFace: FONT,
+          fontSize: pt(20), bold: true, color: hex(P.white), align: 'center', fontFace: FONT,
         })
 
         // Área da onda / fluxo do funil
         slide.addShape(pptx.ShapeType.roundRect, {
           x: pos.x + inch(20), y: pos.y + inch(105), w: pos.w - inch(40), h: pos.h - inch(125),
-          fill: { color: hex(PALETTE.cardSoft) }, line: { color: hex(PALETTE.cardBorder), width: 1 },
+          fill: { color: hex(P.cardSoft) }, line: { color: hex(P.cardBorder), width: 1 },
           rectRadius: inch(12),
         })
 
@@ -257,34 +259,34 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
         // Pílula 1: CTR
         slide.addShape(pptx.ShapeType.roundRect, {
           x: pos.x + colW - inch(50), y: pillY, w: pillW, h: pillH,
-          fill: { color: hex(PALETTE.card) }, line: { color: hex(PALETTE.violet), width: 1.5 },
+          fill: { color: hex(P.card) }, line: { color: hex(P.violet), width: 1.5 },
           rectRadius: inch(18),
         })
         slide.addText(`${el.ctr}% CTR`, {
           x: pos.x + colW - inch(50), y: pillY, w: pillW, h: pillH,
-          fontSize: pt(12), bold: true, color: hex(PALETTE.violetLight), align: 'center', valign: 'middle', fontFace: FONT,
+          fontSize: pt(12), bold: true, color: hex(P.violetLight), align: 'center', valign: 'middle', fontFace: FONT,
         })
 
         // Pílula 2: Conversa / Lead
         slide.addShape(pptx.ShapeType.roundRect, {
           x: pos.x + colW * 2 - inch(50), y: pillY + inch(45), w: pillW + inch(20), h: pillH,
-          fill: { color: hex(PALETTE.card) }, line: { color: hex(PALETTE.green), width: 1.5 },
+          fill: { color: hex(P.card) }, line: { color: hex(P.green), width: 1.5 },
           rectRadius: inch(18),
         })
         slide.addText(`${el.clickToResultRate}% ${el.resultLabel}`, {
           x: pos.x + colW * 2 - inch(50), y: pillY + inch(45), w: pillW + inch(20), h: pillH,
-          fontSize: pt(12), bold: true, color: hex(PALETTE.green), align: 'center', valign: 'middle', fontFace: FONT,
+          fontSize: pt(12), bold: true, color: hex(P.green), align: 'center', valign: 'middle', fontFace: FONT,
         })
 
         // Pílula 3: Venda / Conversão
         slide.addShape(pptx.ShapeType.roundRect, {
           x: pos.x + colW * 3 - inch(50), y: pillY + inch(80), w: pillW, h: pillH,
-          fill: { color: hex(PALETTE.card) }, line: { color: hex(PALETTE.amber), width: 1.5 },
+          fill: { color: hex(P.card) }, line: { color: hex(P.amber), width: 1.5 },
           rectRadius: inch(18),
         })
         slide.addText(`0,0% Venda`, {
           x: pos.x + colW * 3 - inch(50), y: pillY + inch(80), w: pillW, h: pillH,
-          fontSize: pt(12), bold: true, color: hex(PALETTE.amber), align: 'center', valign: 'middle', fontFace: FONT,
+          fontSize: pt(12), bold: true, color: hex(P.amber), align: 'center', valign: 'middle', fontFace: FONT,
         })
       } else if (el.t === 'table') {
         const headerRow = el.headers.map((h, i) => ({
@@ -294,7 +296,7 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
             fontSize: pt(12),
             bold: true,
             color: 'FFFFFF',
-            fill: { color: hex(PALETTE.violet) },
+            fill: { color: hex(P.violet) },
             align: (i === 0 ? 'left' : 'center') as 'left' | 'right' | 'center',
             valign: 'middle' as const,
           },
@@ -306,8 +308,8 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
               fontFace: FONT,
               fontSize: pt(11),
               bold: !!cell.bold,
-              color: hex(cell.color ?? (spec.dark ? PALETTE.white : PALETTE.ink)),
-              fill: { color: hex(rIdx % 2 === 0 ? PALETTE.card : PALETTE.cardSoft) },
+              color: hex(cell.color ?? (isDark ? P.white : P.ink)),
+              fill: { color: hex(rIdx % 2 === 0 ? P.card : P.cardSoft) },
               align: (cell.align ?? 'left') as 'left' | 'right' | 'center',
               valign: 'middle' as const,
             },
@@ -316,7 +318,7 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
         slide.addTable([headerRow, ...dataRows], {
           ...pos,
           colW: el.colWidths.map(inch),
-          border: { type: 'solid', pt: 1, color: hex(PALETTE.cardBorder) },
+          border: { type: 'solid', pt: 1, color: hex(P.cardBorder) },
           margin: [4, 8, 4, 8],
         })
       } else if (el.text.trim()) {
