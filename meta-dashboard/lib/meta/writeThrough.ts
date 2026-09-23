@@ -22,5 +22,8 @@ export async function writeThroughMetrics(snaps: SnapshotStore, clientId: string
   // A série diária termina em ontem: os números de hoje ficam só em summary/today.
   if (preset !== 'today' && raw.dailyRows?.length) {
     await snaps.put(clientId, 'daily', 'last_30d', await mergeDaily(snaps, clientId, raw.dailyRows), now)
+    if (preset === 'last_month' || preset === 'month_2' || preset === 'month_3') {
+      await snaps.put(clientId, 'daily', preset, raw.dailyRows, now)
+    }
   }
 }

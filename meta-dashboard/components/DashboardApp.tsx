@@ -6,6 +6,7 @@ import { MetricTile } from '@/components/MetricTile'
 import { CampaignTable } from '@/components/CampaignTable'
 import { DailyChart } from '@/components/DailyChart'
 import { FunnelTab } from '@/components/FunnelTab'
+import { SimuladorTab } from '@/components/SimuladorTab'
 import { LeadsTab } from '@/components/LeadsTab'
 import { MetricPicker, useSelectedMetrics } from '@/components/MetricPicker'
 import { TvMode } from '@/components/TvMode'
@@ -14,6 +15,7 @@ import { ReportStudio } from '@/components/ReportStudio'
 import { ReportStudioTab } from '@/components/ReportStudioTab'
 import { LeadToast } from '@/components/LeadToast'
 import { BudgetPacingPopover } from '@/components/BudgetPacingPopover'
+import { ClientGoalsTab } from '@/components/ClientGoalsTab'
 import { CalendarViewModal } from '@/components/CalendarViewModal'
 import { LeadsProvider, useLeadsData } from '@/lib/leadsContext'
 import { useLeadAlerts } from '@/lib/useLeadAlerts'
@@ -28,14 +30,29 @@ import { OrganicTab } from '@/components/OrganicTab'
 import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
 import { AudienceTab } from '@/components/AudienceTab'
 
-const PRESETS: { value: DatePreset; label: string }[] = [
-  { value: 'today', label: 'Hoje' },
-  { value: 'last_7d', label: '7 dias' },
-  { value: 'last_14d', label: '14 dias' },
-  { value: 'last_30d', label: '30 dias' },
-  { value: 'this_month', label: 'Este mês' },
-  { value: 'last_month', label: 'Mês passado' },
-]
+function getDashboardPresets(): { value: DatePreset; label: string }[] {
+  const br = new Date(Date.now() - 3 * 3600 * 1000)
+  const MONTHS_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+  const day = (yr: number, mo: number, d: number) => new Date(Date.UTC(yr, mo, d))
+
+  const fmtMonthYear = (offset: number) => {
+    const d = day(br.getUTCFullYear(), br.getUTCMonth() - offset, 1)
+    return `${MONTHS_PT[d.getUTCMonth()]} / ${d.getUTCFullYear()}`
+  }
+
+  return [
+    { value: 'today', label: 'Hoje' },
+    { value: 'last_7d', label: '7 dias' },
+    { value: 'last_14d', label: '14 dias' },
+    { value: 'last_30d', label: '30 dias' },
+    { value: 'this_month', label: `${MONTHS_PT[br.getUTCMonth()]} (Este mês)` },
+    { value: 'last_month', label: `${fmtMonthYear(1)} (Mês passado)` },
+    { value: 'month_2', label: fmtMonthYear(2) },
+    { value: 'month_3', label: fmtMonthYear(3) },
+  ]
+}
+
+const PRESETS = getDashboardPresets()
 
 function fmt(v: number | null | undefined, currency: string) {
   if (v == null) return '—'
@@ -435,7 +452,7 @@ function Dashboard() {
                   top: 'calc(100% + 4px)',
                   left: 0,
                   zIndex: 100,
-                  minWidth: 150,
+                  minWidth: 220,
                   background: 'var(--bg-card)',
                   border: '1px solid var(--border)',
                   borderRadius: 12,
@@ -470,6 +487,9 @@ function Dashboard() {
                         color: active ? 'var(--accent)' : 'var(--text-1)',
                         background: active ? 'var(--accent-soft)' : 'transparent',
                         borderRadius: 8,
+                        marginTop: pr.value === 'this_month' ? 4 : 0,
+                        borderTop: pr.value === 'this_month' ? '1px solid var(--border)' : 'none',
+                        paddingTop: pr.value === 'this_month' ? 8 : 6,
                       }}
                     >
                       <span>{pr.label}</span>

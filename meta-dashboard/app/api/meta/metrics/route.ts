@@ -158,7 +158,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const datePreset = (searchParams.get('date_preset') ?? 'last_7d') as DatePreset
 
-  const validPresets: DatePreset[] = ['today', 'last_7d', 'last_14d', 'last_30d', 'this_month']
+  const validPresets: DatePreset[] = ['today', 'last_7d', 'last_14d', 'last_30d', 'this_month', 'last_month', 'month_2', 'month_3']
   if (!validPresets.includes(datePreset)) {
     return NextResponse.json({ error: 'Invalid date_preset' }, { status: 400 })
   }

@@ -1,7 +1,7 @@
 import { legacyGet, errMsg } from './meta/legacy'
 import { detectKind, KIND_LABELS, type ResultKind } from './resultKind'
 import { isCustomConversion, labelAction } from './actionLabels'
-export type DatePreset = 'today' | 'last_7d' | 'last_30d' | 'last_14d' | 'this_month' | 'last_month'
+export type DatePreset = 'today' | 'last_7d' | 'last_30d' | 'last_14d' | 'this_month' | 'last_month' | 'month_2' | 'month_3'
 
 export interface MetricsSummary {
   spend: number
@@ -582,8 +582,56 @@ function buildSummary(s: Record<string, unknown>): MetricsSummary {
 }
 
 /**
+ * Retorna o intervalo { since, until } caso o preset seja um mês específico fechado (last_month, month_2, month_3).
+ */
+export function currentTimeRange(datePreset: DatePreset, nowMs = Date.now()): { since: string; until: string } | null {
+  const br = new Date(nowMs - 3 * 3600 * 1000) // relógio do Brasil lido em UTC
+  const day = (yr: number, mo: number, d: number) => new Date(Date.UTC(yr, mo, d))
+  const fmt = (d: Date) => d.toISOString().slice(0, 10)
+  const y = br.getUTCFullYear()
+  const m = br.getUTCMonth()
+
+  if (datePreset === 'last_month') {
+    const since = day(y, m - 1, 1)
+    const until = day(y, m, 0)
+    return { since: fmt(since), until: fmt(until) }
+  }
+  if (datePreset === 'month_2') {
+    const since = day(y, m - 2, 1)
+    const until = day(y, m - 1, 0)
+    return { since: fmt(since), until: fmt(until) }
+  }
+  if (datePreset === 'month_3') {
+    const since = day(y, m - 3, 1)
+    const until = day(y, m - 2, 0)
+    return { since: fmt(since), until: fmt(until) }
+  }
+  return null
+}
+
+/** Retorna a lista de presets mensais formatados em português com nomes reais dos meses */
+export function getMonthlyPresets(nowMs = Date.now()): Array<{ value: DatePreset; label: string; monthName: string }> {
+  const br = new Date(nowMs - 3 * 3600 * 1000)
+  const MONTHS_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+  const day = (yr: number, mo: number, d: number) => new Date(Date.UTC(yr, mo, d))
+
+  const fmtMonthYear = (offset: number) => {
+    const d = day(br.getUTCFullYear(), br.getUTCMonth() - offset, 1)
+    return `${MONTHS_PT[d.getUTCMonth()]} / ${d.getUTCFullYear()}`
+  }
+
+  return [
+    { value: 'this_month', label: `${MONTHS_PT[br.getUTCMonth()]} (Este mês)`, monthName: MONTHS_PT[br.getUTCMonth()] },
+    { value: 'last_month', label: `${fmtMonthYear(1)} (Mês passado)`, monthName: fmtMonthYear(1) },
+    { value: 'month_2', label: fmtMonthYear(2), monthName: fmtMonthYear(2) },
+    { value: 'month_3', label: fmtMonthYear(3), monthName: fmtMonthYear(3) },
+  ]
+}
+
+/**
  * Período anterior equivalente, na data do Brasil. "Hoje" compara com ontem; 7/14/30 dias (que não incluem hoje) com os N dias
  * imediatamente antes; "este mês" (do dia 1 até hoje) com o mesmo trecho do mês passado.
+ * imediatamente antes; "este mês" (do dia 1 até hoje) com o mesmo trecho do mês passado; meses fechados comparam com o mês fechado anterior.
  */
 function prevTimeRange(datePreset: DatePreset, nowMs = Date.now()): string {
   const br = new Date(nowMs - 3 * 3600 * 1000) // relógio do Brasil lido em UTC
@@ -596,6 +644,12 @@ function prevTimeRange(datePreset: DatePreset, nowMs = Date.now()): string {
     // o mês fechado antes do mês passado (mesmo recorte inteiro, para comparar mês com mês)
     since = day(today.getUTCFullYear(), today.getUTCMonth() - 2, 1)
     until = day(today.getUTCFullYear(), today.getUTCMonth() - 1, 0)
+  } else if (datePreset === 'month_2') {
+    since = day(today.getUTCFullYear(), today.getUTCMonth() - 3, 1)
+    until = day(today.getUTCFullYear(), today.getUTCMonth() - 2, 0)
+  } else if (datePreset === 'month_3') {
+    since = day(today.getUTCFullYear(), today.getUTCMonth() - 4, 1)
+    until = day(today.getUTCFullYear(), today.getUTCMonth() - 3, 0)
   } else if (datePreset === 'this_month') {
     const first = day(today.getUTCFullYear(), today.getUTCMonth() - 1, 1)
     const lastOfPrev = day(today.getUTCFullYear(), today.getUTCMonth(), 0).getUTCDate()
@@ -712,18 +766,48 @@ export async function fetchMetrics(
   const ctx = { accountId: adAccountId, clientId, token, purpose: 'painel:metricas' }
   type Rows = { data?: InsightRow[] }
 
+  const customRange = currentTimeRange(datePreset)
+  const isCustomMonth = datePreset === 'month_2' || datePreset === 'month_3'
+  const timeParam = isCustomMonth && customRange
+    ? `time_range=${encodeURIComponent(`{"since":"${customRange.since}","until":"${customRange.until}"}`)}`
+    : `date_preset=${datePreset}`
+
   const accountRes = await legacyGet<{ name?: string; currency?: string }>(`${adAccountId}?fields=name,currency`, ctx)
   if (!accountRes.ok) throw new Error(errMsg(accountRes, 'Failed to fetch account info'))
 
-  const insightsRes = await legacyGet<Rows>(`${adAccountId}/insights?fields=${INSIGHT_FIELDS}&date_preset=${datePreset}`, ctx)
+  const insightsRes = await legacyGet<Rows>(`${adAccountId}/insights?fields=${INSIGHT_FIELDS}&${timeParam}`, ctx)
   if (!insightsRes.ok) throw new Error(errMsg(insightsRes, 'Failed to fetch account insights'))
 
   const prevRes = await legacyGet<Rows>(`${adAccountId}/insights?fields=${INSIGHT_FIELDS}&time_range=${encodeURIComponent(prevTimeRange(datePreset))}`, ctx)
-  const dailyRes = await legacyGet<Rows>(`${adAccountId}/insights?fields=${INSIGHT_FIELDS}&date_preset=${datePreset}&time_increment=1&limit=100`, ctx)
+  const dailyRes = await legacyGet<Rows>(`${adAccountId}/insights?fields=${INSIGHT_FIELDS}&${timeParam}&time_increment=1&limit=100`, ctx)
 
-  const campaignsRes = await legacyGet<{ data?: Array<Record<string, unknown>> }>(
-    `${adAccountId}/campaigns?fields=id,name,effective_status,daily_budget,insights.date_preset(${datePreset}){${INSIGHT_FIELDS}}&limit=50`, ctx)
-  if (!campaignsRes.ok) throw new Error(errMsg(campaignsRes, 'Failed to fetch campaigns'))
+  let campaignsList: Array<{ id: string; name: string; effective_status?: string; daily_budget?: string; insight?: InsightRow }> = []
+
+  if (isCustomMonth) {
+    const [campsRes, campInsRes] = await Promise.all([
+      legacyGet<{ data?: Array<Record<string, unknown>> }>(`${adAccountId}/campaigns?fields=id,name,effective_status,daily_budget&limit=50`, ctx),
+      legacyGet<Rows>(`${adAccountId}/insights?level=campaign&fields=campaign_id,campaign_name,${INSIGHT_FIELDS}&${timeParam}&limit=50`, ctx),
+    ])
+    const byId = new Map((campInsRes.ok ? campInsRes.data.data ?? [] : []).map(r => [String(r.campaign_id), r]))
+    campaignsList = (campsRes.ok ? campsRes.data.data ?? [] : []).map(c => ({
+      id: c.id as string,
+      name: c.name as string,
+      effective_status: c.effective_status as string | undefined,
+      daily_budget: c.daily_budget as string | undefined,
+      insight: byId.get(String(c.id)),
+    }))
+  } else {
+    const campsRes = await legacyGet<{ data?: Array<Record<string, unknown>> }>(
+      `${adAccountId}/campaigns?fields=id,name,effective_status,daily_budget,insights.date_preset(${datePreset}){${INSIGHT_FIELDS}}&limit=50`, ctx)
+    if (!campsRes.ok) throw new Error(errMsg(campsRes, 'Failed to fetch campaigns'))
+    campaignsList = (campsRes.data.data ?? []).map(c => ({
+      id: c.id as string,
+      name: c.name as string,
+      effective_status: c.effective_status as string | undefined,
+      daily_budget: c.daily_budget as string | undefined,
+      insight: (c.insights as { data?: InsightRow[] } | undefined)?.data?.[0],
+    }))
+  }
 
   const customNames = await customNamesFor(adAccountId, ctx)
 
@@ -733,11 +817,7 @@ export async function fetchMetrics(
     summaryRow: insightsRes.data.data?.[0],
     prevRow: prevRes.ok ? prevRes.data.data?.[0] : undefined,
     dailyRows: dailyRes.ok ? dailyRes.data.data : undefined,
-    campaigns: (campaignsRes.data.data ?? []).map(c => ({
-      id: c.id as string, name: c.name as string, effective_status: c.effective_status as string | undefined,
-      daily_budget: c.daily_budget as string | undefined,
-      insight: (c.insights as { data?: InsightRow[] } | undefined)?.data?.[0],
-    })),
+    campaigns: campaignsList,
   }
   try { await onRaw?.(raw) } catch { /* guardar no banco é um bônus: nunca derruba a tela do cliente */ }
   return assembleMetrics(adAccountId, datePreset, raw)

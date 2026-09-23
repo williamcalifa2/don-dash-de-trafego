@@ -2,7 +2,7 @@
  * Leitura do painel a partir do banco (meta_snapshots). Nenhuma função aqui chama a Meta.
  * Usa as mesmas funções de montagem do modo ao vivo (assembleMetrics), então a tela é idêntica.
  */
-import { assembleMetrics, getLeads, getResults, listConversions, type ConversionItem, type DatePreset, type InsightRow, type MetricsResponse } from '../meta'
+import { assembleMetrics, currentTimeRange, getLeads, getResults, listConversions, type ConversionItem, type DatePreset, type InsightRow, type MetricsResponse } from '../meta'
 import type { MetaConfig } from './config'
 import type { AccountState } from './limits'
 import type { SnapshotStore } from './snapshots'
@@ -48,6 +48,10 @@ export function sliceDaily(rows: InsightRow[], preset: DatePreset, now: Date): I
     const first = new Date(now.getTime() - 3 * 3600 * 1000).toISOString().slice(0, 8) + '01' // 1º dia do mês, hora do Brasil
     return rows.filter(r => String(r.date_start ?? '') >= first)
   }
+  const customRange = currentTimeRange(preset, now.getTime())
+  if (customRange) {
+    return rows.filter(r => String(r.date_start ?? '') >= customRange.since && String(r.date_start ?? '') <= customRange.until)
+  }
   const days = PRESET_DAYS[preset] ?? 7
   const cutoff = ymd(new Date(now.getTime() - (days + 1) * 86_400_000))
   return rows.filter(r => String(r.date_start ?? '') > cutoff)
@@ -56,14 +60,17 @@ export function sliceDaily(rows: InsightRow[], preset: DatePreset, now: Date): I
 interface StructRow { id: string; name?: string; effective_status?: string; daily_budget?: string | number | null; lifetime_budget?: string | number | null; campaign_id?: string; adset_id?: string; creative?: Record<string, unknown> }
 
 export async function readMetrics(snaps: SnapshotStore, clientId: string, adAccountId: string, preset: DatePreset, cfg: MetaConfig, st: AccountState | null, now = Date.now()): Promise<MetricsResponse & { freshness: Freshness }> {
-  const [summary, daily, account, camps, campIns, customs] = await Promise.all([
+  const isPastMonth = preset === 'last_month' || preset === 'month_2' || preset === 'month_3'
+  const [summary, dailySpecific, daily30d, account, camps, campIns, customs] = await Promise.all([
     snaps.get<{ row: InsightRow | null; prev: InsightRow | null }>(clientId, 'summary', preset),
+    isPastMonth ? snaps.get<InsightRow[]>(clientId, 'daily', preset) : Promise.resolve(null),
     snaps.get<InsightRow[]>(clientId, 'daily', 'last_30d'),
     snaps.get<{ name: string | null; currency: string }>(clientId, 'account', ''),
     snaps.get<StructRow[]>(clientId, 'structure', 'campaigns'),
     snaps.get<InsightRow[]>(clientId, 'campaign_insights', preset),
     snaps.get<Record<string, string>>(clientId, 'custom_conversions', ''),
   ])
+  const daily = dailySpecific ?? daily30d
   const fresh = describeFreshness(summary?.fetchedAt ?? null, st, cfg, now)
   const byCampaign = new Map((campIns?.payload ?? []).map(r => [String(r.campaign_id), r]))
   const resp = assembleMetrics(adAccountId, preset, {
@@ -71,7 +78,7 @@ export async function readMetrics(snaps: SnapshotStore, clientId: string, adAcco
     account: { name: account?.payload.name ?? undefined, currency: account?.payload.currency },
     summaryRow: summary?.payload.row ?? undefined,
     prevRow: summary?.payload.prev ?? undefined,
-    dailyRows: daily ? sliceDaily(daily.payload, preset, new Date(now)) : undefined,
+    dailyRows: daily ? (dailySpecific ? dailySpecific.payload : sliceDaily(daily.payload, preset, new Date(now))) : undefined,
     campaigns: (camps?.payload ?? []).map(c => ({ id: c.id, name: c.name ?? c.id, effective_status: c.effective_status, daily_budget: c.daily_budget, insight: byCampaign.get(c.id) })),
   }, new Date(summary?.fetchedAt ?? now).toISOString())
   return { ...resp, freshness: fresh, ...(fresh.pending ? { error: fresh.note ?? undefined } : {}) }
