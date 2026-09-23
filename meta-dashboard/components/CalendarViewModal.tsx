@@ -444,17 +444,12 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                         style={{
                           fontSize: 12,
                           fontWeight: cell.isToday || isSelected ? 800 : 600,
-                          width: 22,
-                          height: 22,
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: cell.isToday ? 'var(--green)' : isSelected ? 'var(--accent)' : 'transparent',
-                          color: cell.isToday || isSelected ? '#fff' : 'var(--text-1)',
+                          color: cell.isToday ? 'var(--green)' : isSelected ? 'var(--accent)' : 'var(--text-1)',
+                          lineHeight: 1,
                         }}
                       >
                         {cell.day}
+                        {cell.isToday && <span style={{ fontSize: 9, marginLeft: 4, fontWeight: 700, color: 'var(--green)', textTransform: 'uppercase' }}>Hoje</span>}
                       </span>
 
                       {data && data.spend > 0 && (
@@ -464,35 +459,39 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                       )}
                     </div>
 
-                    {/* Central Highlight: Quantity with colored background circle/pill */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '6px 0' }}>
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          minWidth: 24,
-                          height: 24,
-                          padding: '0 6px',
-                          borderRadius: 999,
-                          fontSize: 11,
-                          fontWeight: 800,
-                          background: dayCount > 0 ? 'rgba(34, 197, 94, 0.18)' : 'rgba(148, 163, 184, 0.12)',
-                          color: dayCount > 0 ? '#16a34a' : 'var(--text-3)',
-                          border: dayCount > 0 ? '1px solid rgba(34, 197, 94, 0.35)' : '1px solid transparent',
-                        }}
-                        title={`${dayCount} ${dayCount === 1 ? L.one : L.many}`}
-                      >
-                        {dayCount}
-                      </span>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: dayCount > 0 ? 'var(--text-1)' : 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {dayCount === 1 ? L.one : L.many}
-                      </span>
-                    </div>
+                    {/* Central Highlight: Quantity with colored background circle/pill only if dayCount > 0 */}
+                    {dayCount > 0 ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minWidth: 24,
+                            height: 24,
+                            padding: '0 6px',
+                            borderRadius: 999,
+                            fontSize: 11,
+                            fontWeight: 800,
+                            background: 'rgba(34, 197, 94, 0.18)',
+                            color: '#16a34a',
+                            border: '1px solid rgba(34, 197, 94, 0.35)',
+                          }}
+                          title={`${dayCount} ${dayCount === 1 ? L.one : L.many}`}
+                        >
+                          {dayCount}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {dayCount === 1 ? L.one : L.many}
+                        </span>
+                      </div>
+                    ) : (
+                      <div style={{ flex: 1 }} />
+                    )}
 
-                    {/* Secondary: CPL if present */}
+                    {/* Secondary: CPL if present and has leads */}
                     <div>
-                      {data && data.cpl != null && data.cpl > 0 && (
+                      {dayCount > 0 && data && data.cpl != null && data.cpl > 0 && (
                         <div
                           style={{
                             fontSize: 9.5,

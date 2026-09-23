@@ -267,43 +267,102 @@ function Dashboard() {
 
   if (isLoading && !data) {
     return (
-      <div className="page" style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-        <div
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: 20,
-            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0.04))',
-            border: '1.5px solid rgba(99, 102, 241, 0.35)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 12px 28px -6px rgba(99, 102, 241, 0.28)',
-            overflow: 'hidden',
-          }}
-        >
-          {me?.logoUrl ? (
-            <img
-              src={me.logoUrl}
-              alt=""
-              style={{ width: 44, height: 44, objectFit: 'contain', borderRadius: 12 }}
+      <div className="page" style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24 }}>
+        <style>{`
+          @keyframes clientLogoPulse {
+            0%, 100% {
+              transform: scale(1);
+              box-shadow: 0 8px 24px -4px rgba(99, 102, 241, 0.22);
+            }
+            50% {
+              transform: scale(1.05);
+              box-shadow: 0 14px 32px -4px rgba(99, 102, 241, 0.4);
+            }
+          }
+          @keyframes clientRingSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          @keyframes clientDotFade {
+            0%, 100% { opacity: 0.2; }
+            50% { opacity: 1; }
+          }
+        `}</style>
+
+        {/* Animated Client Logo Container with Orbital Ring */}
+        <div style={{ position: 'relative', width: 92, height: 92, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              animation: 'clientRingSpin 2.2s linear infinite',
+              pointerEvents: 'none',
+            }}
+            viewBox="0 0 92 92"
+          >
+            <circle
+              cx="46"
+              cy="46"
+              r="42"
+              fill="none"
+              stroke="var(--border-soft)"
+              strokeWidth="2.5"
             />
-          ) : (
-            <img
-              src="/brand-icon.png"
-              alt=""
-              onError={e => { (e.currentTarget as HTMLImageElement).src = '/icon-192.png' }}
-              style={{ width: 44, height: 44, objectFit: 'contain', borderRadius: 12 }}
+            <circle
+              cx="46"
+              cy="46"
+              r="42"
+              fill="none"
+              stroke="var(--accent)"
+              strokeWidth="2.5"
+              strokeDasharray="65 200"
+              strokeLinecap="round"
             />
-          )}
+          </svg>
+
+          <div
+            style={{
+              width: 70,
+              height: 70,
+              borderRadius: 20,
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              padding: 10,
+              animation: 'clientLogoPulse 2.4s ease-in-out infinite',
+              zIndex: 1,
+            }}
+          >
+            {me?.logoUrl ? (
+              <img
+                src={me.logoUrl}
+                alt={me.name || 'Cliente'}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
+            ) : (
+              <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--accent)' }}>
+                {me?.name ? me.name.trim().charAt(0).toUpperCase() : '•'}
+              </span>
+            )}
+          </div>
         </div>
+
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 600, color: 'var(--text-1)' }}>
-            <RefreshCw size={16} className="spin" style={{ color: 'var(--accent)' }} />
-            <span>Carregando painel de {me?.name || 'performance'}…</span>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 3 }}>
+            <span>Carregando painel{me?.name ? ` de ${me.name}` : ''}</span>
+            <span style={{ display: 'inline-flex', gap: 2 }}>
+              <span style={{ animation: 'clientDotFade 1.4s infinite 0s' }}>.</span>
+              <span style={{ animation: 'clientDotFade 1.4s infinite 0.2s' }}>.</span>
+              <span style={{ animation: 'clientDotFade 1.4s infinite 0.4s' }}>.</span>
+            </span>
           </div>
           <p style={{ fontSize: 13, color: 'var(--text-3)', margin: 0 }}>
-            Sincronizando métricas e campanhas da conta
+            Sincronizando métricas e campanhas
           </p>
         </div>
       </div>
