@@ -211,7 +211,7 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                 </span>
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                Resultados, investimento diário e leads com atendimento rápido
+                Leads, conversas e investimento detalhados por dia
               </div>
             </div>
           </div>
@@ -459,30 +459,27 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                       )}
                     </div>
 
-                    {/* Central Highlight: Quantity with colored background circle/pill only if dayCount > 0 */}
+                    {/* Central Highlight: ONLY the quantity circle when dayCount > 0 */}
                     {dayCount > 0 ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', margin: '4px 0' }}>
                         <span
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            minWidth: 24,
-                            height: 24,
-                            padding: '0 6px',
+                            minWidth: 26,
+                            height: 26,
+                            padding: '0 8px',
                             borderRadius: 999,
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: 800,
                             background: 'rgba(34, 197, 94, 0.18)',
                             color: '#16a34a',
                             border: '1px solid rgba(34, 197, 94, 0.35)',
                           }}
-                          title={`${dayCount} ${dayCount === 1 ? L.one : L.many}`}
+                          title={`${dayCount} leads`}
                         >
                           {dayCount}
-                        </span>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {dayCount === 1 ? L.one : L.many}
                         </span>
                       </div>
                     ) : (
@@ -504,9 +501,9 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                           }}
-                          title={`Custo médio: ${fmtDec(data.cpl, currency)}`}
+                          title={`CPL: ${fmtCurrency(data.cpl, currency)}`}
                         >
-                          {L.cost}: {fmtCurrency(data.cpl, currency)}
+                          CPL {fmtCurrency(data.cpl, currency)}
                         </div>
                       )}
                     </div>
@@ -563,14 +560,14 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                     </div>
 
                     <div style={{ background: 'var(--bg-card)', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-soft)' }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase' }}>{L.many}</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase' }}>{L.many === 'Resultados' ? 'Leads' : L.many}</div>
                       <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--green)', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
                         {selectedMetrics.leads}
                       </div>
                     </div>
 
                     <div style={{ background: 'var(--bg-card)', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-soft)' }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase' }}>{L.cost}</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase' }}>{L.cost.includes('Resultado') ? 'CPL' : L.cost}</div>
                       <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
                         {selectedMetrics.cpl ? fmtDec(selectedMetrics.cpl, currency) : '—'}
                       </div>

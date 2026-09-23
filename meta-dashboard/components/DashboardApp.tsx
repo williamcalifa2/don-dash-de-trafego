@@ -267,21 +267,23 @@ function Dashboard() {
 
   if (isLoading && !data) {
     return (
-      <div className="page" style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24 }}>
+      <div className="page" style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
         <style>{`
-          @keyframes clientLogoPulse {
+          @keyframes clientFluidPulse {
             0%, 100% {
-              transform: scale(1);
-              box-shadow: 0 8px 24px -4px rgba(99, 102, 241, 0.22);
+              transform: translateY(0px) scale(1);
+              border-color: var(--border);
+              box-shadow: 0 8px 24px -4px rgba(99, 102, 241, 0.16);
             }
             50% {
-              transform: scale(1.05);
-              box-shadow: 0 14px 32px -4px rgba(99, 102, 241, 0.4);
+              transform: translateY(-3px) scale(1.02);
+              border-color: var(--accent);
+              box-shadow: 0 16px 36px -6px rgba(99, 102, 241, 0.38);
             }
           }
-          @keyframes clientRingSpin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+          @keyframes clientBarShimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
           }
           @keyframes clientDotFade {
             0%, 100% { opacity: 0.2; }
@@ -289,71 +291,62 @@ function Dashboard() {
           }
         `}</style>
 
-        {/* Animated Client Logo Container with Orbital Ring */}
-        <div style={{ position: 'relative', width: 92, height: 92, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              animation: 'clientRingSpin 2.2s linear infinite',
-              pointerEvents: 'none',
-            }}
-            viewBox="0 0 92 92"
-          >
-            <circle
-              cx="46"
-              cy="46"
-              r="42"
-              fill="none"
-              stroke="var(--border-soft)"
-              strokeWidth="2.5"
+        {/* Fluid Rounded Card for Client Logo with Border and Breathing Glow */}
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: 140,
+            maxWidth: 280,
+            minHeight: 68,
+            maxHeight: 90,
+            padding: '14px 28px',
+            borderRadius: 24,
+            background: 'var(--bg-card)',
+            border: '1.5px solid var(--border)',
+            animation: 'clientFluidPulse 2.6s ease-in-out infinite',
+            boxShadow: 'var(--shadow-elegant)',
+          }}
+        >
+          {me?.logoUrl ? (
+            <img
+              src={me.logoUrl}
+              alt={me.name || 'Cliente'}
+              style={{
+                maxHeight: 52,
+                maxWidth: 220,
+                width: 'auto',
+                height: 'auto',
+                objectFit: 'contain',
+                display: 'block',
+              }}
             />
-            <circle
-              cx="46"
-              cy="46"
-              r="42"
-              fill="none"
-              stroke="var(--accent)"
-              strokeWidth="2.5"
-              strokeDasharray="65 200"
-              strokeLinecap="round"
-            />
-          </svg>
-
-          <div
-            style={{
-              width: 70,
-              height: 70,
-              borderRadius: 20,
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              padding: 10,
-              animation: 'clientLogoPulse 2.4s ease-in-out infinite',
-              zIndex: 1,
-            }}
-          >
-            {me?.logoUrl ? (
-              <img
-                src={me.logoUrl}
-                alt={me.name || 'Cliente'}
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              />
-            ) : (
-              <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--accent)' }}>
-                {me?.name ? me.name.trim().charAt(0).toUpperCase() : '•'}
-              </span>
-            )}
-          </div>
+          ) : (
+            <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-1)', letterSpacing: '0.02em' }}>
+              {me?.name || 'Carregando…'}
+            </span>
+          )}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center' }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 3 }}>
+        {/* Subtle Animated Progress Shimmer Bar */}
+        <div style={{ width: 140, height: 4, borderRadius: 999, background: 'var(--bg-card2)', overflow: 'hidden', position: 'relative', border: '1px solid var(--border-soft)' }}>
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: 0,
+              width: '70%',
+              borderRadius: 999,
+              background: 'linear-gradient(90deg, transparent, var(--accent), transparent)',
+              animation: 'clientBarShimmer 1.6s ease-in-out infinite',
+            }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, textAlign: 'center' }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 2 }}>
             <span>Carregando painel{me?.name ? ` de ${me.name}` : ''}</span>
             <span style={{ display: 'inline-flex', gap: 2 }}>
               <span style={{ animation: 'clientDotFade 1.4s infinite 0s' }}>.</span>
@@ -361,7 +354,7 @@ function Dashboard() {
               <span style={{ animation: 'clientDotFade 1.4s infinite 0.4s' }}>.</span>
             </span>
           </div>
-          <p style={{ fontSize: 13, color: 'var(--text-3)', margin: 0 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
             Sincronizando métricas e campanhas
           </p>
         </div>
