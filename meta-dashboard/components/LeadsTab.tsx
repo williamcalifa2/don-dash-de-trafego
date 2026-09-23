@@ -261,21 +261,23 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
         </div>
 
         {/* View Mode Switcher: Tabela / Kanban */}
-        <div style={{ display: 'inline-flex', background: 'var(--bg-card2)', padding: 2, borderRadius: 8, border: '1px solid var(--border-soft)' }}>
+        <div style={{ display: 'inline-flex', background: 'var(--bg-card2)', padding: 3, borderRadius: 'var(--radius-full)', border: '1px solid var(--border-soft)' }}>
           <button
             type="button"
             onClick={() => handleSetViewMode('table')}
             className="btn btn-ghost btn-sm"
             style={{
-              padding: '4px 8px',
+              padding: '4px 14px',
               fontSize: 12,
+              fontWeight: 600,
               background: viewMode === 'table' ? 'var(--bg-card)' : 'transparent',
               color: viewMode === 'table' ? 'var(--text-1)' : 'var(--text-3)',
-              boxShadow: viewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              borderRadius: 6,
+              boxShadow: viewMode === 'table' ? 'var(--shadow-soft)' : 'none',
+              borderRadius: 'var(--radius-full)',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 4,
+              gap: 6,
+              height: 28,
             }}
             title="Visualização em Tabela"
           >
@@ -286,15 +288,17 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
             onClick={() => handleSetViewMode('kanban')}
             className="btn btn-ghost btn-sm"
             style={{
-              padding: '4px 8px',
+              padding: '4px 14px',
               fontSize: 12,
+              fontWeight: 600,
               background: viewMode === 'kanban' ? 'var(--bg-card)' : 'transparent',
               color: viewMode === 'kanban' ? 'var(--text-1)' : 'var(--text-3)',
-              boxShadow: viewMode === 'kanban' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              borderRadius: 6,
+              boxShadow: viewMode === 'kanban' ? 'var(--shadow-soft)' : 'none',
+              borderRadius: 'var(--radius-full)',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 4,
+              gap: 6,
+              height: 28,
             }}
             title="Visualização Kanban (Pipeline)"
           >

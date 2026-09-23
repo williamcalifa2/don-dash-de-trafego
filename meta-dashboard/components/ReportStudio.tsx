@@ -489,14 +489,33 @@ function Element({
             width: '100%',
             height: '100%',
             display: 'block',
-            background: 'rgba(111,109,247,.10)',
-            border: '1.5px dashed rgba(111,109,247,.55)',
+            background: 'transparent',
+            border: '1px dashed transparent',
             borderRadius: 8,
-            padding: 12,
+            padding: 8,
             resize: 'none',
             outline: 'none',
             overflow: 'auto',
             boxSizing: 'border-box',
+            transition: 'border-color 0.15s, background-color 0.15s',
+          }}
+          onFocus={e => {
+            e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.6)'
+            e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.06)'
+          }}
+          onBlur={e => {
+            e.currentTarget.style.borderColor = 'transparent'
+            e.currentTarget.style.backgroundColor = 'transparent'
+          }}
+          onMouseEnter={e => {
+            if (document.activeElement !== e.currentTarget) {
+              e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.3)'
+            }
+          }}
+          onMouseLeave={e => {
+            if (document.activeElement !== e.currentTarget) {
+              e.currentTarget.style.borderColor = 'transparent'
+            }
           }}
         />
         {isAnalysisOrNext && onSmartAnalysis && (
@@ -506,20 +525,20 @@ function Element({
             title="Preencher com análise inteligente baseada nos dados da Meta"
             style={{
               position: 'absolute',
-              top: 10,
-              right: 12,
-              background: '#6F6DF7',
+              top: -46,
+              right: 0,
+              background: '#6366F1',
               color: '#FFFFFF',
               border: 'none',
-              borderRadius: 6,
-              padding: '6px 12px',
+              borderRadius: 20,
+              padding: '6px 14px',
               fontSize: 12,
               fontWeight: 600,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              boxShadow: '0 2px 8px rgba(111,109,247,0.35)',
+              boxShadow: '0 2px 10px rgba(99,102,241,0.4)',
               zIndex: 10,
             }}
           >
@@ -736,6 +755,15 @@ export function ReportStudio({
               onClick={() => { setMode('advanced'); setCurrent(0) }}
             >
               Avançado (12 slides)
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${mode === 'organic' ? 'btn-primary' : 'btn-ghost'}`}
+              style={{ height: 28, padding: '0 10px', fontSize: 12, borderRadius: 6 }}
+              onClick={() => { setMode('organic'); setCurrent(0) }}
+              title="Relatório focado exclusivamente em resultados orgânicos"
+            >
+              Orgânico (6 slides)
             </button>
           </div>
         </div>

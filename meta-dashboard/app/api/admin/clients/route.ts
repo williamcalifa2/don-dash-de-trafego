@@ -15,6 +15,7 @@ import { parseAdminPeriod } from '@/lib/periods'
 import { stores } from '@/lib/meta/stores'
 import { ensureRuntime } from '@/lib/meta/runtime'
 import { liveOrigin } from '@/lib/meta/mode'
+import { getAllClientsConfig } from '@/lib/clientConfig'
 
 export const dynamic = 'force-dynamic'
 const COLUMNS = 'id, slug, display_name, logo_url, ad_account_id, page_id, access_code_hash, locked_until'
@@ -55,6 +56,7 @@ export async function GET(req: NextRequest) {
   const selected = parseAdminPeriod(req.nextUrl.searchParams.get('period')) ?? 7
   let summaries: SummaryMap = new Map()
   try { summaries = await loadSummaryMap(stores.snaps) } catch { /* sem as tabelas: os cards usam a série diária */ }
+  const allConfigs = await getAllClientsConfig((data ?? []).map(c => c.slug as string))
   const clients = await Promise.all((data ?? []).map(async c => {
     // Leads dos últimos 30 dias deste cliente (para todos os períodos do card).
     const q = (cols: string) => db.from('leads').select(cols)
@@ -98,6 +100,7 @@ export async function GET(req: NextRequest) {
       adAccountId: c.ad_account_id as string | null,
       pageId: c.page_id as string | null,
       hasCode: !!c.access_code_hash,
+      active: allConfigs[c.slug as string]?.active !== false,
       locked: !!c.locked_until && new Date(c.locked_until as string).getTime() > now,
       leadCount: count ?? 0,
       lastLeadAt: (last?.[0]?.created_at as string | undefined) ?? null,

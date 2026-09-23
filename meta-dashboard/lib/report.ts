@@ -114,7 +114,7 @@ export interface ReportAd {
 }
 export interface ReportNotes { objective: string; goals: string; analysis: string; next: string; creativeOverrides?: Record<string, string> }
 
-export type ReportMode = 'standard' | 'advanced'
+export type ReportMode = 'standard' | 'advanced' | 'organic'
 
 export interface ReportCampaign {
   id: string

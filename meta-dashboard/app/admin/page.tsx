@@ -16,6 +16,7 @@ import { type ResultKind } from '@/lib/resultKind'
 import { platformsFor } from '@/lib/platforms'
 import { PlatformBadges } from '@/components/PlatformBadges'
 import { useTheme } from '@/lib/useTheme'
+import { ClientConfigModal } from '@/components/ClientConfigModal'
 import type { LeadStatus } from '@/lib/leadTypes'
 
 interface AdminClient {
@@ -25,6 +26,7 @@ interface AdminClient {
   adAccountId: string | null
   pageId: string | null
   hasCode: boolean
+  active?: boolean
   locked: boolean
   leadCount: number
   lastLeadAt: string | null
@@ -48,6 +50,7 @@ interface MetaOption { id: string; name: string; currency?: string }
 type Modal =
   | { kind: 'new' }
   | { kind: 'edit'; client: AdminClient }
+  | { kind: 'config'; client: AdminClient }
   | { kind: 'code'; client: { slug: string; name: string }; code: string; created: boolean }
   | { kind: 'confirm'; action: 'rotate' | 'revoke'; client: AdminClient }
   | { kind: 'metrics'; client: AdminClient }
@@ -525,7 +528,7 @@ export default function AdminPage() {
   const setPeriod = (p: AdminPeriod) => { setPeriodState(p); try { localStorage.setItem('adminPeriod', String(p)) } catch {} }
   const periodNoun = ADMIN_PERIODS.find(x => x.v === period)?.noun ?? '7 dias'
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<'todos' | 'acesso' | 'sem' | 'bloqueados'>('todos')
+  const [filter, setFilter] = useState<'todos' | 'ativos' | 'pausados' | 'acesso' | 'sem' | 'bloqueados'>('todos')
 
   useEffect(() => { document.title = 'Painel de controle' }, [])
 
@@ -616,7 +619,12 @@ export default function AdminPage() {
     const q = query.trim().toLowerCase()
     return clients.filter(c =>
       (!q || c.name.toLowerCase().includes(q) || c.slug.includes(q)) &&
-      (filter === 'todos' || (filter === 'acesso' && c.hasCode) || (filter === 'sem' && !c.hasCode) || (filter === 'bloqueados' && c.locked)))
+      (filter === 'todos' ||
+       (filter === 'ativos' && c.active !== false) ||
+       (filter === 'pausados' && c.active === false) ||
+       (filter === 'acesso' && c.hasCode) ||
+       (filter === 'sem' && !c.hasCode) ||
+       (filter === 'bloqueados' && c.locked)))
   }, [clients, query, filter])
 
   const themeButton = (
@@ -722,7 +730,7 @@ export default function AdminPage() {
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente" />
         </label>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {([['todos', 'Todos'], ['acesso', 'Com acesso'], ['sem', 'Sem acesso'], ['bloqueados', 'Bloqueados']] as const).map(([k, l]) => (
+          {([['todos', 'Todos'], ['ativos', 'Ativos'], ['pausados', 'Pausados'], ['acesso', 'Com acesso'], ['sem', 'Sem acesso'], ['bloqueados', 'Bloqueados']] as const).map(([k, l]) => (
             <button key={k} className="pill-btn" aria-pressed={filter === k} onClick={() => setFilter(k)}>{l}</button>
           ))}
         </div>
@@ -738,8 +746,15 @@ export default function AdminPage() {
       ) : (
         <div className="stagger" style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
           {visible.map(c => {
-            const badge = c.locked ? { bg: 'var(--red-soft)', dot: 'var(--red)', text: 'Bloqueado' } : c.hasCode ? { bg: 'var(--green-soft)', dot: 'var(--green)', text: 'Com acesso' } : { bg: 'var(--amber-soft)', dot: 'var(--amber)', text: 'Sem acesso' }
+            const badge = c.locked
+              ? { bg: 'var(--red-soft)', dot: 'var(--red)', text: 'Bloqueado' }
+              : c.active === false
+                ? { bg: 'rgba(245, 158, 11, 0.15)', dot: 'var(--amber)', text: 'Pausado' }
+                : c.hasCode
+                  ? { bg: 'var(--green-soft)', dot: 'var(--green)', text: 'Com acesso' }
+                  : { bg: 'var(--amber-soft)', dot: 'var(--amber)', text: 'Sem acesso' }
             const items: MenuItem[] = [
+              ...(canOperate ? [{ icon: <Settings2 size={16} strokeWidth={1.75} />, text: 'Configurações & Metas', onClick: () => setModal({ kind: 'config', client: c }) }] : []),
               ...(canManage ? [{ icon: <Pencil size={16} strokeWidth={1.75} />, text: 'Editar cliente', onClick: () => setModal({ kind: 'edit', client: c }) }] : []),
               ...(canOperate ? [{ icon: <Settings2 size={16} strokeWidth={1.75} />, text: 'Métricas do card', onClick: () => setModal({ kind: 'metrics', client: c }) }] : []),
               ...(canManage ? [{ icon: <KeyRound size={16} strokeWidth={1.75} />, text: c.hasCode ? 'Revogar token' : 'Gerar token', onClick: () => c.hasCode ? setModal({ kind: 'confirm', action: 'rotate', client: c }) : runAction('rotate', c) }] : []),
@@ -795,6 +810,15 @@ export default function AdminPage() {
                   <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => openPanel(c.slug)}>
                     <ExternalLink size={16} strokeWidth={1.75} /> Acessar dashboard
                   </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-icon btn-sm"
+                    title="Configurações & Metas"
+                    aria-label="Configurações & Metas"
+                    onClick={() => setModal({ kind: 'config', client: c })}
+                  >
+                    <Settings2 size={16} strokeWidth={1.75} />
+                  </button>
                   <GearMenu label={`Mais opções de ${c.name}`} items={items} />
                 </div>
               </article>
@@ -839,6 +863,17 @@ export default function AdminPage() {
         <ModalShell title={`Editar ${modal.client.name}`} onClose={() => setModal(null)}>
           <ClientForm initial={modal.client} baseDomain={baseDomain} accounts={accounts} accountsError={accountsError} accountsSavedAt={accountsSavedAt} onCancel={() => setModal(null)} onDone={async r => { await load(); setModal(null); setNotice(r.imported ? `Cliente atualizado. ${r.imported} leads importados do Meta.` : 'Cliente atualizado.') }} />
         </ModalShell>
+      )}
+      {modal?.kind === 'config' && (
+        <ClientConfigModal
+          slug={modal.client.slug}
+          clientName={modal.client.name}
+          onClose={() => setModal(null)}
+          onSaved={cfg => {
+            setClients(prev => prev.map(cl => cl.slug === modal.client.slug ? { ...cl, active: cfg.active } : cl))
+            setNotice(`Configurações de ${modal.client.name} salvas com sucesso.`)
+          }}
+        />
       )}
       {modal?.kind === 'metrics' && (
         <CardMetricsModal

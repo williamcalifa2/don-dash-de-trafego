@@ -217,8 +217,8 @@ export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = fa
                             <span
                               title="Sem contato há mais de 2 horas"
                               style={{
-                                width: 6,
-                                height: 6,
+                                width: 7,
+                                height: 7,
                                 borderRadius: '50%',
                                 background: 'var(--amber)',
                                 flexShrink: 0,
@@ -256,26 +256,11 @@ export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = fa
                         </div>
                       </div>
 
-                      {/* Middle: Phone & Source */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, fontSize: 11 }}>
+                      {/* Middle: Phone only (clean, no wrapping) */}
+                      <div style={{ display: 'flex', alignItems: 'center', fontSize: 11, minHeight: 18 }}>
                         <span style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
                           {lead.telefone ? fmtPhone(lead.telefone) : (lead.email || 'Sem contato')}
                         </span>
-                        {(lead.campanha || lead.ad_name) && (
-                          <span
-                            style={{
-                              color: 'var(--text-3)',
-                              fontSize: 10,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              maxWidth: 120,
-                            }}
-                            title={`${lead.campanha || ''} / ${lead.ad_name || ''}`}
-                          >
-                            {lead.ad_name || lead.campanha}
-                          </span>
-                        )}
                       </div>
 
                       {/* Bottom line: Value, Note & Quick column move */}

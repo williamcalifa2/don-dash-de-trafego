@@ -12,6 +12,8 @@ import { runCycle, type CycleReport, type OrchDeps } from './orchestrator'
 import type { Account, CollectDeps } from './collectors'
 import type { OrganicDeps } from './organic'
 
+import { isClientPaused } from '../clientConfig'
+
 export { stores }
 
 export async function listAccounts(): Promise<Account[]> {
@@ -20,6 +22,7 @@ export async function listAccounts(): Promise<Account[]> {
   const { data } = await db.from('clients').select('slug').order('slug')
   const out: Account[] = []
   for (const { slug } of (data ?? []) as Array<{ slug: string }>) {
+    if (await isClientPaused(slug)) continue
     const t = await tenantBySlug(slug)
     if (t?.adAccountId) out.push({ clientId: t.clientId, slug: t.slug, adAccountId: t.adAccountId, pageId: t.pageId })
   }

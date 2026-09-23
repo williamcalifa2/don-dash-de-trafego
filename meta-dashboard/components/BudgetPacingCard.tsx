@@ -44,13 +44,13 @@ export function BudgetPacingCard({ campaigns, currentSpend, currency, clientSlug
       if (saved !== null) {
         setIsCollapsed(saved === 'true')
       }
-    } catch {}
+    } catch { }
   }, [])
 
   const toggleCollapsed = () => {
     setIsCollapsed(prev => {
       const next = !prev
-      try { localStorage.setItem('budget_pacing_collapsed', String(next)) } catch {}
+      try { localStorage.setItem('budget_pacing_collapsed', String(next)) } catch { }
       return next
     })
   }
@@ -210,166 +210,166 @@ export function BudgetPacingCard({ campaigns, currentSpend, currency, clientSlug
       {!isCollapsed && (
         <>
           {/* Progress Bar with markers */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>
-          <span>Investido: {fmt(currentSpend, currency)} ({spendPct.toFixed(1)}%)</span>
-          <span>Meta: {fmt(targetBudget, currency)}</span>
-        </div>
-        <div
-          style={{
-            position: 'relative',
-            height: 12,
-            borderRadius: 6,
-            background: 'var(--bg-card2)',
-            overflow: 'visible',
-          }}
-        >
-          {/* Real spend fill */}
-          <div
-            style={{
-              height: '100%',
-              borderRadius: 6,
-              background: statusColor,
-              width: `${Math.min(100, spendPct)}%`,
-              transition: 'width 0.4s ease-out',
-            }}
-          />
-          {/* Expected milestone marker */}
-          <div
-            style={{
-              position: 'absolute',
-              top: -3,
-              bottom: -3,
-              left: `${Math.min(99, monthProgressPct)}%`,
-              width: 3,
-              background: 'var(--text-1)',
-              borderRadius: 2,
-              zIndex: 2,
-            }}
-            title={`Ritmo esperado para hoje: ${monthProgressPct}% (${fmt(expectedSpendToDate, currency)})`}
-          />
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-3)', marginTop: 4 }}>
-          <span>0%</span>
-          <span style={{ color: 'var(--text-2)' }}>▲ Marcador: Ritmo esperado ({monthProgressPct}%)</span>
-          <span>100%</span>
-        </div>
-      </div>
-
-      {/* 4 Metric Columns */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 12,
-          paddingTop: 12,
-          borderTop: '1px solid var(--border-soft)',
-        }}
-      >
-        {/* Meta Mensal */}
-        <div style={{ background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', letterSpacing: '.05em' }}>
-              Orçamento do Mês
-            </span>
-            {!isEditing && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditInput(String(targetBudget))
-                  setIsEditing(true)
-                }}
-                className="btn btn-ghost btn-icon btn-sm"
-                title="Ajustar meta de verba"
-                style={{ padding: 2, width: 20, height: 20 }}
-              >
-                <Edit3 size={12} />
-              </button>
-            )}
-          </div>
-          {isEditing ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input
-                type="number"
-                value={editInput}
-                onChange={e => setEditInput(e.target.value)}
-                autoFocus
-                onKeyDown={e => e.key === 'Enter' && handleSaveBudget()}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>
+              <span>Investido: {fmt(currentSpend, currency)} ({spendPct.toFixed(1)}%)</span>
+              <span>Meta: {fmt(targetBudget, currency)}</span>
+            </div>
+            <div
+              style={{
+                position: 'relative',
+                height: 12,
+                borderRadius: 6,
+                background: 'var(--bg-card2)',
+                overflow: 'visible',
+              }}
+            >
+              {/* Real spend fill */}
+              <div
                 style={{
-                  width: '100%',
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--accent)',
+                  height: '100%',
                   borderRadius: 6,
-                  padding: '2px 8px',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: 'var(--text-1)',
+                  background: statusColor,
+                  width: `${Math.min(100, spendPct)}%`,
+                  transition: 'width 0.4s ease-out',
                 }}
               />
-              <button
-                type="button"
-                onClick={handleSaveBudget}
-                className="btn btn-soft btn-sm"
-                style={{ padding: '2px 8px' }}
-              >
-                <Check size={12} />
-              </button>
+              {/* Expected milestone marker */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: -3,
+                  bottom: -3,
+                  left: `${Math.min(99, monthProgressPct)}%`,
+                  width: 3,
+                  background: 'var(--text-1)',
+                  borderRadius: 2,
+                  zIndex: 2,
+                }}
+                title={`Ritmo esperado para hoje: ${monthProgressPct}% (${fmt(expectedSpendToDate, currency)})`}
+              />
             </div>
-          ) : (
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
-              {fmt(targetBudget, currency)}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-3)', marginTop: 4 }}>
+              <span>0%</span>
+              <span style={{ color: 'var(--text-2)' }}>▲ Marcador: Ritmo esperado ({monthProgressPct}%)</span>
+              <span>100%</span>
             </div>
-          )}
-          <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>
-            {activeDailyBudgetsSum > 0 ? `Soma ativa: ${fmt(activeDailyBudgetsSum, currency)}/dia` : 'Meta configurada'}
           </div>
-        </div>
 
-        {/* Investido até hoje */}
-        <div style={{ background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 10 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', letterSpacing: '.05em', marginBottom: 4 }}>
-            Investido até Hoje
-          </div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
-            {fmt(currentSpend, currency)}
-          </div>
-          <div style={{ fontSize: 10, color: statusColor, marginTop: 2, fontWeight: 600 }}>
-            {statusDesc}
-          </div>
-        </div>
+          {/* 4 Metric Columns */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: 12,
+              paddingTop: 12,
+              borderTop: '1px solid var(--border-soft)',
+            }}
+          >
+            {/* Meta Mensal */}
+            <div style={{ background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', letterSpacing: '.05em' }}>
+                  Orçamento do Mês
+                </span>
+                {!isEditing && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditInput(String(targetBudget))
+                      setIsEditing(true)
+                    }}
+                    className="btn btn-ghost btn-icon btn-sm"
+                    title="Ajustar meta de verba"
+                    style={{ padding: 2, width: 20, height: 20 }}
+                  >
+                    <Edit3 size={12} />
+                  </button>
+                )}
+              </div>
+              {isEditing ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input
+                    type="number"
+                    value={editInput}
+                    onChange={e => setEditInput(e.target.value)}
+                    autoFocus
+                    onKeyDown={e => e.key === 'Enter' && handleSaveBudget()}
+                    style={{
+                      width: '100%',
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--accent)',
+                      borderRadius: 6,
+                      padding: '2px 8px',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: 'var(--text-1)',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveBudget}
+                    className="btn btn-soft btn-sm"
+                    style={{ padding: '2px 8px' }}
+                  >
+                    <Check size={12} />
+                  </button>
+                </div>
+              ) : (
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
+                  {fmt(targetBudget, currency)}
+                </div>
+              )}
+              <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>
+                {activeDailyBudgetsSum > 0 ? `Soma ativa: ${fmt(activeDailyBudgetsSum, currency)}/dia` : 'Meta configurada'}
+              </div>
+            </div>
 
-        {/* Projeção de Fechamento */}
-        <div style={{ background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 10 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', letterSpacing: '.05em', marginBottom: 4 }}>
-            Projeção no Fechamento
-          </div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
-            {fmt(projectedMonthEnd, currency)}
-          </div>
-          <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>
-            {projectedMonthEnd > targetBudget
-              ? `Estouro previsto de ${fmt(projectedMonthEnd - targetBudget, currency)}`
-              : `Sobra prevista de ${fmt(targetBudget - projectedMonthEnd, currency)}`}
-          </div>
-        </div>
+            {/* Investido até hoje */}
+            <div style={{ background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 10 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', letterSpacing: '.05em', marginBottom: 4 }}>
+                Investido até Hoje
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
+                {fmt(currentSpend, currency)}
+              </div>
+              <div style={{ fontSize: 10, color: statusColor, marginTop: 2, fontWeight: 600 }}>
+                {statusDesc}
+              </div>
+            </div>
 
-        {/* Sugestão Diária Restante */}
-        <div style={{ background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 10 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', letterSpacing: '.05em', marginBottom: 4 }}>
-            Ritmo Recomendado
+            {/* Projeção de Fechamento */}
+            <div style={{ background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 10 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', letterSpacing: '.05em', marginBottom: 4 }}>
+                Projeção no Fechamento
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
+                {fmt(projectedMonthEnd, currency)}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>
+                {projectedMonthEnd > targetBudget
+                  ? `Estouro previsto de ${fmt(projectedMonthEnd - targetBudget, currency)}`
+                  : `Sobra prevista de ${fmt(targetBudget - projectedMonthEnd, currency)}`}
+              </div>
+            </div>
+
+            {/* Sugestão Diária Restante */}
+            <div style={{ background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 10 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', letterSpacing: '.05em', marginBottom: 4 }}>
+                Ritmo Recomendado
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>
+                {fmtDec(recommendedDaily, currency)}
+                <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-3)' }}> /dia</span>
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>
+                {daysRemaining > 0 ? `Para os próximos ${daysRemaining} dias restantes` : 'Último dia do mês'}
+              </div>
+            </div>
           </div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>
-            {fmtDec(recommendedDaily, currency)}
-            <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-3)' }}> /dia</span>
-          </div>
-          <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>
-            {daysRemaining > 0 ? `Para os próximos ${daysRemaining} dias restantes` : 'Último dia do mês'}
-          </div>
-        </div>
-      </div>
-    </>
-  )}
-</div>
-)
+        </>
+      )}
+    </div>
+  )
 }
 

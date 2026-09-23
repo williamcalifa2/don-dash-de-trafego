@@ -13,15 +13,32 @@ import { cleanNotes, draftAnalysis, EMPTY_NOTES, extractAudience, extractCampaig
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
+import { getClientConfig } from '@/lib/clientConfig'
+
 /** Relatório mensal ou semanal. Só a equipe da agência (membro ou acima). Lê do banco; "preparar" busca na Meta (poucas chamadas). */
 const notesKey = (slug: string, periodKey: string) => `report_notes:${slug}:${periodKey}`
 const baseKey = (slug: string) => `report_base:${slug}`
 
 async function loadNotes(slug: string, periodKey: string): Promise<ReportNotes> {
-  const [saved, base] = await Promise.all([stores.limit.getSetting<ReportNotes>(notesKey(slug, periodKey)), stores.limit.getSetting<Partial<ReportNotes>>(baseKey(slug))])
-  if (saved) return cleanNotes(saved)
-  // Período novo: objetivo e metas do cliente vêm do último relatório base; análise e próximos passos começam em branco.
-  return { ...EMPTY_NOTES, objective: cleanNotes(base).objective, goals: cleanNotes(base).goals }
+  const [saved, base, clientCfg] = await Promise.all([
+    stores.limit.getSetting<ReportNotes>(notesKey(slug, periodKey)),
+    stores.limit.getSetting<Partial<ReportNotes>>(baseKey(slug)),
+    getClientConfig(slug),
+  ])
+  if (saved) {
+    const cleaned = cleanNotes(saved)
+    return {
+      ...cleaned,
+      objective: cleaned.objective || clientCfg.strategicObjective || '',
+      goals: cleaned.goals || clientCfg.goalsPeriod || '',
+    }
+  }
+  // Período novo: objetivo e metas do cliente vêm das configurações do cliente ou do último relatório base
+  return {
+    ...EMPTY_NOTES,
+    objective: clientCfg.strategicObjective || cleanNotes(base).objective || '',
+    goals: clientCfg.goalsPeriod || cleanNotes(base).goals || '',
+  }
 }
 
 export async function GET(req: NextRequest) {

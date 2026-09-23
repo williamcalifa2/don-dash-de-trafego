@@ -81,6 +81,7 @@ export function MetricPicker({ selected: initialSelected, summary, currency = 'B
   const [draft, setDraft] = useState<MetricKey[]>(initialSelected)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
+  const [dropSide, setDropSide] = useState<'left' | 'right' | null>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
 
   const draftSet = new Set(draft)
@@ -118,25 +119,49 @@ export function MetricPicker({ selected: initialSelected, summary, currency = 'B
   function handleDragOver(e: React.DragEvent, index: number) {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
+    const rect = e.currentTarget.getBoundingClientRect()
+    const midX = rect.left + rect.width / 2
+    const side = e.clientX < midX ? 'left' : 'right'
     setDropIndex(index)
+    setDropSide(side)
   }
 
   function handleDrop(e: React.DragEvent, index: number) {
     e.preventDefault()
     if (dragIndex === null || dragIndex === index) return
+    if (dragIndex === null || dragIndex === index) {
+      setDragIndex(null)
+      setDropIndex(null)
+      setDropSide(null)
+      return
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    const midX = rect.left + rect.width / 2
+    const side = e.clientX < midX ? 'left' : 'right'
+
     setDraft(prev => {
       const next = [...prev]
       const [moved] = next.splice(dragIndex, 1)
       next.splice(index, 0, moved)
+      let targetIdx = index
+      if (side === 'right' && dragIndex > index) {
+        targetIdx = index + 1
+      } else if (side === 'left' && dragIndex < index) {
+        targetIdx = Math.max(0, index - 1)
+      }
+      next.splice(targetIdx, 0, moved)
       return next
     })
     setDragIndex(null)
     setDropIndex(null)
+    setDropSide(null)
   }
 
   function handleDragEnd() {
     setDragIndex(null)
     setDropIndex(null)
+    setDropSide(null)
   }
 
   const labelMap = Object.fromEntries(METRIC_DEFS.map(m => [m.key, m.label]))
@@ -263,8 +288,26 @@ export function MetricPicker({ selected: initialSelected, summary, currency = 'B
                       transition: 'all .1s',
                       display: 'flex', flexDirection: 'column', gap: 6,
                       minHeight: 72,
+                      position: 'relative',
                     }}
                   >
+                    {/* Drop position indicator line ("risquinho") */}
+                    {isDropTarget && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: -2,
+                          bottom: -2,
+                          left: dropSide === 'left' ? -6 : undefined,
+                          right: dropSide === 'right' ? -6 : undefined,
+                          width: 4,
+                          borderRadius: 2,
+                          background: 'var(--accent)',
+                          boxShadow: '0 0 10px var(--accent)',
+                          zIndex: 10,
+                        }}
+                      />
+                    )}
                     {/* tile top row */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{

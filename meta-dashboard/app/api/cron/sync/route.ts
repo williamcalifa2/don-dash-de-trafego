@@ -35,6 +35,8 @@ function authorized(req: NextRequest): boolean {
  * Só roda antes do corte automático (legacy ligado) e só para contas que o novo pipeline ainda NÃO controla nesta fase.
  * No corte final (META_LEGACY_LIVE=false) este bloco deixa de existir na prática.
  */
+import { isClientPaused } from '@/lib/clientConfig'
+
 async function legacyLeads(owned: Set<string>): Promise<Array<{ slug: string; imported?: number; skipped?: string; error?: string }>> {
   const db = getSupabaseServer()
   if (!db) return []
@@ -42,6 +44,7 @@ async function legacyLeads(owned: Set<string>): Promise<Array<{ slug: string; im
   const started = Date.now()
   const results: Array<{ slug: string; imported?: number; skipped?: string; error?: string }> = []
   for (const { slug } of (data ?? []) as Array<{ slug: string }>) {
+    if (await isClientPaused(slug)) { results.push({ slug, skipped: 'cliente pausado' }); continue }
     if (Date.now() - started > BUDGET_MS) { results.push({ slug, skipped: 'sem tempo nesta rodada' }); continue }
     if (Date.now() - (lastRun.get(slug) ?? 0) < 45_000) { results.push({ slug, skipped: 'sincronizado há pouco' }); continue }
     const t = await tenantBySlug(slug)

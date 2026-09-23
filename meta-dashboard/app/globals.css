@@ -251,6 +251,13 @@ input:focus-visible { outline-offset: 0; }
 .pill-btn:hover { background: var(--hover); }
 .pill-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent-glow); color: var(--text-1); }
 @media (max-width: 640px) { .hdr-sep { display: none; } }
+@media (max-width: 640px) {
+  .page { padding: 14px 10px 60px; }
+  .tabs { gap: 2px; }
+  .tab { padding: 8px 10px; font-size: 13px; }
+  .btn-sm { height: 32px; padding: 0 10px; font-size: 12px; }
+  .hdr-sep { display: none; }
+}
 :root { --scen-cols: 84px repeat(3, minmax(0, 1fr)); }
 .scen-h { font-size: 9px; letter-spacing: 0; }
 @media (min-width: 640px) {

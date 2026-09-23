@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, X, Calendar as CalendarIcon, TrendingUp, DollarSign, Users, MousePointer, Eye, MessageSquare } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Calendar as CalendarIcon } from 'lucide-react'
 import type { DailySummary } from '@/lib/meta'
 import type { ResultKind } from '@/lib/resultKind'
 import { KIND_LABELS } from '@/lib/resultKind'
@@ -34,24 +34,20 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
   const L = KIND_LABELS[kind]
   const today = new Date()
   const [currentDate, setCurrentDate] = useState<Date>(new Date())
-  const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null)
+  const [selectedDateStr, setSelectedDateStr] = useState<string | null>(today.toISOString().slice(0, 10))
+  const [monthPickerOpen, setMonthPickerOpen] = useState(false)
 
   const currentYear = currentDate.getFullYear()
   const currentMonth = currentDate.getMonth()
 
-  // First day of current month
-  const firstDay = new Date(currentYear, currentMonth, 1)
-  const startingDayOfWeek = firstDay.getDay()
-  const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
-  const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate()
-
   // Build daily data lookup map: 'YYYY-MM-DD' -> metrics
   const dailyMap = new Map<string, { spend: number; leads: number; cpl: number | null; impressions: number; ctr: number }>()
+  const availableMonths = new Set<string>()
 
   if (daily && daily.dates) {
     daily.dates.forEach((d, idx) => {
-      // Normalize 'YYYY-MM-DD'
       const key = d.slice(0, 10)
+      if (key.length >= 7) availableMonths.add(key.slice(0, 7))
       const resVal = kind === 'form' || !daily.metrics?.results ? (daily.leads?.[idx] ?? 0) : (daily.metrics.results[idx] ?? 0)
       dailyMap.set(key, {
         spend: daily.spend?.[idx] ?? 0,
@@ -63,12 +59,34 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
     })
   }
 
+  if (leads && leads.length > 0) {
+    leads.forEach(l => {
+      const d = l.date || l.created_at
+      if (d && d.length >= 7) availableMonths.add(d.slice(0, 7))
+    })
+  }
+
+  // Also ensure current month is always discoverable
+  availableMonths.add(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`)
+
+  // First day of current month
+  const firstDay = new Date(currentYear, currentMonth, 1)
+  const startingDayOfWeek = firstDay.getDay()
+  const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
+  const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate()
+
   // Navigation
   const prevMonth = () => setCurrentDate(new Date(currentYear, currentMonth - 1, 1))
   const nextMonth = () => setCurrentDate(new Date(currentYear, currentMonth + 1, 1))
   const goToToday = () => {
     setCurrentDate(new Date())
     setSelectedDateStr(today.toISOString().slice(0, 10))
+    setMonthPickerOpen(false)
+  }
+
+  const selectMonth = (monthIdx: number) => {
+    setCurrentDate(new Date(currentYear, monthIdx, 1))
+    setMonthPickerOpen(false)
   }
 
   // Generate cells
@@ -125,8 +143,8 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(4px)',
+        background: 'rgba(0, 0, 0, 0.82)',
+        backdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -139,8 +157,8 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
         className="card"
         style={{
           width: '100%',
-          maxWidth: 960,
-          maxHeight: '92vh',
+          maxWidth: 1040,
+          maxHeight: '94vh',
           display: 'flex',
           flexDirection: 'column',
           background: 'var(--bg-card)',
@@ -148,100 +166,210 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
           border: '1px solid var(--border)',
           boxShadow: 'var(--shadow-elegant)',
           overflow: 'hidden',
+          position: 'relative',
         }}
       >
         {/* Header */}
         <div
           style={{
-            padding: '16px 24px',
+            padding: '16px 20px',
             borderBottom: '1px solid var(--border-soft)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             background: 'var(--bg-card2)',
+            flexWrap: 'wrap',
+            gap: 12,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
+                width: 38,
+                height: 38,
+                borderRadius: 12,
                 background: 'var(--accent-soft)',
                 color: 'var(--accent)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                border: '1px solid var(--accent-glow)',
               }}
             >
               <CalendarIcon size={20} />
             </div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>
-                Calendário de Performance
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Calendário de Performance</span>
+                <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--accent)', fontSize: 10 }}>
+                  Meta Ads
+                </span>
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                Resultados diários e eventos de conversão no estilo Google Calendar
+                Resultados, investimento diário e leads com atendimento rápido
               </div>
             </div>
           </div>
 
           {/* Month Controls & Close */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={goToToday}
               className="btn btn-ghost btn-sm"
-              style={{ border: '1px solid var(--border-soft)', fontSize: 12 }}
+              style={{ border: '1px solid var(--border-soft)', fontSize: 12, height: 32 }}
             >
               Hoje
             </button>
-            <div style={{ display: 'inline-flex', alignItems: 'center', background: 'var(--bg-card)', borderRadius: 8, border: '1px solid var(--border-soft)' }}>
+
+            {/* Month Dropdown / Selector trigger */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', background: 'var(--bg-card)', borderRadius: 10, border: '1px solid var(--border-soft)' }}>
               <button
                 type="button"
                 onClick={prevMonth}
                 className="btn btn-ghost btn-icon btn-sm"
                 title="Mês anterior"
-                style={{ padding: '4px 8px' }}
+                style={{ width: 30, height: 32 }}
               >
                 <ChevronLeft size={16} />
               </button>
-              <span style={{ fontSize: 13, fontWeight: 700, minWidth: 140, textAlign: 'center', color: 'var(--text-1)' }}>
-                {MONTH_NAMES[currentMonth]} {currentYear}
-              </span>
+
+              <button
+                type="button"
+                onClick={() => setMonthPickerOpen(v => !v)}
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  minWidth: 150,
+                  textAlign: 'center',
+                  color: 'var(--text-1)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+                title="Clique para escolher o mês"
+              >
+                <span>{MONTH_NAMES[currentMonth]} {currentYear}</span>
+                <span style={{ fontSize: 10, color: 'var(--text-3)' }}>▼</span>
+              </button>
+
               <button
                 type="button"
                 onClick={nextMonth}
                 className="btn btn-ghost btn-icon btn-sm"
                 title="Próximo mês"
-                style={{ padding: '4px 8px' }}
+                style={{ width: 30, height: 32 }}
               >
                 <ChevronRight size={16} />
               </button>
             </div>
+
             <button
               type="button"
               onClick={onClose}
               className="btn btn-ghost btn-icon btn-sm"
               title="Fechar"
-              style={{ marginLeft: 6 }}
+              style={{ width: 32, height: 32 }}
             >
               <X size={18} />
             </button>
           </div>
         </div>
 
+        {/* Month Selector Grid Modal / Dropdown */}
+        {monthPickerOpen && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 70,
+              left: 0,
+              right: 0,
+              zIndex: 50,
+              background: 'var(--bg-card)',
+              borderBottom: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-elegant)',
+              padding: 20,
+              animation: 'fade-up 0.15s ease',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>
+                Selecione o Mês ({currentYear})
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                Meses em cinza não possuem dados sincronizados
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+              {MONTH_NAMES.map((name, idx) => {
+                const monthKey = `${currentYear}-${String(idx + 1).padStart(2, '0')}`
+                const hasData = availableMonths.has(monthKey)
+                const isSelected = idx === currentMonth
+
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    disabled={!hasData}
+                    onClick={() => selectMonth(idx)}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      border: isSelected
+                        ? '2px solid var(--accent)'
+                        : hasData
+                          ? '1px solid var(--border-soft)'
+                          : '1px dashed var(--border-soft)',
+                      background: isSelected
+                        ? 'var(--accent-soft)'
+                        : hasData
+                          ? 'var(--bg-card2)'
+                          : 'transparent',
+                      color: isSelected
+                        ? 'var(--accent)'
+                        : hasData
+                          ? 'var(--text-1)'
+                          : 'var(--text-3)',
+                      opacity: hasData ? 1 : 0.4,
+                      cursor: hasData ? 'pointer' : 'not-allowed',
+                      fontSize: 13,
+                      fontWeight: isSelected ? 800 : hasData ? 600 : 400,
+                      textAlign: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 4,
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <span>{name}</span>
+                    <span style={{ fontSize: 10, color: hasData ? 'var(--green)' : 'var(--text-3)' }}>
+                      {hasData ? (isSelected ? '● Selecionado' : '● Com dados') : 'Bloqueado'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Calendar Grid Container */}
-        <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', flexDirection: 'row', flexWrap: 'wrap' }}>
           {/* Main Grid */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: 16 }}>
+          <div style={{ flex: '1 1 540px', display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: 18, minWidth: 320 }}>
             {/* Weekdays Row */}
             <div
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(7, 1fr)',
                 textAlign: 'center',
-                marginBottom: 8,
+                marginBottom: 10,
               }}
             >
               {WEEKDAYS.map((wd, i) => (
@@ -251,7 +379,7 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                     fontSize: 11,
                     fontWeight: 700,
                     color: i === 0 || i === 6 ? 'var(--text-3)' : 'var(--text-2)',
-                    letterSpacing: '.06em',
+                    letterSpacing: '.08em',
                   }}
                 >
                   {wd}
@@ -264,23 +392,22 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(7, 1fr)',
-                gap: 6,
+                gap: 8,
                 flex: 1,
               }}
             >
               {cells.map(cell => {
                 const data = dailyMap.get(cell.dateStr)
                 const isSelected = selectedDateStr === cell.dateStr
-                const hasResults = data && (data.leads > 0 || data.spend > 0)
 
                 return (
                   <div
                     key={cell.dateStr}
                     onClick={() => setSelectedDateStr(cell.dateStr)}
                     style={{
-                      minHeight: 82,
-                      padding: 6,
-                      borderRadius: 10,
+                      minHeight: 84,
+                      padding: '8px 6px',
+                      borderRadius: 12,
                       background: isSelected
                         ? 'var(--accent-soft)'
                         : cell.isCurrentMonth
@@ -291,22 +418,22 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                         : cell.isToday
                           ? '2px solid var(--green)'
                           : '1px solid var(--border-soft)',
-                      opacity: cell.isCurrentMonth ? 1 : 0.45,
+                      opacity: cell.isCurrentMonth ? 1 : 0.4,
                       cursor: 'pointer',
                       display: 'flex',
                       flexDirection: 'column',
-                      transition: 'transform 0.1s, box-shadow 0.1s, background 0.1s',
+                      transition: 'all 0.15s ease',
                       position: 'relative',
                     }}
                     onMouseEnter={e => {
-                      if (!isSelected) e.currentTarget.style.background = 'var(--bg-card)'
+                      if (!isSelected) e.currentTarget.style.borderColor = 'var(--accent-glow)'
                     }}
                     onMouseLeave={e => {
-                      if (!isSelected) e.currentTarget.style.background = cell.isCurrentMonth ? 'var(--bg-card2)' : 'transparent'
+                      if (!isSelected) e.currentTarget.style.borderColor = cell.isToday ? 'var(--green)' : 'var(--border-soft)'
                     }}
                   >
                     {/* Day Number Header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <span
                         style={{
                           fontSize: 12,
@@ -317,30 +444,30 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          background: cell.isToday ? 'var(--green)' : 'transparent',
-                          color: cell.isToday ? '#fff' : 'var(--text-1)',
+                          background: cell.isToday ? 'var(--green)' : isSelected ? 'var(--accent)' : 'transparent',
+                          color: cell.isToday || isSelected ? '#fff' : 'var(--text-1)',
                         }}
                       >
                         {cell.day}
                       </span>
 
                       {data && data.spend > 0 && (
-                        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-3)' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-2)' }}>
                           {fmtCurrency(data.spend, currency)}
                         </span>
                       )}
                     </div>
 
-                    {/* Google Meet / Calendar style Event Pills */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
+                    {/* Results / Metric Pills */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, justifyContent: 'flex-start' }}>
                       {data && data.leads > 0 && (
                         <div
                           style={{
                             fontSize: 10,
                             fontWeight: 700,
-                            padding: '2px 5px',
-                            borderRadius: 4,
-                            background: 'rgba(34, 197, 94, 0.15)',
+                            padding: '2px 6px',
+                            borderRadius: 6,
+                            background: 'rgba(34, 197, 94, 0.14)',
                             color: '#16a34a',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
@@ -361,10 +488,10 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                           style={{
                             fontSize: 9,
                             fontWeight: 600,
-                            padding: '1px 5px',
-                            borderRadius: 4,
-                            background: 'rgba(59, 130, 246, 0.12)',
-                            color: '#2563eb',
+                            padding: '2px 6px',
+                            borderRadius: 6,
+                            background: 'var(--accent-soft)',
+                            color: 'var(--accent)',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -385,20 +512,22 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
           {selectedDateStr && (
             <div
               style={{
-                width: 320,
+                flex: '1 1 300px',
+                maxWidth: 340,
                 borderLeft: '1px solid var(--border-soft)',
                 background: 'var(--bg-card2)',
-                padding: 18,
+                padding: 20,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 14,
+                gap: 16,
                 overflowY: 'auto',
+                minWidth: 280,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)', letterSpacing: '.06em' }}>
-                    Detalhes do Dia
+                    Métricas do Dia
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>
                     {new Date(selectedDateStr + 'T12:00:00Z').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
@@ -408,69 +537,69 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                   type="button"
                   onClick={() => setSelectedDateStr(null)}
                   className="btn btn-ghost btn-icon btn-sm"
-                  style={{ width: 22, height: 22 }}
+                  style={{ width: 26, height: 26 }}
                 >
-                  <X size={14} />
+                  <X size={15} />
                 </button>
               </div>
 
               {selectedMetrics ? (
                 <>
                   {/* Key Metrics Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    <div style={{ background: 'var(--bg-card)', padding: '10px 12px', borderRadius: 10 }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600 }}>Investido</div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div style={{ background: 'var(--bg-card)', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-soft)' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase' }}>Investimento</div>
+                      <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
                         {fmtCurrency(selectedMetrics.spend, currency)}
                       </div>
                     </div>
 
-                    <div style={{ background: 'var(--bg-card)', padding: '10px 12px', borderRadius: 10 }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600 }}>{L.many}</div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--green)', fontVariantNumeric: 'tabular-nums' }}>
+                    <div style={{ background: 'var(--bg-card)', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-soft)' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase' }}>{L.many}</div>
+                      <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--green)', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
                         {selectedMetrics.leads}
                       </div>
                     </div>
 
-                    <div style={{ background: 'var(--bg-card)', padding: '10px 12px', borderRadius: 10 }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600 }}>{L.cost}</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
+                    <div style={{ background: 'var(--bg-card)', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-soft)' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase' }}>{L.cost}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
                         {selectedMetrics.cpl ? fmtDec(selectedMetrics.cpl, currency) : '—'}
                       </div>
                     </div>
 
-                    <div style={{ background: 'var(--bg-card)', padding: '10px 12px', borderRadius: 10 }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600 }}>CTR do Dia</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
+                    <div style={{ background: 'var(--bg-card)', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-soft)' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase' }}>CTR do Dia</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
                         {selectedMetrics.ctr.toFixed(2)}%
                       </div>
                     </div>
                   </div>
 
                   {/* Secondary row */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-card)', borderRadius: 10, fontSize: 11, color: 'var(--text-2)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--text-2)' }}>
                     <span>👁 {selectedMetrics.impressions.toLocaleString('pt-BR')} impressões</span>
-                    <span>🎯 {selectedMetrics.leads > 0 ? `${((selectedMetrics.leads / (selectedMetrics.impressions || 1)) * 100).toFixed(2)}% conv.` : '0% conv.'}</span>
+                    <span>🎯 {selectedMetrics.leads > 0 ? `${((selectedMetrics.leads / (selectedMetrics.impressions || 1)) * 100).toFixed(2)}% taxa` : '0%'}</span>
                   </div>
                 </>
               ) : (
-                <div style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--text-3)', fontSize: 12, background: 'var(--bg-card)', borderRadius: 10 }}>
+                <div style={{ padding: '24px 14px', textAlign: 'center', color: 'var(--text-3)', fontSize: 12, background: 'var(--bg-card)', borderRadius: 12, border: '1px dashed var(--border-soft)' }}>
                   Sem métricas sincronizadas da Meta para esta data.
                 </div>
               )}
 
               {/* Leads registered on this day */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '.05em' }}>
-                  Leads Entrados ({selectedLeads.length})
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', marginBottom: 10, letterSpacing: '.05em' }}>
+                  Leads do Dia ({selectedLeads.length})
                 </div>
 
                 {selectedLeads.length === 0 ? (
-                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontStyle: 'italic' }}>
-                    Nenhum lead individual registrado nesta data.
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontStyle: 'italic', padding: 8 }}>
+                    Nenhum lead individual captado nesta data.
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {selectedLeads.map(l => {
                       const wa = l.telefone ? waLink(l.telefone) : null
                       return (
@@ -478,16 +607,19 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                           key={l.id}
                           style={{
                             background: 'var(--bg-card)',
-                            padding: '8px 10px',
-                            borderRadius: 8,
+                            padding: '10px 12px',
+                            borderRadius: 10,
                             border: '1px solid var(--border-soft)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 4,
                           }}
                         >
                           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)' }}>
                             {l.nome || 'Lead sem nome'}
                           </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 3 }}>
-                            <span style={{ fontSize: 10, color: 'var(--text-2)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-2)' }}>
                               {l.telefone ? fmtPhone(l.telefone) : l.email || '—'}
                             </span>
                             {wa && (
@@ -495,7 +627,15 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                                 href={wa}
                                 target="_blank"
                                 rel="noreferrer"
-                                style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', textDecoration: 'none' }}
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  color: '#16a34a',
+                                  textDecoration: 'none',
+                                  background: 'rgba(34, 197, 94, 0.12)',
+                                  padding: '2px 8px',
+                                  borderRadius: 12,
+                                }}
                               >
                                 WhatsApp ↗
                               </a>

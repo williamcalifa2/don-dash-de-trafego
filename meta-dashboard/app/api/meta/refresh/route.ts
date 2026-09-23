@@ -48,13 +48,22 @@ export async function POST(req: NextRequest) {
       throw e
     }
   }
-  // Modo ao vivo: "Atualizar" descarta o cache deste cliente, no máximo 1 vez por minuto (mais que isso, várias telas não furam o cache).
-  if (allow(`fresh:${tenant.slug}`, 1, 60_000)) invalidateLegacyCache(tenant.clientId)
-  try {
-    const r = await requestRefresh({ store: stores.limit, jobs: stores.jobs, config: metaConfig }, tenant.clientId)
-    return NextResponse.json(r)
-  } catch (e) {
-    if (e instanceof StoreNotMigrated) return NextResponse.json({ queued: false, reason: 'not_available' })
-    throw e
+
+  // Modo ao vivo / cliente: botão "Atualizar" permite clique normal com feedback visual,
+  // mas requisições reais à Meta API só acontecem no máximo a cada 2 horas por cliente (7.200.000 ms).
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000
+  const canRefresh = allow(`fresh:${tenant.slug}`, 1, TWO_HOURS_MS)
+  if (canRefresh) {
+    invalidateLegacyCache(tenant.clientId)
+    try {
+      const r = await requestRefresh({ store: stores.limit, jobs: stores.jobs, config: metaConfig }, tenant.clientId)
+      return NextResponse.json(r)
+    } catch (e) {
+      if (e instanceof StoreNotMigrated) return NextResponse.json({ queued: false, reason: 'not_available' })
+      throw e
+    }
   }
+
+  // Dentro da janela de 2h: responde com sucesso silencioso usando o cache existente, sem gastar cota
+  return NextResponse.json({ queued: false, reason: 'cached_window', cached: true })
 }

@@ -510,29 +510,11 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
     ],
   })
 
-  // 9 — Análise
-  slides.push({
-    id: 'analysis', label: 'Análise', dark: true,
-    els: [
-      ...corners(true),
-      title(is7d ? 'Análise do período' : 'Análise do mês', 64, 55),
-      { t: 'box', x: 80, y: 160, w: 1120, h: 480, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 110, y: 190, w: 1060, h: 420, text: notes.analysis, size: 22, weight: 400, color: P.white, lineHeight: 1.5, edit: 'analysis', placeholder: `O que aconteceu ${is7d ? 'no período' : 'no mês'} e por quê (clique para escrever)` },
-      ...band(true),
-    ],
-  })
+  // 9 — Análise Estratégica
+  slides.push(makeAnalysisSlide(is7d, notes, paid, d.currency))
 
   // 10 — Próximos passos & Otimizações
-  slides.push({
-    id: 'next', label: 'Próximos passos', dark: true,
-    els: [
-      ...corners(true),
-      title(is7d ? 'Próximos passos & Otimizações' : 'Próximos passos', 64, 55),
-      { t: 'box', x: 80, y: 160, w: 1120, h: 480, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 110, y: 190, w: 1060, h: 420, text: notes.next, size: 22, weight: 400, color: P.white, lineHeight: 1.5, edit: 'next', placeholder: `O que vamos fazer ${is7d ? 'na próxima semana' : 'no próximo mês'} (clique para escrever)` },
-      ...band(true),
-    ],
-  })
+  slides.push(makeNextStepsSlide(is7d, notes))
 
   return slides
 }
@@ -706,25 +688,160 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
   })
 
   // 11 — Análise Estratégica
-  slides.push({
+  slides.push(makeAnalysisSlide(is7d, notes, paid, d.currency))
+
+  // 12 — Próximos passos & Otimizações
+  slides.push(makeNextStepsSlide(is7d, notes))
+
+  return slides
+}
+
+function makeAnalysisSlide(is7d: boolean, notes: ReportNotes, paid: ReportData['paid'], currency: string): SlideSpec {
+  const topStats = paid.stats.slice(0, 4)
+  const statBoxes: El[] = topStats.flatMap((s, idx) => {
+    const x = 80 + idx * 287
+    return [
+      { t: 'box', x, y: 150, w: 268, h: 90, fill: P.card, line: P.cardBorder, radius: 12 },
+      { t: 'text', x: x + 16, y: 164, w: 236, h: 18, text: upper(s.label), size: 10, weight: 700, color: P.muted, align: 'left', lineHeight: 1.2 },
+      { t: 'text', x: x + 16, y: 188, w: 236, h: 36, text: s.value, size: 22, weight: 800, color: P.white, align: 'left', valign: 'middle', lineHeight: 1.1 },
+    ] as El[]
+  })
+
+  return {
     id: 'analysis', label: 'Análise', dark: true,
     els: [
       ...corners(true),
-      title(is7d ? 'Análise do período' : 'Análise do mês', 64, 55),
-      { t: 'box', x: 80, y: 160, w: 1120, h: 480, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 110, y: 190, w: 1060, h: 420, text: notes.analysis, size: 22, weight: 400, color: P.white, lineHeight: 1.5, edit: 'analysis', placeholder: `O que aconteceu ${is7d ? 'no período' : 'no mês'} e por quê (clique para escrever)` },
+      title(is7d ? 'Análise do período' : 'Análise do mês', 60, 50),
+      { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: 'Diagnóstico executivo da performance e principais aprendizados estratégicos.', size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
+      ...(statBoxes.length > 0 ? statBoxes : []),
+      { t: 'box', x: 80, y: statBoxes.length > 0 ? 255 : 155, w: 1120, h: statBoxes.length > 0 ? 395 : 495, fill: P.card, line: P.cardBorder, radius: 16 },
+      { t: 'text', x: 110, y: statBoxes.length > 0 ? 275 : 175, w: 1060, h: 22, text: 'PARECER EXECUTIVO E APRENDIZADOS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 110, y: statBoxes.length > 0 ? 305 : 205, w: 1060, h: statBoxes.length > 0 ? 325 : 425, text: notes.analysis, size: 18, weight: 400, color: P.white, lineHeight: 1.6, edit: 'analysis', placeholder: `O que aconteceu ${is7d ? 'no período' : 'no mês'} e por quê (clique para escrever)` },
+      ...band(true),
+    ],
+  }
+}
+
+function makeNextStepsSlide(is7d: boolean, notes: ReportNotes): SlideSpec {
+  const pillars: El[] = [
+    { t: 'box', x: 80, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
+    { t: 'text', x: 100, y: 168, w: 315, h: 20, text: '1. CRIATIVOS & MENSAGENS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 100, y: 196, w: 315, h: 80, text: 'Testagem de novos ganchos visuais, vídeos curtos e formatos focados em elevar CTR e taxa de conversão.', size: 13, weight: 400, color: P.soft, lineHeight: 1.45 },
+
+    { t: 'box', x: 462, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
+    { t: 'text', x: 482, y: 168, w: 315, h: 20, text: '2. PÚBLICOS & SEGMENTAÇÃO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 482, y: 196, w: 315, h: 80, text: 'Expansão de públicos semelhantes, refinamento de exclusões e testes contínuos de interesses qualificados.', size: 13, weight: 400, color: P.soft, lineHeight: 1.45 },
+
+    { t: 'box', x: 845, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
+    { t: 'text', x: 865, y: 168, w: 315, h: 20, text: '3. ESCALA & OTIMIZAÇÃO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 865, y: 196, w: 315, h: 80, text: 'Alocação inteligente de orçamento para criativos vencedores e ajuste de lances para redução de CPL/CPA.', size: 13, weight: 400, color: P.soft, lineHeight: 1.45 },
+  ]
+
+  return {
+    id: 'next', label: 'Próximos passos', dark: true,
+    els: [
+      ...corners(true),
+      title(is7d ? 'Próximos passos & Otimizações' : 'Próximos passos', 60, 50),
+      { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: 'Direcionamento estratégico e plano de ação para a próxima etapa.', size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
+      ...pillars,
+      { t: 'box', x: 80, y: 315, w: 1120, h: 335, fill: P.card, line: P.cardBorder, radius: 16 },
+      { t: 'text', x: 110, y: 335, w: 1060, h: 22, text: 'PLANO DE AÇÃO E DIRETRIZES OPERACIONAIS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 110, y: 365, w: 1060, h: 265, text: notes.next, size: 18, weight: 400, color: P.white, lineHeight: 1.55, edit: 'next', placeholder: `O que vamos fazer ${is7d ? 'na próxima semana' : 'no próximo mês'} (clique para escrever)` },
+      ...band(true),
+    ],
+  }
+}
+
+/** Modelo Orgânico: 6 slides executivos exclusivos para clientes com foco em redes sociais e sem tráfego pago. */
+export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec[] {
+  const is7d = d.month.preset === 'last_7d'
+  const period = `${fmtDay(d.month.since)} até ${fmtDay(d.month.until)}`
+  const compLabel = is7d ? 'período anterior' : 'mês anterior'
+  const slides: SlideSpec[] = []
+  const org = d.organic
+  const orgOk = org.status === 'ok'
+
+  // 1 — Capa
+  slides.push({
+    id: 'cover', label: 'Capa', dark: true,
+    els: [
+      ...corners(true),
+      { t: 'box', x: 440, y: 80, w: 400, h: 32, fill: P.violetSoft, line: P.violet, radius: 16 },
+      { t: 'text', x: 440, y: 80, w: 400, h: 32, text: 'RELATÓRIO ESTRATÉGICO ORGÂNICO', size: 12, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', lineHeight: 1.2 },
+      { t: 'text', x: 60, y: 140, w: 1160, h: 230, text: upper(is7d ? 'Resultados dos últimos 7 dias' : `Resultados de ${d.month.label}`), size: is7d ? 72 : 82, weight: 800, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.15 },
+      { t: 'text', x: 60, y: 385, w: 1160, h: 30, text: `Período avaliado: ${period}`, size: 18, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      ...(d.client.logoUrl ? [{ t: 'img', x: 610, y: 440, w: 60, h: 60, src: d.client.logoUrl, radius: 12 } as El] : []),
+      { t: 'text', x: 60, y: d.client.logoUrl ? 515 : 465, w: 1160, h: 44, text: upper(d.client.name), size: 30, weight: 600, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.2 },
       ...band(true),
     ],
   })
 
-  // 12 — Próximos passos & Otimizações
+  // 2 — Objetivo e metas
+  slides.push({
+    id: 'objective', label: 'Objetivo e metas', dark: true,
+    els: [
+      ...corners(true),
+      title('Objetivo e metas', 70, 70),
+      { t: 'box', x: 90, y: 180, w: 1100, h: 200, fill: P.card, line: P.cardBorder, radius: 16 },
+      { t: 'text', x: 120, y: 200, w: 1040, h: 24, text: 'OBJETIVO ESTRATÉGICO DO CLIENTE', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 120, y: 235, w: 1040, h: 125, text: notes.objective, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'objective', placeholder: 'Objetivo do cliente com as redes sociais (clique para escrever)' },
+
+      { t: 'box', x: 90, y: 405, w: 1100, h: 235, fill: P.card, line: P.cardBorder, radius: 16 },
+      { t: 'text', x: 120, y: 425, w: 1040, h: 24, text: 'METAS E DIRETRIZES DO PERÍODO', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 120, y: 460, w: 1040, h: 160, text: notes.goals, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'goals', placeholder: 'Uma meta por linha (clique para escrever)' },
+      ...band(true),
+    ],
+  })
+
+  // 3 — Métricas Orgânicas
+  const cellsOrg = org.stats.slice(0, 6).flatMap((s, i) => statCell(s, i % 2 ? 940 : 340, 232 + Math.floor(i / 2) * 150, true))
+  slides.push({
+    id: 'organic', label: 'Métricas orgânicas', dark: true,
+    els: [
+      ...corners(true),
+      title('Métricas orgânicas', 60, 60, 'center'),
+      { t: 'text', x: 60, y: 145, w: 1160, h: 30, text: `Resultados de ${period} no Instagram${org.handle ? ` (${org.handle})` : ''}, contra o ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      ...(orgOk ? cellsOrg : [{ t: 'text', x: 160, y: 300, w: 960, h: 120, text: org.status === 'incomplete' ? `Os números ${is7d ? 'do período' : 'do mês fechado'} ainda não foram coletados.` : 'Sem dados orgânicos para este cliente.', size: 20, weight: 500, color: P.soft, align: 'center', valign: 'middle', lineHeight: 1.2 } as El]),
+      ...band(true),
+    ],
+  })
+
+  // 4 — Conteúdo Orgânico Top 5
+  slides.push({
+    id: 'content', label: 'Conteúdo orgânico', dark: true,
+    els: [
+      ...corners(true),
+      title('Conteúdo Orgânico', 60, 55, 'center'),
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Publicações que mais geraram alcance e engajamento no período.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      ...modernOrganicCards(org.top),
+      ...band(true),
+    ],
+  })
+
+  // 5 — Análise do Conteúdo
+  slides.push({
+    id: 'analysis', label: 'Análise', dark: true,
+    els: [
+      ...corners(true),
+      title(is7d ? 'Análise do período' : 'Análise do mês', 60, 50),
+      { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: 'Diagnóstico de alcance, engajamento e recepção dos conteúdos pelos seguidores.', size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
+      { t: 'box', x: 80, y: 160, w: 1120, h: 480, fill: P.card, line: P.cardBorder, radius: 16 },
+      { t: 'text', x: 110, y: 180, w: 1060, h: 22, text: 'DIAGNÓSTICO ESTRATÉGICO DE CONTEÚDO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 110, y: 215, w: 1060, h: 395, text: notes.analysis, size: 19, weight: 400, color: P.white, lineHeight: 1.6, edit: 'analysis', placeholder: 'Análise dos conteúdos e principais formatos que performaram no período (clique para escrever)' },
+      ...band(true),
+    ],
+  })
+
+  // 6 — Próximos Passos Orgânicos
   slides.push({
     id: 'next', label: 'Próximos passos', dark: true,
     els: [
       ...corners(true),
-      title('Próximos passos & Otimizações', 64, 55),
+      title(is7d ? 'Próximos passos & Otimizações' : 'Próximos passos', 60, 50),
+      { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: 'Planejamento editorial e melhorias estratégicas para o próximo ciclo.', size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
       { t: 'box', x: 80, y: 160, w: 1120, h: 480, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 110, y: 190, w: 1060, h: 420, text: notes.next, size: 22, weight: 400, color: P.white, lineHeight: 1.5, edit: 'next', placeholder: `O que vamos fazer ${is7d ? 'na próxima semana' : 'no próximo mês'} (clique para escrever)` },
+      { t: 'text', x: 110, y: 180, w: 1060, h: 22, text: 'DIRETRIZES EDITORIAIS E PRÓXIMAS AÇÕES', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 110, y: 215, w: 1060, h: 395, text: notes.next, size: 19, weight: 400, color: P.white, lineHeight: 1.6, edit: 'next', placeholder: 'Planejamento editorial e temas para os próximos posts (clique para escrever)' },
       ...band(true),
     ],
   })
@@ -733,6 +850,8 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
 }
 
 /** Retorna os slides correspondentes ao modo selecionado (padrão ou avançado). */
+/** Retorna os slides correspondentes ao modo selecionado (padrão, avançado ou orgânico). */
 export function buildSlides(d: ReportData, notes: ReportNotes, mode: ReportMode = 'standard'): SlideSpec[] {
+  if (mode === 'organic') return buildOrganicSlides(d, notes)
   return mode === 'advanced' ? buildAdvancedSlides(d, notes) : buildStandardSlides(d, notes)
 }

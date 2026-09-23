@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Download, FileBarChart, RefreshCw, TrendingUp, AlertCircle, Moon, Sun, Settings2, Tv, Bell, BellOff, LogOut, Shield, ChevronDown, CalendarDays } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Download, FileBarChart, RefreshCw, TrendingUp, AlertCircle, Moon, Sun, Settings2, Tv, Bell, BellOff, LogOut, Shield, ChevronDown, CalendarDays, DollarSign } from 'lucide-react'
 import { MetricTile } from '@/components/MetricTile'
 import { CampaignTable } from '@/components/CampaignTable'
 import { DailyChart } from '@/components/DailyChart'
@@ -10,11 +10,10 @@ import { SimuladorTab } from '@/components/SimuladorTab'
 import { LeadsTab } from '@/components/LeadsTab'
 import { MetricPicker, useSelectedMetrics } from '@/components/MetricPicker'
 import { TvMode } from '@/components/TvMode'
-import { RetornoTab } from '@/components/RetornoTab'
 import { ReportTab } from '@/components/ReportTab'
 import { ReportStudio } from '@/components/ReportStudio'
 import { LeadToast } from '@/components/LeadToast'
-import { BudgetPacingCard } from '@/components/BudgetPacingCard'
+import { BudgetPacingModal } from '@/components/BudgetPacingModal'
 import { CalendarViewModal } from '@/components/CalendarViewModal'
 import { LeadsProvider, useLeadsData } from '@/lib/leadsContext'
 import { useLeadAlerts } from '@/lib/useLeadAlerts'
@@ -114,15 +113,17 @@ function Dashboard() {
   const [reportOpen, setReportOpen] = useState(false)
   const [monthlyOpen, setMonthlyOpen] = useState(false)
   const [monthlyMode, setMonthlyMode] = useState<ReportMode>('standard')
-  const [tab, setTab] = useState<'metrics' | 'funnel' | 'audience' | 'organic' | 'retorno' | 'simulator' | 'leads'>('metrics')
+  const [tab, setTab] = useState<'metrics' | 'funnel' | 'audience' | 'organic' | 'simulator' | 'leads'>('metrics')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [pacingModalOpen, setPacingModalOpen] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [tv, setTv] = useState(false)
   const [me, setMe] = useState<{ slug: string; name: string; logoUrl: string | null; platforms?: PlatformKey[]; authEnabled: boolean; admin?: boolean; role?: string | null } | null>(null)
   const [openLeadId, setOpenLeadId] = useState<string | null>(null)
   const leadsApi = useLeadsData()
   const alerts = useLeadAlerts(leadsApi.leads, !leadsApi.loading && !leadsApi.error)
-  const staleCount = leadsApi.leads.filter(l => isStale(l)).length
+  const staleCount = useMemo(() => leadsApi.leads.filter(l => isStale(l)).length, [leadsApi.leads])
   const [selectedMetrics, setSelectedMetrics] = useSelectedMetrics()
 
   useEffect(() => {
@@ -224,6 +225,7 @@ function Dashboard() {
   const kindKey = `resultKind:${me?.slug ?? 'default'}`
   useEffect(() => { try { const v = localStorage.getItem(kindKey); if (v === 'form' || v === 'site' || v === 'conversa' || v === 'misto') setStoredKind(v) } catch { } }, [kindKey])
   useEffect(() => { try { const v = localStorage.getItem(kindKey); if (v === 'form' || v === 'site' || v === 'conversa' || v === 'custom' || v === 'sales' || v === 'misto') setStoredKind(v) } catch { } }, [kindKey])
+  useEffect(() => { try { const v = localStorage.getItem(kindKey); if (v === 'form' || v === 'site' || v === 'conversa' || v === 'custom' || v === 'sales' || v === 'misto') setStoredKind(v as ResultKind) } catch { } }, [kindKey])
   useEffect(() => { if (hasResults) { setStoredKind(detected); try { localStorage.setItem(kindKey, detected) } catch { } } }, [hasResults, detected, kindKey])
   const kind: ResultKind = hasResults ? detected : (storedKind ?? detected)
   const showCrm = kind === 'form' || kind === 'misto' || leadsApi.leads.length > 0
@@ -237,20 +239,28 @@ function Dashboard() {
     window.addEventListener('afterprint', done)
     setTimeout(() => window.print(), 200)
   }, [me?.name, preset])
-  // Se a aba aberta deixou de existir para este cliente, volta para as métricas.
-  useEffect(() => { if (!showCrm && tab === 'retorno') setTab('metrics') }, [showCrm, tab])
   // O Simulador ainda é só do administrador; o cliente não vê a aba nem abre por outro caminho.
   useEffect(() => { if (tab === 'simulator' && me && !me.admin) setTab('metrics') }, [tab, me])
 
-  const tiles = s
-    ? selectedMetrics
+  const handleManualRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await mutate()
+    } finally {
+      setTimeout(() => setRefreshing(false), 800)
+    }
+  }, [mutate])
+
+  const tiles = useMemo(() => {
+    if (!s) return []
+    return selectedMetrics
       .map(key => {
         const t = buildTile(key, s, p, d, currency, kind)
         if (t && !t.spark) t.spark = d?.metrics?.[kind !== 'form' && key === 'leads' ? 'results' : key]
         return t
       })
       .filter(Boolean) as NonNullable<ReturnType<typeof buildTile>>[]
-    : []
+  }, [s, selectedMetrics, p, d, currency, kind])
 
   const hasEnvError = data?.error?.includes('META_ACCESS_TOKEN')
 
@@ -391,6 +401,16 @@ function Dashboard() {
 
           <div className="hdr-sep" style={{ width: 1, height: 24, background: 'var(--border)' }} />
 
+          {/* Botão Budget Pacing redondo estilo Claude Code */}
+          <button
+            onClick={() => setPacingModalOpen(true)}
+            title="Controle de Ritmo de Verba (Budget Pacing)"
+            aria-label="Controle de Ritmo de Verba"
+            className="btn btn-outline btn-icon btn-sm"
+          >
+            <DollarSign size={16} strokeWidth={1.75} />
+          </button>
+
           {/* Botão Calendário redondo igual aos outros */}
           <button
             onClick={() => setCalendarOpen(true)}
@@ -415,8 +435,8 @@ function Dashboard() {
           <button onClick={toggleTheme} title="Alternar tema" aria-label="Alternar tema" className="btn btn-outline btn-icon btn-sm">
             {theme === 'dark' ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}
           </button>
-          <button onClick={() => mutate()} disabled={isValidating} className="btn btn-soft btn-sm">
-            <RefreshCw size={16} strokeWidth={1.75} style={{ animation: isValidating ? 'spin 1s linear infinite' : undefined }} />
+          <button onClick={handleManualRefresh} disabled={isValidating || refreshing} className="btn btn-soft btn-sm">
+            <RefreshCw size={16} strokeWidth={1.75} style={{ animation: (isValidating || refreshing) ? 'spin 1s linear infinite' : undefined }} />
             Atualizar
           </button>
           {me?.authEnabled && (
@@ -430,7 +450,7 @@ function Dashboard() {
       {/* Abas sublinhadas com Ações de Relatório */}
       <div className="no-print" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div className="tabs" role="tablist" style={{ borderBottom: 'none', marginBottom: 0 }}>
-          {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['retorno', 'Retorno'], ['simulator', 'Simulador'], ['leads', 'Leads']] as const).filter(([key]) => (showCrm || key !== 'retorno') && (key !== 'simulator' || !!me?.admin)).map(([key, label]) => (
+          {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads']] as const).filter(([key]) => (key !== 'simulator' || !!me?.admin)).map(([key, label]) => (
             <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
               {label}
               {key === 'leads' && staleCount > 0 && (
@@ -440,43 +460,35 @@ function Dashboard() {
           ))}
         </div>
 
+        {/* Botão Único Unificado de Relatórios */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 6 }}>
-          <div ref={reportMenuRef} style={{ position: 'relative', display: 'inline-flex' }}>
+          <div ref={reportMenuRef} style={{ position: 'relative' }}>
             <button
               className="btn btn-outline btn-sm"
-              onClick={() => { setMonthlyMode('standard'); setMonthlyOpen(true); setReportMenuOpen(false) }}
+              onClick={() => setReportMenuOpen(v => !v)}
+              aria-expanded={reportMenuOpen}
+              aria-haspopup="menu"
+              aria-label="Opções de Relatório"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                borderTopRightRadius: 0,
-                borderBottomRightRadius: 0,
-                borderRight: 'none',
+                padding: '0 14px',
+                height: 36,
+                fontSize: 13,
+                fontWeight: 600,
               }}
-              title="Gerar Apresentação PPTX (Padrão)"
+              title="Apresentações e Relatórios"
             >
               <FileBarChart size={16} strokeWidth={1.75} />
-              <span>Apresentação PPTX</span>
-            </button>
-            <button
-              className="btn btn-outline btn-sm btn-icon"
-              onClick={() => setReportMenuOpen(v => !v)}
-              aria-expanded={reportMenuOpen}
-              aria-haspopup="menu"
-              aria-label="Opções de relatório PPTX"
-              style={{
-                borderTopLeftRadius: 0,
-                borderBottomLeftRadius: 0,
-                padding: '0 8px',
-              }}
-              title="Ver opções de relatório (Padrão ou Avançado)"
-            >
+              <span>Relatório</span>
               <ChevronDown
                 size={14}
                 strokeWidth={2}
                 style={{
                   transform: reportMenuOpen ? 'rotate(180deg)' : 'none',
                   transition: 'transform 0.15s ease',
+                  opacity: 0.7,
                 }}
               />
             </button>
@@ -488,16 +500,16 @@ function Dashboard() {
                   position: 'absolute',
                   top: 'calc(100% + 6px)',
                   right: 0,
-                  zIndex: 50,
-                  minWidth: 270,
+                  zIndex: 100,
+                  minWidth: 290,
                   background: 'var(--bg-card)',
                   border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.35)',
+                  borderRadius: 14,
+                  boxShadow: 'var(--shadow-elegant)',
                   padding: 6,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 4,
+                  gap: 3,
                 }}
               >
                 <button
@@ -507,20 +519,20 @@ function Dashboard() {
                   style={{
                     justifyContent: 'flex-start',
                     textAlign: 'left',
-                    padding: '8px 10px',
+                    padding: '8px 12px',
                     height: 'auto',
                     width: '100%',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'flex-start',
                     gap: 2,
+                    borderRadius: 8,
                   }}
                 >
-                  <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>Apresentação Padrão</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>8 slides · Resumo executivo tradicional</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>10 slides · Resumo, público e plataformas</span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-1)' }}>Apresentação Padrão (PPTX)</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>8 slides · Resumo executivo tradicional de tráfego</span>
                 </button>
-                <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+
                 <button
                   role="menuitem"
                   onClick={() => { setMonthlyMode('advanced'); setMonthlyOpen(true); setReportMenuOpen(false) }}
@@ -528,26 +540,70 @@ function Dashboard() {
                   style={{
                     justifyContent: 'flex-start',
                     textAlign: 'left',
-                    padding: '8px 10px',
+                    padding: '8px 12px',
                     height: 'auto',
                     width: '100%',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'flex-start',
                     gap: 2,
+                    borderRadius: 8,
                   }}
                 >
-                  <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>Relatório Avançado</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>11 slides · Funil, público e campanhas</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>12 slides · Funil, campanhas e criativos</span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-1)' }}>Relatório Avançado (PPTX)</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>12 slides · Funil, criativos, público e próximos passos</span>
+                </button>
+
+                <button
+                  role="menuitem"
+                  onClick={() => { setMonthlyMode('organic'); setMonthlyOpen(true); setReportMenuOpen(false) }}
+                  className="btn btn-ghost btn-sm"
+                  style={{
+                    justifyContent: 'flex-start',
+                    textAlign: 'left',
+                    padding: '8px 12px',
+                    height: 'auto',
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: 2,
+                    borderRadius: 8,
+                  }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-1)' }}>Relatório Apenas Orgânico (PPTX)</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>6 slides · Instagram, engajamento e seguidores (sem anúncios)</span>
+                </button>
+
+                <div style={{ height: 1, background: 'var(--border-soft)', margin: '4px 0' }} />
+
+                <button
+                  role="menuitem"
+                  onClick={() => { setReportOpen(true); setReportMenuOpen(false) }}
+                  disabled={reportOpen || !data}
+                  className="btn btn-ghost btn-sm"
+                  style={{
+                    justifyContent: 'flex-start',
+                    textAlign: 'left',
+                    padding: '8px 12px',
+                    height: 'auto',
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: 2,
+                    borderRadius: 8,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 13, color: 'var(--text-1)' }}>
+                    <Download size={14} strokeWidth={2} />
+                    <span>Baixar Relatório (PDF)</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Versão impressa executiva para download imediato</span>
                 </button>
               </div>
             )}
           </div>
-
-          <button className="btn btn-outline btn-sm" onClick={() => setReportOpen(true)} disabled={reportOpen || !data}>
-            <Download size={16} strokeWidth={1.75} /> {reportOpen ? 'Preparando…' : 'Baixar relatório'}
-          </button>
         </div>
       </div>
 
@@ -580,7 +636,6 @@ function Dashboard() {
       {tab === 'audience' && <AudienceTab preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} kind={kind} />}
       {tab === 'organic' && <OrganicTab preset="this_month" presetLabel="Este mês" canLink={me?.role === 'owner' || me?.role === 'admin'} slug={me?.slug} />}
       {tab === 'simulator' && me?.admin && <SimuladorTab summary={s ? (kind === 'form' ? s : { ...s, leads: s.results }) : undefined} currency={currency} />}
-      {tab === 'retorno' && <RetornoTab preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} />}
       {tab === 'leads' && <LeadsTab openId={openLeadId} onOpenConsumed={() => setOpenLeadId(null)} readOnly={me?.role === 'reader'} />}
       {!isLoading && tab === 'funnel' && !s && !error && (
         <div style={{ color: 'var(--text-3)', fontSize: 13, textAlign: 'center', padding: 40 }}>Carregando dados...</div>
@@ -639,15 +694,7 @@ function Dashboard() {
       )}
 
 
-      {/* Budget Pacing */}
-      {!isLoading && data?.campaigns && s && tab === 'metrics' && (
-        <BudgetPacingCard
-          campaigns={data.campaigns}
-          currentSpend={s.spend}
-          currency={currency}
-          clientSlug={me?.slug}
-        />
-      )}
+
 
       {/* Campaigns table */}
       {!isLoading && data?.campaigns && tab === 'metrics' && (
@@ -712,6 +759,17 @@ function Dashboard() {
           currency={currency}
           kind={kind}
           leads={leadsApi.leads}
+        />
+      )}
+
+      {/* Budget Pacing Modal (Claude Code Style) */}
+      {pacingModalOpen && (
+        <BudgetPacingModal
+          onClose={() => setPacingModalOpen(false)}
+          campaigns={data?.campaigns || []}
+          currentSpend={s?.spend || 0}
+          currency={currency}
+          clientSlug={me?.slug}
         />
       )}
     </div>
