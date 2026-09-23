@@ -34,7 +34,7 @@ export type NoteKey = keyof ReportNotes
 export type El =
   | { t: 'text'; x: number; y: number; w: number; h: number; text: string; size: number; weight?: 400 | 500 | 600 | 700 | 800; color: string; align?: 'left' | 'center' | 'right'; valign?: 'top' | 'middle'; lineHeight?: number; edit?: NoteKey; placeholder?: string; url?: string }
   | { t: 'box'; x: number; y: number; w: number; h: number; fill?: string; line?: string; radius?: number; url?: string }
-  | { t: 'img'; x: number; y: number; w: number; h: number; src: string | null; radius?: number }
+  | { t: 'img'; x: number; y: number; w: number; h: number; src: string | null; radius?: number; url?: string }
   | {
     t: 'chart'
     x: number; y: number; w: number; h: number
@@ -202,8 +202,10 @@ function modernCreativeCards(ads: ReportAd[], currency: string, resultLabel: str
     // Container do card
     out.push({ t: 'box', x, y: y0, w: cardW, h: cardH, fill: P.card, line: P.cardBorder, radius: 14 })
 
-    // Imagem do anúncio
-    out.push({ t: 'img', x: x + 6, y: y0 + 6, w: cardW - 12, h: 220, src: a.thumb, radius: 10 })
+    const previewUrl = a.url || `/api/meta/ad/${a.id}/preview`
+
+    // Imagem do anúncio (clicável para prévia)
+    out.push({ t: 'img', x: x + 6, y: y0 + 6, w: cardW - 12, h: 220, src: a.thumb, radius: 10, url: previewUrl })
 
     // Badge de objetivo
     const hasConv = a.results > 0
@@ -211,10 +213,10 @@ function modernCreativeCards(ads: ReportAd[], currency: string, resultLabel: str
     out.push({ t: 'box', x: x + 12, y: y0 + 12, w: 86, h: 22, fill: hasConv ? 'rgba(34,197,94,0.85)' : 'rgba(99,102,241,0.85)', radius: 11 })
     out.push({ t: 'text', x: x + 12, y: y0 + 12, w: 86, h: 22, text: badgeText, size: 9, weight: 700, color: '#FFFFFF', align: 'center', valign: 'middle' })
 
-    // Nome do anúncio (2 linhas)
+    // Nome do anúncio (2 linhas, clicável)
     const rawName = (a.name || 'Anúncio Meta').replace(/\s+/g, ' ').trim()
     const nameSnippet = rawName.slice(0, 60) + (rawName.length > 60 ? '…' : '')
-    out.push({ t: 'text', x: x + 12, y: y0 + 234, w: cardW - 24, h: 36, text: nameSnippet, size: 12, weight: 600, color: P.white, lineHeight: 1.25 })
+    out.push({ t: 'text', x: x + 12, y: y0 + 234, w: cardW - 24, h: 36, text: nameSnippet, size: 12, weight: 600, color: P.white, lineHeight: 1.25, url: previewUrl })
 
     // Grid de métricas 2x3
     const colW = 78
@@ -251,7 +253,6 @@ function modernCreativeCards(ads: ReportAd[], currency: string, resultLabel: str
     // Rodapé: Status e Botão Abrir
     out.push({ t: 'text', x: x + 12, y: y0 + 416, w: 90, h: 26, text: '● Ativo', size: 11, weight: 600, color: P.green, valign: 'middle' })
 
-    const previewUrl = a.url || `https://www.facebook.com/ads/preview/?ad_id=${a.id}`
     out.push({ t: 'box', x: x + cardW - 96, y: y0 + 414, w: 86, h: 28, fill: P.violetSoft, line: P.violet, radius: 14, url: previewUrl })
     out.push({ t: 'text', x: x + cardW - 96, y: y0 + 414, w: 86, h: 28, text: 'Ver prévia ↗', size: 10.5, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', url: previewUrl })
   })

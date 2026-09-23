@@ -1,9 +1,8 @@
 'use client'
 
 import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
-import { ConversionChips } from '@/components/ConversionsCard'
 import { Fragment, useState, useCallback } from 'react'
-import { ChevronRight, ExternalLink, X, ArrowUpDown, ArrowUp, ArrowDown, Activity } from 'lucide-react'
+import { ChevronRight, ExternalLink, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { resolveDelivery, type CampaignRow, type ConversionItem } from '@/lib/meta'
 import { apiFetch } from '@/lib/apiFetch'
 import { previewSrc } from '@/lib/adPreview'
@@ -49,6 +48,7 @@ interface Ad {
   id: string; name: string; status: string; thumb: string; creative_name: string
   object_type: string; spend: number; impressions: number; clicks: number; ctr?: number; frequency?: number; leads: number; cpl: number | null; results?: number; cost_per_result?: number | null
   conversions?: ConversionItem[]
+  preview_shareable_link?: string | null
 }
 
 interface CampaignTableProps {
@@ -60,9 +60,6 @@ interface CampaignTableProps {
 
 export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kind = 'form' }: CampaignTableProps) {
   const L = KIND_LABELS[kind]
-  // Clientes de site/conversas: as colunas de lead/CPL mostram o resultado real (conversas, leads do site ou resultados).
-  const nRes = (r: { leads: number; results?: number }) => (kind === 'form' ? r.leads : (r.results ?? 0))
-  const cRes = (r: { cpl: number | null; cost_per_result?: number | null }) => (kind === 'form' ? r.cpl : (r.cost_per_result ?? null))
   const [sortCol, setSortCol] = useState<SortCol>('spend')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [filterStatus, setFilterStatus] = useState<string>('ALL')
@@ -74,6 +71,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
   const [loadingAds, setLoadingAds] = useState<string | null>(null)
   const [creativeModal, setCreativeModal] = useState<Ad | null>(null)
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
+  const [previewShareableUrl, setPreviewShareableUrl] = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
 
   const handleSort = (col: SortCol) => {
@@ -182,7 +180,6 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
               {(['spend', 'leads', 'cpl', 'roas', 'ctr', 'frequency'] as SortCol[]).map(col => (
                 <th key={col} style={thStyle(col, true)} onClick={() => handleSort(col)}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end', width: '100%' }}>
-                    {col === 'frequency' ? 'Freq.' : col === 'leads' ? L.many.toUpperCase() : col === 'cpl' ? L.cost.toUpperCase() : col.toUpperCase()} {sortIcon(col)}
                     {col === 'frequency'
                       ? 'Freq.'
                       : col === 'leads'
@@ -222,8 +219,6 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                       <StatusBadge status={c.status} />
                     </td>
                     <NumCell>{fmt(c.spend, currency)}</NumCell>
-                    <NumCell>{nRes(c) || '—'}</NumCell>
-                    <NumCell color={kind === 'form' && c.cpl && c.cpl > 200 ? 'var(--red)' : undefined}>{cRes(c) ? fmtSmall(cRes(c)!, currency) : '—'}</NumCell>
                     <NumCell>
                       {delivery.count > 0 ? (
                         <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.25 }}>
@@ -249,9 +244,10 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                     <NumCell>{c.frequency.toFixed(1)}</NumCell>
                     <td style={{ padding: '12px 16px', borderBottom: isExpanded ? 'none' : '1px solid var(--border-soft)', textAlign: 'center' }}>
                       <a
-                        href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${c.id}`}
+                        href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns?filter_set=CAMPAIGN_ID_IN.${c.id}`}
                         target="_blank" rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
+                        title="Abrir no Gerenciador de Anúncios"
                         style={{ color: 'var(--text-3)', display: 'inline-flex', opacity: 0.6 }}
                       >
                         <ExternalLink size={12} />
@@ -264,7 +260,6 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                     <tr key={`${c.id}-adsets`}>
                       <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid var(--border)' }}>
                         <div style={{ background: 'var(--bg)', borderTop: '1px solid var(--border-soft)' }}>
-                          <ConversionChips items={c.conversions ?? []} currency={currency} />
                           {isLoading ? (
                             <div style={{ padding: '16px 24px', color: 'var(--text-3)', fontSize: 12 }}>Carregando conjuntos…</div>
                           ) : !adsets?.length ? (
@@ -354,23 +349,49 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                                                         onClick={async () => {
                                                           setCreativeModal(ad)
                                                           setPreviewHtml(null)
+                                                          setPreviewShareableUrl(ad.preview_shareable_link ?? null)
                                                           setPreviewLoading(true)
                                                           try {
                                                             const r = await apiFetch(`/api/meta/ad/${ad.id}`)
-                                                            const j = await r.json() as { html?: string }
+                                                            const j = await r.json() as { html?: string; shareable_link?: string; url?: string }
                                                             setPreviewHtml(j.html ?? null)
+                                                            if (j.shareable_link) setPreviewShareableUrl(j.shareable_link)
+                                                            else if (j.url) setPreviewShareableUrl(j.url)
                                                           } catch { }
                                                           setPreviewLoading(false)
                                                         }}
                                                         className="card card-interactive"
                                                         style={{ width: 154, overflow: 'hidden' }}
                                                       >
-                                                        <div style={{ height: 80, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                                                        <div style={{ height: 80, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
                                                           {ad.thumb ? (
                                                             <img src={ad.thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                           ) : (
                                                             <span style={{ fontSize: 20 }}>🖼</span>
                                                           )}
+                                                          <a
+                                                            href={ad.preview_shareable_link || `/api/meta/ad/${ad.id}/preview`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            onClick={e => e.stopPropagation()}
+                                                            title="Abrir prévia oficial na Meta"
+                                                            style={{
+                                                              position: 'absolute',
+                                                              top: 4,
+                                                              right: 4,
+                                                              width: 22,
+                                                              height: 22,
+                                                              borderRadius: '50%',
+                                                              background: 'hsl(0 0% 0% / 0.6)',
+                                                              color: '#fff',
+                                                              display: 'flex',
+                                                              alignItems: 'center',
+                                                              justifyContent: 'center',
+                                                              textDecoration: 'none',
+                                                            }}
+                                                          >
+                                                            <ExternalLink size={11} strokeWidth={2} />
+                                                          </a>
                                                         </div>
                                                         <div style={{ padding: 8 }}>
                                                           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ad.name}</div>
@@ -442,26 +463,70 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
             style={{ overflow: 'hidden', maxWidth: 512, width: '100%', boxShadow: 'var(--shadow-elegant)' }}
           >
             {/* Header */}
-            <div style={{ padding: 24, borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{creativeModal.name}</div>
-                <div style={{ marginTop: 4 }}><StatusBadge status={creativeModal.status} /></div>
-              </div>
-              <button onClick={() => setCreativeModal(null)} aria-label="Fechar" title="Fechar" className="btn btn-ghost btn-icon btn-sm" style={{ flexShrink: 0 }}><X size={16} /></button>
-            </div>
+            {(() => {
+              const previewUrl = previewShareableUrl || previewSrc(previewHtml) || `/api/meta/ad/${creativeModal.id}/preview`
+              return (
+                <>
+                  <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{creativeModal.name}</div>
+                      <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <StatusBadge status={creativeModal.status} />
+                      </div>
+                    </div>
+                    <a
+                      href={previewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-outline btn-sm"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontWeight: 600, color: 'var(--accent)' }}
+                      title="Abrir prévia interativa oficial no Facebook / Instagram"
+                    >
+                      <ExternalLink size={13} strokeWidth={2} />
+                      <span>Abrir Preview Oficial</span>
+                    </a>
+                    <button onClick={() => setCreativeModal(null)} aria-label="Fechar" title="Fechar" className="btn btn-ghost btn-icon btn-sm" style={{ flexShrink: 0 }}><X size={16} /></button>
+                  </div>
 
-            {/* Ad Preview */}
-            <div style={{ padding: 16, borderBottom: '1px solid var(--border-soft)', display: 'flex', justifyContent: 'center', minHeight: 120, alignItems: 'center', background: 'var(--bg)' }}>
-              {previewLoading ? (
-                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Carregando preview…</span>
-              ) : previewSrc(previewHtml) ? (
-                <iframe src={previewSrc(previewHtml)!} title="Prévia do anúncio" width={320} height={540} sandbox="allow-scripts allow-same-origin allow-popups" referrerPolicy="no-referrer" style={{ border: 0, maxWidth: '100%' }} />
-              ) : creativeModal.thumb ? (
-                <img src={creativeModal.thumb} alt="" style={{ maxWidth: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 8 }} />
-              ) : (
-                <span style={{ fontSize: 32 }}>🖼</span>
-              )}
-            </div>
+                  {/* Ad Preview */}
+                  <div style={{ padding: 16, borderBottom: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 140, alignItems: 'center', background: 'var(--bg)' }}>
+                    {previewLoading ? (
+                      <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Carregando preview…</span>
+                    ) : previewSrc(previewHtml) ? (
+                      <>
+                        <iframe src={previewSrc(previewHtml)!} title="Prévia do anúncio" width={320} height={500} sandbox="allow-scripts allow-same-origin allow-popups" referrerPolicy="no-referrer" style={{ border: 0, maxWidth: '100%', borderRadius: 8 }} />
+                        <div style={{ marginTop: 8 }}>
+                          <a
+                            href={previewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}
+                          >
+                            Abrir prévia interativa na Meta <ExternalLink size={11} />
+                          </a>
+                        </div>
+                      </>
+                    ) : creativeModal.thumb ? (
+                      <>
+                        <img src={creativeModal.thumb} alt="" style={{ maxWidth: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 8 }} />
+                        <div style={{ marginTop: 8 }}>
+                          <a
+                            href={previewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}
+                          >
+                            Abrir prévia no Facebook <ExternalLink size={11} />
+                          </a>
+                        </div>
+                      </>
+                    ) : (
+                      <span style={{ fontSize: 32 }}>🖼</span>
+                    )}
+                  </div>
+                </>
+              )
+            })()}
 
             {/* Metrics */}
             <div style={{ padding: 24 }}>

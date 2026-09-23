@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import type { Lead, LeadUpdate } from './leadTypes'
 import { apiFetch } from './apiFetch'
 import { selfCreated } from './manualLeads'
@@ -49,7 +49,7 @@ export function useLeads(pollMs?: number) {
   }
 
   /** Retorna null se salvou, ou a mensagem de erro. */
-  async function patchLead(id: string, updates: LeadUpdate): Promise<string | null> {
+  const patchLead = useCallback(async (id: string, updates: LeadUpdate): Promise<string | null> => {
     const current = leads.find(l => l.id === id)
     const body: LeadUpdate = { ...updates }
     if (current && updates.status && updates.status !== 'Novo' && !current.ultimo_contato && !('ultimo_contato' in updates)) {
@@ -78,10 +78,10 @@ export function useLeads(pollMs?: number) {
       setSaveError(null)
     }
     return err
-  }
+  }, [leads])
 
   /** Cadastro manual. Devolve o erro (texto) ou null se salvou; `warning` quando salvou com ressalva. */
-  async function addLead(input: { nome?: string; telefone?: string; email?: string; campanha?: string; conjunto?: string; ad_name?: string; notas?: string; atendido_por?: string; status?: string; valor_pedido?: string; motivo_perda?: string }): Promise<{ error: string | null; warning?: string }> {
+  const addLead = useCallback(async (input: { nome?: string; telefone?: string; email?: string; campanha?: string; conjunto?: string; ad_name?: string; notas?: string; atendido_por?: string; status?: string; valor_pedido?: string; motivo_perda?: string }): Promise<{ error: string | null; warning?: string }> => {
     try {
       const res = await apiFetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })
       const json = await res.json().catch(() => ({})) as { lead?: Lead; warning?: string; error?: string }
@@ -92,7 +92,19 @@ export function useLeads(pollMs?: number) {
     } catch {
       return { error: 'Sem conexão. Tente de novo.' }
     }
-  }
+  }, [])
 
-  return { leads, loading, error, saveError, clearSaveError: () => setSaveError(null), refetch: () => load(), patchLead, addLead }
+  const clearSaveError = useCallback(() => setSaveError(null), [])
+  const refetch = useCallback(() => load(), [load])
+
+  return useMemo(() => ({
+    leads,
+    loading,
+    error,
+    saveError,
+    clearSaveError,
+    refetch,
+    patchLead,
+    addLead,
+  }), [leads, loading, error, saveError, clearSaveError, refetch, patchLead, addLead])
 }

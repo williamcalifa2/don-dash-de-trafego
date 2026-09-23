@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, Download, Eye, EyeOff, FileText, Loader2, RefreshCw, Sparkles, X, UploadCloud, RotateCcw } from 'lucide-react'
+import { Check, Download, Eye, EyeOff, FileText, Loader2, RefreshCw, X, UploadCloud, RotateCcw } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
-import { compact, generateSmartAnalysis, type ReportData, type ReportMode, type ReportNotes, type ReportPreset } from '@/lib/report'
+import { compact, type ReportData, type ReportMode, type ReportNotes, type ReportPreset } from '@/lib/report'
 import { buildSlides, FONT, PALETTE, STAGE, type El, type SlideSpec } from '@/lib/reportSlides'
 
 type Loaded = ReportData & { draftAnalysis: string }
@@ -477,11 +477,9 @@ function EditableTextElement({
 function Element({
   el,
   onEdit,
-  onSmartAnalysis,
 }: {
   el: El
   onEdit?: (key: NonNullable<Extract<El, { t: 'text' }>['edit']>, value: string) => void
-  onSmartAnalysis?: () => void
 }) {
   const pos = { position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h } as const
   if (el.t === 'box') {
@@ -495,7 +493,16 @@ function Element({
     ) : boxContent
   }
   if (el.t === 'img') {
-    return el.src ? <img src={el.src} alt="" style={{ ...pos, objectFit: 'cover', borderRadius: el.radius }} /> : <div style={{ ...pos, background: '#1E293B', borderRadius: el.radius }} />
+    const imgContent = el.src ? (
+      <img src={el.src} alt="" style={{ ...pos, objectFit: 'cover', borderRadius: el.radius, cursor: el.url ? 'pointer' : undefined }} />
+    ) : (
+      <div style={{ ...pos, background: '#1E293B', borderRadius: el.radius }} />
+    )
+    return el.url ? (
+      <a href={el.url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
+        {imgContent}
+      </a>
+    ) : imgContent
   }
   if (el.t === 'chart') {
     return (
@@ -587,17 +594,15 @@ export function Slide({
   spec,
   scale,
   onEdit,
-  onSmartAnalysis,
 }: {
   spec: SlideSpec
   scale: number
   onEdit?: Parameters<typeof Element>[0]['onEdit']
-  onSmartAnalysis?: () => void
 }) {
   return (
     <div style={{ width: STAGE.w * scale, height: STAGE.h * scale, position: 'relative', overflow: 'hidden', borderRadius: scale < 0.5 ? 4 : 8, flexShrink: 0 }}>
       <div style={{ width: STAGE.w, height: STAGE.h, position: 'absolute', left: 0, top: 0, transform: `scale(${scale})`, transformOrigin: 'top left', background: spec.dark ? PALETTE.dark : PALETTE.light, overflow: 'hidden', transition: 'background-color 0.2s ease, opacity 0.2s ease' }}>
-        {spec.els.map((el, i) => <Element key={i} el={el} onEdit={onEdit} onSmartAnalysis={onSmartAnalysis} />)}
+        {spec.els.map((el, i) => <Element key={i} el={el} onEdit={onEdit} />)}
       </div>
     </div>
   )
@@ -682,20 +687,6 @@ export function ReportStudio({
       return next
     })
   }, [save])
-
-  const handleSmartAnalysis = useCallback(() => {
-    if (!data) return
-    const smart = generateSmartAnalysis(data)
-    setNotes(prev => {
-      if (!prev) return prev
-      const next = { ...prev, analysis: smart.analysis, next: smart.next }
-      dirty.current = true
-      setSaved('idle')
-      if (saveTimer.current) clearTimeout(saveTimer.current)
-      saveTimer.current = setTimeout(() => save(next), 1200)
-      return next
-    })
-  }, [data, save])
 
   const switchPreset = useCallback((next: ReportPreset) => {
     if (next === preset) return
@@ -839,7 +830,7 @@ export function ReportStudio({
           </nav>
           <div ref={stageBox} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, background: 'var(--muted-bg, rgba(127,127,160,.08))' }}>
             <div style={{ boxShadow: '0 8px 30px rgba(0,0,0,.18)', borderRadius: 8 }}>
-              <Slide spec={active} scale={scale} onEdit={edit} onSmartAnalysis={handleSmartAnalysis} />
+              <Slide spec={active} scale={scale} onEdit={edit} />
             </div>
             {active.id === 'creatives' && data.paid.top.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card, #FFFFFF)', border: '1px solid var(--border, #E2E2EA)', borderRadius: 8, padding: '6px 14px', flexWrap: 'wrap', justifyContent: 'center' }}>

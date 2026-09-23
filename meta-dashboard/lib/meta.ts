@@ -636,7 +636,10 @@ export function assembleMetrics(adAccountId: string, datePreset: DatePreset, raw
     const metrics: Record<string, number[]> = {}
     for (const k of Object.keys(perDay[0])) metrics[k] = perDay.map(day => Number((day as unknown as Record<string, number | null>)[k]) || 0)
     daily = {
-      dates: rows.map(r => new Date(r.date_start as string).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })),
+      dates: rows.map(r => {
+        const parts = String(r.date_start ?? '').split('-')
+        return parts.length === 3 ? `${parts[2]}/${parts[1]}` : String(r.date_start ?? '')
+      }),
       spend: rows.map(r => Number(r.spend ?? 0)),
       leads: rows.map(r => getLeads(r.actions as ActionRow[] | undefined)),
       cpl: rows.map(r => {

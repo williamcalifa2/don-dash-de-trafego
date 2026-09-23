@@ -269,7 +269,7 @@ export function paidStats(cur: MetricsSummary | undefined, prev: MetricsSummary 
   })
 }
 
-interface StructAd { id: string; creative?: Record<string, unknown> }
+interface StructAd { id: string; creative?: Record<string, unknown>; preview_shareable_link?: string }
 const creativeThumb = (a: StructAd | undefined): string | null => {
   const c = a?.creative
   const img = typeof c?.image_url === 'string' ? c.image_url : typeof c?.thumbnail_url === 'string' ? c.thumbnail_url : null
@@ -284,18 +284,21 @@ export function topAds(rows: AdPerfRow[], structure: StructAd[], overrides?: Rec
     .filter(r => r.spend > 0)
     .sort((a, b) => (anyResults ? b.results - a.results || (a.spend / Math.max(a.results, 1)) - (b.spend / Math.max(b.results, 1)) : b.clicks - a.clicks) || b.spend - a.spend)
     .slice(0, limit)
-    .map(r => ({
-      id: r.ad_id,
-      name: r.ad_name,
-      thumb: overrides?.[r.ad_id] || creativeThumb(byId.get(r.ad_id)),
-      url: `https://www.facebook.com/ads/preview/?ad_id=${r.ad_id}`,
-      results: r.results,
-      spend: r.spend,
-      clicks: r.clicks,
-      impressions: r.impressions,
-      costPerResult: r.results > 0 ? r.spend / r.results : null,
-      ctr: r.impressions > 0 ? (r.clicks / r.impressions) * 100 : null,
-    }))
+    .map(r => {
+      const st = byId.get(r.ad_id)
+      return {
+        id: r.ad_id,
+        name: r.ad_name,
+        thumb: overrides?.[r.ad_id] || creativeThumb(st),
+        url: st?.preview_shareable_link || `/api/meta/ad/${r.ad_id}/preview`,
+        results: r.results,
+        spend: r.spend,
+        clicks: r.clicks,
+        impressions: r.impressions,
+        costPerResult: r.results > 0 ? r.spend / r.results : null,
+        ctr: r.impressions > 0 ? (r.clicks / r.impressions) * 100 : null,
+      }
+    })
 }
 
 export function paidSection(m: MetricsResponse | null, ads: AdPerfRow[], structure: StructAd[], overrides?: Record<string, string>): ReportData['paid'] & { currency: string } {

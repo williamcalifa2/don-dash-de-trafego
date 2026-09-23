@@ -81,7 +81,7 @@ class Runner {
     const st = await state.getState(this.acc.clientId)
     const rows: T[] = partial ? [...partial.payload] : []
     let after: string | undefined = partial ? st.cursors[resumeKey] : undefined
-    for (;;) {
+    for (; ;) {
       if (this.pagesLeft <= 0) {
         await snaps.put(this.acc.clientId, 'partial', resumeKey, rows, this.d.now())
         await state.patchState(this.acc.clientId, { cursors: { ...st.cursors, ...(after ? { [resumeKey]: after } : {}) } })
@@ -232,7 +232,7 @@ export async function collectStructure(d: CollectDeps, acc: Account): Promise<Co
     const campaigns = await run.paged<{ id: string }>(`${a}/campaigns?fields=id,name,effective_status,daily_budget,updated_time&limit=${cfg.pageSize}${filter}`, 'structure:campaigns')
     const adsets = await run.paged<{ id: string }>(`${a}/adsets?fields=id,name,effective_status,daily_budget,lifetime_budget,campaign_id,updated_time&limit=${cfg.pageSize}${filter}`, 'structure:adsets')
     const customs = await run.one<{ data?: Array<{ id: string; name?: string }> }>(`${a}/customconversions?fields=id,name&limit=${cfg.pageSize}`)
-    const ads = await run.paged<{ id: string; effective_status?: string }>(`${a}/ads?fields=id,name,effective_status,adset_id,campaign_id,updated_time,creative{id,name,thumbnail_url,image_url,object_type}&limit=${cfg.pageSize}${filter}`, 'structure:ads')
+    const ads = await run.paged<{ id: string; effective_status?: string; preview_shareable_link?: string }>(`${a}/ads?fields=id,name,effective_status,adset_id,campaign_id,updated_time,preview_shareable_link,creative{id,name,thumbnail_url,image_url,object_type}&limit=${cfg.pageSize}${filter}`, 'structure:ads')
     if (run.dry) return { status: 'dry', calls: run.calls }
 
     const [oc, oa, od] = await Promise.all([

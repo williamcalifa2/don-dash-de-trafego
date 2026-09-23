@@ -12,8 +12,10 @@ interface DailyChartProps {
 }
 
 function normalize(arr: number[]): number[] {
+  if (!arr || arr.length === 0) return []
   const min = Math.min(...arr)
   const max = Math.max(...arr)
+  if (!isFinite(min) || !isFinite(max)) return arr.map(() => 0)
   const range = max - min || 1
   return arr.map((v) => (v - min) / range)
 }
@@ -22,6 +24,18 @@ export function DailyChart({ daily: raw, currency, kind = 'form' }: DailyChartPr
   const L = KIND_LABELS[kind]
   // Clientes de site/conversas: a linha tracejada é o resultado real do dia (conversas, leads do site ou resultados).
   const daily = kind === 'form' || !raw.metrics?.results ? raw : { ...raw, leads: raw.metrics.results }
+  const n = daily.dates?.length ?? 0
+
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
+
+  if (!daily || !daily.dates || daily.dates.length === 0) {
+    return (
+      <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
+        Sem dados diários disponíveis para o período selecionado.
+      </div>
+    )
+  }
+
   const W = 780
   const H = 160
   const PL = 56
@@ -30,12 +44,12 @@ export function DailyChart({ daily: raw, currency, kind = 'form' }: DailyChartPr
   const PB = 28
   const chartW = W - PL - PR
   const chartH = H - PT - PB
-  const n = daily.dates.length
 
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
+  const spendData = daily.spend && daily.spend.length > 0 ? daily.spend : new Array(n).fill(0)
+  const leadsData = daily.leads && daily.leads.length > 0 ? daily.leads : new Array(n).fill(0)
 
-  const spendNorm = normalize(daily.spend)
-  const leadsNorm = normalize(daily.leads)
+  const spendNorm = normalize(spendData)
+  const leadsNorm = normalize(leadsData)
 
   function toX(i: number) {
     return PL + (i / Math.max(n - 1, 1)) * chartW
@@ -45,11 +59,13 @@ export function DailyChart({ daily: raw, currency, kind = 'form' }: DailyChartPr
   }
 
   function polyline(norm: number[]) {
+    if (!norm || norm.length === 0) return ''
     return norm.map((v, i) => `${toX(i)},${toY(v)}`).join(' ')
   }
   function area(norm: number[]) {
+    if (!norm || norm.length === 0) return ''
     const pts = norm.map((v, i) => `${toX(i)},${toY(v)}`).join(' ')
-    return `M ${toX(0)},${toY(norm[0])} L ${pts} L ${toX(n - 1)},${PT + chartH} L ${toX(0)},${PT + chartH} Z`
+    return `M ${toX(0)},${toY(norm[0] ?? 0)} L ${pts} L ${toX(Math.max(n - 1, 0))},${PT + chartH} L ${toX(0)},${PT + chartH} Z`
   }
 
   const fmtSpend = (v: number) =>
@@ -57,10 +73,10 @@ export function DailyChart({ daily: raw, currency, kind = 'form' }: DailyChartPr
   const fmtSpendFull = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)
 
-  const spendMin = Math.min(...daily.spend)
-  const spendMax = Math.max(...daily.spend)
-  const leadsMin = Math.min(...daily.leads)
-  const leadsMax = Math.max(...daily.leads)
+  const spendMin = spendData.length > 0 ? Math.min(...spendData) : 0
+  const spendMax = spendData.length > 0 ? Math.max(...spendData) : 0
+  const leadsMin = leadsData.length > 0 ? Math.min(...leadsData) : 0
+  const leadsMax = leadsData.length > 0 ? Math.max(...leadsData) : 0
 
   // Tooltip geometry
   const TW = 148
@@ -188,7 +204,7 @@ export function DailyChart({ daily: raw, currency, kind = 'form' }: DailyChartPr
                 fill="var(--text-1)"
                 fontFamily="var(--mono)"
               >
-                {fmtSpendFull(daily.spend[hoveredIdx])}
+                {fmtSpendFull(spendData[hoveredIdx] ?? 0)}
               </text>
               {/* Leads dot */}
               <circle cx={tooltipX + 10} cy={tooltipY + 47} r={4} fill="var(--green)" />
@@ -198,7 +214,7 @@ export function DailyChart({ daily: raw, currency, kind = 'form' }: DailyChartPr
                 fill="var(--text-1)"
                 fontFamily="var(--mono)"
               >
-                {daily.leads[hoveredIdx]} {kind === 'form' ? `lead${daily.leads[hoveredIdx] !== 1 ? 's' : ''}` : (daily.leads[hoveredIdx] === 1 ? L.one : L.many.toLowerCase())}
+                {leadsData[hoveredIdx] ?? 0} {kind === 'form' ? `lead${(leadsData[hoveredIdx] ?? 0) !== 1 ? 's' : ''}` : ((leadsData[hoveredIdx] ?? 0) === 1 ? L.one : L.many.toLowerCase())}
               </text>
             </g>
           )}

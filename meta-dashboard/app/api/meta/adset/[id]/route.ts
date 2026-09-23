@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const opts = { accountId: tenant.adAccountId, clientId: tenant.clientId, purpose: 'painel:anuncios' }
 
   // Uma chamada só: anúncios com criativo e números do período aninhados (sem uma chamada por anúncio).
-  const fields = `id,name,status,creative{id,name,thumbnail_url,image_url,video_id,body,title,object_type},insights.date_preset(${datePreset}){spend,impressions,clicks,ctr,frequency,actions,cost_per_action_type}`
+  const fields = `id,name,status,preview_shareable_link,creative{id,name,thumbnail_url,image_url,video_id,body,title,object_type},insights.date_preset(${datePreset}){spend,impressions,clicks,ctr,frequency,actions,cost_per_action_type}`
   const res = await legacyGet<{ data?: Array<Record<string, unknown>> }>(`${id}/ads?fields=${fields}&limit=50`, opts)
   if (!res.ok) return NextResponse.json({ error: errMsg(res, 'API error') }, { status: 400 })
   const ads = res.data.data ?? []
@@ -54,6 +54,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       name: ad.name,
       status: ad.status,
       thumb: thumbUrl,
+      preview_shareable_link: (ad.preview_shareable_link as string) || null,
       creative_name: (creative?.name ?? ad.name) as string,
       object_type: (creative?.object_type ?? '') as string,
       spend,

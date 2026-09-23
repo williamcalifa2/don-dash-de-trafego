@@ -1,10 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Lock, Moon, Sun, ArrowRight, ShieldCheck } from 'lucide-react'
+import { Lock, Moon, Sun, ArrowRight, Loader2 } from 'lucide-react'
 import { useTheme } from '@/lib/useTheme'
 
-interface PublicClient { slug: string | null; name?: string; logoUrl?: string | null }
+interface PublicClient {
+  slug: string | null
+  name?: string
+  logoUrl?: string | null
+}
 
 export default function LoginPage() {
   const { theme, toggle } = useTheme()
@@ -60,58 +64,32 @@ export default function LoginPage() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '24px 16px',
+        padding: '32px 16px',
         position: 'relative',
-        background: 'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99, 102, 241, 0.18), transparent 70%), var(--bg)',
+        background: 'radial-gradient(ellipse 70% 50% at 50% -5%, rgba(99, 102, 241, 0.12), transparent 70%), var(--bg)',
       }}
     >
       {/* Theme toggle */}
       <button
         onClick={toggle}
         className="btn btn-outline btn-icon btn-sm"
-        style={{ position: 'absolute', top: 20, right: 20 }}
+        style={{ position: 'absolute', top: 20, right: 20, borderRadius: 10 }}
         aria-label="Alternar tema"
         title="Alternar tema"
       >
-        {theme === 'dark' ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}
+        {theme === 'dark' ? <Sun size={15} strokeWidth={1.8} /> : <Moon size={15} strokeWidth={1.8} />}
       </button>
 
       {/* Main Container */}
-      <div style={{ width: '100%', maxWidth: 440, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
-
-        {/* Top Agency Branding & Logo */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center' }}>
-          <div
-            style={{
-              width: 60,
-              height: 60,
-              borderRadius: 18,
-              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(99, 102, 241, 0.05))',
-              border: '1.5px solid rgba(99, 102, 241, 0.35)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 8px 24px -4px rgba(99, 102, 241, 0.3)',
-              overflow: 'hidden',
-            }}
-          >
-            <img
-              src="/brand-icon.png"
-              alt="Don Digital"
-              onError={e => {
-                (e.currentTarget as HTMLImageElement).src = '/icon-192.png'
-              }}
-              style={{ width: 42, height: 42, objectFit: 'contain', borderRadius: 12 }}
-            />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.14em', color: 'var(--accent)', textTransform: 'uppercase' }}>
-              Don Digital
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 2 }}>
-              O Ouro ou Nada
-            </div>
-          </div>
+      <div style={{ width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+        {/* Top Grupo Don Logo */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
+          <img
+            src={theme === 'dark' ? '/logo-grupo-don-white.png' : '/logo-grupo-don-dark.png'}
+            srcSet={theme === 'dark' ? '/logo-grupo-don-white.png 1x, /logo-grupo-don@2x.png 2x' : '/logo-grupo-don-dark.png 1x, /logo-grupo-don-dark@2x.png 2x'}
+            alt="Grupo Don"
+            style={{ height: 28, width: 'auto', objectFit: 'contain' }}
+          />
         </div>
 
         {/* Card de Login */}
@@ -120,19 +98,19 @@ export default function LoginPage() {
           className="card"
           style={{
             width: '100%',
-            padding: 28,
+            padding: '32px 28px',
             display: 'flex',
             flexDirection: 'column',
             gap: 22,
             background: 'var(--bg-card)',
-            borderRadius: 24,
+            borderRadius: 20,
             border: '1px solid var(--border)',
             boxShadow: 'var(--shadow-elegant)',
             backdropFilter: 'blur(10px)',
           }}
         >
           {/* Client Header Info */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, borderBottom: '1px solid var(--border-soft)', paddingBottom: 18 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 10 }}>
             {client?.logoUrl ? (
               <div
                 style={{
@@ -146,6 +124,7 @@ export default function LoginPage() {
                   justifyContent: 'center',
                   padding: 4,
                   flexShrink: 0,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
                 }}
               >
                 <img
@@ -157,8 +136,8 @@ export default function LoginPage() {
             ) : (
               <div
                 style={{
-                  width: 52,
-                  height: 52,
+                  width: 48,
+                  height: 48,
                   borderRadius: 14,
                   background: 'var(--accent-soft)',
                   display: 'flex',
@@ -167,23 +146,23 @@ export default function LoginPage() {
                   flexShrink: 0,
                 }}
               >
-                <Lock size={24} color="var(--accent)" strokeWidth={1.8} />
+                <Lock size={22} color="var(--accent)" strokeWidth={1.8} />
               </div>
             )}
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <h1 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.25, color: 'var(--text-1)', margin: 0, overflowWrap: 'anywhere' }}>
+
+            <div>
+              <h1 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, color: 'var(--text-1)', margin: 0 }}>
                 {client?.name ?? 'Painel de Performance'}
               </h1>
-              <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '3px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <ShieldCheck size={13} color="var(--accent)" />
-                <span>Área Segura do Cliente</span>
+              <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '4px 0 0' }}>
+                Digite seu código de acesso para entrar
               </p>
             </div>
           </div>
 
           {noAddress ? (
-            <div style={{ background: 'var(--amber-soft)', padding: 16, borderRadius: 14, border: '1px solid var(--amber)' }}>
-              <p style={{ fontSize: 13, color: 'var(--text-1)', margin: 0, lineHeight: 1.5 }}>
+            <div style={{ background: 'var(--amber-soft)', padding: 14, borderRadius: 12, border: '1px solid var(--amber)' }}>
+              <p style={{ fontSize: 13, color: 'var(--text-1)', margin: 0, lineHeight: 1.5, textAlign: 'center' }}>
                 Abra o link específico enviado pela equipe da agência para identificar o seu painel de tráfego.
               </p>
             </div>
@@ -246,8 +225,8 @@ export default function LoginPage() {
                       <div
                         key={idx}
                         style={{
-                          width: 46,
-                          height: 56,
+                          width: 44,
+                          height: 52,
                           borderRadius: 12,
                           background: digit ? 'var(--bg-card2)' : 'var(--bg)',
                           border: isCurrent
@@ -258,10 +237,10 @@ export default function LoginPage() {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          fontSize: 22,
-                          fontWeight: 800,
+                          fontSize: 20,
+                          fontWeight: 700,
                           color: 'var(--text-1)',
-                          boxShadow: isCurrent ? '0 0 12px var(--accent-glow)' : 'none',
+                          boxShadow: isCurrent ? '0 0 0 3px var(--accent-soft)' : 'none',
                           transition: 'all 0.15s ease',
                         }}
                       >
@@ -286,35 +265,38 @@ export default function LoginPage() {
             disabled={loading || code.length !== 6 || !slug}
             style={{
               width: '100%',
-              height: 46,
-              borderRadius: 14,
+              height: 44,
+              borderRadius: 12,
               fontSize: 14,
-              fontWeight: 700,
+              fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
-              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)',
+              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.28)',
             }}
           >
             {loading ? (
-              <span>Entrando no painel…</span>
+              <>
+                <Loader2 size={16} className="spin" />
+                <span>Entrando no painel…</span>
+              </>
             ) : (
               <>
                 <span>Acessar Dashboard</span>
-                <ArrowRight size={16} strokeWidth={2.2} />
+                <ArrowRight size={15} strokeWidth={2.2} />
               </>
             )}
           </button>
 
-          <p style={{ fontSize: 12, color: 'var(--text-3)', textAlign: 'center', margin: 0 }}>
-            Não possui o código de acesso? Solicite diretamente à sua equipe na <strong>Don Digital</strong>.
+          <p style={{ fontSize: 12, color: 'var(--text-3)', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
+            Não possui o código de acesso? Solicite diretamente à sua equipe no <strong>Grupo Don</strong>.
           </p>
         </form>
 
         {/* Footer */}
         <div style={{ fontSize: 11, color: 'var(--text-3)', textAlign: 'center' }}>
-          Don Digital © 2026 · Painel de Performance & Métricas
+          Grupo Don © 2026 · Painel de Performance & Tráfego
         </div>
       </div>
     </main>

@@ -46,6 +46,7 @@ const FIELD_NAMES = new Set([
   'username', 'followers_count', 'follows_count', 'media_count', 'profile_picture_url', 'media_type', 'media_product_type', 'media_url',
   'permalink', 'permalink_url', 'caption', 'message', 'timestamp', 'like_count', 'comments_count', 'full_picture', 'shares', 'status_type',
   'fan_count', 'picture', 'link', 'instagram_business_account', 'url', 'reactions', 'comments',
+  'preview_shareable_link',
 ])
 /** Só a leitura do token da página (necessário para ler leads) pode pedir esse campo, e só no objeto direto. */
 const TOKEN_FIELD_ONLY_ON: EndpointKind = 'object'

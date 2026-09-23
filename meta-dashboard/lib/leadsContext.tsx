@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useRef } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from 'react'
 import { useLeads } from './useLeads'
 import { apiFetch } from './apiFetch'
 import { usePoll } from './usePoll'
@@ -13,7 +13,7 @@ const SYNC_EVERY_MS = 5 * 60_000
 export function LeadsProvider({ children }: { children: React.ReactNode }) {
   const value = useLeads(30_000)
   const refetchRef = useRef(value.refetch)
-  useEffect(() => { refetchRef.current = value.refetch })
+  useEffect(() => { refetchRef.current = value.refetch }, [value.refetch])
 
   // Enquanto o painel está aberto, importa do Meta os leads recentes (cobre webhook que falhou ou ainda não foi ativado).
   const sync = useCallback(async (days = 7) => {
@@ -30,12 +30,16 @@ export function LeadsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { sync(7) }, [sync])
   usePoll(() => sync(7), SYNC_EVERY_MS)
 
+  const valueRefetch = value.refetch
   const handleRefetch = useCallback(async () => {
     await sync(7)
-    return value.refetch()
-  }, [sync, value.refetch])
+    return valueRefetch()
+  }, [sync, valueRefetch])
 
-  const contextValue = { ...value, refetch: handleRefetch }
+  const contextValue = useMemo(() => ({
+    ...value,
+    refetch: handleRefetch,
+  }), [value, handleRefetch])
 
   return <Ctx.Provider value={contextValue}>{children}</Ctx.Provider>
 }

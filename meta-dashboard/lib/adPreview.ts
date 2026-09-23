@@ -1,5 +1,5 @@
 /** A prévia do anúncio chega da Meta como um trecho de HTML com um <iframe>. Só o endereço do iframe interessa, e só se for da Meta. */
-const HOSTS = /(^|\.)(facebook\.com|fb\.com|instagram\.com)$/i
+const HOSTS = /(^|\.)(facebook\.com|fb\.com|instagram\.com|fb\.me)$/i
 
 export function previewSrc(html: string | null | undefined): string | null {
   if (!html) return null
