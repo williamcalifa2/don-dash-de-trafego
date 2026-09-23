@@ -131,10 +131,10 @@ function modernOrganicCards(posts: ReportPost[]): El[] {
     // Imagem da mídia
     out.push({ t: 'img', x: x + 6, y: y0 + 6, w: cardW - 12, h: 220, src: proxied(p.thumb), radius: 10 })
 
-    // Badge flutuante (Reels / Foto)
+    // Tag flutuante (Reels / Foto)
     const isReels = p.type?.toLowerCase().includes('reel') || p.type?.toLowerCase().includes('video')
-    out.push({ t: 'box', x: x + 12, y: y0 + 12, w: 68, h: 22, fill: 'rgba(0,0,0,0.70)', radius: 11 })
-    out.push({ t: 'text', x: x + 12, y: y0 + 12, w: 68, h: 22, text: isReels ? '📸 Reels' : '📷 Foto', size: 9, weight: 700, color: '#FFFFFF', align: 'center', valign: 'middle' })
+    out.push({ t: 'box', x: x + 10, y: y0 + 10, w: 52, h: 20, fill: 'rgba(15,23,42,0.85)', radius: 4 })
+    out.push({ t: 'text', x: x + 10, y: y0 + 10, w: 52, h: 20, text: isReels ? 'REELS' : 'FOTO', size: 9, weight: 700, color: '#FFFFFF', align: 'center', valign: 'middle' })
 
     // Legenda (2 linhas)
     const rawCap = (p.caption || 'Publicação').replace(/\s+/g, ' ').trim()
@@ -173,7 +173,7 @@ function modernOrganicCards(posts: ReportPost[]): El[] {
     const dateLabel = p.at ? fmtDay(p.at) : ''
     out.push({ t: 'text', x: x + 10, y: y0 + 416, w: 90, h: 26, text: dateLabel, size: 11, weight: 500, color: P.muted, valign: 'middle' })
 
-    out.push({ t: 'box', x: x + cardW - 84, y: y0 + 414, w: 74, h: 28, fill: P.violetSoft, line: P.violet, radius: 14, url: p.url ?? undefined })
+    out.push({ t: 'box', x: x + cardW - 84, y: y0 + 414, w: 74, h: 28, fill: P.violetSoft, line: P.violet, radius: 6, url: p.url ?? undefined })
     out.push({ t: 'text', x: x + cardW - 84, y: y0 + 414, w: 74, h: 28, text: 'Abrir ↗', size: 11, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', url: p.url ?? undefined })
   })
   return out
@@ -207,11 +207,11 @@ function modernCreativeCards(ads: ReportAd[], currency: string, resultLabel: str
     // Imagem do anúncio (clicável para prévia)
     out.push({ t: 'img', x: x + 6, y: y0 + 6, w: cardW - 12, h: 220, src: a.thumb, radius: 10, url: previewUrl })
 
-    // Badge de objetivo
+    // Tag de objetivo
     const hasConv = a.results > 0
     const badgeText = hasConv ? 'CONVERSÃO' : (a.clicks > 0 ? 'TRÁFEGO' : 'FEED')
-    out.push({ t: 'box', x: x + 12, y: y0 + 12, w: 86, h: 22, fill: hasConv ? 'rgba(34,197,94,0.85)' : 'rgba(99,102,241,0.85)', radius: 11 })
-    out.push({ t: 'text', x: x + 12, y: y0 + 12, w: 86, h: 22, text: badgeText, size: 9, weight: 700, color: '#FFFFFF', align: 'center', valign: 'middle' })
+    out.push({ t: 'box', x: x + 10, y: y0 + 10, w: 76, h: 20, fill: hasConv ? 'rgba(34,197,94,0.90)' : 'rgba(99,102,241,0.90)', radius: 4 })
+    out.push({ t: 'text', x: x + 10, y: y0 + 10, w: 76, h: 20, text: badgeText, size: 9, weight: 700, color: '#FFFFFF', align: 'center', valign: 'middle' })
 
     // Nome do anúncio (2 linhas, clicável)
     const rawName = (a.name || 'Anúncio Meta').replace(/\s+/g, ' ').trim()
@@ -253,7 +253,7 @@ function modernCreativeCards(ads: ReportAd[], currency: string, resultLabel: str
     // Rodapé: Status e Botão Abrir
     out.push({ t: 'text', x: x + 12, y: y0 + 416, w: 90, h: 26, text: '● Ativo', size: 11, weight: 600, color: P.green, valign: 'middle' })
 
-    out.push({ t: 'box', x: x + cardW - 96, y: y0 + 414, w: 86, h: 28, fill: P.violetSoft, line: P.violet, radius: 14, url: previewUrl })
+    out.push({ t: 'box', x: x + cardW - 96, y: y0 + 414, w: 86, h: 28, fill: P.violetSoft, line: P.violet, radius: 6, url: previewUrl })
     out.push({ t: 'text', x: x + cardW - 96, y: y0 + 414, w: 86, h: 28, text: 'Ver prévia ↗', size: 10.5, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', url: previewUrl })
   })
   return out
@@ -417,8 +417,7 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
     id: 'cover', label: 'Capa', dark: true,
     els: [
       ...corners(true),
-      { t: 'box', x: 440, y: 80, w: 400, h: 32, fill: P.violetSoft, line: P.violet, radius: 16 },
-      { t: 'text', x: 440, y: 80, w: 400, h: 32, text: is7d ? 'ACOMPANHAMENTO SEMANAL' : 'FECHAMENTO MENSAL DE RESULTADOS', size: 12, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', lineHeight: 1.2 },
+      { t: 'text', x: 60, y: 88, w: 1160, h: 24, text: is7d ? 'ACOMPANHAMENTO SEMANAL' : 'FECHAMENTO MENSAL DE RESULTADOS', size: 13, weight: 700, color: P.violetLight, align: 'center', lineHeight: 1.2 },
       { t: 'text', x: 60, y: 140, w: 1160, h: 230, text: upper(coverTitle), size: is7d ? 72 : 82, weight: 800, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.15 },
       { t: 'text', x: 60, y: 385, w: 1160, h: 30, text: `Período: ${period}`, size: 18, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(d.client.logoUrl ? [{ t: 'img', x: 610, y: 440, w: 60, h: 60, src: d.client.logoUrl, radius: 12 } as El] : []),
@@ -532,8 +531,7 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
     id: 'cover', label: 'Capa', dark: true,
     els: [
       ...corners(true),
-      { t: 'box', x: 440, y: 80, w: 400, h: 32, fill: P.violetSoft, line: P.violet, radius: 16 },
-      { t: 'text', x: 440, y: 80, w: 400, h: 32, text: is7d ? 'ACOMPANHAMENTO SEMANAL' : 'FECHAMENTO MENSAL DE RESULTADOS', size: 12, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', lineHeight: 1.2 },
+      { t: 'text', x: 60, y: 88, w: 1160, h: 24, text: is7d ? 'ACOMPANHAMENTO SEMANAL' : 'FECHAMENTO MENSAL DE RESULTADOS', size: 13, weight: 700, color: P.violetLight, align: 'center', lineHeight: 1.2 },
       { t: 'text', x: 60, y: 140, w: 1160, h: 230, text: upper(coverTitle), size: is7d ? 72 : 82, weight: 800, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.15 },
       { t: 'text', x: 60, y: 385, w: 1160, h: 30, text: `Período: ${period}`, size: 18, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(d.client.logoUrl ? [{ t: 'img', x: 610, y: 440, w: 60, h: 60, src: d.client.logoUrl, radius: 12 } as El] : []),
@@ -739,8 +737,7 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
     id: 'cover', label: 'Capa', dark: true,
     els: [
       ...corners(true),
-      { t: 'box', x: 440, y: 80, w: 400, h: 32, fill: P.violetSoft, line: P.violet, radius: 16 },
-      { t: 'text', x: 440, y: 80, w: 400, h: 32, text: 'RELATÓRIO ESTRATÉGICO ORGÂNICO', size: 12, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', lineHeight: 1.2 },
+      { t: 'text', x: 60, y: 88, w: 1160, h: 24, text: 'RELATÓRIO DE RESULTADOS ORGÂNICOS', size: 13, weight: 700, color: P.violetLight, align: 'center', lineHeight: 1.2 },
       { t: 'text', x: 60, y: 140, w: 1160, h: 230, text: upper(is7d ? 'Resultados dos últimos 7 dias' : `Resultados de ${d.month.label}`), size: is7d ? 72 : 82, weight: 800, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.15 },
       { t: 'text', x: 60, y: 385, w: 1160, h: 30, text: `Período avaliado: ${period}`, size: 18, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(d.client.logoUrl ? [{ t: 'img', x: 610, y: 440, w: 60, h: 60, src: d.client.logoUrl, radius: 12 } as El] : []),
@@ -832,18 +829,16 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
       { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Comparação estratégica entre conteúdos em vídeo (Reels) e postagens estáticas/carrossel.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
 
       { t: 'box', x: 80, y: 185, w: 540, h: 460, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'box', x: 110, y: 215, w: 140, h: 28, fill: P.violetSoft, line: P.violet, radius: 14 },
-      { t: 'text', x: 110, y: 215, w: 140, h: 28, text: '📸 REELS & VÍDEO', size: 11, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', lineHeight: 1.2 },
-      { t: 'text', x: 110, y: 265, w: 480, h: 24, text: 'Alcance Médio por Publicação', size: 13, weight: 600, color: P.muted },
-      { t: 'text', x: 110, y: 295, w: 480, h: 48, text: reelsAvgReach > 0 ? `${compact(reelsAvgReach)} contas` : 'Em consolidação', size: 32, weight: 800, color: P.white },
-      { t: 'text', x: 110, y: 360, w: 480, h: 100, text: '• Formato com maior potencial de entrega para NÃO SEGUIDORES.\n• Fundamental para atração de novas pessoas para o topo do funil.\n• Recomendado ganchos visuais dinâmicos nos primeiros 3 segundos.', size: 14, weight: 400, color: P.soft, lineHeight: 1.6 },
+      { t: 'text', x: 110, y: 215, w: 480, h: 24, text: 'VÍDEOS & REELS', size: 14, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 110, y: 250, w: 480, h: 22, text: 'Alcance Médio por Publicação', size: 13, weight: 600, color: P.muted },
+      { t: 'text', x: 110, y: 280, w: 480, h: 48, text: reelsAvgReach > 0 ? `${compact(reelsAvgReach)} contas` : 'Em consolidação', size: 32, weight: 800, color: P.white },
+      { t: 'text', x: 110, y: 350, w: 480, h: 100, text: '• Formato com maior potencial de entrega para NÃO SEGUIDORES.\n• Fundamental para atração de novas pessoas para o topo do funil.\n• Recomendado ganchos visuais dinâmicos nos primeiros 3 segundos.', size: 14, weight: 400, color: P.soft, lineHeight: 1.6 },
 
       { t: 'box', x: 660, y: 185, w: 540, h: 460, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'box', x: 690, y: 215, w: 160, h: 28, fill: 'rgba(34,197,94,0.16)', line: P.green, radius: 14 },
-      { t: 'text', x: 690, y: 215, w: 160, h: 28, text: '📷 CARROSSEL & FOTO', size: 11, weight: 700, color: P.green, align: 'center', valign: 'middle', lineHeight: 1.2 },
-      { t: 'text', x: 690, y: 265, w: 480, h: 24, text: 'Alcance Médio por Publicação', size: 13, weight: 600, color: P.muted },
-      { t: 'text', x: 690, y: 295, w: 480, h: 48, text: staticAvgReach > 0 ? `${compact(staticAvgReach)} contas` : 'Em consolidação', size: 32, weight: 800, color: P.white },
-      { t: 'text', x: 690, y: 360, w: 480, h: 100, text: '• Formato com maior taxa de RETENÇÃO e SALVAMENTOS.\n• Consolida autoridade e aprofunda temas técnicos para a base atual.\n• Gera maior probabilidade de compartilhamento no direct.', size: 14, weight: 400, color: P.soft, lineHeight: 1.6 },
+      { t: 'text', x: 690, y: 215, w: 480, h: 24, text: 'FOTOS & CARROSSEL', size: 14, weight: 700, color: P.green, lineHeight: 1.2 },
+      { t: 'text', x: 690, y: 250, w: 480, h: 22, text: 'Alcance Médio por Publicação', size: 13, weight: 600, color: P.muted },
+      { t: 'text', x: 690, y: 280, w: 480, h: 48, text: staticAvgReach > 0 ? `${compact(staticAvgReach)} contas` : 'Em consolidação', size: 32, weight: 800, color: P.white },
+      { t: 'text', x: 690, y: 350, w: 480, h: 100, text: '• Formato com maior taxa de RETENÇÃO e SALVAMENTOS.\n• Consolida autoridade e aprofunda temas técnicos para a base atual.\n• Gera maior probabilidade de compartilhamento no direct.', size: 14, weight: 400, color: P.soft, lineHeight: 1.6 },
 
       ...band(true),
     ],
@@ -994,28 +989,22 @@ function buildBestTimesSlide(): SlideSpec {
 
       // Janela 1: Noite (Pico Principal)
       { t: 'box', x: 710, y: 235, w: 480, h: 95, fill: P.cardSoft, line: P.violet, radius: 12 },
-      { t: 'box', x: 725, y: 247, w: 90, h: 22, fill: 'rgba(34,197,94,0.18)', line: P.green, radius: 11 },
-      { t: 'text', x: 725, y: 247, w: 90, h: 22, text: '18h00 · 20h30', size: 10, weight: 700, color: P.green, align: 'center', valign: 'middle' },
-      { t: 'text', x: 825, y: 247, w: 350, h: 22, text: 'Noite · Maior Atividade', size: 12, weight: 700, color: P.white, valign: 'middle' },
+      { t: 'text', x: 725, y: 247, w: 450, h: 22, text: '18h00 – 20h30 · Noite (Maior Atividade)', size: 13, weight: 700, color: P.green, valign: 'middle' },
       { t: 'text', x: 725, y: 275, w: 450, h: 45, text: 'Maior volume de pessoas navegando com calma. Janela ideal para postar Reels, vídeos longos e carrosséis completos.', size: 11, weight: 400, color: P.soft, lineHeight: 1.35 },
 
       // Janela 2: Almoço
       { t: 'box', x: 710, y: 342, w: 480, h: 86, fill: P.cardSoft, line: P.cardBorder, radius: 12 },
-      { t: 'box', x: 725, y: 354, w: 86, h: 22, fill: P.violetSoft, line: P.violet, radius: 11 },
-      { t: 'text', x: 725, y: 354, w: 86, h: 22, text: '12h00 · 13h30', size: 10, weight: 700, color: P.violetLight, align: 'center', valign: 'middle' },
-      { t: 'text', x: 825, y: 354, w: 350, h: 22, text: 'Almoço · Checagem Rápida', size: 12, weight: 700, color: P.white, valign: 'middle' },
+      { t: 'text', x: 725, y: 354, w: 450, h: 22, text: '12h00 – 13h30 · Almoço (Checagem Rápida)', size: 13, weight: 700, color: P.violetLight, valign: 'middle' },
       { t: 'text', x: 725, y: 382, w: 450, h: 36, text: 'Pausa para olhar o feed. Ótimo momento para postagens informativas e Stories com enquetes.', size: 11, weight: 400, color: P.soft, lineHeight: 1.35 },
 
       // Janela 3: Manhã
       { t: 'box', x: 710, y: 440, w: 480, h: 86, fill: P.cardSoft, line: P.cardBorder, radius: 12 },
-      { t: 'box', x: 725, y: 452, w: 86, h: 22, fill: 'rgba(245,158,11,0.18)', line: P.amber, radius: 11 },
-      { t: 'text', x: 725, y: 452, w: 86, h: 22, text: '07h30 · 09h00', size: 10, weight: 700, color: P.amber, align: 'center', valign: 'middle' },
-      { t: 'text', x: 825, y: 452, w: 350, h: 22, text: 'Manhã · Primeiro Acesso', size: 12, weight: 700, color: P.white, valign: 'middle' },
+      { t: 'text', x: 725, y: 452, w: 450, h: 22, text: '07h30 – 09h00 · Manhã (Primeiro Acesso)', size: 13, weight: 700, color: P.amber, valign: 'middle' },
       { t: 'text', x: 725, y: 480, w: 450, h: 36, text: 'Primeira checagem do dia. Ideal para abrir caixinhas de perguntas nos Stories e mostrar os bastidores.', size: 11, weight: 400, color: P.soft, lineHeight: 1.35 },
 
       // Dica Tática
       { t: 'box', x: 710, y: 538, w: 480, h: 98, fill: P.violetSoft, line: P.violet, radius: 12 },
-      { t: 'text', x: 725, y: 548, w: 450, h: 20, text: '💡 RECOMENDAÇÃO PRÁTICA', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 725, y: 548, w: 450, h: 20, text: 'RECOMENDAÇÃO PRÁTICA', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
       { t: 'text', x: 725, y: 572, w: 450, h: 54, text: 'Concentrar as postagens principais entre terça e quinta-feira, no final da tarde. O público tem mais tempo para interagir e o conteúdo ganha tração contínua.', size: 11.5, weight: 400, color: P.white, lineHeight: 1.4 },
 
       ...band(true),
