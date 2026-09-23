@@ -7,7 +7,10 @@ import {
   Bookmark,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Circle,
+  Clock,
   Download,
   Eye,
   EyeOff,
@@ -17,12 +20,14 @@ import {
   Moon,
   MousePointer,
   Pencil,
+  Play,
   RefreshCw,
   RotateCcw,
   Sparkles,
   Square,
   Sun,
   Trash2,
+  Type,
   Undo2,
   UploadCloud,
   X,
@@ -32,7 +37,7 @@ import { compact, type ReportData, type ReportMode, type ReportNotes, type Repor
 import { buildSlides, FONT, PALETTE, PALETTE_LIGHT, STAGE, type El, type SlideSpec } from '@/lib/reportSlides'
 import { useTheme } from '@/lib/useTheme'
 
-export type DrawTool = 'pointer' | 'laser' | 'pen' | 'highlighter' | 'rect' | 'circle' | 'arrow'
+export type DrawTool = 'pointer' | 'laser' | 'pen' | 'highlighter' | 'rect' | 'circle' | 'arrow' | 'text'
 
 export interface DrawPoint {
   x: number
@@ -44,7 +49,23 @@ export interface DrawStroke {
   color: string
   width: number
   points: DrawPoint[]
+  text?: string
+  fontSize?: number
+  fontFamily?: 'sans' | 'display' | 'serif' | 'mono'
 }
+
+const TEXT_FONTS = [
+  { id: 'sans' as const, label: 'Inter' },
+  { id: 'display' as const, label: 'Outfit' },
+  { id: 'serif' as const, label: 'Serif' },
+  { id: 'mono' as const, label: 'Mono' },
+]
+
+const TEXT_SIZES = [
+  { label: 'P', size: 18 },
+  { label: 'M', size: 26 },
+  { label: 'G', size: 36 },
+]
 
 const DRAW_COLORS = [
   { label: 'Vermelho Destaque', value: '#EF4444' },
@@ -741,6 +762,48 @@ export function ReportStudio({
   const currentStrokeRef = useRef<DrawStroke | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
+  // Modo Apresentador com Próximo Slide
+  const [presenterMode, setPresenterMode] = useState(false)
+  const [presentationTime, setPresentationTime] = useState(0)
+
+  // Dropdown de Download Unificado
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false)
+  const downloadMenuRef = useRef<HTMLDivElement>(null)
+
+  // Opções de Texto para Anotações
+  const [textFont, setTextFont] = useState<'sans' | 'display' | 'serif' | 'mono'>('sans')
+  const [textSize, setTextSize] = useState<number>(26)
+  const [activeTextInput, setActiveTextInput] = useState<{ x: number; y: number; text: string } | null>(null)
+  const textInputRef = useRef<HTMLInputElement>(null)
+
+  // Cronômetro da Apresentação
+  useEffect(() => {
+    if (!presenterMode) {
+      setPresentationTime(0)
+      return
+    }
+    const timer = setInterval(() => setPresentationTime(t => t + 1), 1000)
+    return () => clearInterval(timer)
+  }, [presenterMode])
+
+  const formatPresentationTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  }
+
+  // Fecha dropdown de download ao clicar fora
+  useEffect(() => {
+    if (!downloadMenuOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target as Node)) {
+        setDownloadMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [downloadMenuOpen])
+
   // Salvar versão permanente no Report Studio
   const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [saveTitle, setSaveTitle] = useState('')
@@ -816,6 +879,28 @@ export function ReportStudio({
       [active.id]: [],
     }))
   }, [active])
+
+  // Salva o texto digitado nas anotações do slide
+  const commitTextInput = useCallback(() => {
+    if (!activeTextInput || !active) return
+    const trimmed = activeTextInput.text.trim()
+    if (trimmed) {
+      const textStroke: DrawStroke = {
+        tool: 'text',
+        color: drawColor,
+        width: 2,
+        points: [{ x: activeTextInput.x, y: activeTextInput.y }],
+        text: trimmed,
+        fontSize: textSize,
+        fontFamily: textFont,
+      }
+      setDrawingsBySlide(prev => ({
+        ...prev,
+        [active.id]: [...(prev[active.id] || []), textStroke],
+      }))
+    }
+    setActiveTextInput(null)
+  }, [activeTextInput, active, drawColor, textSize, textFont])
 
   // Redesenha todos os traços no canvas do slide
   const redrawCanvas = useCallback(() => {
@@ -897,6 +982,12 @@ export function ReportStudio({
           ctx.closePath()
           ctx.fill()
         }
+      } else if (s.tool === 'text' && s.text) {
+        const fontFam = s.fontFamily === 'serif' ? 'Georgia, "Playfair Display", serif' : s.fontFamily === 'mono' ? '"JetBrains Mono", monospace' : s.fontFamily === 'display' ? '"Outfit", "Arial Black", sans-serif' : `${FONT}, Inter, sans-serif`
+        ctx.font = `700 ${s.fontSize || 26}px ${fontFam}`
+        ctx.fillStyle = s.color
+        ctx.textBaseline = 'top'
+        ctx.fillText(s.text, s.points[0].x, s.points[0].y)
       }
       ctx.restore()
     }
@@ -923,6 +1014,13 @@ export function ReportStudio({
       setLaserPos(pt)
     }
     if (!drawingOpen || drawTool === 'pointer' || drawTool === 'laser') {
+      return
+    }
+    if (drawTool === 'text') {
+      if (activeTextInput && activeTextInput.text.trim()) {
+        commitTextInput()
+      }
+      setActiveTextInput({ x: pt.x, y: pt.y, text: '' })
       return
     }
     currentStrokeRef.current = {
@@ -984,9 +1082,14 @@ export function ReportStudio({
   }
 
   // Teclado: Escape fecha, Setas passam slides, D toggle drawing, L toggle laser, Ctrl+Z undo
+  // Teclado: Escape fecha, Setas passam slides, D toggle drawing, L toggle laser, P toggle presenter, Ctrl+Z undo
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (presenterMode) {
+          setPresenterMode(false)
+          return
+        }
         onClose()
         return
       }
@@ -1010,6 +1113,17 @@ export function ReportStudio({
         setDrawingOpen(v => !v)
         return
       }
+      if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault()
+        setPresenterMode(v => !v)
+        return
+      }
+      if (e.key === 't' || e.key === 'T') {
+        e.preventDefault()
+        setDrawTool('text')
+        setDrawingOpen(true)
+        return
+      }
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         e.preventDefault()
         setCurrent(curr => Math.min(slides.length - 1, curr + 1))
@@ -1020,7 +1134,7 @@ export function ReportStudio({
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [slides.length, onClose, handleUndo])
+  }, [slides.length, onClose, handleUndo, presenterMode])
 
   // Fecha dropdown de formatos ao clicar fora
   useEffect(() => {
@@ -1040,13 +1154,14 @@ export function ReportStudio({
     if (!el) return
     const fit = () => {
       const extraW = drawingOpen ? 104 : 36
-      setScale(Math.max(0.3, Math.min(1, (el.clientWidth - extraW) / STAGE.w, (el.clientHeight - 48) / STAGE.h)))
+      const extraH = presenterMode ? 140 : 48
+      setScale(Math.max(0.3, Math.min(1, (el.clientWidth - extraW) / STAGE.w, (el.clientHeight - extraH) / STAGE.h)))
     }
     fit()
     const ro = new ResizeObserver(fit)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [phase.kind, drawingOpen])
+  }, [phase.kind, drawingOpen, presenterMode])
 
   const save = useCallback(async (n: ReportNotes, p = preset) => {
     if (readOnly || savedReport) return
@@ -1312,18 +1427,142 @@ export function ReportStudio({
           </button>
         )}
 
+        {/* Botão de Apresentar */}
         {data && (
-          <button className="btn btn-outline btn-sm" style={{ borderRadius: 20, padding: '0 14px' }} onClick={exportPdf} disabled={!!exporting}>
-            <FileText size={14} strokeWidth={1.75} /> {exporting === 'pdf' ? 'Preparando…' : 'Baixar PDF'}
-          </button>
-        )}
-        {data && (
-          <button className="btn btn-primary btn-sm" style={{ borderRadius: 20, padding: '0 14px' }} onClick={exportPptx} disabled={!!exporting}>
-            <Download size={14} strokeWidth={1.75} /> {exporting === 'pptx' ? 'Gerando…' : 'Baixar PowerPoint'}
+          <button
+            type="button"
+            className={`btn btn-sm ${presenterMode ? 'btn-primary' : 'btn-outline'}`}
+            style={{
+              borderRadius: 20,
+              padding: '0 14px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontWeight: 600,
+            }}
+            onClick={() => setPresenterMode(v => !v)}
+            title="Iniciar apresentação em tela cheia com próximo slide e anotações (P)"
+          >
+            <Play size={14} strokeWidth={2} fill={presenterMode ? 'currentColor' : 'none'} />
+            <span>{presenterMode ? 'Apresentando' : 'Apresentar'}</span>
           </button>
         )}
 
-        {/* Botão Modo Desenho / Apresentador */}
+        {/* Botão Laser Pointer rápido */}
+        {/* Botão de Download Único com Dropdown */}
+        {data && (
+          <div ref={downloadMenuRef} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              style={{
+                borderRadius: 20,
+                padding: '0 14px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontWeight: 600,
+              }}
+              onClick={() => setDownloadMenuOpen(o => !o)}
+              aria-haspopup="true"
+              aria-expanded={downloadMenuOpen}
+              title="Baixar relatório em PDF ou PowerPoint"
+              disabled={!!exporting}
+            >
+              {exporting ? (
+                <>
+                  <Loader2 size={14} className="spin" />
+                  <span>{exporting === 'pdf' ? 'Gerando PDF…' : 'Gerando PPTX…'}</span>
+                </>
+              ) : (
+                <>
+                  <Download size={14} strokeWidth={1.75} />
+                  <span>Baixar</span>
+                  <ChevronDown size={14} style={{ transform: downloadMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+                </>
+              )}
+            </button>
+            {downloadMenuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: 0,
+                  minWidth: 240,
+                  background: 'var(--bg-card, #FFFFFF)',
+                  border: '1px solid var(--border, #E2E8F0)',
+                  borderRadius: 14,
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.14)',
+                  padding: 6,
+                  zIndex: 60,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDownloadMenuOpen(false)
+                    exportPdf()
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '8px 12px',
+                    borderRadius: 10,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    width: '100%',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-card2, rgba(99,102,241,0.08))')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <FileText size={16} strokeWidth={1.8} style={{ color: PALETTE.violet }} />
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>Baixar em PDF</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Documento para envio rápido ou impressão</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDownloadMenuOpen(false)
+                    void exportPptx()
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '8px 12px',
+                    borderRadius: 10,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    width: '100%',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-card2, rgba(99,102,241,0.08))')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <Download size={16} strokeWidth={1.8} style={{ color: PALETTE.violet }} />
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>Baixar PowerPoint (.pptx)</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Apresentação editável com slides</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Botão Modo Desenho */}
         {data && (
           <button
             type="button"
@@ -1345,34 +1584,7 @@ export function ReportStudio({
             title="Ativar modo de anotações dinâmicas e formas geométricas (D)"
           >
             <Pencil size={14} strokeWidth={1.8} />
-            <span>{drawingOpen ? 'Anotações Ativas' : 'Modo Desenho'}</span>
-          </button>
-        )}
-
-        {/* Botão Laser Pointer rápido */}
-        {data && (
-          <button
-            type="button"
-            className={`btn btn-sm ${laserActive ? 'btn-primary' : 'btn-outline'}`}
-            style={{
-              borderRadius: 20,
-              padding: '0 12px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontWeight: 600,
-              borderColor: laserActive ? '#EF4444' : undefined,
-              background: laserActive ? '#EF4444' : undefined,
-              color: laserActive ? '#FFFFFF' : undefined,
-            }}
-            onClick={() => {
-              setLaserActive(l => !l)
-              if (!laserActive) setDrawTool('laser')
-            }}
-            title="Mouse visível e brilhante para apresentações ao vivo (L)"
-          >
-            <Sparkles size={14} strokeWidth={1.8} />
-            <span>Laser</span>
+            <span>Modo Desenho</span>
           </button>
         )}
 
@@ -1405,24 +1617,26 @@ export function ReportStudio({
 
       {data && notes && active && (
         <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-          <nav aria-label="Slides" style={{ width: 176, borderRight: '1px solid var(--border)', overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0 }}>
-            {slides.map((s, i) => {
-              const off = hidden.has(s.id)
-              return (
-                <div key={s.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <button onClick={() => setCurrent(i)} aria-current={i === current} aria-label={`Slide ${i + 1}: ${s.label}`} style={{ padding: 0, border: `2px solid ${i === current ? PALETTE.violet : 'transparent'}`, borderRadius: 8, background: 'none', cursor: 'pointer', opacity: off ? 0.35 : 1 }}>
-                    <Slide spec={s} scale={0.11} />
-                  </button>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-2)' }}>
-                    <span>{i + 1}. {s.label}</span>
-                    <button className="btn btn-ghost btn-icon btn-sm" style={{ width: 24, height: 24 }} onClick={() => setHidden(h => { const n = new Set(h); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n })} aria-label={off ? `Incluir ${s.label}` : `Ocultar ${s.label}`} title={off ? 'Incluir no relatório' : 'Ocultar do relatório'}>
-                      {off ? <EyeOff size={13} strokeWidth={1.75} /> : <Eye size={13} strokeWidth={1.75} />}
+          {!presenterMode && (
+            <nav aria-label="Slides" style={{ width: 176, borderRight: '1px solid var(--border)', overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0 }}>
+              {slides.map((s, i) => {
+                const off = hidden.has(s.id)
+                return (
+                  <div key={s.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <button onClick={() => setCurrent(i)} aria-current={i === current} aria-label={`Slide ${i + 1}: ${s.label}`} style={{ padding: 0, border: `2px solid ${i === current ? PALETTE.violet : 'transparent'}`, borderRadius: 8, background: 'none', cursor: 'pointer', opacity: off ? 0.35 : 1 }}>
+                      <Slide spec={s} scale={0.11} />
                     </button>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-2)' }}>
+                      <span>{i + 1}. {s.label}</span>
+                      <button className="btn btn-ghost btn-icon btn-sm" style={{ width: 24, height: 24 }} onClick={() => setHidden(h => { const n = new Set(h); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n })} aria-label={off ? `Incluir ${s.label}` : `Ocultar ${s.label}`} title={off ? 'Incluir no relatório' : 'Ocultar do relatório'}>
+                        {off ? <EyeOff size={13} strokeWidth={1.75} /> : <Eye size={13} strokeWidth={1.75} />}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </nav>
+                )
+              })}
+            </nav>
+          )}
           <div ref={stageBox} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, background: 'var(--muted-bg, rgba(127,127,160,.08))', position: 'relative', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, maxWidth: '100%' }}>
               <div
@@ -1452,15 +1666,60 @@ export function ReportStudio({
                     inset: 0,
                     width: STAGE.w * scale,
                     height: STAGE.h * scale,
-                    pointerEvents: (drawingOpen || laserActive || drawTool === 'laser') ? 'auto' : 'none',
+                    pointerEvents: (drawingOpen || laserActive || drawTool === 'laser' || drawTool === 'text') ? 'auto' : 'none',
                     cursor: (laserActive || drawTool === 'laser')
                       ? 'none'
-                      : (drawingOpen && drawTool !== 'pointer')
-                        ? 'crosshair'
-                        : 'default',
+                      : drawTool === 'text'
+                        ? 'text'
+                        : (drawingOpen && drawTool !== 'pointer')
+                          ? 'crosshair'
+                          : 'default',
                     zIndex: 35,
                   }}
                 />
+
+                {/* Input Flutuante para Inserção de Texto */}
+                {activeTextInput && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: activeTextInput.x * scale,
+                      top: activeTextInput.y * scale,
+                      zIndex: 60,
+                    }}
+                  >
+                    <input
+                      ref={textInputRef}
+                      autoFocus
+                      type="text"
+                      value={activeTextInput.text}
+                      onChange={e => setActiveTextInput(prev => prev ? { ...prev, text: e.target.value } : null)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          commitTextInput()
+                        } else if (e.key === 'Escape') {
+                          setActiveTextInput(null)
+                        }
+                      }}
+                      onBlur={commitTextInput}
+                      placeholder="Digite seu texto…"
+                      style={{
+                        background: 'rgba(0, 0, 0, 0.75)',
+                        border: `2px dashed ${drawColor}`,
+                        borderRadius: 6,
+                        padding: '4px 8px',
+                        color: drawColor,
+                        fontSize: Math.max(13, textSize * scale),
+                        fontFamily: textFont === 'serif' ? 'Georgia, serif' : textFont === 'mono' ? 'monospace' : textFont === 'display' ? 'Outfit, sans-serif' : 'Inter, sans-serif',
+                        fontWeight: 700,
+                        outline: 'none',
+                        minWidth: 140,
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                      }}
+                    />
+                  </div>
+                )}
 
                 {/* Laser Pointer com Halo Brilhante e Pulso */}
                 {(laserActive || drawTool === 'laser') && laserPos && (
@@ -1696,6 +1955,79 @@ export function ReportStudio({
                     <ArrowUpRight size={18} strokeWidth={1.8} />
                   </button>
 
+                  {/* Texto ("T") */}
+                  <button
+                    type="button"
+                    onClick={() => setDrawTool('text')}
+                    title="Digitar Texto no Slide (T)"
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      border: 'none',
+                      background: drawTool === 'text' ? 'var(--bg-card2, rgba(99,102,241,0.12))' : 'transparent',
+                      color: drawTool === 'text' ? PALETTE.violet : 'var(--text-2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Type size={18} strokeWidth={2} />
+                  </button>
+
+                  {/* Configurações de Texto (Fonte e Tamanho) */}
+                  {drawTool === 'text' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', padding: '2px 0' }}>
+                      <div style={{ display: 'flex', gap: 2 }}>
+                        {TEXT_SIZES.map(s => (
+                          <button
+                            key={s.label}
+                            type="button"
+                            onClick={() => setTextSize(s.size)}
+                            style={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: 4,
+                              border: 'none',
+                              background: textSize === s.size ? PALETTE.violet : 'transparent',
+                              color: textSize === s.size ? '#FFFFFF' : 'var(--text-2)',
+                              fontSize: 10,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              padding: 0,
+                            }}
+                            title={`Tamanho ${s.label} (${s.size}px)`}
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                      <select
+                        value={textFont}
+                        onChange={e => setTextFont(e.target.value as any)}
+                        style={{
+                          width: 48,
+                          fontSize: 10,
+                          borderRadius: 6,
+                          background: reportTheme === 'dark' ? '#1E293B' : '#F1F5F9',
+                          color: 'var(--text-1)',
+                          border: `1px solid ${reportTheme === 'dark' ? '#334155' : '#CBD5E1'}`,
+                          padding: '2px 1px',
+                          outline: 'none',
+                          cursor: 'pointer',
+                        }}
+                        title="Fonte do texto"
+                      >
+                        <option value="sans">Inter</option>
+                        <option value="display">Outfit</option>
+                        <option value="serif">Serif</option>
+                        <option value="mono">Mono</option>
+                      </select>
+                    </div>
+                  )}
+
                   <div style={{ width: 24, height: 1, background: reportTheme === 'dark' ? '#1E293B' : '#E2E8F0', margin: '2px 0' }} />
 
                   {/* Cores */}
@@ -1814,71 +2146,186 @@ export function ReportStudio({
                 </aside>
               )}
             </div>
-            {!readOnly && active.id === 'creatives' && data.paid.top.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card, #FFFFFF)', border: '1px solid var(--border, #E2E2EA)', borderRadius: 8, padding: '6px 14px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2, #55556A)' }}>Melhorar resolução dos criativos:</span>
-                {data.paid.top.slice(0, 3).map((a, idx) => {
-                  const isOverridden = !!notes.creativeOverrides?.[a.id]
-                  return (
-                    <div key={a.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <label
-                        className="btn btn-outline btn-sm"
-                        style={{ height: 26, padding: '0 8px', fontSize: 11, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                        title="Substituir thumbnail por imagem em alta definição do seu computador"
-                      >
-                        <UploadCloud size={12} />
-                        <span>Criativo {idx + 1} {isOverridden ? '✓' : ''}</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          onChange={e => {
-                            const file = e.target.files?.[0]
-                            if (!file) return
-                            const reader = new FileReader()
-                            reader.onload = () => {
-                              const dataUrl = String(reader.result)
-                              const nextOverrides = { ...(notes.creativeOverrides ?? {}), [a.id]: dataUrl }
-                              const nextNotes = { ...notes, creativeOverrides: nextOverrides }
-                              setNotes(nextNotes)
-                              void save(nextNotes)
-                            }
-                            reader.readAsDataURL(file)
-                          }}
-                        />
-                      </label>
-                      {isOverridden && (
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-icon btn-sm"
-                          style={{ width: 22, height: 22 }}
-                          title="Restaurar imagem original da Meta"
-                          onClick={() => {
-                            const nextOverrides = { ...(notes.creativeOverrides ?? {}) }
-                            delete nextOverrides[a.id]
-                            const nextNotes = { ...notes, creativeOverrides: nextOverrides }
-                            setNotes(nextNotes)
-                            void save(nextNotes)
-                          }}
-                        >
-                          <RotateCcw size={11} />
-                        </button>
-                      )}
+
+            {/* Dock Inferior do Apresentador (Exibição do Próximo Slide, Navegação e Cronômetro) */}
+            {presenterMode ? (
+              <div
+                style={{
+                  width: '100%',
+                  maxWidth: 960,
+                  background: reportTheme === 'dark' ? '#131927' : '#FFFFFF',
+                  border: `1.5px solid ${reportTheme === 'dark' ? '#1E293B' : '#E2E8F0'}`,
+                  borderRadius: 16,
+                  padding: '8px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 16,
+                  boxShadow: '0 12px 32px rgba(0,0,0,0.2)',
+                  marginTop: 6,
+                  zIndex: 50,
+                  userSelect: 'none',
+                  flexWrap: 'wrap',
+                }}
+              >
+                {/* Controles de Navegação */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    style={{ height: 32, padding: '0 12px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    onClick={() => setCurrent(curr => Math.max(0, curr - 1))}
+                    disabled={current === 0}
+                    title="Slide Anterior (←)"
+                  >
+                    <ChevronLeft size={16} />
+                    <span>Anterior</span>
+                  </button>
+
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', minWidth: 90, textAlign: 'center' }}>
+                    Slide {current + 1} de {slides.length}
+                  </span>
+
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    style={{ height: 32, padding: '0 12px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    onClick={() => setCurrent(curr => Math.min(slides.length - 1, curr + 1))}
+                    disabled={current === slides.length - 1}
+                    title="Próximo Slide (→)"
+                  >
+                    <span>Próximo</span>
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+
+                {/* Cronômetro da Apresentação */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-2)', fontSize: 13, fontWeight: 600 }}>
+                  <Clock size={15} style={{ color: PALETTE.violet }} />
+                  <span>{formatPresentationTime(presentationTime)}</span>
+                </div>
+
+                {/* Preview do Próximo Slide */}
+                <div
+                  onClick={() => {
+                    if (current < slides.length - 1) {
+                      setCurrent(curr => curr + 1)
+                    }
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '4px 10px',
+                    borderRadius: 12,
+                    background: reportTheme === 'dark' ? '#0B0F19' : '#F8FAFC',
+                    border: `1px solid ${reportTheme === 'dark' ? '#1E293B' : '#E2E8F0'}`,
+                    cursor: current < slides.length - 1 ? 'pointer' : 'default',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title={current < slides.length - 1 ? 'Clique para ir para o próximo slide' : 'Este é o último slide'}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: PALETTE.violet }}>
+                      Próximo Slide
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {current < slides.length - 1 ? `${current + 2}. ${slides[current + 1].label}` : 'Fim da apresentação'}
+                    </span>
+                  </div>
+
+                  {current < slides.length - 1 ? (
+                    <div style={{ width: 68, height: 38, borderRadius: 6, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }}>
+                      <Slide spec={slides[current + 1]} scale={0.053} />
                     </div>
-                  )
-                })}
+                  ) : (
+                    <div style={{ width: 68, height: 38, borderRadius: 6, background: 'rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--text-3)', fontWeight: 600, flexShrink: 0 }}>
+                      Fim ✓
+                    </div>
+                  )}
+                </div>
+
+                {/* Sair do Modo Apresentador */}
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ height: 32, padding: '0 10px', borderRadius: 10, color: 'var(--text-3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => setPresenterMode(false)}
+                  title="Sair do modo apresentação (Esc)"
+                >
+                  <X size={15} />
+                  <span>Sair</span>
+                </button>
               </div>
-            )}
-            {!readOnly ? (
-              <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0, textAlign: 'center' }}>
-                {drawingOpen
-                  ? 'Modo Desenho ativo: selecione uma ferramenta na barra à direita. Pressione L para o Laser Pointer.'
-                  : 'Os campos com contorno tracejado são textos seus: clique e escreva. Clique em "Modo Desenho" para fazer anotações dinâmicas.'}
-              </p>
             ) : (
-              <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0, textAlign: 'center' }}>
-                Use as setas do teclado (← e →) para navegar pelos slides. Pressione L para ligar o Laser Pointer e D para desenhar.
-              </p>
+              <>
+                {!readOnly && active.id === 'creatives' && data.paid.top.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card, #FFFFFF)', border: '1px solid var(--border, #E2E2EA)', borderRadius: 8, padding: '6px 14px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2, #55556A)' }}>Melhorar resolução dos criativos:</span>
+                    {data.paid.top.slice(0, 3).map((a, idx) => {
+                      const isOverridden = !!notes.creativeOverrides?.[a.id]
+                      return (
+                        <div key={a.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <label
+                            className="btn btn-outline btn-sm"
+                            style={{ height: 26, padding: '0 8px', fontSize: 11, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                            title="Substituir thumbnail por imagem em alta definição do seu computador"
+                          >
+                            <UploadCloud size={12} />
+                            <span>Criativo {idx + 1} {isOverridden ? '✓' : ''}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={e => {
+                                const file = e.target.files?.[0]
+                                if (!file) return
+                                const reader = new FileReader()
+                                reader.onload = () => {
+                                  const dataUrl = String(reader.result)
+                                  const nextOverrides = { ...(notes.creativeOverrides ?? {}), [a.id]: dataUrl }
+                                  const nextNotes = { ...notes, creativeOverrides: nextOverrides }
+                                  setNotes(nextNotes)
+                                  void save(nextNotes)
+                                }
+                                reader.readAsDataURL(file)
+                              }}
+                            />
+                          </label>
+                          {isOverridden && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-icon btn-sm"
+                              style={{ width: 22, height: 22 }}
+                              title="Restaurar imagem original da Meta"
+                              onClick={() => {
+                                const nextOverrides = { ...(notes.creativeOverrides ?? {}) }
+                                delete nextOverrides[a.id]
+                                const nextNotes = { ...notes, creativeOverrides: nextOverrides }
+                                setNotes(nextNotes)
+                                void save(nextNotes)
+                              }}
+                            >
+                              <RotateCcw size={11} />
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                {!readOnly ? (
+                  <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0, textAlign: 'center' }}>
+                    {drawingOpen
+                      ? 'Modo Desenho ativo: selecione uma ferramenta na barra à direita. Pressione T para digitar texto ou L para Laser.'
+                      : 'Os campos com contorno tracejado são textos seus: clique e escreva. Clique em "Apresentar" para conduzir a reunião.'}
+                  </p>
+                ) : (
+                  <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0, textAlign: 'center' }}>
+                    Use as setas do teclado (← e →) para navegar pelos slides. Pressione P para Apresentar e D para desenhar.
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>
