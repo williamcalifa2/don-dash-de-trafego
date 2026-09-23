@@ -1,5 +1,5 @@
 /** Gera o PowerPoint (.pptx) a partir dos mesmos slides do editor. Roda no navegador; textos ficam editáveis no PowerPoint e no Canva. */
-import { compact, FONT, PALETTE, STAGE, type El, type SlideSpec } from './reportSlides'
+import { compact, FONT, PALETTE, STAGE, type SlideSpec } from './reportSlides'
 
 const IN = 96 // px do palco por polegada (1280 px = 13,333 pol)
 const inch = (px: number) => px / IN
@@ -61,7 +61,7 @@ export async function downloadPptx(slides: SlideSpec[], fileName: string): Promi
   pptx.defineLayout({ name: 'DON', width: inch(STAGE.w), height: inch(STAGE.h) })
   pptx.layout = 'DON'
   pptx.title = fileName
-  pptx.company = 'Don Comunicação Digital'
+  pptx.company = 'Grupo Don'
 
   for (const spec of slides) {
     const slide = pptx.addSlide()

@@ -316,16 +316,19 @@ export function draftAnalysis(d: Pick<ReportData, 'organic' | 'paid' | 'month'>)
   const p = (label: string) => d.paid.stats.find(s => s.label === label)
   const inv = p('Investimento'), res = p(d.paid.resultLabel), cost = d.paid.stats.find(s => s.lowerIsBetter && s.label.toLowerCase().startsWith('custo por') && s.label !== 'Custo por clique')
   const is7d = d.month.preset === 'last_7d'
-  const timeContext = is7d ? 'Nos últimos 7 dias' : `Em ${d.month.label.split(' de ')[0]}`
-  const compContext = is7d ? 'ao período anterior' : 'ao mês anterior'
+
   if (d.paid.status === 'ok' && inv && res && res.value !== '—' && res.value !== '0') {
-    lines.push(`${timeContext}, investimos ${num(inv)} e geramos ${num(res)} ${d.paid.resultLabel.toLowerCase()}${cost && cost.value !== '—' ? `, a ${num(cost)} cada` : ''}.`)
-    if (cost?.delta != null && Math.abs(cost.delta) >= 1) lines.push(`O ${cost.label.toLowerCase()} ${cost.delta < 0 ? `caiu ${deltaLabel(Math.abs(cost.delta)).replace('+', '')}` : `subiu ${deltaLabel(cost.delta).replace('+', '')}`} em relação ${compContext}.`)
+    const costTxt = cost && cost.value !== '—' ? `, a ${num(cost)} cada` : ''
+    lines.push(`${is7d ? 'Nos últimos 7 dias' : d.month.label.split(' de ')[0] ? `Em ${d.month.label.split(' de ')[0]}` : 'No período'}, investimos ${num(inv)} e geramos ${num(res)} ${d.paid.resultLabel.toLowerCase()}${costTxt}.`)
+    if (res.delta != null) lines.push(`O volume de ${d.paid.resultLabel.toLowerCase()} ${res.delta >= 0 ? 'subiu' : 'caiu'} ${Math.abs(res.delta)}% em relação ${is7d ? 'ao período anterior' : 'ao mês anterior'}.`)
   }
+
   const reach = d.organic.stats.find(s => s.label === 'Alcance')
   if (d.organic.status === 'ok' && reach && reach.value !== '—') lines.push(`No orgânico, o alcance foi de ${reach.value}${reach.delta != null ? ` (${deltaLabel(reach.delta)} contra o ${is7d ? 'período' : 'mês'} anterior)` : ''}.`)
+
   const best = d.organic.top[0]
   if (best) lines.push(`O conteúdo de maior destaque foi ${best.type === 'Reels' ? 'um Reels' : best.type ? `uma publicação (${best.type.toLowerCase()})` : 'uma publicação'}${best.reach != null ? `, com ${compact(best.reach)} de alcance` : ''}.`)
+
   return lines.join('\n')
 }
 

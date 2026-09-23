@@ -80,10 +80,10 @@ function corners(dark: boolean): El[] {
   const c = dark ? '#64748B' : '#94A3B8'
   const s = 10
   return [
-    { t: 'text', x: 40, y: 28, w: 400, h: 22, text: 'DON COMUNICAÇÃO DIGITAL', size: s, weight: 600, color: c, lineHeight: 1.2 },
-    { t: 'text', x: 840, y: 28, w: 400, h: 22, text: 'O OURO OU NADA', size: s, weight: 600, color: c, align: 'right', lineHeight: 1.2 },
-    { t: 'text', x: 40, y: 672, w: 400, h: 22, text: 'O OURO OU NADA', size: s, weight: 600, color: c, lineHeight: 1.2 },
-    { t: 'text', x: 840, y: 672, w: 400, h: 22, text: 'DON COMUNICAÇÃO DIGITAL', size: s, weight: 600, color: c, align: 'right', lineHeight: 1.2 },
+    { t: 'text', x: 60, y: 28, w: 400, h: 22, text: 'GRUPO DON', size: s, weight: 700, color: c, lineHeight: 1.2 },
+    { t: 'text', x: 820, y: 28, w: 400, h: 22, text: 'RELATÓRIO DE RESULTADOS', size: s, weight: 600, color: c, align: 'right', lineHeight: 1.2 },
+    { t: 'text', x: 60, y: 676, w: 400, h: 20, text: 'Grupo Don · Performance & Vendas', size: s, weight: 500, color: c, lineHeight: 1.2 },
+    { t: 'text', x: 820, y: 676, w: 400, h: 20, text: 'Confidencial', size: s, weight: 500, color: c, align: 'right', lineHeight: 1.2 },
   ]
 }
 const band = (_dark: boolean): El[] => [{ t: 'box', x: 0, y: 710, w: 1280, h: 10, fill: P.violet }]
@@ -412,15 +412,15 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
   const paid = d.paid
 
   // 1 — Capa
-  const coverTitle = is7d ? 'Resultados dos últimos 7 dias' : `Resultados de ${d.month.label}`
+  const coverTitle = is7d ? 'ÚLTIMOS 7 DIAS' : `Resultados de ${d.month.label}`
   slides.push({
     id: 'cover', label: 'Capa', dark: true,
     els: [
       ...corners(true),
       { t: 'box', x: 440, y: 80, w: 400, h: 32, fill: P.violetSoft, line: P.violet, radius: 16 },
-      { t: 'text', x: 440, y: 80, w: 400, h: 32, text: is7d ? 'RELATÓRIO SEMANAL DE PERFORMANCE' : 'RELATÓRIO ESTRATÉGICO DE PERFORMANCE', size: 12, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', lineHeight: 1.2 },
+      { t: 'text', x: 440, y: 80, w: 400, h: 32, text: is7d ? 'ACOMPANHAMENTO SEMANAL' : 'FECHAMENTO MENSAL DE RESULTADOS', size: 12, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', lineHeight: 1.2 },
       { t: 'text', x: 60, y: 140, w: 1160, h: 230, text: upper(coverTitle), size: is7d ? 72 : 82, weight: 800, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.15 },
-      { t: 'text', x: 60, y: 385, w: 1160, h: 30, text: `Período avaliado: ${period}`, size: 18, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      { t: 'text', x: 60, y: 385, w: 1160, h: 30, text: `Período: ${period}`, size: 18, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(d.client.logoUrl ? [{ t: 'img', x: 610, y: 440, w: 60, h: 60, src: d.client.logoUrl, radius: 12 } as El] : []),
       { t: 'text', x: 60, y: d.client.logoUrl ? 515 : 465, w: 1160, h: 44, text: upper(d.client.name), size: 30, weight: 600, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.2 },
       ...band(true),
@@ -432,14 +432,14 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
     id: 'objective', label: 'Objetivo e metas', dark: true,
     els: [
       ...corners(true),
-      title('Objetivo e metas', 70, 70),
+      title('Objetivo e Metas', 70, 70),
       { t: 'box', x: 90, y: 180, w: 1100, h: 200, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 120, y: 200, w: 1040, h: 24, text: 'OBJETIVO ESTRATÉGICO DO CLIENTE', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-      { t: 'text', x: 120, y: 235, w: 1040, h: 125, text: notes.objective, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'objective', placeholder: 'Objetivo do cliente com o marketing digital (clique para escrever)' },
+      { t: 'text', x: 120, y: 200, w: 1040, h: 24, text: 'OBJETIVO PRINCIPAL DO NEGÓCIO', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 120, y: 235, w: 1040, h: 125, text: notes.objective, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'objective', placeholder: 'Qual o foco principal deste ciclo? Ex: Gerar 80 contatos qualificados para o time de vendas' },
 
       { t: 'box', x: 90, y: 405, w: 1100, h: 235, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 120, y: 425, w: 1040, h: 24, text: 'METAS E DIRETRIZES DO PERÍODO', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-      { t: 'text', x: 120, y: 460, w: 1040, h: 160, text: notes.goals, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'goals', placeholder: 'Uma meta por linha (clique para escrever)' },
+      { t: 'text', x: 120, y: 425, w: 1040, h: 24, text: 'METAS PRÁTICAS DO PERÍODO', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 120, y: 460, w: 1040, h: 160, text: notes.goals, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'goals', placeholder: 'Metas combinadas (uma por linha). Ex: Manter o CPL abaixo de R$ 25' },
       ...band(true),
     ],
   })
@@ -452,8 +452,8 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
     id: 'organic', label: 'Métricas orgânicas', dark: true,
     els: [
       ...corners(true),
-      title('Métricas orgânicas', 60, 60, 'center'),
-      { t: 'text', x: 60, y: 145, w: 1160, h: 30, text: `Resultados de ${period} no Instagram${org.handle ? ` (${org.handle})` : ''}, contra o ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      title('Redes Sociais (Orgânico)', 60, 60, 'center'),
+      { t: 'text', x: 60, y: 145, w: 1160, h: 30, text: `Números do Instagram${org.handle ? ` (${org.handle})` : ''} de ${period}, comparado ao ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(orgOk ? cellsOrg : [{ t: 'text', x: 160, y: 300, w: 960, h: 120, text: org.status === 'incomplete' ? `Os números ${is7d ? 'do período' : 'do mês fechado'} ainda não foram coletados. Use "Buscar dados" para atualizar.` : 'Sem dados orgânicos para este cliente (Página ou Instagram não vinculados).', size: 20, weight: 500, color: P.soft, align: 'center', valign: 'middle', lineHeight: 1.2 } as El]),
       ...band(true),
     ],
@@ -464,8 +464,8 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
     id: 'content', label: 'Conteúdo orgânico', dark: true,
     els: [
       ...corners(true),
-      title('Conteúdo Orgânico', 60, 55, 'center'),
-      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Publicações que mais geraram alcance e engajamento no período.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      title('Publicações em Destaque', 60, 55, 'center'),
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Posts com maior alcance e engajamento do público no período.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...modernOrganicCards(org.top),
       ...band(true),
     ],
@@ -486,8 +486,8 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
     id: 'paid', label: 'Anúncios', dark: true,
     els: [
       ...corners(true),
-      title('Visão Geral de Performance', 60, 55, 'center'),
-      { t: 'text', x: 60, y: 135, w: 1160, h: 30, text: `Resultados de ${period} nos anúncios pagos da Meta, contra o ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      title('Visão Geral dos Anúncios', 60, 55, 'center'),
+      { t: 'text', x: 60, y: 135, w: 1160, h: 30, text: `Resumo consolidado de investimento, alcance e conversões de ${period}, contra o ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(paid.status === 'ok' ? cellsPaid : [{ t: 'text', x: 160, y: 300, w: 960, h: 120, text: `Os números de anúncios ${is7d ? 'do período' : 'do mês fechado'} ainda não foram buscados. Use "Buscar dados" para atualizar.`, size: 20, weight: 500, color: P.soft, align: 'center', valign: 'middle', lineHeight: 1.2 } as El]),
       ...band(true),
     ],
@@ -505,7 +505,7 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
     els: [
       ...corners(true),
       title('Criativos Campeões', 60, 55, 'center'),
-      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: is7d ? 'Anúncios campeões da semana na Meta.' : 'Anúncios campeões do mês na Meta.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: is7d ? 'Criativos campeões da semana com maior retorno e volume.' : 'Criativos campeões do mês com maior retorno e volume.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...modernCreativeCards(paid.top, d.currency, paid.resultLabel),
       ...band(true),
     ],
@@ -527,15 +527,15 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
   const money = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: d.currency }).format(v)
 
   // 1 — Capa Executiva
-  const coverTitle = is7d ? 'Resultados dos últimos 7 dias' : `Resultados de ${d.month.label}`
+  const coverTitle = is7d ? 'ÚLTIMOS 7 DIAS' : `Resultados de ${d.month.label}`
   slides.push({
     id: 'cover', label: 'Capa', dark: true,
     els: [
       ...corners(true),
       { t: 'box', x: 440, y: 80, w: 400, h: 32, fill: P.violetSoft, line: P.violet, radius: 16 },
-      { t: 'text', x: 440, y: 80, w: 400, h: 32, text: 'RELATÓRIO ESTRATÉGICO DE PERFORMANCE', size: 12, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', lineHeight: 1.2 },
+      { t: 'text', x: 440, y: 80, w: 400, h: 32, text: is7d ? 'ACOMPANHAMENTO SEMANAL' : 'FECHAMENTO MENSAL DE RESULTADOS', size: 12, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', lineHeight: 1.2 },
       { t: 'text', x: 60, y: 140, w: 1160, h: 230, text: upper(coverTitle), size: is7d ? 72 : 82, weight: 800, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.15 },
-      { t: 'text', x: 60, y: 385, w: 1160, h: 30, text: `Período avaliado: ${period}`, size: 18, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      { t: 'text', x: 60, y: 385, w: 1160, h: 30, text: `Período: ${period}`, size: 18, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(d.client.logoUrl ? [{ t: 'img', x: 610, y: 440, w: 60, h: 60, src: d.client.logoUrl, radius: 12 } as El] : []),
       { t: 'text', x: 60, y: d.client.logoUrl ? 515 : 465, w: 1160, h: 44, text: upper(d.client.name), size: 30, weight: 600, color: P.white, align: 'center', valign: 'middle', lineHeight: 1.2 },
       ...band(true),
@@ -547,14 +547,14 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
     id: 'objective', label: 'Objetivo e metas', dark: true,
     els: [
       ...corners(true),
-      title('Objetivo e metas', 70, 70),
+      title('Objetivo e Metas', 70, 70),
       { t: 'box', x: 90, y: 180, w: 1100, h: 200, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 120, y: 200, w: 1040, h: 24, text: 'OBJETIVO ESTRATÉGICO DO CLIENTE', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-      { t: 'text', x: 120, y: 235, w: 1040, h: 125, text: notes.objective, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'objective', placeholder: 'Objetivo do cliente com o marketing digital (clique para escrever)' },
+      { t: 'text', x: 120, y: 200, w: 1040, h: 24, text: 'OBJETIVO PRINCIPAL DO NEGÓCIO', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 120, y: 235, w: 1040, h: 125, text: notes.objective, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'objective', placeholder: 'Qual o foco principal deste ciclo? Ex: Gerar 80 contatos qualificados para o time de vendas' },
 
       { t: 'box', x: 90, y: 405, w: 1100, h: 235, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 120, y: 425, w: 1040, h: 24, text: 'METAS E DIRETRIZES DO PERÍODO', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-      { t: 'text', x: 120, y: 460, w: 1040, h: 160, text: notes.goals, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'goals', placeholder: 'Uma meta por linha (clique para escrever)' },
+      { t: 'text', x: 120, y: 425, w: 1040, h: 24, text: 'METAS PRÁTICAS DO PERÍODO', size: 13, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 120, y: 460, w: 1040, h: 160, text: notes.goals, size: 20, weight: 400, color: P.white, lineHeight: 1.45, edit: 'goals', placeholder: 'Metas combinadas (uma por linha). Ex: Manter o CPL abaixo de R$ 25' },
       ...band(true),
     ],
   })
@@ -567,8 +567,8 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
     id: 'organic', label: 'Métricas orgânicas', dark: true,
     els: [
       ...corners(true),
-      title('Métricas orgânicas', 60, 60, 'center'),
-      { t: 'text', x: 60, y: 145, w: 1160, h: 30, text: `Resultados de ${period} no Instagram${org.handle ? ` (${org.handle})` : ''}, contra o ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      title('Redes Sociais (Orgânico)', 60, 60, 'center'),
+      { t: 'text', x: 60, y: 145, w: 1160, h: 30, text: `Números do Instagram${org.handle ? ` (${org.handle})` : ''} de ${period}, comparado ao ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(orgOk ? cellsOrg : [{ t: 'text', x: 160, y: 300, w: 960, h: 120, text: org.status === 'incomplete' ? `Os números ${is7d ? 'do período' : 'do mês fechado'} ainda não foram coletados. Use "Buscar dados" para atualizar.` : 'Sem dados orgânicos para este cliente (Página ou Instagram não vinculados).', size: 20, weight: 500, color: P.soft, align: 'center', valign: 'middle', lineHeight: 1.2 } as El]),
       ...band(true),
     ],
@@ -579,8 +579,8 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
     id: 'content', label: 'Conteúdo Orgânico', dark: true,
     els: [
       ...corners(true),
-      title('Conteúdo Orgânico', 60, 55, 'center'),
-      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Publicações que mais geraram alcance e engajamento no período.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      title('Publicações em Destaque', 60, 55, 'center'),
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Posts com maior alcance e engajamento do público no período.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...modernOrganicCards(org.top),
       ...band(true),
     ],
@@ -601,8 +601,8 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
     id: 'overview', label: 'Visão Geral', dark: true,
     els: [
       ...corners(true),
-      title('Visão Geral de Performance', 60, 55, 'center'),
-      { t: 'text', x: 60, y: 135, w: 1160, h: 30, text: `Resultados de ${period} nos anúncios pagos da Meta, contra o ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      title('Visão Geral dos Anúncios', 60, 55, 'center'),
+      { t: 'text', x: 60, y: 135, w: 1160, h: 30, text: `Resumo consolidado de investimento, alcance e conversões de ${period}, contra o ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(paid.status === 'ok' ? cellsPaid : [{ t: 'text', x: 160, y: 300, w: 960, h: 120, text: `Os números de anúncios ${is7d ? 'do período' : 'do mês fechado'} ainda não foram buscados. Use "Buscar dados" para atualizar.`, size: 20, weight: 500, color: P.soft, align: 'center', valign: 'middle', lineHeight: 1.2 } as El]),
       ...band(true),
     ],
@@ -622,7 +622,7 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
     els: [
       ...corners(true),
       title('Funil de Conversão', 54, 55, 'center'),
-      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: `Eficiência das etapas: da exibição do anúncio até o ${paid.resultLabel.toLowerCase()} final.`, size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: `Do primeiro impacto até a conversão: avanço do público em cada etapa.`, size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
 
       {
         t: 'funnel',
@@ -649,20 +649,20 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
     id: 'campaigns', label: 'Campanhas', dark: true,
     els: [
       ...corners(true),
-      title('Melhores Campanhas', 54, 55, 'center'),
-      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: `Desempenho detalhado das campanhas com entregas e custos unitários reais no período.`, size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 } as El,
+      title('Campanhas em Destaque', 54, 55, 'center'),
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: `Onde a verba foi investida e o volume de retorno gerado por cada campanha.`, size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 } as El,
       ...(hasCamps ? [
         {
           t: 'table' as const,
           x: 60, y: 175, w: 1160, h: 485,
-          headers: ['Campanha', 'Status', 'Investimento', 'Entregas Principais', 'Custo Unitário', 'CTR'],
-          colWidths: [400, 120, 160, 180, 160, 140],
+          headers: ['Campanha', 'Status', 'Entregas Principais', 'Custo Unitário', 'Gasto', 'CTR'],
+          colWidths: [400, 120, 180, 160, 160, 140],
           rows: camps.map(c => [
             { text: c.name, bold: true },
             { text: c.status === 'ACTIVE' ? 'Ativa' : 'Pausada', color: c.status === 'ACTIVE' ? P.green : P.soft, align: 'center' as const },
-            { text: money(c.spend), align: 'right' as const },
             { text: c.primaryMetric ? c.primaryMetric.value : (c.results > 0 ? `${compact(c.results)} res.` : c.clicks ? `${compact(c.clicks)} cliques` : '—'), bold: true, align: 'center' as const },
             { text: c.primaryMetric ? c.primaryMetric.cost : (c.costPerResult != null ? money(c.costPerResult) : '—'), align: 'center' as const },
+            { text: money(c.spend), align: 'right' as const },
             { text: pct(c.ctr), align: 'center' as const },
           ]),
         }
@@ -679,7 +679,7 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
     els: [
       ...corners(true),
       title('Criativos Campeões', 54, 55, 'center'),
-      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: `Anúncios com maior volume de entrega e retorno ${is7d ? 'na semana' : 'no mês'} na Meta.`, size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 } as El,
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: is7d ? 'Criativos campeões da semana com maior retorno e volume.' : 'Criativos campeões do mês com maior retorno e volume.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 } as El,
       ...modernCreativeCards(paid.top, d.currency, paid.resultLabel),
       ...band(true),
     ],
@@ -692,34 +692,34 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
 }
 
 function makeNextStepsSlide(is7d: boolean, notes: ReportNotes): SlideSpec {
-  const p1 = notes.pillar1 || 'Testagem de novos ganchos visuais, vídeos curtos e formatos focados em elevar CTR e taxa de conversão.'
-  const p2 = notes.pillar2 || 'Expansão de públicos semelhantes, refinamento de exclusões e testes contínuos de interesses qualificados.'
-  const p3 = notes.pillar3 || 'Alocação inteligente de orçamento para criativos vencedores e ajuste de lances para redução de CPL/CPA.'
+  const p1 = notes.pillar1 || 'Gravar e colocar no ar 2 a 3 variações novas atacando a dor principal do cliente, mantendo os anúncios que já estão convertendo.'
+  const p2 = notes.pillar2 || 'Testar novos públicos de interesse e semelhantes (Lookalike de compradores), mantendo exclusão de quem já converteu.'
+  const p3 = notes.pillar3 || 'Subir a verba gradualmente nos anúncios com menor custo por lead e pausar os conjuntos que não estão trazendo retorno.'
 
   const pillars: El[] = [
     { t: 'box', x: 80, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
-    { t: 'text', x: 100, y: 168, w: 315, h: 20, text: '1. CRIATIVOS & MENSAGENS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-    { t: 'text', x: 96, y: 194, w: 325, h: 90, text: p1, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar1', placeholder: 'Diretriz de criativos (clique para editar)' },
+    { t: 'text', x: 100, y: 168, w: 315, h: 20, text: '1. CRIATIVOS & VÍDEOS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 96, y: 194, w: 325, h: 90, text: p1, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar1', placeholder: 'Ações de criativos (clique para editar)' },
 
     { t: 'box', x: 462, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
-    { t: 'text', x: 482, y: 168, w: 315, h: 20, text: '2. PÚBLICOS & SEGMENTAÇÃO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-    { t: 'text', x: 478, y: 194, w: 325, h: 90, text: p2, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar2', placeholder: 'Diretriz de públicos (clique para editar)' },
+    { t: 'text', x: 482, y: 168, w: 315, h: 20, text: '2. PÚBLICOS & TESTES', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 478, y: 194, w: 325, h: 90, text: p2, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar2', placeholder: 'Ações de públicos (clique para editar)' },
 
     { t: 'box', x: 845, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
-    { t: 'text', x: 865, y: 168, w: 315, h: 20, text: '3. ESCALA & OTIMIZAÇÃO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-    { t: 'text', x: 861, y: 194, w: 325, h: 90, text: p3, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar3', placeholder: 'Diretriz de escala (clique para editar)' },
+    { t: 'text', x: 865, y: 168, w: 315, h: 20, text: '3. VERBA & OTIMIZAÇÃO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 861, y: 194, w: 325, h: 90, text: p3, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar3', placeholder: 'Ações de verba (clique para editar)' },
   ]
 
   return {
     id: 'next', label: 'Próximos passos', dark: true,
     els: [
       ...corners(true),
-      title(is7d ? 'Próximos passos & Otimizações' : 'Próximos passos', 60, 50),
-      { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: 'Direcionamento estratégico e plano de ação para a próxima etapa.', size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
+      title('Próximos Passos', 60, 50),
+      { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: `Ações práticas planejadas para ${is7d ? 'a próxima semana' : 'o próximo mês'}.`, size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
       ...pillars,
       { t: 'box', x: 80, y: 315, w: 1120, h: 335, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 110, y: 335, w: 1060, h: 22, text: 'PLANO DE AÇÃO E DIRETRIZES OPERACIONAIS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-      { t: 'text', x: 105, y: 365, w: 1070, h: 265, text: notes.next, size: 18, weight: 400, color: P.white, lineHeight: 1.55, edit: 'next', placeholder: `O que vamos fazer ${is7d ? 'na próxima semana' : 'no próximo mês'} (clique para escrever)` },
+      { t: 'text', x: 110, y: 335, w: 1060, h: 22, text: 'PLANO PRÁTICO COMBINADO COM O CLIENTE', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 105, y: 365, w: 1070, h: 265, text: notes.next, size: 18, weight: 400, color: P.white, lineHeight: 1.55, edit: 'next', placeholder: `O que vamos executar ${is7d ? 'na próxima semana' : 'no próximo mês'} (clique para escrever)` },
       ...band(true),
     ],
   }
@@ -875,34 +875,34 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
   })
 
   // 10 — Próximos Passos & Planejamento Editorial
-  const p1 = notes.pillar1 || 'Novas linhas editoriais focadas em responder dúvidas frequentes de clientes e quebrar objeções comuns.'
-  const p2 = notes.pillar2 || 'Intensificação de postagens no formato Reels (mínimo 3x por semana) para alavancar atração orgânica.'
-  const p3 = notes.pillar3 || 'Estratégias de chamadas para ação nos Stories e directs para converter seguidores em leads comerciais.'
+  const p1 = notes.pillar1 || 'Produzir posts respondendo diretamente às dúvidas e objeções que o comercial mais escuta dos clientes.'
+  const p2 = notes.pillar2 || 'Manter ritmo de 3 a 4 Reels por semana com vídeos dinâmicos, bastidores e demonstração prática do serviço.'
+  const p3 = notes.pillar3 || 'Fazer enquetes e caixinhas diárias nos Stories para puxar conversas e direcionar para o WhatsApp ou Direct.'
 
   const pillars: El[] = [
     { t: 'box', x: 80, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
-    { t: 'text', x: 100, y: 168, w: 315, h: 20, text: '1. LINHAS EDITORIAIS & TEMAS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-    { t: 'text', x: 96, y: 194, w: 325, h: 90, text: p1, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar1', placeholder: 'Diretriz editorial (clique para editar)' },
+    { t: 'text', x: 100, y: 168, w: 315, h: 20, text: '1. CONTEÚDO & TEMAS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 96, y: 194, w: 325, h: 90, text: p1, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar1', placeholder: 'Ações de conteúdo (clique para editar)' },
 
     { t: 'box', x: 462, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
-    { t: 'text', x: 482, y: 168, w: 315, h: 20, text: '2. FORMATOS & FREQUÊNCIA', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-    { t: 'text', x: 478, y: 194, w: 325, h: 90, text: p2, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar2', placeholder: 'Diretriz de formatos (clique para editar)' },
+    { t: 'text', x: 482, y: 168, w: 315, h: 20, text: '2. REELS & VÍDEOS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 478, y: 194, w: 325, h: 90, text: p2, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar2', placeholder: 'Ações de Reels (clique para editar)' },
 
     { t: 'box', x: 845, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
-    { t: 'text', x: 865, y: 168, w: 315, h: 20, text: '3. ENGAJAMENTO & COMUNIDADE', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-    { t: 'text', x: 861, y: 194, w: 325, h: 90, text: p3, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar3', placeholder: 'Diretriz de comunidade (clique para editar)' },
+    { t: 'text', x: 865, y: 168, w: 315, h: 20, text: '3. STORIES & DIRECT', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 861, y: 194, w: 325, h: 90, text: p3, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar3', placeholder: 'Ações de Stories (clique para editar)' },
   ]
 
   slides.push({
     id: 'next', label: 'Próximos passos', dark: true,
     els: [
       ...corners(true),
-      title(is7d ? 'Diretrizes & Planejamento' : 'Próximos passos', 60, 50),
-      { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: 'Planejamento editorial e ações prioritárias para o próximo ciclo orgânico.', size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
+      title('Próximos Passos', 60, 50),
+      { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: `Planejamento editorial e ações prioritárias para ${is7d ? 'a próxima semana' : 'o próximo mês'}.`, size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
       ...pillars,
       { t: 'box', x: 80, y: 315, w: 1120, h: 335, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 110, y: 335, w: 1060, h: 22, text: 'DIRETRIZES EDITORIAIS E PRÓXIMAS AÇÕES', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-      { t: 'text', x: 105, y: 365, w: 1070, h: 265, text: notes.next, size: 18, weight: 400, color: P.white, lineHeight: 1.55, edit: 'next', placeholder: 'Planejamento editorial e temas para os próximos posts (clique para escrever)' },
+      { t: 'text', x: 110, y: 335, w: 1060, h: 22, text: 'PLANO EDITORIAL E AÇÕES PRÁTICAS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 105, y: 365, w: 1070, h: 265, text: notes.next, size: 18, weight: 400, color: P.white, lineHeight: 1.55, edit: 'next', placeholder: 'Temas para os próximos posts e ações combinadas (clique para escrever)' },
       ...band(true),
     ],
   })
@@ -990,33 +990,33 @@ function buildBestTimesSlide(): SlideSpec {
 
       // Card 2: Janelas de Horário de Pico
       { t: 'box', x: 680, y: 175, w: 540, h: 485, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 710, y: 200, w: 480, h: 24, text: 'JANELAS DE MAIOR RETENÇÃO & ALCANCE', size: 12, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 710, y: 200, w: 480, h: 24, text: 'HORÁRIOS DE MAIOR RESPOSTA DO PÚBLICO', size: 12, weight: 700, color: P.violetLight, lineHeight: 1.2 },
 
       // Janela 1: Noite (Pico Principal)
       { t: 'box', x: 710, y: 235, w: 480, h: 95, fill: P.cardSoft, line: P.violet, radius: 12 },
       { t: 'box', x: 725, y: 247, w: 90, h: 22, fill: 'rgba(34,197,94,0.18)', line: P.green, radius: 11 },
       { t: 'text', x: 725, y: 247, w: 90, h: 22, text: '18h00 · 20h30', size: 10, weight: 700, color: P.green, align: 'center', valign: 'middle' },
-      { t: 'text', x: 825, y: 247, w: 350, h: 22, text: 'Horário Nobre · Pico Máximo 🔥', size: 12, weight: 700, color: P.white, valign: 'middle' },
-      { t: 'text', x: 725, y: 275, w: 450, h: 45, text: 'Maior volume de usuários conectados simultaneamente com tempo para assistir vídeos até o final. Janela prioritária para publicação de Reels.', size: 11, weight: 400, color: P.soft, lineHeight: 1.35 },
+      { t: 'text', x: 825, y: 247, w: 350, h: 22, text: 'Noite · Maior Atividade', size: 12, weight: 700, color: P.white, valign: 'middle' },
+      { t: 'text', x: 725, y: 275, w: 450, h: 45, text: 'Maior volume de pessoas navegando com calma. Janela ideal para postar Reels, vídeos longos e carrosséis completos.', size: 11, weight: 400, color: P.soft, lineHeight: 1.35 },
 
       // Janela 2: Almoço
       { t: 'box', x: 710, y: 342, w: 480, h: 86, fill: P.cardSoft, line: P.cardBorder, radius: 12 },
       { t: 'box', x: 725, y: 354, w: 86, h: 22, fill: P.violetSoft, line: P.violet, radius: 11 },
       { t: 'text', x: 725, y: 354, w: 86, h: 22, text: '12h00 · 13h30', size: 10, weight: 700, color: P.violetLight, align: 'center', valign: 'middle' },
-      { t: 'text', x: 825, y: 354, w: 350, h: 22, text: 'Horário de Almoço · Alto Consumo', size: 12, weight: 700, color: P.white, valign: 'middle' },
-      { t: 'text', x: 725, y: 382, w: 450, h: 36, text: 'Janela de checagem rápida no feed. Excelente para carrosséis educativos e Stories com enquetes.', size: 11, weight: 400, color: P.soft, lineHeight: 1.35 },
+      { t: 'text', x: 825, y: 354, w: 350, h: 22, text: 'Almoço · Checagem Rápida', size: 12, weight: 700, color: P.white, valign: 'middle' },
+      { t: 'text', x: 725, y: 382, w: 450, h: 36, text: 'Pausa para olhar o feed. Ótimo momento para postagens informativas e Stories com enquetes.', size: 11, weight: 400, color: P.soft, lineHeight: 1.35 },
 
       // Janela 3: Manhã
       { t: 'box', x: 710, y: 440, w: 480, h: 86, fill: P.cardSoft, line: P.cardBorder, radius: 12 },
       { t: 'box', x: 725, y: 452, w: 86, h: 22, fill: 'rgba(245,158,11,0.18)', line: P.amber, radius: 11 },
       { t: 'text', x: 725, y: 452, w: 86, h: 22, text: '07h30 · 09h00', size: 10, weight: 700, color: P.amber, align: 'center', valign: 'middle' },
-      { t: 'text', x: 825, y: 452, w: 350, h: 22, text: 'Início da Manhã · Despertar', size: 12, weight: 700, color: P.white, valign: 'middle' },
-      { t: 'text', x: 725, y: 480, w: 450, h: 36, text: 'Primeira interação do dia. Ideal para abrir caixas de perguntas nos Stories e postagens de bastidores.', size: 11, weight: 400, color: P.soft, lineHeight: 1.35 },
+      { t: 'text', x: 825, y: 452, w: 350, h: 22, text: 'Manhã · Primeiro Acesso', size: 12, weight: 700, color: P.white, valign: 'middle' },
+      { t: 'text', x: 725, y: 480, w: 450, h: 36, text: 'Primeira checagem do dia. Ideal para abrir caixinhas de perguntas nos Stories e mostrar os bastidores.', size: 11, weight: 400, color: P.soft, lineHeight: 1.35 },
 
       // Dica Tática
       { t: 'box', x: 710, y: 538, w: 480, h: 98, fill: P.violetSoft, line: P.violet, radius: 12 },
-      { t: 'text', x: 725, y: 548, w: 450, h: 20, text: '💡 DIRETRIZ ESTRATÉGICA DE PUBLICAÇÃO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-      { t: 'text', x: 725, y: 572, w: 450, h: 54, text: 'Priorizar postagens entre Terça e Quinta-feira às 18h15. O algoritmo ganha tração nas primeiras 2 horas e distribui o conteúdo organicamente por até 48 horas.', size: 11.5, weight: 400, color: P.white, lineHeight: 1.4 },
+      { t: 'text', x: 725, y: 548, w: 450, h: 20, text: '💡 RECOMENDAÇÃO PRÁTICA', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 725, y: 572, w: 450, h: 54, text: 'Concentrar as postagens principais entre terça e quinta-feira, no final da tarde. O público tem mais tempo para interagir e o conteúdo ganha tração contínua.', size: 11.5, weight: 400, color: P.white, lineHeight: 1.4 },
 
       ...band(true),
     ],
