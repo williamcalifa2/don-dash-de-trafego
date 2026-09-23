@@ -6,7 +6,6 @@ import { MetricTile } from '@/components/MetricTile'
 import { CampaignTable } from '@/components/CampaignTable'
 import { DailyChart } from '@/components/DailyChart'
 import { FunnelTab } from '@/components/FunnelTab'
-import { SimuladorTab } from '@/components/SimuladorTab'
 import { LeadsTab } from '@/components/LeadsTab'
 import { MetricPicker, useSelectedMetrics } from '@/components/MetricPicker'
 import { TvMode } from '@/components/TvMode'
@@ -15,7 +14,6 @@ import { ReportStudio } from '@/components/ReportStudio'
 import { ReportStudioTab } from '@/components/ReportStudioTab'
 import { LeadToast } from '@/components/LeadToast'
 import { BudgetPacingPopover } from '@/components/BudgetPacingPopover'
-import { ClientGoalsTab } from '@/components/ClientGoalsTab'
 import { CalendarViewModal } from '@/components/CalendarViewModal'
 import { LeadsProvider, useLeadsData } from '@/lib/leadsContext'
 import { useLeadAlerts } from '@/lib/useLeadAlerts'
@@ -115,7 +113,7 @@ function Dashboard() {
   const [reportOpen, setReportOpen] = useState(false)
   const [monthlyOpen, setMonthlyOpen] = useState(false)
   const [monthlyMode, setMonthlyMode] = useState<ReportMode>('standard')
-  const [tab, setTab] = useState<'metrics' | 'funnel' | 'audience' | 'organic' | 'simulator' | 'leads' | 'goals' | 'reports'>('metrics')
+  const [tab, setTab] = useState<'metrics' | 'funnel' | 'audience' | 'organic' | 'leads' | 'reports'>('metrics')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -228,8 +226,6 @@ function Dashboard() {
     window.addEventListener('afterprint', done)
     setTimeout(() => window.print(), 200)
   }, [me?.name, preset])
-  // O Simulador ainda é só do administrador; o cliente não vê a aba nem abre por outro caminho.
-  useEffect(() => { if (tab === 'simulator' && me && !me.admin) setTab('metrics') }, [tab, me])
 
   const handleManualRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -534,7 +530,7 @@ function Dashboard() {
       {/* Abas */}
       <div className="no-print" style={{ borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
         <div className="tabs" role="tablist" style={{ borderBottom: 'none', marginBottom: 0 }}>
-          {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads'], ['goals', 'Metas'], ['reports', 'Report Studio']] as const).filter(([key]) => (key !== 'simulator' || !!me?.admin)).map(([key, label]) => (
+          {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['leads', 'Leads'], ['reports', 'Report Studio']] as const).map(([key, label]) => (
             <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
               {label}
               {key === 'leads' && staleCount > 0 && (
@@ -573,9 +569,7 @@ function Dashboard() {
       {!isLoading && tab === 'funnel' && s && <FunnelTab summary={s} currency={currency} kind={kind} />}
       {tab === 'audience' && <AudienceTab preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} kind={kind} />}
       {tab === 'organic' && <OrganicTab preset="this_month" presetLabel="Este mês" canLink={me?.role === 'owner' || me?.role === 'admin'} slug={me?.slug} />}
-      {tab === 'simulator' && me?.admin && <SimuladorTab summary={s ? (kind === 'form' ? s : { ...s, leads: s.results }) : undefined} currency={currency} />}
       {tab === 'leads' && <LeadsTab openId={openLeadId} onOpenConsumed={() => setOpenLeadId(null)} readOnly={me?.role === 'reader'} />}
-      {tab === 'goals' && <ClientGoalsTab slug={me?.slug || 'meta'} isStaff={isStaff} />}
       {tab === 'reports' && (
         <ReportStudioTab
           clientSlug={me?.slug || 'default'}
