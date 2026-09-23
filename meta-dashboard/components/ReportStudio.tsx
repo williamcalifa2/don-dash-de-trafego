@@ -2,11 +2,64 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, Download, Eye, EyeOff, FileText, Loader2, RefreshCw, X, UploadCloud, RotateCcw, Sun, Moon, ChevronDown, Bookmark, BookmarkCheck } from 'lucide-react'
+import {
+  ArrowUpRight,
+  Bookmark,
+  Check,
+  ChevronDown,
+  Circle,
+  Download,
+  Eye,
+  EyeOff,
+  FileText,
+  Highlighter,
+  Loader2,
+  Moon,
+  MousePointer,
+  Pencil,
+  RefreshCw,
+  RotateCcw,
+  Sparkles,
+  Square,
+  Sun,
+  Trash2,
+  Undo2,
+  UploadCloud,
+  X,
+} from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import { compact, type ReportData, type ReportMode, type ReportNotes, type ReportPreset, type SavedReport } from '@/lib/report'
 import { buildSlides, FONT, PALETTE, PALETTE_LIGHT, STAGE, type El, type SlideSpec } from '@/lib/reportSlides'
 import { useTheme } from '@/lib/useTheme'
+
+export type DrawTool = 'pointer' | 'laser' | 'pen' | 'highlighter' | 'rect' | 'circle' | 'arrow'
+
+export interface DrawPoint {
+  x: number
+  y: number
+}
+
+export interface DrawStroke {
+  tool: DrawTool
+  color: string
+  width: number
+  points: DrawPoint[]
+}
+
+const DRAW_COLORS = [
+  { label: 'Vermelho Destaque', value: '#EF4444' },
+  { label: 'Amarelo Atenção', value: '#FACC15' },
+  { label: 'Roxo Don', value: '#6366F1' },
+  { label: 'Verde Sucesso', value: '#22C55E' },
+  { label: 'Azul Ciano', value: '#06B6D4' },
+  { label: 'Branco / Neutro', value: '#FFFFFF' },
+]
+
+const DRAW_WIDTHS = [
+  { label: 'Fino', value: 3 },
+  { label: 'Médio', value: 6 },
+  { label: 'Grosso', value: 12 },
+]
 
 type Loaded = ReportData & { draftAnalysis: string }
 type Phase = { kind: 'loading'; text: string } | { kind: 'error'; text: string } | { kind: 'ready'; data: Loaded }
@@ -496,10 +549,24 @@ function Element({
     ) : boxContent
   }
   if (el.t === 'img') {
+    const isLogo = (el.w <= 200 && el.h <= 100) || el.radius != null
     const imgContent = el.src ? (
-      <img src={el.src} alt="" style={{ ...pos, objectFit: 'cover', borderRadius: el.radius, cursor: el.url ? 'pointer' : undefined }} />
+      <img
+        src={el.src}
+        alt=""
+        style={{
+          ...pos,
+          objectFit: isLogo ? 'contain' : 'cover',
+          borderRadius: el.radius ?? 12,
+          border: isLogo ? `1.5px solid ${dark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'}` : undefined,
+          background: isLogo ? (dark ? 'rgba(255,255,255,0.05)' : '#FFFFFF') : undefined,
+          padding: isLogo ? 6 : undefined,
+          boxSizing: 'border-box',
+          cursor: el.url ? 'pointer' : undefined,
+        }}
+      />
     ) : (
-      <div style={{ ...pos, background: dark ? '#1E293B' : '#E2E8F0', borderRadius: el.radius }} />
+      <div style={{ ...pos, background: dark ? '#1E293B' : '#E2E8F0', borderRadius: el.radius ?? 12 }} />
     )
     return el.url ? (
       <a href={el.url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
@@ -662,6 +729,18 @@ export function ReportStudio({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dirty = useRef(false)
 
+  // Modo Apresentação Dinâmica & Desenho
+  const [drawingOpen, setDrawingOpen] = useState(false)
+  const [drawTool, setDrawTool] = useState<DrawTool>('pen')
+  const [drawColor, setDrawColor] = useState<string>('#EF4444')
+  const [drawWidth, setDrawWidth] = useState<number>(6)
+  const [laserActive, setLaserActive] = useState<boolean>(false)
+  const [laserPos, setLaserPos] = useState<{ x: number; y: number } | null>(null)
+  const [isMouseDown, setIsMouseDown] = useState(false)
+  const [drawingsBySlide, setDrawingsBySlide] = useState<Record<string, DrawStroke[]>>({})
+  const currentStrokeRef = useRef<DrawStroke | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
   // Salvar versão permanente no Report Studio
   const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [saveTitle, setSaveTitle] = useState('')
@@ -704,6 +783,7 @@ export function ReportStudio({
   const data = phase.kind === 'ready' ? phase.data : null
   const slides = useMemo(() => (data && notes ? buildSlides(data, notes, mode, reportTheme) : []), [data, notes, mode, reportTheme])
   const included = slides.filter(s => !hidden.has(s.id))
+  const active = slides[Math.min(current, Math.max(0, slides.length - 1))]
 
   // Contagem dinâmica e precisa de slides por formato
   const modeCounts = useMemo(() => {
@@ -715,7 +795,195 @@ export function ReportStudio({
     }
   }, [data, notes, reportTheme])
 
-  // Teclado: Escape fecha, Setas passam slides (com proteção para inputs/textareas)
+  // Desfazer traço do slide atual
+  const handleUndo = useCallback(() => {
+    if (!active) return
+    setDrawingsBySlide(prev => {
+      const list = prev[active.id] || []
+      if (list.length === 0) return prev
+      return {
+        ...prev,
+        [active.id]: list.slice(0, list.length - 1),
+      }
+    })
+  }, [active])
+
+  // Limpar traços do slide atual
+  const handleClear = useCallback(() => {
+    if (!active) return
+    setDrawingsBySlide(prev => ({
+      ...prev,
+      [active.id]: [],
+    }))
+  }, [active])
+
+  // Redesenha todos os traços no canvas do slide
+  const redrawCanvas = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !active) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.clearRect(0, 0, STAGE.w, STAGE.h)
+
+    const slideStrokes = drawingsBySlide[active.id] || []
+    const allStrokes = currentStrokeRef.current
+      ? [...slideStrokes, currentStrokeRef.current]
+      : slideStrokes
+
+    for (const s of allStrokes) {
+      if (!s.points || s.points.length === 0) continue
+      ctx.save()
+      ctx.strokeStyle = s.color
+      ctx.fillStyle = s.color
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+
+      if (s.tool === 'highlighter') {
+        ctx.globalAlpha = 0.35
+        ctx.lineWidth = s.width * 3.5
+      } else {
+        ctx.globalAlpha = 1.0
+        ctx.lineWidth = s.width
+      }
+
+      if (s.tool === 'pen' || s.tool === 'highlighter') {
+        if (s.points.length === 1) {
+          ctx.beginPath()
+          ctx.arc(s.points[0].x, s.points[0].y, s.tool === 'highlighter' ? s.width * 1.5 : s.width / 2, 0, Math.PI * 2)
+          ctx.fill()
+        } else {
+          ctx.beginPath()
+          ctx.moveTo(s.points[0].x, s.points[0].y)
+          for (let i = 1; i < s.points.length; i++) {
+            ctx.lineTo(s.points[i].x, s.points[i].y)
+          }
+          ctx.stroke()
+        }
+      } else if (s.tool === 'rect') {
+        if (s.points.length >= 2) {
+          const p0 = s.points[0]
+          const p1 = s.points[1]
+          ctx.beginPath()
+          ctx.strokeRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y)
+        }
+      } else if (s.tool === 'circle') {
+        if (s.points.length >= 2) {
+          const p0 = s.points[0]
+          const p1 = s.points[1]
+          const cx = (p0.x + p1.x) / 2
+          const cy = (p0.y + p1.y) / 2
+          const rx = Math.abs(p1.x - p0.x) / 2
+          const ry = Math.abs(p1.y - p0.y) / 2
+          ctx.beginPath()
+          ctx.ellipse(cx, cy, Math.max(1, rx), Math.max(1, ry), 0, 0, Math.PI * 2)
+          ctx.stroke()
+        }
+      } else if (s.tool === 'arrow') {
+        if (s.points.length >= 2) {
+          const p0 = s.points[0]
+          const p1 = s.points[1]
+          const angle = Math.atan2(p1.y - p0.y, p1.x - p0.x)
+          const headLen = Math.max(16, s.width * 2.8)
+          ctx.beginPath()
+          ctx.moveTo(p0.x, p0.y)
+          ctx.lineTo(p1.x, p1.y)
+          ctx.stroke()
+
+          ctx.beginPath()
+          ctx.moveTo(p1.x, p1.y)
+          ctx.lineTo(p1.x - headLen * Math.cos(angle - Math.PI / 6), p1.y - headLen * Math.sin(angle - Math.PI / 6))
+          ctx.lineTo(p1.x - headLen * Math.cos(angle + Math.PI / 6), p1.y - headLen * Math.sin(angle + Math.PI / 6))
+          ctx.closePath()
+          ctx.fill()
+        }
+      }
+      ctx.restore()
+    }
+  }, [active, drawingsBySlide])
+
+  useEffect(() => {
+    redrawCanvas()
+  }, [redrawCanvas, current])
+
+  // Converte coordenadas do clique para o espaço nativo 1280x720
+  const getVirtualPoint = (e: React.MouseEvent<HTMLCanvasElement>): DrawPoint => {
+    const canvas = canvasRef.current
+    if (!canvas) return { x: 0, y: 0 }
+    const rect = canvas.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * STAGE.w
+    const y = ((e.clientY - rect.top) / rect.height) * STAGE.h
+    return { x: Math.round(x), y: Math.round(y) }
+  }
+
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const pt = getVirtualPoint(e)
+    setIsMouseDown(true)
+    if (laserActive || drawTool === 'laser') {
+      setLaserPos(pt)
+    }
+    if (!drawingOpen || drawTool === 'pointer' || drawTool === 'laser') {
+      return
+    }
+    currentStrokeRef.current = {
+      tool: drawTool,
+      color: drawColor,
+      width: drawWidth,
+      points: [pt],
+    }
+    redrawCanvas()
+  }
+
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const pt = getVirtualPoint(e)
+    if (laserActive || drawTool === 'laser') {
+      setLaserPos(pt)
+    }
+
+    if (!isMouseDown || !currentStrokeRef.current) return
+
+    if (drawTool === 'pen' || drawTool === 'highlighter') {
+      currentStrokeRef.current.points.push(pt)
+    } else if (drawTool === 'rect' || drawTool === 'circle' || drawTool === 'arrow') {
+      currentStrokeRef.current.points[1] = pt
+    }
+    redrawCanvas()
+  }
+
+  const handleCanvasMouseUp = () => {
+    setIsMouseDown(false)
+    if (currentStrokeRef.current && active) {
+      const finishedStroke = currentStrokeRef.current
+      currentStrokeRef.current = null
+      const minPoints = (finishedStroke.tool === 'pen' || finishedStroke.tool === 'highlighter') ? 1 : 2
+      if (finishedStroke.points.length >= minPoints) {
+        setDrawingsBySlide(prev => ({
+          ...prev,
+          [active.id]: [...(prev[active.id] || []), finishedStroke],
+        }))
+      }
+    }
+    redrawCanvas()
+  }
+
+  const handleCanvasMouseLeave = () => {
+    setIsMouseDown(false)
+    if (currentStrokeRef.current && active) {
+      const finishedStroke = currentStrokeRef.current
+      currentStrokeRef.current = null
+      const minPoints = (finishedStroke.tool === 'pen' || finishedStroke.tool === 'highlighter') ? 1 : 2
+      if (finishedStroke.points.length >= minPoints) {
+        setDrawingsBySlide(prev => ({
+          ...prev,
+          [active.id]: [...(prev[active.id] || []), finishedStroke],
+        }))
+      }
+    }
+    setLaserPos(null)
+    redrawCanvas()
+  }
+
+  // Teclado: Escape fecha, Setas passam slides, D toggle drawing, L toggle laser, Ctrl+Z undo
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -725,6 +993,21 @@ export function ReportStudio({
       const activeEl = document.activeElement
       const tag = activeEl?.tagName?.toLowerCase()
       if (tag === 'input' || tag === 'textarea' || (activeEl as HTMLElement)?.isContentEditable) {
+        return
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault()
+        handleUndo()
+        return
+      }
+      if (e.key === 'l' || e.key === 'L') {
+        e.preventDefault()
+        setLaserActive(v => !v)
+        return
+      }
+      if (e.key === 'd' || e.key === 'D') {
+        e.preventDefault()
+        setDrawingOpen(v => !v)
         return
       }
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
@@ -737,7 +1020,7 @@ export function ReportStudio({
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [slides.length, onClose])
+  }, [slides.length, onClose, handleUndo])
 
   // Fecha dropdown de formatos ao clicar fora
   useEffect(() => {
@@ -755,12 +1038,15 @@ export function ReportStudio({
   useEffect(() => {
     const el = stageBox.current
     if (!el) return
-    const fit = () => setScale(Math.max(0.3, Math.min(1, (el.clientWidth - 32) / STAGE.w, (el.clientHeight - 32) / STAGE.h)))
+    const fit = () => {
+      const extraW = drawingOpen ? 104 : 36
+      setScale(Math.max(0.3, Math.min(1, (el.clientWidth - extraW) / STAGE.w, (el.clientHeight - 48) / STAGE.h)))
+    }
     fit()
     const ro = new ResizeObserver(fit)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [phase.kind])
+  }, [phase.kind, drawingOpen])
 
   const save = useCallback(async (n: ReportNotes, p = preset) => {
     if (readOnly || savedReport) return
@@ -849,10 +1135,18 @@ export function ReportStudio({
     setTimeout(() => window.print(), 250) // deixa as imagens do modo impressão carregarem
   }
 
-  const active = slides[Math.min(current, Math.max(0, slides.length - 1))]
-
   const ui = (
     <div role="dialog" aria-modal="true" aria-label="Relatório mensal" className="no-print" style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'var(--bg, #F7F8FA)', display: 'flex', flexDirection: 'column' }}>
+      <style>{`
+        @keyframes laserGlow {
+          0% { transform: scale(0.95); opacity: 0.85; }
+          100% { transform: scale(1.18); opacity: 1; }
+        }
+        @keyframes laserRipple {
+          0% { transform: scale(0.6); opacity: 0.9; }
+          100% { transform: scale(2.2); opacity: 0; }
+        }
+      `}</style>
       <header style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <div>
@@ -1029,6 +1323,59 @@ export function ReportStudio({
           </button>
         )}
 
+        {/* Botão Modo Desenho / Apresentador */}
+        {data && (
+          <button
+            type="button"
+            className={`btn btn-sm ${drawingOpen ? 'btn-primary' : 'btn-outline'}`}
+            style={{
+              borderRadius: 20,
+              padding: '0 14px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontWeight: 600,
+            }}
+            onClick={() => {
+              setDrawingOpen(o => !o)
+              if (!drawingOpen && drawTool === 'pointer') {
+                setDrawTool('pen')
+              }
+            }}
+            title="Ativar modo de anotações dinâmicas e formas geométricas (D)"
+          >
+            <Pencil size={14} strokeWidth={1.8} />
+            <span>{drawingOpen ? 'Anotações Ativas' : 'Modo Desenho'}</span>
+          </button>
+        )}
+
+        {/* Botão Laser Pointer rápido */}
+        {data && (
+          <button
+            type="button"
+            className={`btn btn-sm ${laserActive ? 'btn-primary' : 'btn-outline'}`}
+            style={{
+              borderRadius: 20,
+              padding: '0 12px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontWeight: 600,
+              borderColor: laserActive ? '#EF4444' : undefined,
+              background: laserActive ? '#EF4444' : undefined,
+              color: laserActive ? '#FFFFFF' : undefined,
+            }}
+            onClick={() => {
+              setLaserActive(l => !l)
+              if (!laserActive) setDrawTool('laser')
+            }}
+            title="Mouse visível e brilhante para apresentações ao vivo (L)"
+          >
+            <Sparkles size={14} strokeWidth={1.8} />
+            <span>Laser</span>
+          </button>
+        )}
+
         {/* Botão de Alternar Light / Dark Mode nos Relatórios */}
         <button
           type="button"
@@ -1076,9 +1423,396 @@ export function ReportStudio({
               )
             })}
           </nav>
-          <div ref={stageBox} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, background: 'var(--muted-bg, rgba(127,127,160,.08))' }}>
-            <div style={{ boxShadow: '0 8px 30px rgba(0,0,0,.18)', borderRadius: 8 }}>
-              <Slide spec={active} scale={scale} onEdit={readOnly ? undefined : edit} />
+          <div ref={stageBox} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, background: 'var(--muted-bg, rgba(127,127,160,.08))', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, maxWidth: '100%' }}>
+              <div
+                style={{
+                  position: 'relative',
+                  width: STAGE.w * scale,
+                  height: STAGE.h * scale,
+                  boxShadow: '0 8px 30px rgba(0,0,0,.18)',
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                  flexShrink: 0,
+                }}
+              >
+                <Slide spec={active} scale={scale} onEdit={readOnly || (drawingOpen && drawTool !== 'pointer') ? undefined : edit} />
+
+                {/* Canvas Overlay para Modo Desenho */}
+                <canvas
+                  ref={canvasRef}
+                  width={STAGE.w}
+                  height={STAGE.h}
+                  onMouseDown={handleCanvasMouseDown}
+                  onMouseMove={handleCanvasMouseMove}
+                  onMouseUp={handleCanvasMouseUp}
+                  onMouseLeave={handleCanvasMouseLeave}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: STAGE.w * scale,
+                    height: STAGE.h * scale,
+                    pointerEvents: (drawingOpen || laserActive || drawTool === 'laser') ? 'auto' : 'none',
+                    cursor: (laserActive || drawTool === 'laser')
+                      ? 'none'
+                      : (drawingOpen && drawTool !== 'pointer')
+                        ? 'crosshair'
+                        : 'default',
+                    zIndex: 35,
+                  }}
+                />
+
+                {/* Laser Pointer com Halo Brilhante e Pulso */}
+                {(laserActive || drawTool === 'laser') && laserPos && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: laserPos.x * scale,
+                      top: laserPos.y * scale,
+                      transform: 'translate(-50%, -50%)',
+                      pointerEvents: 'none',
+                      zIndex: 45,
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'relative',
+                        width: isMouseDown ? 34 : 26,
+                        height: isMouseDown ? 34 : 26,
+                        borderRadius: '50%',
+                        background: 'radial-gradient(circle, rgba(239,68,68,0.55) 0%, rgba(239,68,68,0.2) 65%, transparent 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        animation: 'laserGlow 1.2s ease-in-out infinite alternate',
+                        filter: 'drop-shadow(0 0 8px rgba(239,68,68,0.9))',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: isMouseDown ? 10 : 8,
+                          height: isMouseDown ? 10 : 8,
+                          borderRadius: '50%',
+                          background: '#FFFFFF',
+                          boxShadow: '0 0 6px 2px #EF4444',
+                        }}
+                      />
+                      {isMouseDown && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            inset: -6,
+                            borderRadius: '50%',
+                            border: '2px solid rgba(239,68,68,0.7)',
+                            animation: 'laserRipple 0.8s ease-out infinite',
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Barra Lateral Direita de Ferramentas de Apresentação */}
+              {drawingOpen && (
+                <aside
+                  aria-label="Ferramentas de Apresentação Dinâmica"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '10px 8px',
+                    background: reportTheme === 'dark' ? '#131927' : '#FFFFFF',
+                    border: `1.5px solid ${reportTheme === 'dark' ? '#1E293B' : '#E2E8F0'}`,
+                    borderRadius: 16,
+                    boxShadow: '0 12px 36px rgba(0,0,0,0.18)',
+                    backdropFilter: 'blur(10px)',
+                    zIndex: 50,
+                    userSelect: 'none',
+                    flexShrink: 0,
+                  }}
+                >
+                  {/* Laser Pointer */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLaserActive(l => !l)
+                      if (!laserActive) setDrawTool('laser')
+                    }}
+                    title={laserActive ? 'Desativar Laser Pointer (L)' : 'Ativar Laser Pointer (L) - Mouse visível e brilhante para o cliente'}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      border: 'none',
+                      background: laserActive || drawTool === 'laser' ? 'rgba(239,68,68,0.15)' : 'transparent',
+                      color: laserActive || drawTool === 'laser' ? '#EF4444' : 'var(--text-2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Sparkles size={17} strokeWidth={2} />
+                    {laserActive && (
+                      <span style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', background: '#EF4444', boxShadow: '0 0 6px #EF4444' }} />
+                    )}
+                  </button>
+
+                  {/* Cursor Normal */}
+                  <button
+                    type="button"
+                    onClick={() => setDrawTool('pointer')}
+                    title="Cursor Normal (Navegar ou editar textos)"
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      border: 'none',
+                      background: drawTool === 'pointer' ? 'var(--bg-card2, rgba(99,102,241,0.12))' : 'transparent',
+                      color: drawTool === 'pointer' ? PALETTE.violet : 'var(--text-2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <MousePointer size={17} strokeWidth={1.8} />
+                  </button>
+
+                  <div style={{ width: 24, height: 1, background: reportTheme === 'dark' ? '#1E293B' : '#E2E8F0', margin: '2px 0' }} />
+
+                  {/* Caneta */}
+                  <button
+                    type="button"
+                    onClick={() => setDrawTool('pen')}
+                    title="Caneta Livre"
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      border: 'none',
+                      background: drawTool === 'pen' ? 'var(--bg-card2, rgba(99,102,241,0.12))' : 'transparent',
+                      color: drawTool === 'pen' ? PALETTE.violet : 'var(--text-2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Pencil size={17} strokeWidth={1.8} />
+                  </button>
+
+                  {/* Marca-Texto */}
+                  <button
+                    type="button"
+                    onClick={() => setDrawTool('highlighter')}
+                    title="Marca-Texto Translúcido"
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      border: 'none',
+                      background: drawTool === 'highlighter' ? 'var(--bg-card2, rgba(99,102,241,0.12))' : 'transparent',
+                      color: drawTool === 'highlighter' ? PALETTE.violet : 'var(--text-2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Highlighter size={17} strokeWidth={1.8} />
+                  </button>
+
+                  {/* Retângulo */}
+                  <button
+                    type="button"
+                    onClick={() => setDrawTool('rect')}
+                    title="Forma: Retângulo"
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      border: 'none',
+                      background: drawTool === 'rect' ? 'var(--bg-card2, rgba(99,102,241,0.12))' : 'transparent',
+                      color: drawTool === 'rect' ? PALETTE.violet : 'var(--text-2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Square size={17} strokeWidth={1.8} />
+                  </button>
+
+                  {/* Círculo */}
+                  <button
+                    type="button"
+                    onClick={() => setDrawTool('circle')}
+                    title="Forma: Círculo / Elipse"
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      border: 'none',
+                      background: drawTool === 'circle' ? 'var(--bg-card2, rgba(99,102,241,0.12))' : 'transparent',
+                      color: drawTool === 'circle' ? PALETTE.violet : 'var(--text-2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Circle size={17} strokeWidth={1.8} />
+                  </button>
+
+                  {/* Seta */}
+                  <button
+                    type="button"
+                    onClick={() => setDrawTool('arrow')}
+                    title="Forma: Seta Indicativa"
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      border: 'none',
+                      background: drawTool === 'arrow' ? 'var(--bg-card2, rgba(99,102,241,0.12))' : 'transparent',
+                      color: drawTool === 'arrow' ? PALETTE.violet : 'var(--text-2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <ArrowUpRight size={18} strokeWidth={1.8} />
+                  </button>
+
+                  <div style={{ width: 24, height: 1, background: reportTheme === 'dark' ? '#1E293B' : '#E2E8F0', margin: '2px 0' }} />
+
+                  {/* Cores */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5, padding: '2px 0' }}>
+                    {DRAW_COLORS.map(c => {
+                      const isSel = drawColor === c.value
+                      return (
+                        <button
+                          key={c.value}
+                          type="button"
+                          onClick={() => setDrawColor(c.value)}
+                          title={c.label}
+                          style={{
+                            width: 18,
+                            height: 18,
+                            borderRadius: '50%',
+                            background: c.value,
+                            border: isSel ? '2px solid #6366F1' : `1px solid ${reportTheme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}`,
+                            boxShadow: isSel ? `0 0 0 2px rgba(99,102,241,0.4)` : 'none',
+                            cursor: 'pointer',
+                            padding: 0,
+                            transition: 'transform 0.12s ease',
+                            transform: isSel ? 'scale(1.25)' : 'none',
+                          }}
+                        />
+                      )
+                    })}
+                  </div>
+
+                  <div style={{ width: 24, height: 1, background: reportTheme === 'dark' ? '#1E293B' : '#E2E8F0', margin: '2px 0' }} />
+
+                  {/* Espessuras */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                    {DRAW_WIDTHS.map(w => {
+                      const isSel = drawWidth === w.value
+                      return (
+                        <button
+                          key={w.value}
+                          type="button"
+                          onClick={() => setDrawWidth(w.value)}
+                          title={`Traço ${w.label}`}
+                          style={{
+                            width: 28,
+                            height: 20,
+                            borderRadius: 6,
+                            border: 'none',
+                            background: isSel ? 'var(--bg-card2, rgba(99,102,241,0.15))' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 14,
+                              height: w.value === 3 ? 2 : w.value === 6 ? 4 : 7,
+                              borderRadius: 999,
+                              background: isSel ? PALETTE.violet : 'var(--text-3)',
+                            }}
+                          />
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <div style={{ width: 24, height: 1, background: reportTheme === 'dark' ? '#1E293B' : '#E2E8F0', margin: '2px 0' }} />
+
+                  {/* Desfazer */}
+                  <button
+                    type="button"
+                    onClick={handleUndo}
+                    disabled={!active || !(drawingsBySlide[active.id]?.length)}
+                    title="Desfazer (Ctrl+Z)"
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      border: 'none',
+                      background: 'transparent',
+                      color: (active && drawingsBySlide[active.id]?.length) ? 'var(--text-1)' : 'var(--text-4, #94A3B8)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: (active && drawingsBySlide[active.id]?.length) ? 'pointer' : 'not-allowed',
+                      opacity: (active && drawingsBySlide[active.id]?.length) ? 1 : 0.4,
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Undo2 size={16} strokeWidth={1.8} />
+                  </button>
+
+                  {/* Limpar slide */}
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    disabled={!active || !(drawingsBySlide[active.id]?.length)}
+                    title="Limpar anotações deste slide"
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      border: 'none',
+                      background: 'transparent',
+                      color: (active && drawingsBySlide[active.id]?.length) ? '#EF4444' : 'var(--text-4, #94A3B8)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: (active && drawingsBySlide[active.id]?.length) ? 'pointer' : 'not-allowed',
+                      opacity: (active && drawingsBySlide[active.id]?.length) ? 1 : 0.4,
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Trash2 size={16} strokeWidth={1.8} />
+                  </button>
+                </aside>
+              )}
             </div>
             {!readOnly && active.id === 'creatives' && data.paid.top.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card, #FFFFFF)', border: '1px solid var(--border, #E2E2EA)', borderRadius: 8, padding: '6px 14px', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -1136,9 +1870,15 @@ export function ReportStudio({
               </div>
             )}
             {!readOnly ? (
-              <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>Os campos com contorno tracejado são textos seus: clique e escreva. O resto vem dos dados da Meta.</p>
+              <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0, textAlign: 'center' }}>
+                {drawingOpen
+                  ? 'Modo Desenho ativo: selecione uma ferramenta na barra à direita. Pressione L para o Laser Pointer.'
+                  : 'Os campos com contorno tracejado são textos seus: clique e escreva. Clique em "Modo Desenho" para fazer anotações dinâmicas.'}
+              </p>
             ) : (
-              <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>Use as setas do teclado (← e →) para navegar pelos slides da apresentação.</p>
+              <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0, textAlign: 'center' }}>
+                Use as setas do teclado (← e →) para navegar pelos slides. Pressione L para ligar o Laser Pointer e D para desenhar.
+              </p>
             )}
           </div>
         </div>

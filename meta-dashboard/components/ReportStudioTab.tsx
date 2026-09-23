@@ -42,16 +42,6 @@ const MODE_LABELS: Record<ReportMode, { label: string; desc: string }> = {
   organic: { label: 'Orgânico', desc: 'Exclusivo para engajamento e Instagram/Facebook (10 slides)' },
 }
 
-function fmtMoney(v?: number): string {
-  if (v == null || !isFinite(v)) return '—'
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
-}
-
-function fmtCount(v?: number): string {
-  if (v == null || !isFinite(v)) return '—'
-  return new Intl.NumberFormat('pt-BR').format(Math.round(v))
-}
-
 export function ReportStudioTab({
   clientSlug,
   clientName,
@@ -494,15 +484,37 @@ export function ReportStudioTab({
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     {clientLogo ? (
-                      <img
-                        src={clientLogo}
-                        alt={clientName}
-                        style={{ maxHeight: 28, maxWidth: 100, objectFit: 'contain' }}
-                      />
+                      <div
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: 12,
+                          border: `1px solid ${rep.theme === 'dark' ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'}`,
+                          background: rep.theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#FFFFFF',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                        }}
+                      >
+                        <img
+                          src={clientLogo}
+                          alt={clientName}
+                          style={{ maxHeight: 24, maxWidth: 100, objectFit: 'contain', borderRadius: 6 }}
+                        />
+                      </div>
                     ) : (
-                      <span style={{ fontSize: 13, fontWeight: 700, color: rep.theme === 'dark' ? '#F8FAFC' : '#0F172A' }}>
-                        {clientName}
-                      </span>
+                      <div
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: 12,
+                          border: `1px solid ${rep.theme === 'dark' ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'}`,
+                          background: rep.theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#FFFFFF',
+                        }}
+                      >
+                        <span style={{ fontSize: 13, fontWeight: 700, color: rep.theme === 'dark' ? '#F8FAFC' : '#0F172A' }}>
+                          {clientName}
+                        </span>
+                      </div>
                     )}
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -562,30 +574,12 @@ export function ReportStudioTab({
                   </div>
                 </div>
 
-                {/* Corpo do card: Métricas do relatório */}
+                {/* Corpo do card */}
                 <div style={{ padding: '14px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {rep.kpis && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      {rep.kpis.spend != null && (
-                        <div style={{ background: 'var(--bg-card2)', padding: '4px 10px', borderRadius: 8, fontSize: 11 }}>
-                          <span style={{ color: 'var(--text-3)' }}>Investimento: </span>
-                          <strong style={{ color: 'var(--text-1)' }}>{fmtMoney(rep.kpis.spend)}</strong>
-                        </div>
-                      )}
-                      {rep.kpis.results != null && (
-                        <div style={{ background: 'var(--bg-card2)', padding: '4px 10px', borderRadius: 8, fontSize: 11 }}>
-                          <span style={{ color: 'var(--text-3)' }}>Resultados: </span>
-                          <strong style={{ color: 'var(--text-1)' }}>{fmtCount(rep.kpis.results)}</strong>
-                        </div>
-                      )}
-                      {rep.kpis.cpl != null && (
-                        <div style={{ background: 'var(--bg-card2)', padding: '4px 10px', borderRadius: 8, fontSize: 11 }}>
-                          <span style={{ color: 'var(--text-3)' }}>CPL: </span>
-                          <strong style={{ color: 'var(--green)' }}>{fmtMoney(rep.kpis.cpl)}</strong>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Presentation size={13} strokeWidth={1.8} />
+                    <span>Apresentação executiva pronta para exibição</span>
+                  </div>
 
                   <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span>Publicado em {new Date(rep.createdAt).toLocaleDateString('pt-BR')}</span>

@@ -136,21 +136,8 @@ function Dashboard() {
     document.documentElement.setAttribute('data-theme', initial)
   }, [])
 
-  const [reportMenuOpen, setReportMenuOpen] = useState(false)
-  const reportMenuRef = useRef<HTMLDivElement>(null)
   const [presetMenuOpen, setPresetMenuOpen] = useState(false)
   const presetMenuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!reportMenuOpen) return
-    const onDown = (e: MouseEvent) => {
-      if (reportMenuRef.current && !reportMenuRef.current.contains(e.target as Node)) {
-        setReportMenuOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [reportMenuOpen])
 
   useEffect(() => {
     if (!presetMenuOpen) return
@@ -544,8 +531,8 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Abas sublinhadas com Ações de Relatório */}
-      <div className="no-print" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+      {/* Abas */}
+      <div className="no-print" style={{ borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
         <div className="tabs" role="tablist" style={{ borderBottom: 'none', marginBottom: 0 }}>
           {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads'], ['goals', 'Metas'], ['reports', 'Report Studio']] as const).filter(([key]) => (key !== 'simulator' || !!me?.admin)).map(([key, label]) => (
             <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
@@ -555,181 +542,6 @@ function Dashboard() {
               )}
             </button>
           ))}
-        </div>
-
-        {/* Botão de Relatórios (PPTX apenas para Admin/Membros; Cliente vê apenas Baixar Relatório) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 6 }}>
-          {isStaff ? (
-            <div ref={reportMenuRef} style={{ position: 'relative' }}>
-              <button
-                className="btn btn-outline btn-sm"
-                onClick={() => setReportMenuOpen(v => !v)}
-                aria-expanded={reportMenuOpen}
-                aria-haspopup="menu"
-                aria-label="Opções de Relatório"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '0 14px',
-                  height: 36,
-                  fontSize: 13,
-                  fontWeight: 600,
-                }}
-                title="Apresentações e Relatórios"
-              >
-                <FileBarChart size={16} strokeWidth={1.75} />
-                <span>Relatório</span>
-                <ChevronDown
-                  size={14}
-                  strokeWidth={2}
-                  style={{
-                    transform: reportMenuOpen ? 'rotate(180deg)' : 'none',
-                    transition: 'transform 0.15s ease',
-                    opacity: 0.7,
-                  }}
-                />
-              </button>
-
-              {reportMenuOpen && (
-                <div
-                  role="menu"
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 6px)',
-                    right: 0,
-                    zIndex: 100,
-                    minWidth: 240,
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 12,
-                    boxShadow: 'var(--shadow-elegant)',
-                    padding: 6,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 2,
-                  }}
-                >
-                  <button
-                    role="menuitem"
-                    onClick={() => { setTab('reports'); setReportMenuOpen(false) }}
-                    className="btn btn-ghost btn-sm"
-                    style={{
-                      justifyContent: 'flex-start',
-                      textAlign: 'left',
-                      padding: '8px 12px',
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: 'var(--accent)',
-                      borderRadius: 8,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                    }}
-                  >
-                    <Presentation size={15} strokeWidth={2} />
-                    <span>Abrir Report Studio</span>
-                  </button>
-
-                  <div style={{ height: 1, background: 'var(--border-soft)', margin: '4px 0' }} />
-
-                  <button
-                    role="menuitem"
-                    onClick={() => { setMonthlyMode('standard'); setMonthlyOpen(true); setReportMenuOpen(false) }}
-                    className="btn btn-ghost btn-sm"
-                    style={{
-                      justifyContent: 'flex-start',
-                      textAlign: 'left',
-                      padding: '8px 12px',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: 'var(--text-1)',
-                      borderRadius: 8,
-                    }}
-                  >
-                    Apresentação Padrão (PPTX)
-                  </button>
-
-                  <button
-                    role="menuitem"
-                    onClick={() => { setMonthlyMode('advanced'); setMonthlyOpen(true); setReportMenuOpen(false) }}
-                    className="btn btn-ghost btn-sm"
-                    style={{
-                      justifyContent: 'flex-start',
-                      textAlign: 'left',
-                      padding: '8px 12px',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: 'var(--text-1)',
-                      borderRadius: 8,
-                    }}
-                  >
-                    Relatório Avançado (PPTX)
-                  </button>
-
-                  <button
-                    role="menuitem"
-                    onClick={() => { setMonthlyMode('organic'); setMonthlyOpen(true); setReportMenuOpen(false) }}
-                    className="btn btn-ghost btn-sm"
-                    style={{
-                      justifyContent: 'flex-start',
-                      textAlign: 'left',
-                      padding: '8px 12px',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: 'var(--text-1)',
-                      borderRadius: 8,
-                    }}
-                  >
-                    Relatório Apenas Orgânico (PPTX)
-                  </button>
-
-                  <div style={{ height: 1, background: 'var(--border-soft)', margin: '4px 0' }} />
-
-                  <button
-                    role="menuitem"
-                    onClick={() => { setReportOpen(true); setReportMenuOpen(false) }}
-                    disabled={reportOpen || !data}
-                    className="btn btn-ghost btn-sm"
-                    style={{
-                      justifyContent: 'flex-start',
-                      textAlign: 'left',
-                      padding: '8px 12px',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: 'var(--text-1)',
-                      borderRadius: 8,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}
-                  >
-                    <Download size={14} strokeWidth={2} />
-                    <span>Baixar Relatório (PDF)</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={() => setReportOpen(true)}
-              disabled={reportOpen || !data}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '0 14px',
-                height: 36,
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-              title="Baixar Relatório em PDF"
-            >
-              <Download size={15} strokeWidth={1.75} />
-              <span>Baixar Relatório</span>
-            </button>
-          )}
         </div>
       </div>
 
