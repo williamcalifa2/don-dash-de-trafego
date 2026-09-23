@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { DollarSign, TrendingUp, AlertTriangle, CheckCircle2, ArrowUpRight, ArrowDownRight, Edit3, Check, X, ShieldAlert, Zap } from 'lucide-react'
+import { DollarSign, CheckCircle2, ArrowUpRight, ArrowDownRight, Edit3, Check, X } from 'lucide-react'
 import type { CampaignRow } from '@/lib/meta'
 
 interface BudgetPacingModalProps {
@@ -23,9 +23,9 @@ function fmtDec(v: number, currency: string) {
 export function BudgetPacingModal({ onClose, campaigns, currentSpend, currency, clientSlug = 'default' }: BudgetPacingModalProps) {
   const now = new Date()
   const year = now.getFullYear()
-  const month = now.getMonth() // 0-indexed
+  const month = now.getMonth()
   const currentDay = now.getDate()
-  const totalDays = new Date(year, month + 1, 0).getDate() // total days in month
+  const totalDays = new Date(year, month + 1, 0).getDate()
   const daysRemaining = Math.max(0, totalDays - currentDay)
   const monthProgressPct = Math.round((currentDay / totalDays) * 100)
 
@@ -73,23 +73,20 @@ export function BudgetPacingModal({ onClose, campaigns, currentSpend, currency, 
   const paceDiffPct = Math.round((pacingRatio - 1) * 100)
 
   // Status
-  let statusColor = 'var(--green)'
-  let statusBg = 'var(--green-soft)'
-  let statusText = 'No Ritmo Ideal'
-  let statusDesc = 'Gasto perfeitamente alinhado com o cronograma do mês.'
+  let statusColor = '#22C55E'
+  let statusBg = 'rgba(34, 197, 94, 0.14)'
+  let statusText = 'Ritmo Ideal'
   let StatusIcon = CheckCircle2
 
   if (pacingRatio > 1.12) {
-    statusColor = 'var(--red)'
-    statusBg = 'var(--red-soft)'
-    statusText = `Ritmo Acelerado (+${paceDiffPct}%)`
-    statusDesc = `Gasto ${paceDiffPct}% acima do ritmo ideal esperado para hoje.`
+    statusColor = '#EF4444'
+    statusBg = 'rgba(239, 68, 68, 0.14)'
+    statusText = `Acelerado (+${paceDiffPct}%)`
     StatusIcon = ArrowUpRight
   } else if (pacingRatio < 0.88) {
     statusColor = 'var(--accent)'
     statusBg = 'var(--accent-soft)'
-    statusText = `Ritmo Lento (${paceDiffPct}%)`
-    statusDesc = `Gasto ${Math.abs(paceDiffPct)}% abaixo do ritmo. Verba pode sobrar se não acelerar.`
+    statusText = `Lento (${paceDiffPct}%)`
     StatusIcon = ArrowDownRight
   }
 
@@ -99,19 +96,14 @@ export function BudgetPacingModal({ onClose, campaigns, currentSpend, currency, 
   const remainingBudget = Math.max(0, targetBudget - currentSpend)
   const recommendedDaily = daysRemaining > 0 ? remainingBudget / daysRemaining : 0
 
-  // Claude Code-style ASCII bar blocks (20 segments)
-  const totalBlocks = 20
-  const filledBlocks = Math.min(totalBlocks, Math.round((spendPct / 100) * totalBlocks))
-  const expectedBlockIndex = Math.min(totalBlocks - 1, Math.round((monthProgressPct / 100) * totalBlocks))
-
   return (
     <div
       onClick={onClose}
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0, 0, 0, 0.82)',
-        backdropFilter: 'blur(8px)',
+        background: 'rgba(0, 0, 0, 0.65)',
+        backdropFilter: 'blur(6px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -124,21 +116,21 @@ export function BudgetPacingModal({ onClose, campaigns, currentSpend, currency, 
         className="card"
         style={{
           width: '100%',
-          maxWidth: 640,
+          maxWidth: 380,
           background: 'var(--bg-card)',
-          borderRadius: 20,
+          borderRadius: 16,
           border: '1px solid var(--border)',
-          boxShadow: 'var(--shadow-elegant)',
+          boxShadow: '0 20px 40px -10px rgba(0,0,0,0.5)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          animation: 'fade-up 0.18s ease-out',
+          animation: 'fade-up 0.15s ease-out',
         }}
       >
-        {/* Header */}
+        {/* Compact HUD Header */}
         <div
           style={{
-            padding: '18px 22px',
+            padding: '14px 16px',
             borderBottom: '1px solid var(--border-soft)',
             display: 'flex',
             alignItems: 'center',
@@ -146,99 +138,105 @@ export function BudgetPacingModal({ onClose, campaigns, currentSpend, currency, 
             background: 'var(--bg-card2)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div
               style={{
-                width: 38,
-                height: 38,
-                borderRadius: 12,
+                width: 28,
+                height: 28,
+                borderRadius: 8,
                 background: 'var(--accent-soft)',
                 color: 'var(--accent)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                border: '1px solid var(--accent-glow)',
               }}
             >
-              <DollarSign size={20} />
+              <DollarSign size={16} />
             </div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>Ritmo de Verba (Budget Pacing)</span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    padding: '2px 8px',
-                    borderRadius: 12,
-                    background: statusBg,
-                    color: statusColor,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                >
-                  <StatusIcon size={12} />
-                  {statusText}
-                </span>
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                Controle de consumo financeiro Meta Ads em tempo real
-              </div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>
+                Uso de Verba
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text-3)', marginLeft: 6 }}>
+                (Pacing)
+              </span>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn btn-ghost btn-icon btn-sm"
-            style={{ width: 32, height: 32 }}
-          >
-            <X size={18} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '2px 7px',
+                borderRadius: 10,
+                background: statusBg,
+                color: statusColor,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 3,
+              }}
+            >
+              <StatusIcon size={11} />
+              {statusText}
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn btn-ghost btn-icon btn-sm"
+              style={{ width: 26, height: 26, color: 'var(--text-3)' }}
+            >
+              <X size={15} />
+            </button>
+          </div>
         </div>
 
-        {/* Content */}
-        <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Claude Code Style Meter Terminal Box */}
+        {/* HUD Meter Body */}
+        <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Main Percentage & Bar (Token Usage Style) */}
           <div
             style={{
               background: 'var(--bg-card2)',
-              borderRadius: 14,
+              borderRadius: 12,
               border: '1px solid var(--border-soft)',
-              padding: 16,
+              padding: '12px 14px',
               display: 'flex',
               flexDirection: 'column',
-              gap: 12,
-              fontFamily: 'var(--font)',
+              gap: 8,
             }}
           >
-            {/* Top row with percentages */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontWeight: 800, color: statusColor, fontSize: 18, fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontSize: 24, fontWeight: 800, color: statusColor, fontVariantNumeric: 'tabular-nums' }}>
                   {spendPct.toFixed(1)}%
                 </span>
-                <span style={{ color: 'var(--text-2)', fontSize: 12 }}>
-                  consumido de {fmt(targetBudget, currency)}
+                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                  consumido
                 </span>
               </div>
-
-              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                Mês: <strong style={{ color: 'var(--text-1)' }}>{monthProgressPct}%</strong> decorrido (dia {currentDay}/{totalDays})
+              <div style={{ fontSize: 11, color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>
+                Mês: <strong style={{ color: 'var(--text-1)' }}>{monthProgressPct}%</strong> (dia {currentDay}/{totalDays})
               </div>
             </div>
 
-            {/* Visual Pacing Progress Bar */}
-            <div style={{ position: 'relative', height: 16, borderRadius: 8, background: 'var(--bg)', overflow: 'hidden', border: '1px solid var(--border-soft)' }}>
-              {/* Actual Spend fill */}
+            {/* Token-like Progress Bar */}
+            <div
+              style={{
+                position: 'relative',
+                height: 10,
+                borderRadius: 6,
+                background: 'var(--bg)',
+                overflow: 'hidden',
+                border: '1px solid var(--border-soft)',
+              }}
+            >
               <div
                 style={{
                   height: '100%',
                   width: `${Math.min(100, spendPct)}%`,
                   background: `linear-gradient(90deg, var(--accent) 0%, ${statusColor} 100%)`,
-                  borderRadius: 8,
-                  transition: 'width 0.4s ease-out',
+                  borderRadius: 6,
+                  transition: 'width 0.3s ease-out',
                 }}
               />
               {/* Expected Day Milestone Pin */}
@@ -248,30 +246,28 @@ export function BudgetPacingModal({ onClose, campaigns, currentSpend, currency, 
                   top: 0,
                   bottom: 0,
                   left: `${Math.min(99, monthProgressPct)}%`,
-                  width: 3,
+                  width: 2,
                   background: 'var(--text-1)',
                   zIndex: 2,
-                  boxShadow: '0 0 6px rgba(255,255,255,0.4)',
+                  boxShadow: '0 0 4px rgba(255,255,255,0.4)',
                 }}
-                title={`Ritmo esperado para hoje: ${monthProgressPct}% (${fmt(expectedSpendToDate, currency)})`}
+                title={`Ritmo esperado para hoje: ${monthProgressPct}%`}
               />
             </div>
 
-            {/* Micro legend */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-3)' }}>
-              <span>Investido: {fmt(currentSpend, currency)}</span>
-              <span style={{ color: 'var(--text-2)' }}>▲ Marcador: Ritmo esperado ({monthProgressPct}%)</span>
-              <span>Restante: {fmt(remainingBudget, currency)}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>
+              <span>{fmt(currentSpend, currency)}</span>
+              <span>Meta: {fmt(targetBudget, currency)}</span>
             </div>
           </div>
 
-          {/* 4 Metric Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-            {/* Meta Mensal (Editable) */}
-            <div style={{ background: 'var(--bg-card2)', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-soft)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', letterSpacing: '.06em' }}>
-                  Meta de Verba do Mês
+          {/* Compact Metrics Grid (2x2) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {/* Meta Mensal (Click to Edit) */}
+            <div style={{ background: 'var(--bg-card2)', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border-soft)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase' }}>
+                  Meta do Mês
                 </span>
                 {!isEditing && (
                   <button
@@ -280,17 +276,15 @@ export function BudgetPacingModal({ onClose, campaigns, currentSpend, currency, 
                       setEditInput(String(targetBudget))
                       setIsEditing(true)
                     }}
-                    className="btn btn-ghost btn-icon btn-sm"
+                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-3)' }}
                     title="Editar meta"
-                    style={{ width: 22, height: 22, padding: 0 }}
                   >
-                    <Edit3 size={12} />
+                    <Edit3 size={11} />
                   </button>
                 )}
               </div>
-
               {isEditing ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                   <input
                     type="number"
                     value={editInput}
@@ -301,9 +295,9 @@ export function BudgetPacingModal({ onClose, campaigns, currentSpend, currency, 
                       width: '100%',
                       background: 'var(--bg-card)',
                       border: '1px solid var(--accent)',
-                      borderRadius: 6,
-                      padding: '4px 8px',
-                      fontSize: 14,
+                      borderRadius: 4,
+                      padding: '2px 4px',
+                      fontSize: 12,
                       fontWeight: 700,
                       color: 'var(--text-1)',
                     }}
@@ -312,110 +306,80 @@ export function BudgetPacingModal({ onClose, campaigns, currentSpend, currency, 
                     type="button"
                     onClick={handleSaveBudget}
                     className="btn btn-soft btn-sm"
-                    style={{ padding: '4px 10px', height: 30 }}
+                    style={{ padding: '2px 6px', height: 22 }}
                   >
-                    <Check size={14} />
+                    <Check size={11} />
                   </button>
                 </div>
               ) : (
-                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
                   {fmt(targetBudget, currency)}
                 </div>
               )}
-              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                {activeDailyBudgetsSum > 0 ? `Soma ativa Meta: ${fmt(activeDailyBudgetsSum, currency)}/dia` : 'Configuração manual'}
-              </div>
             </div>
 
-            {/* Projeção de Fechamento */}
-            <div style={{ background: 'var(--bg-card2)', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-soft)' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', letterSpacing: '.06em', marginBottom: 4 }}>
-                Projeção no Fim do Mês
-              </div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: projectedMonthEnd > targetBudget ? 'var(--red)' : 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
+            {/* Projeção Fim do Mês */}
+            <div style={{ background: 'var(--bg-card2)', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border-soft)' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase' }}>
+                Projeção Mês
+              </span>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: projectedMonthEnd > targetBudget ? '#EF4444' : 'var(--text-1)',
+                  marginTop: 2,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
                 {fmt(projectedMonthEnd, currency)}
-              </div>
-              <div style={{ fontSize: 11, color: projectedMonthEnd > targetBudget ? 'var(--red)' : 'var(--green)', marginTop: 2, fontWeight: 600 }}>
-                {projectedMonthEnd > targetBudget
-                  ? `Estouro de ${fmt(projectedMonthEnd - targetBudget, currency)} previsto`
-                  : `Dentro da meta (${fmt(targetBudget - projectedMonthEnd, currency)} sobra)`}
               </div>
             </div>
 
             {/* Ritmo Diário Atual */}
-            <div style={{ background: 'var(--bg-card2)', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-soft)' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', letterSpacing: '.06em', marginBottom: 4 }}>
-                Ritmo Diário Atual
-              </div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ background: 'var(--bg-card2)', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border-soft)' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase' }}>
+                Ritmo Atual
+              </span>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
                 {fmtDec(currentDailyAvg, currency)}
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-3)' }}> /dia</span>
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                Média realizada nos primeiros {currentDay} dias
+                <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-3)' }}>/dia</span>
               </div>
             </div>
 
-            {/* Ritmo Recomendado Restante */}
-            <div style={{ background: 'var(--bg-card2)', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-soft)' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', letterSpacing: '.06em', marginBottom: 4 }}>
-                Ritmo Recomendado
-              </div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>
+            {/* Ritmo Recomendado */}
+            <div style={{ background: 'var(--bg-card2)', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border-soft)' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase' }}>
+                Ritmo Ideal
+              </span>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
                 {fmtDec(recommendedDaily, currency)}
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-3)' }}> /dia</span>
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                Para os {daysRemaining} dias restantes no mês
+                <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-3)' }}>/dia</span>
               </div>
             </div>
           </div>
-
-          {/* Active Campaigns Breakdown */}
-          {activeCampaigns.length > 0 && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', letterSpacing: '.06em', marginBottom: 8 }}>
-                Campanhas Ativas Consumindo Verba ({activeCampaigns.length})
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflowY: 'auto' }}>
-                {activeCampaigns.slice(0, 6).map(c => (
-                  <div
-                    key={c.id}
-                    style={{
-                      background: 'var(--bg-card2)',
-                      padding: '8px 12px',
-                      borderRadius: 10,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      fontSize: 12,
-                      border: '1px solid var(--border-soft)',
-                    }}
-                  >
-                    <span style={{ fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 360 }}>
-                      {c.name}
-                    </span>
-                    <span style={{ fontWeight: 700, color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
-                      {c.daily_budget ? `${fmt(c.daily_budget, currency)}/dia` : fmt(c.spend, currency)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Footer */}
+        {/* Minimal Footer */}
         <div
           style={{
-            padding: '14px 22px',
+            padding: '10px 16px',
             borderTop: '1px solid var(--border-soft)',
             display: 'flex',
-            justifyContent: 'flex-end',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             background: 'var(--bg-card2)',
           }}
         >
-          <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
+          <span style={{ fontSize: 10, color: 'var(--text-3)' }}>
+            {daysRemaining} dias restantes no ciclo
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn btn-ghost btn-sm"
+            style={{ fontSize: 11, height: 26, padding: '0 8px', color: 'var(--text-2)' }}
+          >
             Fechar
           </button>
         </div>
@@ -423,4 +387,3 @@ export function BudgetPacingModal({ onClose, campaigns, currentSpend, currency, 
     </div>
   )
 }
-

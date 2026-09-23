@@ -16,6 +16,7 @@ import { type ResultKind } from '@/lib/resultKind'
 import { platformsFor } from '@/lib/platforms'
 import { PlatformBadges } from '@/components/PlatformBadges'
 import { useTheme } from '@/lib/useTheme'
+import { StatusToggle } from '@/components/StatusToggle'
 import { ClientConfigModal } from '@/components/ClientConfigModal'
 import type { LeadStatus } from '@/lib/leadTypes'
 
@@ -317,12 +318,34 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
   const [slug, setSlug] = useState(initial?.slug ?? '')
   const [slugTouched, setSlugTouched] = useState(!!initial)
   const [adAccountId, setAdAccountId] = useState(initial?.adAccountId ?? '')
-  const pageId = initial?.pageId ?? '' // não há mais campo na tela; clientes antigos mantêm a página que já tinham
+  const pageId = initial?.pageId ?? ''
   const [logoUrl, setLogoUrl] = useState(initial?.logoUrl ?? '')
   const [logoError, setLogoError] = useState<string | null>(null)
   const logoInput = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  // Configurações unificadas do perfil do cliente
+  const [active, setActive] = useState<boolean>(initial?.active !== false)
+  const [strategicObjective, setStrategicObjective] = useState('')
+  const [goalsPeriod, setGoalsPeriod] = useState('')
+  const [targetBudget, setTargetBudget] = useState('')
+
+  useEffect(() => {
+    if (!initial?.slug) return
+    let alive = true
+    fetch(`/api/admin/clients/${initial.slug}/config`)
+      .then(r => r.ok ? r.json() : null)
+      .then((cfg: { active?: boolean; strategicObjective?: string; goalsPeriod?: string; targetBudget?: number } | null) => {
+        if (!alive || !cfg) return
+        if (cfg.active !== undefined) setActive(cfg.active !== false)
+        if (cfg.strategicObjective) setStrategicObjective(cfg.strategicObjective)
+        if (cfg.goalsPeriod) setGoalsPeriod(cfg.goalsPeriod)
+        if (cfg.targetBudget != null) setTargetBudget(String(cfg.targetBudget))
+      })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [initial?.slug])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -332,18 +355,64 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
     const r = initial
       ? await api(`/api/admin/clients/${initial.slug}`, 'PATCH', payload)
       : await api<{ slug: string; code: string }>('/api/admin/clients', 'POST', payload)
+
+    if (!r.ok) {
+      setSaving(false)
+      setError(r.data.error ?? 'Não foi possível salvar.')
+      return
+    }
+
+    const savedSlug = initial?.slug ?? (r.data as { slug: string }).slug
+
+    // Salva configurações unificadas de status, metas e verba
+    const budgetNum = targetBudget.trim() ? parseFloat(targetBudget.replace(',', '.')) : undefined
+    await api(`/api/admin/clients/${savedSlug}/config`, 'POST', {
+      active,
+      strategicObjective: strategicObjective.trim(),
+      goalsPeriod: goalsPeriod.trim(),
+      targetBudget: budgetNum != null && !isNaN(budgetNum) ? budgetNum : null,
+    }).catch(() => {})
+
     setSaving(false)
-    if (!r.ok) { setError(r.data.error ?? 'Não foi possível salvar.'); return }
-    onDone({ slug: initial?.slug ?? (r.data as { slug: string }).slug, name, code: (r.data as { code?: string }).code, imported: (r.data as { imported?: number | null }).imported })
+    onDone({ slug: savedSlug, name, code: (r.data as { code?: string }).code, imported: (r.data as { imported?: number | null }).imported })
   }
 
   return (
     <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Status Toggle Card */}
+      <div
+        style={{
+          padding: '12px 16px',
+          borderRadius: 14,
+          background: active ? 'var(--bg-card2)' : 'rgba(245, 158, 11, 0.08)',
+          border: `1px solid ${active ? 'var(--border-soft)' : 'var(--amber)'}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>
+            Status: {active ? 'Cliente Ativo' : 'Cliente Pausado'}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+            {active
+              ? 'Sincroniza campanhas e leads normalmente em segundo plano.'
+              : 'Pausado: não gasta requisições na Meta nem sincroniza em segundo plano.'}
+          </div>
+        </div>
+
+        <StatusToggle checked={active} onChange={setActive} />
+      </div>
+
+      {/* Identidade */}
       <div>
         <label htmlFor="c-name" style={labelStyle}>Nome do cliente</label>
         <input id="c-name" className="field" value={name} required maxLength={80} autoFocus
           onChange={e => { setName(e.target.value); if (!slugTouched) setSlug(slugify(e.target.value)) }} />
       </div>
+
       {!initial && (
         <div>
           <label htmlFor="c-slug" style={labelStyle}>Endereço do painel</label>
@@ -355,6 +424,7 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
           </div>
         </div>
       )}
+
       <div>
         <label htmlFor="c-acc" style={labelStyle}>Conta de anúncios do Meta</label>
         {accounts.length > 0 ? (
@@ -368,6 +438,7 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
         )}
         {accountsError && <p style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 6 }}>{accounts.length > 0 ? `Mostrando a última lista salva${accountsSavedAt ? ` (${new Date(accountsSavedAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })})` : ''}. ` : 'Ainda não tenho uma lista salva. '}{accountsError} {accounts.length > 0 ? 'Se a conta não estiver aqui, tente de novo em alguns minutos.' : 'Você pode digitar o número da conta (act_…).'}</p>}
       </div>
+
       <div>
         <span style={labelStyle}>Logo (opcional)</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -384,11 +455,58 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
         </div>
         {logoError && <p role="alert" style={{ fontSize: 12, color: 'var(--red)', marginTop: 6 }}>{logoError}</p>}
       </div>
+
+      {/* Estratégia, Metas e Apresentação Executiva */}
+      <div style={{ borderTop: '1px solid var(--border-soft)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ ...eyebrow, color: 'var(--accent)' }}>Estratégia & Metas (Apresentação PPTX)</div>
+
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <label htmlFor="c-strat" style={{ ...labelStyle, marginBottom: 0 }}>Objetivo Estratégico</label>
+            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Slide 2 do relatório</span>
+          </div>
+          <textarea
+            id="c-strat"
+            className="field"
+            rows={2}
+            placeholder="Ex.: Consolidar o posicionamento e acelerar a captação de leads qualificados."
+            value={strategicObjective}
+            onChange={e => setStrategicObjective(e.target.value)}
+            style={{ width: '100%', resize: 'vertical', fontSize: 13, padding: '8px 10px', lineHeight: 1.4 }}
+          />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label htmlFor="c-goals" style={labelStyle}>Metas do Período</label>
+            <input
+              id="c-goals"
+              className="field"
+              placeholder="Ex.: 150 leads a CPL < R$ 25"
+              value={goalsPeriod}
+              onChange={e => setGoalsPeriod(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="c-budget" style={labelStyle}>Meta de Verba Mensal (R$)</label>
+            <input
+              id="c-budget"
+              className="field"
+              type="number"
+              placeholder="Ex.: 5000"
+              value={targetBudget}
+              onChange={e => setTargetBudget(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
       {error && <p role="alert" style={{ fontSize: 14, color: 'var(--red)' }}>{error}</p>}
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: 4 }}>
         <button type="button" className="btn btn-outline" onClick={onCancel}>Cancelar</button>
         <button type="submit" className="btn btn-primary" disabled={saving || !name || (!initial && !slug)}>
-          {saving ? 'Salvando…' : initial ? 'Salvar' : 'Criar e gerar código'}
+          {saving ? 'Salvando…' : initial ? 'Salvar Perfil' : 'Criar e gerar código'}
         </button>
       </div>
     </form>
@@ -643,29 +761,120 @@ export default function AdminPage() {
   )
 
   if (phase === 'login') return (
-    <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, position: 'relative' }}>
-      <div style={{ position: 'absolute', top: 16, right: 16 }}>{themeButton}</div>
-      <form onSubmit={login} className="card" style={{ width: '100%', maxWidth: 400, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 56, height: 56, borderRadius: 'var(--radius-lg)', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Shield size={28} color="var(--accent)" strokeWidth={1.75} />
+    <main
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px 16px',
+        position: 'relative',
+        background: 'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99, 102, 241, 0.18), transparent 70%), var(--bg)',
+      }}
+    >
+      <div style={{ position: 'absolute', top: 20, right: 20 }}>{themeButton}</div>
+
+      <div style={{ width: '100%', maxWidth: 440, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
+        {/* Top Agency Branding & Logo with Radius */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center' }}>
+          <div
+            style={{
+              width: 60,
+              height: 60,
+              borderRadius: 18,
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(99, 102, 241, 0.05))',
+              border: '1.5px solid rgba(99, 102, 241, 0.35)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 8px 24px -4px rgba(99, 102, 241, 0.3)',
+              overflow: 'hidden',
+            }}
+          >
+            <img
+              src="/brand-icon.png"
+              alt="Don Digital"
+              onError={e => {
+                (e.currentTarget as HTMLImageElement).src = '/icon-192.png'
+              }}
+              style={{ width: 42, height: 42, objectFit: 'contain', borderRadius: 12 }}
+            />
           </div>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2 }}>Administração</h1>
-            <p style={{ fontSize: 14, color: 'var(--text-2)' }}>Acesso da agência</p>
+            <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.14em', color: 'var(--accent)', textTransform: 'uppercase' }}>
+              Don Digital
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 2 }}>
+              Painel Administrativo
+            </div>
           </div>
         </div>
-        <div>
-          <label htmlFor="admin-email" style={labelStyle}>E-mail</label>
-          <input id="admin-email" type="email" className="field" autoFocus autoComplete="username" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} />
-        </div>
-        <div>
-          <label htmlFor="admin-password" style={labelStyle}>Senha ou token de acesso</label>
-          <input id="admin-password" type="password" className="field" autoComplete="current-password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} />
-          {loginError && <p role="alert" style={{ fontSize: 12, color: 'var(--red)', marginTop: 6 }}>{loginError}</p>}
-        </div>
-        <button className="btn btn-primary" disabled={busy || !loginEmail || !loginPassword}>{busy ? 'Entrando…' : 'Entrar'}</button>
-      </form>
+
+        {/* Card de Login */}
+        <form
+          onSubmit={login}
+          className="card"
+          style={{
+            width: '100%',
+            maxWidth: 440,
+            padding: 28,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 18,
+            borderRadius: 20,
+            border: '1px solid var(--border)',
+            boxShadow: '0 20px 50px -10px rgba(0,0,0,0.5)',
+            background: 'var(--bg-card)',
+          }}
+        >
+          <div>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-1)', margin: '0 0 4px' }}>
+              Entrar na Gestão
+            </h1>
+            <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
+              Acesso exclusivo da equipe para controle de contas e clientes
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="admin-email" style={labelStyle}>E-mail</label>
+            <input
+              id="admin-email"
+              type="email"
+              className="field"
+              autoFocus
+              autoComplete="username"
+              placeholder="seu@don.com.br"
+              value={loginEmail}
+              onChange={e => setLoginEmail(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="admin-password" style={labelStyle}>Senha ou token de acesso</label>
+            <input
+              id="admin-password"
+              type="password"
+              className="field"
+              autoComplete="current-password"
+              placeholder="••••••••••••"
+              value={loginPassword}
+              onChange={e => setLoginPassword(e.target.value)}
+            />
+            {loginError && <p role="alert" style={{ fontSize: 12, color: 'var(--red)', marginTop: 6 }}>{loginError}</p>}
+          </div>
+
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={busy || !loginEmail || !loginPassword}
+            style={{ height: 44, fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}
+          >
+            {busy ? 'Entrando…' : 'Acessar Painel'}
+          </button>
+        </form>
+      </div>
     </main>
   )
 
@@ -754,8 +963,7 @@ export default function AdminPage() {
                   ? { bg: 'var(--green-soft)', dot: 'var(--green)', text: 'Com acesso' }
                   : { bg: 'var(--amber-soft)', dot: 'var(--amber)', text: 'Sem acesso' }
             const items: MenuItem[] = [
-              ...(canOperate ? [{ icon: <Settings2 size={16} strokeWidth={1.75} />, text: 'Configurações & Metas', onClick: () => setModal({ kind: 'config', client: c }) }] : []),
-              ...(canManage ? [{ icon: <Pencil size={16} strokeWidth={1.75} />, text: 'Editar cliente', onClick: () => setModal({ kind: 'edit', client: c }) }] : []),
+              ...(canManage ? [{ icon: <Pencil size={16} strokeWidth={1.75} />, text: 'Editar cliente e metas', onClick: () => setModal({ kind: 'edit', client: c }) }] : []),
               ...(canOperate ? [{ icon: <Settings2 size={16} strokeWidth={1.75} />, text: 'Métricas do card', onClick: () => setModal({ kind: 'metrics', client: c }) }] : []),
               ...(canManage ? [{ icon: <KeyRound size={16} strokeWidth={1.75} />, text: c.hasCode ? 'Revogar token' : 'Gerar token', onClick: () => c.hasCode ? setModal({ kind: 'confirm', action: 'rotate', client: c }) : runAction('rotate', c) }] : []),
               { icon: <Link2 size={16} strokeWidth={1.75} />, text: 'Copiar link do painel', onClick: () => { navigator.clipboard?.writeText(clientUrl(c.slug)).then(() => setNotice('Link copiado.')).catch(() => setNotice(clientUrl(c.slug))) } },
@@ -810,15 +1018,6 @@ export default function AdminPage() {
                   <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => openPanel(c.slug)}>
                     <ExternalLink size={16} strokeWidth={1.75} /> Acessar dashboard
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn-outline btn-icon btn-sm"
-                    title="Configurações & Metas"
-                    aria-label="Configurações & Metas"
-                    onClick={() => setModal({ kind: 'config', client: c })}
-                  >
-                    <Settings2 size={16} strokeWidth={1.75} />
-                  </button>
                   <GearMenu label={`Mais opções de ${c.name}`} items={items} />
                 </div>
               </article>
@@ -854,13 +1053,13 @@ export default function AdminPage() {
       </section>
 
       {modal?.kind === 'new' && (
-        <ModalShell title="Novo cliente" onClose={() => setModal(null)}>
+        <ModalShell title="Novo cliente" onClose={() => setModal(null)} maxWidth={560}>
           <ClientForm baseDomain={baseDomain} accounts={accounts} accountsError={accountsError} accountsSavedAt={accountsSavedAt} onCancel={() => setModal(null)}
             onDone={async r => { await load(); setModal(r.code ? { kind: 'code', client: { slug: r.slug, name: r.name }, code: r.code, created: true } : null); if (r.imported) setNotice(`${r.name}: ${r.imported} leads importados do Meta.`) }} />
         </ModalShell>
       )}
       {modal?.kind === 'edit' && (
-        <ModalShell title={`Editar ${modal.client.name}`} onClose={() => setModal(null)}>
+        <ModalShell title={`Editar · ${modal.client.name}`} onClose={() => setModal(null)} maxWidth={560}>
           <ClientForm initial={modal.client} baseDomain={baseDomain} accounts={accounts} accountsError={accountsError} accountsSavedAt={accountsSavedAt} onCancel={() => setModal(null)} onDone={async r => { await load(); setModal(null); setNotice(r.imported ? `Cliente atualizado. ${r.imported} leads importados do Meta.` : 'Cliente atualizado.') }} />
         </ModalShell>
       )}

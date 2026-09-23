@@ -71,7 +71,7 @@ export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = fa
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(4, minmax(270px, 1fr))',
+        gridTemplateColumns: 'repeat(4, minmax(285px, 1fr))',
         gap: 14,
         alignItems: 'start',
         overflowX: 'auto',
@@ -187,16 +187,15 @@ export function LeadsKanban({ leads, onSelectLead, onChangeStatus, readOnly = fa
                       style={{
                         background: 'var(--bg-card)',
                         border: '1px solid var(--border)',
-                        borderLeft: stale ? '3px solid var(--amber)' : '1px solid var(--border)',
-                        borderRadius: 10,
-                        padding: '10px 12px',
+                        borderRadius: 12,
+                        padding: '12px 14px',
                         cursor: 'pointer',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
                         transition: 'transform 0.12s, box-shadow 0.12s, border-color 0.12s',
                         userSelect: 'none',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 6,
+                        gap: 8,
                       }}
                       onMouseEnter={e => {
                         e.currentTarget.style.transform = 'translateY(-1px)'

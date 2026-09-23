@@ -88,7 +88,7 @@ describe('Construção dos slides (buildSlides)', () => {
     }
 
     const slides = buildSlides(data, notes)
-    expect(slides).toHaveLength(10)
+    expect(slides).toHaveLength(9)
 
     // Capa
     const cover = slides.find(s => s.id === 'cover')!
@@ -99,11 +99,6 @@ describe('Construção dos slides (buildSlides)', () => {
     const creatives = slides.find(s => s.id === 'creatives')!
     const creativesSub = creatives.els.find(el => el.t === 'text' && el.text.includes('campeões da semana'))
     expect(creativesSub).toBeDefined()
-
-    // Análise
-    const analysis = slides.find(s => s.id === 'analysis')!
-    const analysisTitle = analysis.els.find(el => el.t === 'text' && el.text.includes('ANÁLISE DO PERÍODO'))
-    expect(analysisTitle).toBeDefined()
   })
 
   it('mantém títulos mensais quando last_month', () => {
@@ -124,13 +119,9 @@ describe('Construção dos slides (buildSlides)', () => {
     const creatives = slides.find(s => s.id === 'creatives')!
     const creativesSub = creatives.els.find(el => el.t === 'text' && el.text.includes('campeões do mês'))
     expect(creativesSub).toBeDefined()
-
-    const analysis = slides.find(s => s.id === 'analysis')!
-    const analysisTitle = analysis.els.find(el => el.t === 'text' && el.text.includes('ANÁLISE DO MÊS'))
-    expect(analysisTitle).toBeDefined()
   })
 
-  it('gera relatório avançado com 12 slides, orgânico antes do pago, perfil de público e campanhas inteligentes', () => {
+  it('gera relatório avançado com 11 slides, orgânico antes do pago, perfil de público e campanhas inteligentes', () => {
     const data: ReportData = {
       month: lastMonthOf(NOW),
       client: { name: 'Cliente Teste', logoUrl: null },
@@ -169,12 +160,12 @@ describe('Construção dos slides (buildSlides)', () => {
     }
 
     const standard = buildSlides(data, notes, 'standard')
-    expect(standard).toHaveLength(10)
+    expect(standard).toHaveLength(9)
     expect(standard.some(s => s.id === 'audience')).toBe(true)
     expect(standard.some(s => s.id === 'platforms')).toBe(true)
 
     const advanced = buildSlides(data, notes, 'advanced')
-    expect(advanced).toHaveLength(12)
+    expect(advanced).toHaveLength(11)
 
     // Regra: Orgânico sempre antes do pago
     const organicIdx = advanced.findIndex(s => s.id === 'organic')

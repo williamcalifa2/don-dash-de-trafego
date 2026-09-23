@@ -112,7 +112,16 @@ export interface ReportAd {
   costPerResult: number | null
   ctr: number | null
 }
-export interface ReportNotes { objective: string; goals: string; analysis: string; next: string; creativeOverrides?: Record<string, string> }
+export interface ReportNotes {
+  objective: string
+  goals: string
+  analysis: string
+  next: string
+  creativeOverrides?: Record<string, string>
+  pillar1?: string
+  pillar2?: string
+  pillar3?: string
+}
 
 export type ReportMode = 'standard' | 'advanced' | 'organic'
 

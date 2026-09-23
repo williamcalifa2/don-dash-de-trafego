@@ -101,7 +101,7 @@ export default function LoginPage() {
               onError={e => {
                 (e.currentTarget as HTMLImageElement).src = '/icon-192.png'
               }}
-              style={{ width: 40, height: 40, objectFit: 'contain' }}
+              style={{ width: 42, height: 42, objectFit: 'contain', borderRadius: 12 }}
             />
           </div>
           <div>

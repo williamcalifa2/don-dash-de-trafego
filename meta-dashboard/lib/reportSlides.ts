@@ -510,10 +510,7 @@ export function buildStandardSlides(d: ReportData, notes: ReportNotes): SlideSpe
     ],
   })
 
-  // 9 — Análise Estratégica
-  slides.push(makeAnalysisSlide(is7d, notes, paid, d.currency))
-
-  // 10 — Próximos passos & Otimizações
+  // 9 — Próximos passos & Otimizações
   slides.push(makeNextStepsSlide(is7d, notes))
 
   return slides
@@ -687,54 +684,32 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes): SlideSpe
     ],
   })
 
-  // 11 — Análise Estratégica
-  slides.push(makeAnalysisSlide(is7d, notes, paid, d.currency))
-
-  // 12 — Próximos passos & Otimizações
+  // 11 — Próximos passos & Otimizações
   slides.push(makeNextStepsSlide(is7d, notes))
 
   return slides
 }
 
-function makeAnalysisSlide(is7d: boolean, notes: ReportNotes, paid: ReportData['paid'], currency: string): SlideSpec {
-  const topStats = paid.stats.slice(0, 4)
-  const statBoxes: El[] = topStats.flatMap((s, idx) => {
-    const x = 80 + idx * 287
-    return [
-      { t: 'box', x, y: 150, w: 268, h: 90, fill: P.card, line: P.cardBorder, radius: 12 },
-      { t: 'text', x: x + 16, y: 164, w: 236, h: 18, text: upper(s.label), size: 10, weight: 700, color: P.muted, align: 'left', lineHeight: 1.2 },
-      { t: 'text', x: x + 16, y: 188, w: 236, h: 36, text: s.value, size: 22, weight: 800, color: P.white, align: 'left', valign: 'middle', lineHeight: 1.1 },
-    ] as El[]
-  })
-
-  return {
-    id: 'analysis', label: 'Análise', dark: true,
-    els: [
-      ...corners(true),
-      title(is7d ? 'Análise do período' : 'Análise do mês', 60, 50),
-      { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: 'Diagnóstico executivo da performance e principais aprendizados estratégicos.', size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
-      ...(statBoxes.length > 0 ? statBoxes : []),
-      { t: 'box', x: 80, y: statBoxes.length > 0 ? 255 : 155, w: 1120, h: statBoxes.length > 0 ? 395 : 495, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 110, y: statBoxes.length > 0 ? 275 : 175, w: 1060, h: 22, text: 'PARECER EXECUTIVO E APRENDIZADOS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-      { t: 'text', x: 110, y: statBoxes.length > 0 ? 305 : 205, w: 1060, h: statBoxes.length > 0 ? 325 : 425, text: notes.analysis, size: 18, weight: 400, color: P.white, lineHeight: 1.6, edit: 'analysis', placeholder: `O que aconteceu ${is7d ? 'no período' : 'no mês'} e por quê (clique para escrever)` },
-      ...band(true),
-    ],
-  }
-}
-
 function makeNextStepsSlide(is7d: boolean, notes: ReportNotes): SlideSpec {
+  const p1 = notes.pillar1 || 'Testagem de novos ganchos visuais, vídeos curtos e formatos focados em elevar CTR e taxa de conversão.'
+  const p2 = notes.pillar2 || 'Expansão de públicos semelhantes, refinamento de exclusões e testes contínuos de interesses qualificados.'
+  const p3 = notes.pillar3 || 'Alocação inteligente de orçamento para criativos vencedores e ajuste de lances para redução de CPL/CPA.'
+
   const pillars: El[] = [
     { t: 'box', x: 80, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
-    { t: 'text', x: 100, y: 168, w: 315, h: 20, text: '1. CRIATIVOS & MENSAGENS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-    { t: 'text', x: 100, y: 196, w: 315, h: 80, text: 'Testagem de novos ganchos visuais, vídeos curtos e formatos focados em elevar CTR e taxa de conversão.', size: 13, weight: 400, color: P.soft, lineHeight: 1.45 },
+    { t: 'text', x: 100, y: 168, w: 285, h: 20, text: '1. CRIATIVOS & MENSAGENS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 395, y: 168, w: 20, h: 20, text: '✏️', size: 11, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
+    { t: 'text', x: 100, y: 196, w: 315, h: 80, text: p1, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar1', placeholder: 'Diretriz de criativos (clique para editar)' },
 
     { t: 'box', x: 462, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
-    { t: 'text', x: 482, y: 168, w: 315, h: 20, text: '2. PÚBLICOS & SEGMENTAÇÃO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-    { t: 'text', x: 482, y: 196, w: 315, h: 80, text: 'Expansão de públicos semelhantes, refinamento de exclusões e testes contínuos de interesses qualificados.', size: 13, weight: 400, color: P.soft, lineHeight: 1.45 },
+    { t: 'text', x: 482, y: 168, w: 285, h: 20, text: '2. PÚBLICOS & SEGMENTAÇÃO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 777, y: 168, w: 20, h: 20, text: '✏️', size: 11, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
+    { t: 'text', x: 482, y: 196, w: 315, h: 80, text: p2, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar2', placeholder: 'Diretriz de públicos (clique para editar)' },
 
     { t: 'box', x: 845, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
-    { t: 'text', x: 865, y: 168, w: 315, h: 20, text: '3. ESCALA & OTIMIZAÇÃO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-    { t: 'text', x: 865, y: 196, w: 315, h: 80, text: 'Alocação inteligente de orçamento para criativos vencedores e ajuste de lances para redução de CPL/CPA.', size: 13, weight: 400, color: P.soft, lineHeight: 1.45 },
+    { t: 'text', x: 865, y: 168, w: 285, h: 20, text: '3. ESCALA & OTIMIZAÇÃO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 1160, y: 168, w: 20, h: 20, text: '✏️', size: 11, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
+    { t: 'text', x: 865, y: 196, w: 315, h: 80, text: p3, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar3', placeholder: 'Diretriz de escala (clique para editar)' },
   ]
 
   return {
@@ -745,14 +720,15 @@ function makeNextStepsSlide(is7d: boolean, notes: ReportNotes): SlideSpec {
       { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: 'Direcionamento estratégico e plano de ação para a próxima etapa.', size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
       ...pillars,
       { t: 'box', x: 80, y: 315, w: 1120, h: 335, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 110, y: 335, w: 1060, h: 22, text: 'PLANO DE AÇÃO E DIRETRIZES OPERACIONAIS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 110, y: 335, w: 1020, h: 22, text: 'PLANO DE AÇÃO E DIRETRIZES OPERACIONAIS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 1140, y: 335, w: 30, h: 22, text: '✏️', size: 12, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
       { t: 'text', x: 110, y: 365, w: 1060, h: 265, text: notes.next, size: 18, weight: 400, color: P.white, lineHeight: 1.55, edit: 'next', placeholder: `O que vamos fazer ${is7d ? 'na próxima semana' : 'no próximo mês'} (clique para escrever)` },
       ...band(true),
     ],
   }
 }
 
-/** Modelo Orgânico: 6 slides executivos exclusivos para clientes com foco em redes sociais e sem tráfego pago. */
+/** Modelo Orgânico Completo: 8 slides executivos aprofundados para gestão de redes sociais. */
 export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec[] {
   const is7d = d.month.preset === 'last_7d'
   const period = `${fmtDay(d.month.since)} até ${fmtDay(d.month.until)}`
@@ -793,55 +769,141 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
     ],
   })
 
-  // 3 — Métricas Orgânicas
+  // 3 — Visão Geral Orgânica
   const cellsOrg = org.stats.slice(0, 6).flatMap((s, i) => statCell(s, i % 2 ? 940 : 340, 232 + Math.floor(i / 2) * 150, true))
   slides.push({
-    id: 'organic', label: 'Métricas orgânicas', dark: true,
+    id: 'organic', label: 'Visão Geral', dark: true,
     els: [
       ...corners(true),
-      title('Métricas orgânicas', 60, 60, 'center'),
-      { t: 'text', x: 60, y: 145, w: 1160, h: 30, text: `Resultados de ${period} no Instagram${org.handle ? ` (${org.handle})` : ''}, contra o ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      title('Visão Geral Orgânica', 60, 60, 'center'),
+      { t: 'text', x: 60, y: 145, w: 1160, h: 30, text: `Resultados consolidados de ${period} no Instagram${org.handle ? ` (${org.handle})` : ''}, contra o ${compLabel}.`, size: 16, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...(orgOk ? cellsOrg : [{ t: 'text', x: 160, y: 300, w: 960, h: 120, text: org.status === 'incomplete' ? `Os números ${is7d ? 'do período' : 'do mês fechado'} ainda não foram coletados.` : 'Sem dados orgânicos para este cliente.', size: 20, weight: 500, color: P.soft, align: 'center', valign: 'middle', lineHeight: 1.2 } as El]),
       ...band(true),
     ],
   })
 
-  // 4 — Conteúdo Orgânico Top 5
+  // 4 — Crescimento & Audiência Orgânica
+  const reachStat = org.stats.find(s => s.label.toLowerCase().includes('alcance'))?.value || '—'
+  const newFollowers = org.stats.find(s => s.label.toLowerCase().includes('seguidor'))?.value || '—'
+  const interactionsStat = org.stats.find(s => s.label.toLowerCase().includes('interações'))?.value || '—'
   slides.push({
-    id: 'content', label: 'Conteúdo orgânico', dark: true,
+    id: 'growth', label: 'Crescimento', dark: true,
     els: [
       ...corners(true),
-      title('Conteúdo Orgânico', 60, 55, 'center'),
-      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Publicações que mais geraram alcance e engajamento no período.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      title('Crescimento & Audiência', 54, 55, 'center'),
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Evolução da base de seguidores, alcance da marca e taxas de engajamento no Instagram.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+
+      { t: 'box', x: 80, y: 185, w: 355, h: 210, fill: P.card, line: P.cardBorder, radius: 16 },
+      { t: 'text', x: 110, y: 210, w: 295, h: 20, text: 'EXPANSÃO DE ALCANCE', size: 12, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 110, y: 240, w: 295, h: 44, text: reachStat, size: 36, weight: 800, color: P.white, lineHeight: 1.1 },
+      { t: 'text', x: 110, y: 300, w: 295, h: 65, text: 'Contas únicas impactadas no período. Principal indicador de reconhecimento e atração de novos potenciais clientes.', size: 13, weight: 400, color: P.soft, lineHeight: 1.45 },
+
+      { t: 'box', x: 462, y: 185, w: 355, h: 210, fill: P.card, line: P.cardBorder, radius: 16 },
+      { t: 'text', x: 492, y: 210, w: 295, h: 20, text: 'NOVOS SEGUIDORES', size: 12, weight: 700, color: P.green, lineHeight: 1.2 },
+      { t: 'text', x: 492, y: 240, w: 295, h: 44, text: newFollowers, size: 36, weight: 800, color: P.white, lineHeight: 1.1 },
+      { t: 'text', x: 492, y: 300, w: 295, h: 65, text: 'Pessoas que decidiram acompanhar o perfil de forma orgânica, demonstrando interesse contínuo pelo conteúdo da marca.', size: 13, weight: 400, color: P.soft, lineHeight: 1.45 },
+
+      { t: 'box', x: 845, y: 185, w: 355, h: 210, fill: P.card, line: P.cardBorder, radius: 16 },
+      { t: 'text', x: 875, y: 210, w: 295, h: 20, text: 'TOTAL DE INTERAÇÕES', size: 12, weight: 700, color: P.amber, lineHeight: 1.2 },
+      { t: 'text', x: 875, y: 240, w: 295, h: 44, text: interactionsStat, size: 36, weight: 800, color: P.white, lineHeight: 1.1 },
+      { t: 'text', x: 875, y: 300, w: 295, h: 65, text: 'Soma de curtidas, comentários, compartilhamentos e salvamentos. Mede a conexão e retenção do público com a autoridade.', size: 13, weight: 400, color: P.soft, lineHeight: 1.45 },
+
+      { t: 'box', x: 80, y: 425, w: 1120, h: 220, fill: P.card, line: P.cardBorder, radius: 16 },
+      { t: 'text', x: 110, y: 445, w: 1060, h: 22, text: 'DIAGNÓSTICO ESTRATÉGICO DE AUDIÊNCIA', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 110, y: 475, w: 1060, h: 145, text: 'O crescimento orgânico consistente reflete publicações com temas de alta relevância para a persona. A proporção positiva de interações sobre o alcance demonstra que os seguidores ativos estão retidos e engajados com a proposta de valor do perfil.', size: 16, weight: 400, color: P.white, lineHeight: 1.6 },
+
+      ...band(true),
+    ],
+  })
+
+  // 5 — Destaques de Conteúdo (Top 5)
+  slides.push({
+    id: 'content', label: 'Top Conteúdos', dark: true,
+    els: [
+      ...corners(true),
+      title('Destaques de Conteúdo', 54, 55, 'center'),
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Publicações que lideraram em alcance, retenção e engajamento no Instagram.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
       ...modernOrganicCards(org.top),
       ...band(true),
     ],
   })
 
-  // 5 — Análise do Conteúdo
+  // 6 — Performance por Formatos (Reels vs Fotos/Carrossel)
+  const reelsPosts = org.top.filter(p => p.type?.toLowerCase().includes('reel') || p.type?.toLowerCase().includes('video'))
+  const staticPosts = org.top.filter(p => !p.type?.toLowerCase().includes('reel') && !p.type?.toLowerCase().includes('video'))
+  const reelsAvgReach = reelsPosts.length > 0 ? Math.round(reelsPosts.reduce((acc, p) => acc + (p.reach || 0), 0) / reelsPosts.length) : 0
+  const staticAvgReach = staticPosts.length > 0 ? Math.round(staticPosts.reduce((acc, p) => acc + (p.reach || 0), 0) / staticPosts.length) : 0
   slides.push({
-    id: 'analysis', label: 'Análise', dark: true,
+    id: 'formats', label: 'Formatos', dark: true,
     els: [
       ...corners(true),
-      title(is7d ? 'Análise do período' : 'Análise do mês', 60, 50),
-      { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: 'Diagnóstico de alcance, engajamento e recepção dos conteúdos pelos seguidores.', size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
-      { t: 'box', x: 80, y: 160, w: 1120, h: 480, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 110, y: 180, w: 1060, h: 22, text: 'DIAGNÓSTICO ESTRATÉGICO DE CONTEÚDO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-      { t: 'text', x: 110, y: 215, w: 1060, h: 395, text: notes.analysis, size: 19, weight: 400, color: P.white, lineHeight: 1.6, edit: 'analysis', placeholder: 'Análise dos conteúdos e principais formatos que performaram no período (clique para escrever)' },
+      title('Performance por Formatos', 54, 55, 'center'),
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Comparação estratégica entre conteúdos em vídeo (Reels) e postagens estáticas/carrossel.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+
+      { t: 'box', x: 80, y: 185, w: 540, h: 460, fill: P.card, line: P.cardBorder, radius: 16 },
+      { t: 'box', x: 110, y: 215, w: 140, h: 28, fill: P.violetSoft, line: P.violet, radius: 14 },
+      { t: 'text', x: 110, y: 215, w: 140, h: 28, text: '📸 REELS & VÍDEO', size: 11, weight: 700, color: P.violetLight, align: 'center', valign: 'middle', lineHeight: 1.2 },
+      { t: 'text', x: 110, y: 265, w: 480, h: 24, text: 'Alcance Médio por Publicação', size: 13, weight: 600, color: P.muted },
+      { t: 'text', x: 110, y: 295, w: 480, h: 48, text: reelsAvgReach > 0 ? `${compact(reelsAvgReach)} contas` : 'Em consolidação', size: 32, weight: 800, color: P.white },
+      { t: 'text', x: 110, y: 360, w: 480, h: 100, text: '• Formato com maior potencial de entrega para NÃO SEGUIDORES.\n• Fundamental para atração de novas pessoas para o topo do funil.\n• Recomendado ganchos visuais dinâmicos nos primeiros 3 segundos.', size: 14, weight: 400, color: P.soft, lineHeight: 1.6 },
+
+      { t: 'box', x: 660, y: 185, w: 540, h: 460, fill: P.card, line: P.cardBorder, radius: 16 },
+      { t: 'box', x: 690, y: 215, w: 160, h: 28, fill: 'rgba(34,197,94,0.16)', line: P.green, radius: 14 },
+      { t: 'text', x: 690, y: 215, w: 160, h: 28, text: '📷 CARROSSEL & FOTO', size: 11, weight: 700, color: P.green, align: 'center', valign: 'middle', lineHeight: 1.2 },
+      { t: 'text', x: 690, y: 265, w: 480, h: 24, text: 'Alcance Médio por Publicação', size: 13, weight: 600, color: P.muted },
+      { t: 'text', x: 690, y: 295, w: 480, h: 48, text: staticAvgReach > 0 ? `${compact(staticAvgReach)} contas` : 'Em consolidação', size: 32, weight: 800, color: P.white },
+      { t: 'text', x: 690, y: 360, w: 480, h: 100, text: '• Formato com maior taxa de RETENÇÃO e SALVAMENTOS.\n• Consolida autoridade e aprofunda temas técnicos para a base atual.\n• Gera maior probabilidade de compartilhamento no direct.', size: 14, weight: 400, color: P.soft, lineHeight: 1.6 },
+
       ...band(true),
     ],
   })
 
-  // 6 — Próximos Passos Orgânicos
+  // 7 — Melhores Reels & Vídeos
+  const topReels = reelsPosts.slice(0, 3)
+  slides.push({
+    id: 'reels', label: 'Reels em Alta', dark: true,
+    els: [
+      ...corners(true),
+      title('Reels em Alta', 54, 55, 'center'),
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Conteúdos em formato de vídeo curto que obtiveram maior tração orgânica no período.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      ...(topReels.length > 0 ? modernOrganicCards(topReels) : modernOrganicCards(org.top.slice(0, 3))),
+      ...band(true),
+    ],
+  })
+
+  // 8 — Próximos Passos & Planejamento Editorial
+  const p1 = notes.pillar1 || 'Novas linhas editoriais focadas em responder dúvidas frequentes de clientes e quebrar objeções comuns.'
+  const p2 = notes.pillar2 || 'Intensificação de postagens no formato Reels (mínimo 3x por semana) para alavancar atração orgânica.'
+  const p3 = notes.pillar3 || 'Estratégias de chamadas para ação nos Stories e directs para converter seguidores em leads comerciais.'
+
+  const pillars: El[] = [
+    { t: 'box', x: 80, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
+    { t: 'text', x: 100, y: 168, w: 285, h: 20, text: '1. LINHAS EDITORIAIS & TEMAS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 395, y: 168, w: 20, h: 20, text: '✏️', size: 11, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
+    { t: 'text', x: 100, y: 196, w: 315, h: 80, text: p1, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar1', placeholder: 'Diretriz editorial (clique para editar)' },
+
+    { t: 'box', x: 462, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
+    { t: 'text', x: 482, y: 168, w: 285, h: 20, text: '2. FORMATOS & FREQUÊNCIA', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 777, y: 168, w: 20, h: 20, text: '✏️', size: 11, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
+    { t: 'text', x: 482, y: 196, w: 315, h: 80, text: p2, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar2', placeholder: 'Diretriz de formatos (clique para editar)' },
+
+    { t: 'box', x: 845, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
+    { t: 'text', x: 865, y: 168, w: 285, h: 20, text: '3. ENGAJAMENTO & COMUNIDADE', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 1160, y: 168, w: 20, h: 20, text: '✏️', size: 11, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
+    { t: 'text', x: 865, y: 196, w: 315, h: 80, text: p3, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar3', placeholder: 'Diretriz de comunidade (clique para editar)' },
+  ]
+
   slides.push({
     id: 'next', label: 'Próximos passos', dark: true,
     els: [
       ...corners(true),
-      title(is7d ? 'Próximos passos & Otimizações' : 'Próximos passos', 60, 50),
-      { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: 'Planejamento editorial e melhorias estratégicas para o próximo ciclo.', size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
-      { t: 'box', x: 80, y: 160, w: 1120, h: 480, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 110, y: 180, w: 1060, h: 22, text: 'DIRETRIZES EDITORIAIS E PRÓXIMAS AÇÕES', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-      { t: 'text', x: 110, y: 215, w: 1060, h: 395, text: notes.next, size: 19, weight: 400, color: P.white, lineHeight: 1.6, edit: 'next', placeholder: 'Planejamento editorial e temas para os próximos posts (clique para escrever)' },
+      title(is7d ? 'Diretrizes & Planejamento' : 'Próximos passos', 60, 50),
+      { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: 'Planejamento editorial e ações prioritárias para o próximo ciclo orgânico.', size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
+      ...pillars,
+      { t: 'box', x: 80, y: 315, w: 1120, h: 335, fill: P.card, line: P.cardBorder, radius: 16 },
+      { t: 'text', x: 110, y: 335, w: 1020, h: 22, text: 'DIRETRIZES EDITORIAIS E PRÓXIMAS AÇÕES', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 1140, y: 335, w: 30, h: 22, text: '✏️', size: 12, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
+      { t: 'text', x: 110, y: 365, w: 1060, h: 265, text: notes.next, size: 18, weight: 400, color: P.white, lineHeight: 1.55, edit: 'next', placeholder: 'Planejamento editorial e temas para os próximos posts (clique para escrever)' },
       ...band(true),
     ],
   })
@@ -849,7 +911,6 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
   return slides
 }
 
-/** Retorna os slides correspondentes ao modo selecionado (padrão ou avançado). */
 /** Retorna os slides correspondentes ao modo selecionado (padrão, avançado ou orgânico). */
 export function buildSlides(d: ReportData, notes: ReportNotes, mode: ReportMode = 'standard'): SlideSpec[] {
   if (mode === 'organic') return buildOrganicSlides(d, notes)

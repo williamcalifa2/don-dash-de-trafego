@@ -475,7 +475,6 @@ function Element({
   }
   if (el.edit && onEdit) {
     const key = el.edit
-    const isAnalysisOrNext = key === 'analysis' || key === 'next'
     return (
       <div style={{ ...pos, position: 'absolute' }}>
         <textarea
@@ -518,33 +517,6 @@ function Element({
             }
           }}
         />
-        {isAnalysisOrNext && onSmartAnalysis && (
-          <button
-            type="button"
-            onClick={e => { e.stopPropagation(); onSmartAnalysis(); }}
-            title="Preencher com análise inteligente baseada nos dados da Meta"
-            style={{
-              position: 'absolute',
-              top: -46,
-              right: 0,
-              background: '#6366F1',
-              color: '#FFFFFF',
-              border: 'none',
-              borderRadius: 20,
-              padding: '6px 14px',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              boxShadow: '0 2px 10px rgba(99,102,241,0.4)',
-              zIndex: 10,
-            }}
-          >
-            <Sparkles size={13} /> Gerar Análise Inteligente
-          </button>
-        )}
       </div>
     )
   }

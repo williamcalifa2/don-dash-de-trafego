@@ -133,12 +133,12 @@ describe('relatório mensal: slides', () => {
     notes: { objective: 'Posicionar como referência', goals: '- Alcance', analysis: '', next: '' },
   }
   const slides = buildSlides(data, data.notes)
-  it('10 slides, capa com mês e cliente, público, plataformas e textos da equipe editáveis', () => {
-    expect(slides.map(s => s.id)).toEqual(['cover', 'objective', 'organic', 'content', 'paid', 'audience', 'platforms', 'creatives', 'analysis', 'next'])
+  it('9 slides, capa com mês e cliente, público, plataformas e textos da equipe editáveis', () => {
+    expect(slides.map(s => s.id)).toEqual(['cover', 'objective', 'organic', 'content', 'paid', 'audience', 'platforms', 'creatives', 'next'])
     const cover = slides[0].els.filter(e => e.t === 'text').map(e => (e as { text: string }).text).join(' ')
     expect(cover).toContain('RESULTADOS DE AGOSTO DE 2026'); expect(cover).toContain('ADVOCACIA FONTANA')
     const editable = slides.flatMap(s => s.els).filter(e => e.t === 'text' && e.edit).map(e => (e as { edit: string }).edit)
-    expect(editable.sort()).toEqual(['analysis', 'goals', 'next', 'objective'])
+    expect(editable.sort()).toEqual(['goals', 'next', 'objective', 'pillar1', 'pillar2', 'pillar3'])
   })
   it('tudo cabe no palco 1280 x 720', () => {
     for (const s of slides) for (const e of s.els) { expect(e.x, `${s.id}`).toBeGreaterThanOrEqual(0); expect(e.y).toBeGreaterThanOrEqual(0); expect(e.x + e.w, `${s.id} x`).toBeLessThanOrEqual(1280); expect(e.y + e.h, `${s.id} y`).toBeLessThanOrEqual(720) }
