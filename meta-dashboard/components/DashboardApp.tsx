@@ -13,7 +13,8 @@ import { TvMode } from '@/components/TvMode'
 import { ReportTab } from '@/components/ReportTab'
 import { ReportStudio } from '@/components/ReportStudio'
 import { LeadToast } from '@/components/LeadToast'
-import { BudgetPacingModal } from '@/components/BudgetPacingModal'
+import { BudgetPacingPopover } from '@/components/BudgetPacingPopover'
+import { ClientGoalsTab } from '@/components/ClientGoalsTab'
 import { CalendarViewModal } from '@/components/CalendarViewModal'
 import { LeadsProvider, useLeadsData } from '@/lib/leadsContext'
 import { useLeadAlerts } from '@/lib/useLeadAlerts'
@@ -113,10 +114,9 @@ function Dashboard() {
   const [reportOpen, setReportOpen] = useState(false)
   const [monthlyOpen, setMonthlyOpen] = useState(false)
   const [monthlyMode, setMonthlyMode] = useState<ReportMode>('standard')
-  const [tab, setTab] = useState<'metrics' | 'funnel' | 'audience' | 'organic' | 'simulator' | 'leads'>('metrics')
+  const [tab, setTab] = useState<'metrics' | 'funnel' | 'audience' | 'organic' | 'simulator' | 'leads' | 'goals'>('metrics')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
-  const [pacingModalOpen, setPacingModalOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [tv, setTv] = useState(false)
   const [me, setMe] = useState<{ slug: string; name: string; logoUrl: string | null; platforms?: PlatformKey[]; authEnabled: boolean; admin?: boolean; role?: string | null } | null>(null)
@@ -402,15 +402,13 @@ function Dashboard() {
 
           <div className="hdr-sep" style={{ width: 1, height: 24, background: 'var(--border)' }} />
 
-          {/* Botão Budget Pacing redondo estilo Claude Code */}
-          <button
-            onClick={() => setPacingModalOpen(true)}
-            title="Controle de Ritmo de Verba (Budget Pacing)"
-            aria-label="Controle de Ritmo de Verba"
-            className="btn btn-outline btn-icon btn-sm"
-          >
-            <DollarSign size={16} strokeWidth={1.75} />
-          </button>
+          {/* Popover Ancorado de Ritmo de Verba (Budget Pacing) */}
+          <BudgetPacingPopover
+            campaigns={data?.campaigns || []}
+            currentSpend={s?.spend || 0}
+            currency={currency}
+            clientSlug={me?.slug}
+          />
 
           {/* Botão Calendário redondo igual aos outros */}
           <button
@@ -451,7 +449,7 @@ function Dashboard() {
       {/* Abas sublinhadas com Ações de Relatório */}
       <div className="no-print" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div className="tabs" role="tablist" style={{ borderBottom: 'none', marginBottom: 0 }}>
-          {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads']] as const).filter(([key]) => (key !== 'simulator' || !!me?.admin)).map(([key, label]) => (
+          {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads'], ['goals', 'Metas']] as const).filter(([key]) => (key !== 'simulator' || !!me?.admin)).map(([key, label]) => (
             <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
               {label}
               {key === 'leads' && staleCount > 0 && (
@@ -644,6 +642,7 @@ function Dashboard() {
       {tab === 'organic' && <OrganicTab preset="this_month" presetLabel="Este mês" canLink={me?.role === 'owner' || me?.role === 'admin'} slug={me?.slug} />}
       {tab === 'simulator' && me?.admin && <SimuladorTab summary={s ? (kind === 'form' ? s : { ...s, leads: s.results }) : undefined} currency={currency} />}
       {tab === 'leads' && <LeadsTab openId={openLeadId} onOpenConsumed={() => setOpenLeadId(null)} readOnly={me?.role === 'reader'} />}
+      {tab === 'goals' && <ClientGoalsTab slug={me?.slug || 'meta'} isStaff={isStaff} />}
       {!isLoading && tab === 'funnel' && !s && !error && (
         <div style={{ color: 'var(--text-3)', fontSize: 13, textAlign: 'center', padding: 40 }}>Carregando dados...</div>
       )}
@@ -766,17 +765,6 @@ function Dashboard() {
           currency={currency}
           kind={kind}
           leads={leadsApi.leads}
-        />
-      )}
-
-      {/* Budget Pacing Modal (Claude Code Style) */}
-      {pacingModalOpen && (
-        <BudgetPacingModal
-          onClose={() => setPacingModalOpen(false)}
-          campaigns={data?.campaigns || []}
-          currentSpend={s?.spend || 0}
-          currency={currency}
-          clientSlug={me?.slug}
         />
       )}
     </div>

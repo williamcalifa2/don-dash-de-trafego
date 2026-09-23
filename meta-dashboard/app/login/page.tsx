@@ -78,7 +78,7 @@ export default function LoginPage() {
 
       {/* Main Container */}
       <div style={{ width: '100%', maxWidth: 440, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
-        
+
         {/* Top Agency Branding & Logo */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center' }}>
           <div

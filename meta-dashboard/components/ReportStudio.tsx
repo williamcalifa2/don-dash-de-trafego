@@ -369,6 +369,110 @@ function SvgFunnel({ el }: { el: Extract<El, { t: 'funnel' }> }) {
   )
 }
 
+function EditableTextElement({
+  el,
+  pos,
+  onEdit,
+}: {
+  el: Extract<El, { t: 'text' }>
+  pos: React.CSSProperties
+  onEdit: (key: NonNullable<Extract<El, { t: 'text' }>['edit']>, val: string) => void
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const key = el.edit!
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        ...pos,
+        position: 'absolute',
+        overflow: 'hidden',
+        boxSizing: 'border-box',
+      }}
+    >
+      <textarea
+        ref={textareaRef}
+        aria-label={el.placeholder ?? 'Texto'}
+        value={el.text}
+        placeholder={el.placeholder}
+        onChange={e => onEdit(key, e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        spellCheck
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          boxSizing: 'border-box',
+          margin: 0,
+          padding: '6px 28px 6px 6px',
+          background: focused ? 'rgba(99, 102, 241, 0.08)' : hovered ? 'rgba(255, 255, 255, 0.03)' : 'transparent',
+          border: focused ? '1px dashed rgba(99, 102, 241, 0.7)' : hovered ? '1px dashed rgba(148, 163, 184, 0.35)' : '1px dashed transparent',
+          borderRadius: 8,
+          outline: 'none',
+          resize: 'none',
+          overflow: 'auto',
+          fontFamily: `${FONT}, system-ui, sans-serif`,
+          fontSize: el.size,
+          fontWeight: el.weight ?? 400,
+          color: el.color,
+          lineHeight: el.lineHeight ?? 1.45,
+          textAlign: el.align ?? 'left',
+          transition: 'all 0.15s ease',
+        }}
+      />
+
+      {/* Botão de Lápis vetor cinza profissional (conforme referência visual) */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          textareaRef.current?.focus()
+          textareaRef.current?.select()
+        }}
+        title="Clique para editar este texto"
+        aria-label="Editar texto"
+        style={{
+          position: 'absolute',
+          top: 4,
+          right: 4,
+          zIndex: 10,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 24,
+          height: 24,
+          borderRadius: 6,
+          background: focused ? 'rgba(99, 102, 241, 0.25)' : hovered ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.1)',
+          border: `1px solid ${focused ? 'rgba(129, 140, 248, 0.6)' : hovered ? 'rgba(148, 163, 184, 0.45)' : 'rgba(148, 163, 184, 0.22)'}`,
+          color: focused ? '#818CF8' : hovered ? '#FFFFFF' : '#94A3B8',
+          cursor: 'pointer',
+          padding: 0,
+          transition: 'all 0.15s ease',
+        }}
+      >
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+          <path d="m15 5 4 4" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
 /** Uma linha de texto/forma do slide. Com `onEdit`, os textos da equipe viram campos editáveis. */
 function Element({
   el,
@@ -474,51 +578,7 @@ function Element({
     )
   }
   if (el.edit && onEdit) {
-    const key = el.edit
-    return (
-      <div style={{ ...pos, position: 'absolute' }}>
-        <textarea
-          aria-label={el.placeholder ?? 'Texto'}
-          value={el.text}
-          placeholder={el.placeholder}
-          onChange={e => onEdit(key, e.target.value)}
-          spellCheck
-          style={{
-            ...text,
-            width: '100%',
-            height: '100%',
-            display: 'block',
-            background: 'transparent',
-            border: '1px dashed transparent',
-            borderRadius: 8,
-            padding: 8,
-            resize: 'none',
-            outline: 'none',
-            overflow: 'auto',
-            boxSizing: 'border-box',
-            transition: 'border-color 0.15s, background-color 0.15s',
-          }}
-          onFocus={e => {
-            e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.6)'
-            e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.06)'
-          }}
-          onBlur={e => {
-            e.currentTarget.style.borderColor = 'transparent'
-            e.currentTarget.style.backgroundColor = 'transparent'
-          }}
-          onMouseEnter={e => {
-            if (document.activeElement !== e.currentTarget) {
-              e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.3)'
-            }
-          }}
-          onMouseLeave={e => {
-            if (document.activeElement !== e.currentTarget) {
-              e.currentTarget.style.borderColor = 'transparent'
-            }
-          }}
-        />
-      </div>
-    )
+    return <EditableTextElement el={el} pos={pos} onEdit={onEdit} />
   }
   return <div style={text}><span style={{ width: '100%' }}>{el.text}</span></div>
 }

@@ -4,6 +4,7 @@ export interface ClientConfig {
   active: boolean // true = ativo (sincronizando), false = pausado (sem chamadas à API)
   strategicObjective?: string
   goalsPeriod?: string
+  funnelGoals?: string
   targetBudget?: number
   updatedAt?: string
 }
@@ -12,6 +13,7 @@ const DEFAULT_CONFIG: ClientConfig = {
   active: true,
   strategicObjective: '',
   goalsPeriod: '',
+  funnelGoals: '',
   targetBudget: undefined,
 }
 

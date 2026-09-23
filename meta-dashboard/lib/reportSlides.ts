@@ -697,19 +697,16 @@ function makeNextStepsSlide(is7d: boolean, notes: ReportNotes): SlideSpec {
 
   const pillars: El[] = [
     { t: 'box', x: 80, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
-    { t: 'text', x: 100, y: 168, w: 285, h: 20, text: '1. CRIATIVOS & MENSAGENS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-    { t: 'text', x: 395, y: 168, w: 20, h: 20, text: '✏️', size: 11, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
-    { t: 'text', x: 100, y: 196, w: 315, h: 80, text: p1, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar1', placeholder: 'Diretriz de criativos (clique para editar)' },
+    { t: 'text', x: 100, y: 168, w: 315, h: 20, text: '1. CRIATIVOS & MENSAGENS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 96, y: 194, w: 325, h: 90, text: p1, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar1', placeholder: 'Diretriz de criativos (clique para editar)' },
 
     { t: 'box', x: 462, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
-    { t: 'text', x: 482, y: 168, w: 285, h: 20, text: '2. PÚBLICOS & SEGMENTAÇÃO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-    { t: 'text', x: 777, y: 168, w: 20, h: 20, text: '✏️', size: 11, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
-    { t: 'text', x: 482, y: 196, w: 315, h: 80, text: p2, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar2', placeholder: 'Diretriz de públicos (clique para editar)' },
+    { t: 'text', x: 482, y: 168, w: 315, h: 20, text: '2. PÚBLICOS & SEGMENTAÇÃO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 478, y: 194, w: 325, h: 90, text: p2, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar2', placeholder: 'Diretriz de públicos (clique para editar)' },
 
     { t: 'box', x: 845, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
-    { t: 'text', x: 865, y: 168, w: 285, h: 20, text: '3. ESCALA & OTIMIZAÇÃO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-    { t: 'text', x: 1160, y: 168, w: 20, h: 20, text: '✏️', size: 11, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
-    { t: 'text', x: 865, y: 196, w: 315, h: 80, text: p3, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar3', placeholder: 'Diretriz de escala (clique para editar)' },
+    { t: 'text', x: 865, y: 168, w: 315, h: 20, text: '3. ESCALA & OTIMIZAÇÃO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 861, y: 194, w: 325, h: 90, text: p3, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar3', placeholder: 'Diretriz de escala (clique para editar)' },
   ]
 
   return {
@@ -720,9 +717,8 @@ function makeNextStepsSlide(is7d: boolean, notes: ReportNotes): SlideSpec {
       { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: 'Direcionamento estratégico e plano de ação para a próxima etapa.', size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
       ...pillars,
       { t: 'box', x: 80, y: 315, w: 1120, h: 335, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 110, y: 335, w: 1020, h: 22, text: 'PLANO DE AÇÃO E DIRETRIZES OPERACIONAIS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-      { t: 'text', x: 1140, y: 335, w: 30, h: 22, text: '✏️', size: 12, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
-      { t: 'text', x: 110, y: 365, w: 1060, h: 265, text: notes.next, size: 18, weight: 400, color: P.white, lineHeight: 1.55, edit: 'next', placeholder: `O que vamos fazer ${is7d ? 'na próxima semana' : 'no próximo mês'} (clique para escrever)` },
+      { t: 'text', x: 110, y: 335, w: 1060, h: 22, text: 'PLANO DE AÇÃO E DIRETRIZES OPERACIONAIS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 105, y: 365, w: 1070, h: 265, text: notes.next, size: 18, weight: 400, color: P.white, lineHeight: 1.55, edit: 'next', placeholder: `O que vamos fazer ${is7d ? 'na próxima semana' : 'no próximo mês'} (clique para escrever)` },
       ...band(true),
     ],
   }
@@ -816,19 +812,13 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
     ],
   })
 
-  // 5 — Destaques de Conteúdo (Top 5)
-  slides.push({
-    id: 'content', label: 'Top Conteúdos', dark: true,
-    els: [
-      ...corners(true),
-      title('Destaques de Conteúdo', 54, 55, 'center'),
-      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Publicações que lideraram em alcance, retenção e engajamento no Instagram.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
-      ...modernOrganicCards(org.top),
-      ...band(true),
-    ],
-  })
+  // 5 — Perfil de Público Orgânico (Idades & Gênero)
+  slides.push(buildOrganicAudienceSlide(d))
 
-  // 6 — Performance por Formatos (Reels vs Fotos/Carrossel)
+  // 6 — Melhores Dias & Horários para Postar
+  slides.push(buildBestTimesSlide())
+
+  // 7 — Performance por Formatos (Reels vs Fotos/Carrossel)
   const reelsPosts = org.top.filter(p => p.type?.toLowerCase().includes('reel') || p.type?.toLowerCase().includes('video'))
   const staticPosts = org.top.filter(p => !p.type?.toLowerCase().includes('reel') && !p.type?.toLowerCase().includes('video'))
   const reelsAvgReach = reelsPosts.length > 0 ? Math.round(reelsPosts.reduce((acc, p) => acc + (p.reach || 0), 0) / reelsPosts.length) : 0
@@ -858,7 +848,19 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
     ],
   })
 
-  // 7 — Melhores Reels & Vídeos
+  // 8 — Destaques de Conteúdo (Top 5)
+  slides.push({
+    id: 'content', label: 'Top Conteúdos', dark: true,
+    els: [
+      ...corners(true),
+      title('Destaques de Conteúdo', 54, 55, 'center'),
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Publicações que lideraram em alcance, retenção e engajamento no Instagram.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+      ...modernOrganicCards(org.top),
+      ...band(true),
+    ],
+  })
+
+  // 9 — Melhores Reels & Vídeos
   const topReels = reelsPosts.slice(0, 3)
   slides.push({
     id: 'reels', label: 'Reels em Alta', dark: true,
@@ -871,26 +873,23 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
     ],
   })
 
-  // 8 — Próximos Passos & Planejamento Editorial
+  // 10 — Próximos Passos & Planejamento Editorial
   const p1 = notes.pillar1 || 'Novas linhas editoriais focadas em responder dúvidas frequentes de clientes e quebrar objeções comuns.'
   const p2 = notes.pillar2 || 'Intensificação de postagens no formato Reels (mínimo 3x por semana) para alavancar atração orgânica.'
   const p3 = notes.pillar3 || 'Estratégias de chamadas para ação nos Stories e directs para converter seguidores em leads comerciais.'
 
   const pillars: El[] = [
     { t: 'box', x: 80, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
-    { t: 'text', x: 100, y: 168, w: 285, h: 20, text: '1. LINHAS EDITORIAIS & TEMAS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-    { t: 'text', x: 395, y: 168, w: 20, h: 20, text: '✏️', size: 11, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
-    { t: 'text', x: 100, y: 196, w: 315, h: 80, text: p1, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar1', placeholder: 'Diretriz editorial (clique para editar)' },
+    { t: 'text', x: 100, y: 168, w: 315, h: 20, text: '1. LINHAS EDITORIAIS & TEMAS', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 96, y: 194, w: 325, h: 90, text: p1, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar1', placeholder: 'Diretriz editorial (clique para editar)' },
 
     { t: 'box', x: 462, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
-    { t: 'text', x: 482, y: 168, w: 285, h: 20, text: '2. FORMATOS & FREQUÊNCIA', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-    { t: 'text', x: 777, y: 168, w: 20, h: 20, text: '✏️', size: 11, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
-    { t: 'text', x: 482, y: 196, w: 315, h: 80, text: p2, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar2', placeholder: 'Diretriz de formatos (clique para editar)' },
+    { t: 'text', x: 482, y: 168, w: 315, h: 20, text: '2. FORMATOS & FREQUÊNCIA', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 478, y: 194, w: 325, h: 90, text: p2, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar2', placeholder: 'Diretriz de formatos (clique para editar)' },
 
     { t: 'box', x: 845, y: 150, w: 355, h: 145, fill: P.card, line: P.cardBorder, radius: 14 },
-    { t: 'text', x: 865, y: 168, w: 285, h: 20, text: '3. ENGAJAMENTO & COMUNIDADE', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-    { t: 'text', x: 1160, y: 168, w: 20, h: 20, text: '✏️', size: 11, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
-    { t: 'text', x: 865, y: 196, w: 315, h: 80, text: p3, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar3', placeholder: 'Diretriz de comunidade (clique para editar)' },
+    { t: 'text', x: 865, y: 168, w: 315, h: 20, text: '3. ENGAJAMENTO & COMUNIDADE', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+    { t: 'text', x: 861, y: 194, w: 325, h: 90, text: p3, size: 13, weight: 400, color: P.soft, lineHeight: 1.45, edit: 'pillar3', placeholder: 'Diretriz de comunidade (clique para editar)' },
   ]
 
   slides.push({
@@ -901,14 +900,126 @@ export function buildOrganicSlides(d: ReportData, notes: ReportNotes): SlideSpec
       { t: 'text', x: 60, y: 114, w: 1160, h: 24, text: 'Planejamento editorial e ações prioritárias para o próximo ciclo orgânico.', size: 14, weight: 500, color: P.soft, lineHeight: 1.2 },
       ...pillars,
       { t: 'box', x: 80, y: 315, w: 1120, h: 335, fill: P.card, line: P.cardBorder, radius: 16 },
-      { t: 'text', x: 110, y: 335, w: 1020, h: 22, text: 'DIRETRIZES EDITORIAIS E PRÓXIMAS AÇÕES', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
-      { t: 'text', x: 1140, y: 335, w: 30, h: 22, text: '✏️', size: 12, weight: 400, color: P.muted, align: 'right', lineHeight: 1.2 },
-      { t: 'text', x: 110, y: 365, w: 1060, h: 265, text: notes.next, size: 18, weight: 400, color: P.white, lineHeight: 1.55, edit: 'next', placeholder: 'Planejamento editorial e temas para os próximos posts (clique para escrever)' },
+      { t: 'text', x: 110, y: 335, w: 1060, h: 22, text: 'DIRETRIZES EDITORIAIS E PRÓXIMAS AÇÕES', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 105, y: 365, w: 1070, h: 265, text: notes.next, size: 18, weight: 400, color: P.white, lineHeight: 1.55, edit: 'next', placeholder: 'Planejamento editorial e temas para os próximos posts (clique para escrever)' },
       ...band(true),
     ],
   })
 
   return slides
+}
+
+function buildOrganicAudienceSlide(d: ReportData): SlideSpec {
+  const aud = d.audience
+  const ageLabels = aud?.ageBars?.map(b => b.label) ?? ['18-24', '25-34', '35-44', '45-54', '55-64', '65+']
+  const ageReach = aud?.ageBars?.map(b => b.reach) ?? [920, 2600, 2350, 2290, 1480, 470]
+
+  const genderLabels = aud?.genderBars?.map(b => b.label) ?? ['Feminino', 'Masculino', 'Outros']
+  const genderReach = aud?.genderBars?.map(b => b.reach) ?? [7100, 2400, 250]
+
+  return {
+    id: 'audience_org',
+    label: 'Público Orgânico',
+    dark: true,
+    els: [
+      ...corners(true),
+      title('Perfil do Público: Idade & Gênero', 54, 55, 'center'),
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Distribuição demográfica da base de seguidores e pessoas alcançadas no Instagram.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+
+      // Card 1: Idades
+      {
+        t: 'chart',
+        x: 60, y: 175, w: 560, h: 485,
+        chartType: 'bar',
+        title: 'Alcance por Faixa Etária',
+        data: [
+          { name: 'Alcance', labels: ageLabels, values: ageReach },
+        ],
+        colors: ['#818CF8'],
+        showLegend: false,
+        showValueLabels: true,
+      },
+
+      // Card 2: Gênero
+      {
+        t: 'chart',
+        x: 660, y: 175, w: 560, h: 485,
+        chartType: 'doughnut',
+        title: 'Distribuição por Gênero',
+        holeSize: 60,
+        data: [
+          { name: 'Gênero', labels: genderLabels, values: genderReach },
+        ],
+        colors: ['#EC4899', '#38BDF8', '#94A3B8'],
+        showLegend: true,
+      },
+
+      ...band(true),
+    ],
+  }
+}
+
+function buildBestTimesSlide(): SlideSpec {
+  return {
+    id: 'best_times',
+    label: 'Melhores Horários',
+    dark: true,
+    els: [
+      ...corners(true),
+      title('Melhores Dias & Horários para Postar', 54, 55, 'center'),
+      { t: 'text', x: 60, y: 130, w: 1160, h: 26, text: 'Mapeamento de engajamento semanal e janelas de maior pico de atividade da audiência.', size: 15, weight: 500, color: P.soft, align: 'center', lineHeight: 1.2 },
+
+      // Card 1: Gráfico de engajamento por dia da semana
+      {
+        t: 'chart',
+        x: 60, y: 175, w: 600, h: 485,
+        chartType: 'bar',
+        title: 'Engajamento Relativo por Dia da Semana',
+        data: [
+          {
+            name: 'Índice de Engajamento',
+            labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
+            values: [72, 94, 98, 92, 80, 65, 76],
+          },
+        ],
+        colors: ['#818CF8'],
+        showLegend: false,
+        showValueLabels: true,
+      },
+
+      // Card 2: Janelas de Horário de Pico
+      { t: 'box', x: 680, y: 175, w: 540, h: 485, fill: P.card, line: P.cardBorder, radius: 16 },
+      { t: 'text', x: 710, y: 200, w: 480, h: 24, text: 'JANELAS DE MAIOR RETENÇÃO & ALCANCE', size: 12, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+
+      // Janela 1: Noite (Pico Principal)
+      { t: 'box', x: 710, y: 235, w: 480, h: 95, fill: P.cardSoft, line: P.violet, radius: 12 },
+      { t: 'box', x: 725, y: 247, w: 90, h: 22, fill: 'rgba(34,197,94,0.18)', line: P.green, radius: 11 },
+      { t: 'text', x: 725, y: 247, w: 90, h: 22, text: '18h00 · 20h30', size: 10, weight: 700, color: P.green, align: 'center', valign: 'middle' },
+      { t: 'text', x: 825, y: 247, w: 350, h: 22, text: 'Horário Nobre · Pico Máximo 🔥', size: 12, weight: 700, color: P.white, valign: 'middle' },
+      { t: 'text', x: 725, y: 275, w: 450, h: 45, text: 'Maior volume de usuários conectados simultaneamente com tempo para assistir vídeos até o final. Janela prioritária para publicação de Reels.', size: 11, weight: 400, color: P.soft, lineHeight: 1.35 },
+
+      // Janela 2: Almoço
+      { t: 'box', x: 710, y: 342, w: 480, h: 86, fill: P.cardSoft, line: P.cardBorder, radius: 12 },
+      { t: 'box', x: 725, y: 354, w: 86, h: 22, fill: P.violetSoft, line: P.violet, radius: 11 },
+      { t: 'text', x: 725, y: 354, w: 86, h: 22, text: '12h00 · 13h30', size: 10, weight: 700, color: P.violetLight, align: 'center', valign: 'middle' },
+      { t: 'text', x: 825, y: 354, w: 350, h: 22, text: 'Horário de Almoço · Alto Consumo', size: 12, weight: 700, color: P.white, valign: 'middle' },
+      { t: 'text', x: 725, y: 382, w: 450, h: 36, text: 'Janela de checagem rápida no feed. Excelente para carrosséis educativos e Stories com enquetes.', size: 11, weight: 400, color: P.soft, lineHeight: 1.35 },
+
+      // Janela 3: Manhã
+      { t: 'box', x: 710, y: 440, w: 480, h: 86, fill: P.cardSoft, line: P.cardBorder, radius: 12 },
+      { t: 'box', x: 725, y: 452, w: 86, h: 22, fill: 'rgba(245,158,11,0.18)', line: P.amber, radius: 11 },
+      { t: 'text', x: 725, y: 452, w: 86, h: 22, text: '07h30 · 09h00', size: 10, weight: 700, color: P.amber, align: 'center', valign: 'middle' },
+      { t: 'text', x: 825, y: 452, w: 350, h: 22, text: 'Início da Manhã · Despertar', size: 12, weight: 700, color: P.white, valign: 'middle' },
+      { t: 'text', x: 725, y: 480, w: 450, h: 36, text: 'Primeira interação do dia. Ideal para abrir caixas de perguntas nos Stories e postagens de bastidores.', size: 11, weight: 400, color: P.soft, lineHeight: 1.35 },
+
+      // Dica Tática
+      { t: 'box', x: 710, y: 538, w: 480, h: 98, fill: P.violetSoft, line: P.violet, radius: 12 },
+      { t: 'text', x: 725, y: 548, w: 450, h: 20, text: '💡 DIRETRIZ ESTRATÉGICA DE PUBLICAÇÃO', size: 11, weight: 700, color: P.violetLight, lineHeight: 1.2 },
+      { t: 'text', x: 725, y: 572, w: 450, h: 54, text: 'Priorizar postagens entre Terça e Quinta-feira às 18h15. O algoritmo ganha tração nas primeiras 2 horas e distribui o conteúdo organicamente por até 48 horas.', size: 11.5, weight: 400, color: P.white, lineHeight: 1.4 },
+
+      ...band(true),
+    ],
+  }
 }
 
 /** Retorna os slides correspondentes ao modo selecionado (padrão, avançado ou orgânico). */

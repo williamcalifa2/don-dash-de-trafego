@@ -74,7 +74,7 @@ function CopyIconButton({ value, label }: { value: string; label: string }) {
   const [done, setDone] = useState(false)
   return (
     <button type="button" className="btn btn-ghost btn-icon btn-sm" title={done ? 'Copiado' : label} aria-label={label} onClick={async () => {
-      try { await navigator.clipboard.writeText(value); setDone(true); setTimeout(() => setDone(false), 1500) } catch {}
+      try { await navigator.clipboard.writeText(value); setDone(true); setTimeout(() => setDone(false), 1500) } catch { }
     }}>
       {done ? <Check size={16} strokeWidth={1.75} color="var(--green)" /> : <Copy size={16} strokeWidth={1.75} />}
     </button>
@@ -214,7 +214,7 @@ function MemberTokenModal({ email, token, role, onClose }: { email: string; toke
         <CopyIconButton value={token} label="Copiar token" />
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-        <button className="btn btn-outline" onClick={async () => { try { await navigator.clipboard.writeText(inviteMessage(email, token, role)); setDone(true); setTimeout(() => setDone(false), 2000) } catch {} }}>
+        <button className="btn btn-outline" onClick={async () => { try { await navigator.clipboard.writeText(inviteMessage(email, token, role)); setDone(true); setTimeout(() => setDone(false), 2000) } catch { } }}>
           {done ? <Check size={16} strokeWidth={1.75} color="var(--green)" /> : <Copy size={16} strokeWidth={1.75} />} {done ? 'Mensagem copiada' : 'Copiar mensagem'}
         </button>
         <button className="btn btn-primary" onClick={onClose}>Concluir</button>
@@ -325,25 +325,19 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  // Configurações unificadas do perfil do cliente
+  // Status Ativo/Pausado da conta
   const [active, setActive] = useState<boolean>(initial?.active !== false)
-  const [strategicObjective, setStrategicObjective] = useState('')
-  const [goalsPeriod, setGoalsPeriod] = useState('')
-  const [targetBudget, setTargetBudget] = useState('')
 
   useEffect(() => {
     if (!initial?.slug) return
     let alive = true
     fetch(`/api/admin/clients/${initial.slug}/config`)
       .then(r => r.ok ? r.json() : null)
-      .then((cfg: { active?: boolean; strategicObjective?: string; goalsPeriod?: string; targetBudget?: number } | null) => {
+      .then((cfg: { active?: boolean } | null) => {
         if (!alive || !cfg) return
         if (cfg.active !== undefined) setActive(cfg.active !== false)
-        if (cfg.strategicObjective) setStrategicObjective(cfg.strategicObjective)
-        if (cfg.goalsPeriod) setGoalsPeriod(cfg.goalsPeriod)
-        if (cfg.targetBudget != null) setTargetBudget(String(cfg.targetBudget))
       })
-      .catch(() => {})
+      .catch(() => { })
     return () => { alive = false }
   }, [initial?.slug])
 
@@ -364,14 +358,8 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
 
     const savedSlug = initial?.slug ?? (r.data as { slug: string }).slug
 
-    // Salva configurações unificadas de status, metas e verba
-    const budgetNum = targetBudget.trim() ? parseFloat(targetBudget.replace(',', '.')) : undefined
-    await api(`/api/admin/clients/${savedSlug}/config`, 'POST', {
-      active,
-      strategicObjective: strategicObjective.trim(),
-      goalsPeriod: goalsPeriod.trim(),
-      targetBudget: budgetNum != null && !isNaN(budgetNum) ? budgetNum : null,
-    }).catch(() => {})
+    // Salva status do cliente
+    await api(`/api/admin/clients/${savedSlug}/config`, 'POST', { active }).catch(() => { })
 
     setSaving(false)
     onDone({ slug: savedSlug, name, code: (r.data as { code?: string }).code, imported: (r.data as { imported?: number | null }).imported })
@@ -456,57 +444,11 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
         {logoError && <p role="alert" style={{ fontSize: 12, color: 'var(--red)', marginTop: 6 }}>{logoError}</p>}
       </div>
 
-      {/* Estratégia, Metas e Apresentação Executiva */}
-      <div style={{ borderTop: '1px solid var(--border-soft)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ ...eyebrow, color: 'var(--accent)' }}>Estratégia & Metas (Apresentação PPTX)</div>
-
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <label htmlFor="c-strat" style={{ ...labelStyle, marginBottom: 0 }}>Objetivo Estratégico</label>
-            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Slide 2 do relatório</span>
-          </div>
-          <textarea
-            id="c-strat"
-            className="field"
-            rows={2}
-            placeholder="Ex.: Consolidar o posicionamento e acelerar a captação de leads qualificados."
-            value={strategicObjective}
-            onChange={e => setStrategicObjective(e.target.value)}
-            style={{ width: '100%', resize: 'vertical', fontSize: 13, padding: '8px 10px', lineHeight: 1.4 }}
-          />
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <label htmlFor="c-goals" style={labelStyle}>Metas do Período</label>
-            <input
-              id="c-goals"
-              className="field"
-              placeholder="Ex.: 150 leads a CPL < R$ 25"
-              value={goalsPeriod}
-              onChange={e => setGoalsPeriod(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="c-budget" style={labelStyle}>Meta de Verba Mensal (R$)</label>
-            <input
-              id="c-budget"
-              className="field"
-              type="number"
-              placeholder="Ex.: 5000"
-              value={targetBudget}
-              onChange={e => setTargetBudget(e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
-
       {error && <p role="alert" style={{ fontSize: 14, color: 'var(--red)' }}>{error}</p>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: 4 }}>
         <button type="button" className="btn btn-outline" onClick={onCancel}>Cancelar</button>
         <button type="submit" className="btn btn-primary" disabled={saving || !name || (!initial && !slug)}>
-          {saving ? 'Salvando…' : initial ? 'Salvar Perfil' : 'Criar e gerar código'}
+          {saving ? 'Salvando…' : initial ? 'Salvar' : 'Criar e gerar código'}
         </button>
       </div>
     </form>
@@ -642,8 +584,8 @@ export default function AdminPage() {
   const [cardMetrics, setCardMetrics] = useState<Record<string, unknown>>({})
   // Período único do painel: muda a visão geral, os números do topo e os cards de todos os clientes.
   const [period, setPeriodState] = useState<AdminPeriod>(7)
-  useEffect(() => { try { const v = parseAdminPeriod(localStorage.getItem('adminPeriod')); if (v) setPeriodState(v) } catch {} }, [])
-  const setPeriod = (p: AdminPeriod) => { setPeriodState(p); try { localStorage.setItem('adminPeriod', String(p)) } catch {} }
+  useEffect(() => { try { const v = parseAdminPeriod(localStorage.getItem('adminPeriod')); if (v) setPeriodState(v) } catch { } }, [])
+  const setPeriod = (p: AdminPeriod) => { setPeriodState(p); try { localStorage.setItem('adminPeriod', String(p)) } catch { } }
   const periodNoun = ADMIN_PERIODS.find(x => x.v === period)?.noun ?? '7 dias'
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'todos' | 'ativos' | 'pausados' | 'acesso' | 'sem' | 'bloqueados'>('todos')
@@ -738,11 +680,11 @@ export default function AdminPage() {
     return clients.filter(c =>
       (!q || c.name.toLowerCase().includes(q) || c.slug.includes(q)) &&
       (filter === 'todos' ||
-       (filter === 'ativos' && c.active !== false) ||
-       (filter === 'pausados' && c.active === false) ||
-       (filter === 'acesso' && c.hasCode) ||
-       (filter === 'sem' && !c.hasCode) ||
-       (filter === 'bloqueados' && c.locked)))
+        (filter === 'ativos' && c.active !== false) ||
+        (filter === 'pausados' && c.active === false) ||
+        (filter === 'acesso' && c.hasCode) ||
+        (filter === 'sem' && !c.hasCode) ||
+        (filter === 'bloqueados' && c.locked)))
   }, [clients, query, filter])
 
   const themeButton = (
