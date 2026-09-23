@@ -151,7 +151,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
         display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
       }}>
         <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-1)', marginRight: 4 }}>Campanhas</span>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <div className="chip-scroll" style={{ gap: 6 }}>
           {statuses.map(s => (
             <button key={s} onClick={() => setFilterStatus(s)} style={{
               padding: '4px 12px', fontSize: 12, fontWeight: 600, borderRadius: 9999, cursor: 'pointer',
@@ -171,7 +171,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
       </div>
 
       {/* Table */}
-      <div style={{ overflowX: 'auto' }}>
+      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 760 }}>
           <thead>
             <tr>

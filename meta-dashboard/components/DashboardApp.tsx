@@ -277,8 +277,8 @@ function Dashboard() {
       )}
 
       {/* Cabeçalho: bloco 56×56 + título 24 + subtítulo 14 */}
-      <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
+      <div className="no-print dash-header">
+        <div className="dash-client-info" style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
           {me?.logoUrl ? (
             <img
               src={me.logoUrl}
@@ -321,134 +321,149 @@ function Dashboard() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {/* Seletor de Período Único Dropdown */}
-          <div ref={presetMenuRef} style={{ position: 'relative' }}>
-            <button
-              type="button"
-              onClick={() => setPresetMenuOpen(v => !v)}
-              className="btn btn-outline btn-sm"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '0 12px',
-                height: 32,
-                fontSize: 13,
-                fontWeight: 600,
-                color: 'var(--text-1)',
-              }}
-              title="Selecionar período"
-              aria-expanded={presetMenuOpen}
-              aria-haspopup="listbox"
-            >
-              <span>{PRESETS.find(p => p.value === (tab === 'organic' ? 'this_month' : preset))?.label ?? 'Período'}</span>
-              <ChevronDown size={14} style={{ opacity: 0.7, transform: presetMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
-            </button>
-
-            {presetMenuOpen && (
-              <div
-                role="listbox"
+        <div className="dash-actions">
+          <div className="dash-actions-row1">
+            {/* Seletor de Período Único Dropdown */}
+            <div ref={presetMenuRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setPresetMenuOpen(v => !v)}
+                className="btn btn-outline btn-sm"
                 style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 4px)',
-                  left: 0,
-                  zIndex: 100,
-                  minWidth: 150,
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 12,
-                  boxShadow: 'var(--shadow-soft)',
-                  padding: 4,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 2,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '0 12px',
+                  height: 34,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--text-1)',
                 }}
+                title="Selecionar período"
+                aria-expanded={presetMenuOpen}
+                aria-haspopup="listbox"
               >
-                {(tab === 'organic' ? PRESETS.filter(pr => pr.value === 'this_month') : PRESETS).map(pr => {
-                  const active = (tab === 'organic' ? 'this_month' : preset) === pr.value
-                  return (
-                    <button
-                      key={pr.value}
-                      type="button"
-                      role="option"
-                      aria-selected={active}
-                      onClick={() => {
-                        setPreset(pr.value)
-                        setPresetMenuOpen(false)
-                      }}
-                      className="btn btn-ghost btn-sm"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        textAlign: 'left',
-                        padding: '6px 10px',
-                        fontSize: 12,
-                        fontWeight: active ? 700 : 500,
-                        color: active ? 'var(--accent)' : 'var(--text-1)',
-                        background: active ? 'var(--accent-soft)' : 'transparent',
-                        borderRadius: 8,
-                      }}
-                    >
-                      <span>{pr.label}</span>
-                      {active && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
+                <span>{PRESETS.find(p => p.value === (tab === 'organic' ? 'this_month' : preset))?.label ?? 'Período'}</span>
+                <ChevronDown size={14} style={{ opacity: 0.7, transform: presetMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+              </button>
+
+              {presetMenuOpen && (
+                <div
+                  role="listbox"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    zIndex: 100,
+                    minWidth: 150,
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                    boxShadow: 'var(--shadow-soft)',
+                    padding: 4,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2,
+                  }}
+                >
+                  {(tab === 'organic' ? PRESETS.filter(pr => pr.value === 'this_month') : PRESETS).map(pr => {
+                    const active = (tab === 'organic' ? 'this_month' : preset) === pr.value
+                    return (
+                      <button
+                        key={pr.value}
+                        type="button"
+                        role="option"
+                        aria-selected={active}
+                        onClick={() => {
+                          setPreset(pr.value)
+                          setPresetMenuOpen(false)
+                        }}
+                        className="btn btn-ghost btn-sm"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          textAlign: 'left',
+                          padding: '6px 10px',
+                          fontSize: 12,
+                          fontWeight: active ? 700 : 500,
+                          color: active ? 'var(--accent)' : 'var(--text-1)',
+                          background: active ? 'var(--accent-soft)' : 'transparent',
+                          borderRadius: 8,
+                        }}
+                      >
+                        <span>{pr.label}</span>
+                        {active && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Botão Atualizar exclusivo para mobile (lado a lado com o período) */}
+            <button
+              onClick={handleManualRefresh}
+              disabled={isValidating || refreshing}
+              className="btn btn-soft btn-sm mobile-only"
+              style={{ flexShrink: 0 }}
+            >
+              <RefreshCw size={15} strokeWidth={1.75} style={{ animation: (isValidating || refreshing) ? 'spin 1s linear infinite' : undefined }} />
+              Atualizar
+            </button>
           </div>
 
           <div className="hdr-sep" style={{ width: 1, height: 24, background: 'var(--border)' }} />
 
-          {/* Popover Ancorado de Ritmo de Verba (Budget Pacing) */}
-          <BudgetPacingPopover
-            campaigns={data?.campaigns || []}
-            currentSpend={s?.spend || 0}
-            currency={currency}
-            clientSlug={me?.slug}
-          />
+          <div className="dash-actions-row2">
+            {/* Popover Ancorado de Ritmo de Verba (Budget Pacing) */}
+            <BudgetPacingPopover
+              campaigns={data?.campaigns || []}
+              currentSpend={s?.spend || 0}
+              currency={currency}
+              clientSlug={me?.slug}
+            />
 
-          {/* Botão Calendário redondo igual aos outros */}
-          <button
-            onClick={() => setCalendarOpen(true)}
-            title="Calendário de Performance"
-            aria-label="Calendário de Performance"
-            className="btn btn-outline btn-icon btn-sm"
-          >
-            <CalendarDays size={16} strokeWidth={1.75} />
-          </button>
-
-          <button onClick={() => setPickerOpen(true)} title="Personalizar métricas" aria-label="Personalizar métricas" className="btn btn-outline btn-icon btn-sm">
-            <Settings2 size={16} strokeWidth={1.75} />
-          </button>
-          <button onClick={alerts.toggle} aria-pressed={alerts.enabled}
-            title={alerts.enabled ? 'Alertas de lead novo ligados (som e notificação)' : 'Ligar som e notificação de lead novo'}
-            aria-label="Alertas de lead novo" className="btn btn-outline btn-icon btn-sm">
-            {alerts.enabled ? <Bell size={16} strokeWidth={1.75} color="var(--accent)" /> : <BellOff size={16} strokeWidth={1.75} />}
-          </button>
-          <button onClick={enterTv} title="Modo TV" aria-label="Modo TV" className="btn btn-outline btn-icon btn-sm">
-            <Tv size={16} strokeWidth={1.75} />
-          </button>
-          <button onClick={toggleTheme} title="Alternar tema" aria-label="Alternar tema" className="btn btn-outline btn-icon btn-sm">
-            {theme === 'dark' ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}
-          </button>
-          <button onClick={handleManualRefresh} disabled={isValidating || refreshing} className="btn btn-soft btn-sm">
-            <RefreshCw size={16} strokeWidth={1.75} style={{ animation: (isValidating || refreshing) ? 'spin 1s linear infinite' : undefined }} />
-            Atualizar
-          </button>
-          {me?.authEnabled && (
-            <button onClick={logout} title="Sair" aria-label="Sair" className="btn btn-ghost btn-icon btn-sm">
-              <LogOut size={16} strokeWidth={1.75} />
+            {/* Botão Calendário redondo igual aos outros */}
+            <button
+              onClick={() => setCalendarOpen(true)}
+              title="Calendário de Performance"
+              aria-label="Calendário de Performance"
+              className="btn btn-outline btn-icon btn-sm"
+            >
+              <CalendarDays size={16} strokeWidth={1.75} />
             </button>
-          )}
+
+            <button onClick={() => setPickerOpen(true)} title="Personalizar métricas" aria-label="Personalizar métricas" className="btn btn-outline btn-icon btn-sm">
+              <Settings2 size={16} strokeWidth={1.75} />
+            </button>
+            <button onClick={alerts.toggle} aria-pressed={alerts.enabled}
+              title={alerts.enabled ? 'Alertas de lead novo ligados (som e notificação)' : 'Ligar som e notificação de lead novo'}
+              aria-label="Alertas de lead novo" className="btn btn-outline btn-icon btn-sm">
+              {alerts.enabled ? <Bell size={16} strokeWidth={1.75} color="var(--accent)" /> : <BellOff size={16} strokeWidth={1.75} />}
+            </button>
+            <button onClick={enterTv} title="Modo TV" aria-label="Modo TV" className="btn btn-outline btn-icon btn-sm mobile-hide">
+              <Tv size={16} strokeWidth={1.75} />
+            </button>
+            <button onClick={toggleTheme} title="Alternar tema" aria-label="Alternar tema" className="btn btn-outline btn-icon btn-sm">
+              {theme === 'dark' ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}
+            </button>
+            <button onClick={handleManualRefresh} disabled={isValidating || refreshing} className="btn btn-soft btn-sm desktop-only">
+              <RefreshCw size={16} strokeWidth={1.75} style={{ animation: (isValidating || refreshing) ? 'spin 1s linear infinite' : undefined }} />
+              Atualizar
+            </button>
+            {me?.authEnabled && (
+              <button onClick={logout} title="Sair" aria-label="Sair" className="btn btn-ghost btn-icon btn-sm">
+                <LogOut size={16} strokeWidth={1.75} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Abas sublinhadas com Ações de Relatório */}
-      <div className="no-print" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <div className="tabs" role="tablist" style={{ borderBottom: 'none', marginBottom: 0 }}>
+      <div className="no-print dash-tabs-bar">
+        <div className="tabs dash-tabs-nav" role="tablist">
           {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads'], ['goals', 'Metas']] as const).filter(([key]) => (key !== 'simulator' || !!me?.admin)).map(([key, label]) => (
             <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
               {label}
@@ -460,9 +475,9 @@ function Dashboard() {
         </div>
 
         {/* Botão de Relatórios (PPTX apenas para Admin/Membros; Cliente vê apenas Baixar Relatório) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 6 }}>
+        <div className="dash-report-action" style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 6 }}>
           {isStaff ? (
-            <div ref={reportMenuRef} style={{ position: 'relative' }}>
+            <div ref={reportMenuRef} style={{ position: 'relative', width: '100%' }}>
               <button
                 className="btn btn-outline btn-sm"
                 onClick={() => setReportMenuOpen(v => !v)}
@@ -685,7 +700,7 @@ function Dashboard() {
 
       {/* Daily chart */}
       {!isLoading && d && tab === 'metrics' && (
-        <div className="card" style={{ padding: 24, marginBottom: 24 }}>
+        <div className="card daily-chart-card" style={{ padding: 24, marginBottom: 24 }}>
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Evolução diária</div>
           <DailyChart daily={d} currency={currency} kind={kind} />
         </div>

@@ -154,7 +154,7 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="card"
+        className="card calendar-modal-box"
         style={{
           width: '100%',
           maxWidth: 1040,
@@ -171,6 +171,7 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
       >
         {/* Header */}
         <div
+          className="calendar-modal-header"
           style={{
             padding: '16px 20px',
             borderBottom: '1px solid var(--border-soft)',
@@ -404,6 +405,7 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                   <div
                     key={cell.dateStr}
                     onClick={() => setSelectedDateStr(cell.dateStr)}
+                    className="calendar-day-cell"
                     style={{
                       minHeight: 84,
                       padding: '8px 6px',

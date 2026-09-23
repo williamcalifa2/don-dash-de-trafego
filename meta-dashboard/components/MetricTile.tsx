@@ -38,7 +38,7 @@ export function MetricTile({ label, value, sparkData, prevValue, currentRaw, low
   const hasSpark = sparkData && sparkData.length > 1
 
   return (
-    <div className="card" style={{
+    <div className="card metric-tile-card" style={{
       padding: 16,
       display: 'flex',
       flexDirection: 'column',
@@ -57,7 +57,7 @@ export function MetricTile({ label, value, sparkData, prevValue, currentRaw, low
       {/* Bottom: value + delta | sparkline */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <div style={{
+          <div className="metric-tile-value" style={{
             fontSize: 20, fontWeight: 700, color: 'var(--text-1)',
             fontVariantNumeric: 'tabular-nums', lineHeight: 1.2,
           }}>
