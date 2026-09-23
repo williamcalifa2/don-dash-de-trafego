@@ -829,31 +829,21 @@ export default function AdminPage() {
 
   return (
     <main className="page">
-      <header className="admin-header">
-        <div className="admin-header-main">
-          <MetaSyncPopover logoUrl={brandLogo} onLogoChange={canManage ? setBrandLogo : undefined} canEditBrand={canManage} />
-          <div style={{ flex: 1, minWidth: 160 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2 }}>Painel de controle</h1>
-            <p className="desktop-only" style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>Acompanhe os clientes, os leads e os acessos em um só lugar</p>
-          </div>
-          <div className="admin-header-quick-actions">
-            {themeButton}
-            <button className="btn btn-outline btn-icon btn-sm" onClick={logout} aria-label="Sair" title="Sair"><LogOut size={16} strokeWidth={1.75} /></button>
-          </div>
+      <header style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+        <MetaSyncPopover logoUrl={brandLogo} onLogoChange={canManage ? setBrandLogo : undefined} canEditBrand={canManage} />
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2 }}>Painel de controle</h1>
+          <p style={{ fontSize: 14, color: 'var(--text-2)' }}>Acompanhe os clientes, os leads e os acessos em um só lugar</p>
         </div>
-
-        <div className="admin-header-toolbar">
-          <div className="admin-header-tools-left">
-            <PeriodMenu value={period} onChange={setPeriod} />
-            {canOperate && <button className="btn btn-outline btn-sm" onClick={refreshAll} disabled={refreshing} aria-label="Atualizar todos os cards agora" title="Busca agora na Meta os números de todos os clientes">
-              <RefreshCw size={16} strokeWidth={1.75} className={refreshing ? 'spin' : undefined} />
-              <span className="mobile-hide"> {refreshing ? 'Atualizando…' : 'Atualizar tudo'}</span>
-            </button>}
-            {canManage && <ClientCodesMenu clients={clients} />}
-            {canManage && <button className="btn btn-outline btn-icon btn-sm" onClick={() => setModal({ kind: 'team' })} aria-label="Equipe" title="Equipe"><UserPlus size={16} strokeWidth={1.75} /></button>}
-          </div>
-          {canManage && <button className="btn btn-primary btn-sm admin-btn-new" onClick={() => setModal({ kind: 'new' })}><Plus size={16} strokeWidth={1.75} /> Novo cliente</button>}
-        </div>
+        <PeriodMenu value={period} onChange={setPeriod} />
+        {canOperate && <button className="btn btn-outline btn-sm" onClick={refreshAll} disabled={refreshing} aria-label="Atualizar todos os cards agora" title="Busca agora na Meta os números de todos os clientes">
+          <RefreshCw size={16} strokeWidth={1.75} className={refreshing ? 'spin' : undefined} /> {refreshing ? 'Atualizando…' : 'Atualizar tudo'}
+        </button>}
+        {canManage && <ClientCodesMenu clients={clients} />}
+        {canManage && <button className="btn btn-outline btn-icon btn-sm" onClick={() => setModal({ kind: 'team' })} aria-label="Equipe" title="Equipe"><UserPlus size={16} strokeWidth={1.75} /></button>}
+        {themeButton}
+        {canManage && <button className="btn btn-primary" onClick={() => setModal({ kind: 'new' })}><Plus size={16} strokeWidth={1.75} /> Novo cliente</button>}
+        <button className="btn btn-outline btn-icon btn-sm" onClick={logout} aria-label="Sair" title="Sair"><LogOut size={16} strokeWidth={1.75} /></button>
       </header>
 
       {keyStatus !== 'service' && (
@@ -884,15 +874,13 @@ export default function AdminPage() {
 
       <AdminOverview refreshKey={refreshKey} days={period} clients={clients.map(c => ({ slug: c.slug, name: c.name }))} />
 
-      <div className="admin-clients-bar">
-        <div className="admin-clients-search-row">
-          <h2 style={{ fontSize: 16, fontWeight: 600, marginRight: 4, whiteSpace: 'nowrap' }}>Clientes</h2>
-          <label className="search" style={{ flex: 1, minWidth: 160, maxWidth: 360, height: 36 }}>
-            <Search size={16} color="var(--text-2)" strokeWidth={1.75} aria-hidden="true" />
-            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente" />
-          </label>
-        </div>
-        <div className="chip-scroll">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <h2 style={{ fontSize: 16, fontWeight: 600, marginRight: 4 }}>Clientes</h2>
+        <label className="search" style={{ flex: 1, minWidth: 200, maxWidth: 360, height: 36 }}>
+          <Search size={16} color="var(--text-2)" strokeWidth={1.75} aria-hidden="true" />
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente" />
+        </label>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {([['todos', 'Todos'], ['ativos', 'Ativos'], ['pausados', 'Pausados'], ['acesso', 'Com acesso'], ['sem', 'Sem acesso'], ['bloqueados', 'Bloqueados']] as const).map(([k, l]) => (
             <button key={k} className="pill-btn" aria-pressed={filter === k} onClick={() => setFilter(k)}>{l}</button>
           ))}
@@ -950,22 +938,17 @@ export default function AdminPage() {
                           const tone = def.tone?.(c, p)
                           return (
                             <div key={k} style={{ minWidth: 0 }}>
-                              <div className="admin-card-metric-label" style={{ ...eyebrow, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={def.label(c.resultKind ?? 'form')}>{def.label(c.resultKind ?? 'form')}</div>
-                              <div className="admin-card-metric-value" style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.3, color: tone === 'good' ? 'var(--green)' : tone === 'warn' ? 'var(--amber)' : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{def.value(c, p)}</div>
+                              <div style={{ ...eyebrow, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={def.label(c.resultKind ?? 'form')}>{def.label(c.resultKind ?? 'form')}</div>
+                              <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.3, color: tone === 'good' ? 'var(--green)' : tone === 'warn' ? 'var(--amber)' : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{def.value(c, p)}</div>
                             </div>
                           )
                         })}
                       </div>
-                      <div className="admin-card-sparkline-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 32 }}>
-                        <span className="desktop-only" style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 32 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
                           {source === 'meta'
                             ? (c.resultsAt ? `${periodNoun} · Meta ${period === 'today' ? 'hoje' : 'até ontem'}, ${timeAgo(c.resultsAt)}${typeof period === 'number' && period > c.resultsSpanDays && c.resultsSpanDays > 0 ? ` · só ${c.resultsSpanDays} dias disponíveis` : ''}` : 'Sem dados da Meta ainda')
                             : `${periodNoun} · ${c.lastLeadAt ? `último lead ${timeAgo(c.lastLeadAt)}` : 'nenhum lead ainda'}`}
-                        </span>
-                        <span className="mobile-only" style={{ fontSize: 11, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
-                          {source === 'meta'
-                            ? (c.resultsAt ? `Meta · ${timeAgo(c.resultsAt)}` : 'Sem dados')
-                            : (c.lastLeadAt ? `Lead ${timeAgo(c.lastLeadAt)}` : 'Sem leads')}
                         </span>
                         <Sparkline data={(source === 'meta' ? c.resultsDaily : null) ?? c.daily} width={112} height={32} />
                       </div>

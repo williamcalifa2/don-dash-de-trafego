@@ -209,7 +209,7 @@ export function OrganicTab({ preset, presetLabel, canLink = false, slug }: { pre
 
       {/* Números */}
       <div className="tile-grid stagger">{kpis.map(kpiTile)}</div>
-      <div className="mobile-hide" style={{ fontSize: 12, color: 'var(--text-2)', textAlign: 'right', marginTop: -16 }}>↑↓ vs período anterior equivalente, quando há histórico · dados fechados até ontem</div>
+      <div style={{ fontSize: 12, color: 'var(--text-2)', textAlign: 'right', marginTop: -16 }}>↑↓ vs período anterior equivalente, quando há histórico · dados fechados até ontem</div>
 
       {/* Alcance por dia + seguidores */}
       <div className="report-cols">

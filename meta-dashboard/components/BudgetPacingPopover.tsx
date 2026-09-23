@@ -160,7 +160,7 @@ export function BudgetPacingPopover({ campaigns = [], currentSpend, currency, cl
         <div
           role="dialog"
           aria-label="Ritmo de Verba"
-          className="card budget-popover-box"
+          className="card"
           style={{
             position: 'absolute',
             top: 'calc(100% + 8px)',

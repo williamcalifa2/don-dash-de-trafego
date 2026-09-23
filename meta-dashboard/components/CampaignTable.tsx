@@ -3,7 +3,7 @@
 import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
 import { ConversionChips } from '@/components/ConversionsCard'
 import { Fragment, useState, useCallback } from 'react'
-import { ChevronRight, ExternalLink, X, ArrowUpDown, ArrowUp, ArrowDown, Activity, Image as ImageIcon } from 'lucide-react'
+import { ChevronRight, ExternalLink, X, ArrowUpDown, ArrowUp, ArrowDown, Activity } from 'lucide-react'
 import { resolveDelivery, type CampaignRow, type ConversionItem } from '@/lib/meta'
 import { apiFetch } from '@/lib/apiFetch'
 import { previewSrc } from '@/lib/adPreview'
@@ -151,7 +151,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
         display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
       }}>
         <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-1)', marginRight: 4 }}>Campanhas</span>
-        <div className="chip-scroll" style={{ gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {statuses.map(s => (
             <button key={s} onClick={() => setFilterStatus(s)} style={{
               padding: '4px 12px', fontSize: 12, fontWeight: 600, borderRadius: 9999, cursor: 'pointer',
@@ -171,7 +171,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
       </div>
 
       {/* Table */}
-      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 760 }}>
           <thead>
             <tr>
@@ -193,7 +193,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                   </span>
                 </th>
               ))}
-              <th style={{ ...thStyle('spend'), width: 44, textAlign: 'center' }}><span className="sr-only">Ações</span></th>
+              <th style={{ ...thStyle('spend'), textAlign: 'center' }}>↓</th>
             </tr>
           </thead>
           <tbody>
@@ -369,7 +369,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                                                           {ad.thumb ? (
                                                             <img src={ad.thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                           ) : (
-                                                            <ImageIcon size={22} strokeWidth={1.5} color="var(--text-3)" />
+                                                            <span style={{ fontSize: 20 }}>🖼</span>
                                                           )}
                                                         </div>
                                                         <div style={{ padding: 8 }}>
@@ -459,7 +459,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
               ) : creativeModal.thumb ? (
                 <img src={creativeModal.thumb} alt="" style={{ maxWidth: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 8 }} />
               ) : (
-                <ImageIcon size={36} strokeWidth={1.5} color="var(--text-3)" />
+                <span style={{ fontSize: 32 }}>🖼</span>
               )}
             </div>
 

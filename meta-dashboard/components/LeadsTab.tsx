@@ -236,20 +236,23 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
       </div>
 
       {/* Toolbar */}
-      <div className="leads-toolbar">
-        <div className="leads-search-row">
-          <label className="search" style={{ width: '100%', height: 36 }}>
-            <Search size={16} color="var(--text-2)" strokeWidth={1.75} aria-hidden="true" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar lead"
-              aria-label="Buscar lead"
-            />
-          </label>
-        </div>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        background: 'var(--bg-card)', border: '1px solid var(--border)',
+        borderBottom: '1px solid var(--border-soft)', borderRadius: '16px 16px 0 0',
+        padding: 12, flexWrap: 'wrap',
+      }}>
+        <label className="search" style={{ flex: 1, minWidth: 200, height: 36 }}>
+          <Search size={16} color="var(--text-2)" strokeWidth={1.75} aria-hidden="true" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar lead"
+            aria-label="Buscar lead"
+          />
+        </label>
 
-        <div className="chip-scroll leads-chips-row">
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {(['Todos', ...ALL_STATUSES, ...(staleCount > 0 ? ['Parados' as const] : [])] as const).map(st => (
             <button key={st} className="pill-btn" aria-pressed={filterStatus === st} onClick={() => setFilterStatus(st)}>
               {st === 'Parados' ? `Sem contato (${staleCount})` : st}
@@ -257,65 +260,59 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
           ))}
         </div>
 
-        <div className="leads-actions-row">
-          {/* View Mode Switcher: Tabela / Kanban */}
-          <div style={{ display: 'inline-flex', background: 'var(--bg-card2)', padding: 3, borderRadius: 'var(--radius-full)', border: '1px solid var(--border-soft)' }}>
-            <button
-              type="button"
-              onClick={() => handleSetViewMode('table')}
-              className="btn btn-ghost btn-sm"
-              style={{
-                padding: '4px 14px',
-                fontSize: 12,
-                fontWeight: 600,
-                background: viewMode === 'table' ? 'var(--bg-card)' : 'transparent',
-                color: viewMode === 'table' ? 'var(--text-1)' : 'var(--text-3)',
-                boxShadow: viewMode === 'table' ? 'var(--shadow-soft)' : 'none',
-                borderRadius: 'var(--radius-full)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                height: 28,
-              }}
-              title="Visualização em Tabela"
-            >
-              <TableIcon size={14} /> Tabela
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSetViewMode('kanban')}
-              className="btn btn-ghost btn-sm"
-              style={{
-                padding: '4px 14px',
-                fontSize: 12,
-                fontWeight: 600,
-                background: viewMode === 'kanban' ? 'var(--bg-card)' : 'transparent',
-                color: viewMode === 'kanban' ? 'var(--text-1)' : 'var(--text-3)',
-                boxShadow: viewMode === 'kanban' ? 'var(--shadow-soft)' : 'none',
-                borderRadius: 'var(--radius-full)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                height: 28,
-              }}
-              title="Visualização Kanban (Pipeline)"
-            >
-              <LayoutGrid size={14} /> Kanban
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-            {!readOnly && (
-              <button onClick={() => setNewOpen(true)} className="btn btn-soft btn-sm">
-                <Plus size={16} strokeWidth={1.75} /> Novo lead
-              </button>
-            )}
-            <button onClick={refetch} disabled={loading} className="btn btn-outline btn-sm">
-              <RefreshCw size={16} strokeWidth={1.75} style={{ animation: loading ? 'spin 1s linear infinite' : undefined }} />
-              <span className="mobile-hide">Atualizar</span>
-            </button>
-          </div>
+        {/* View Mode Switcher: Tabela / Kanban */}
+        <div style={{ display: 'inline-flex', background: 'var(--bg-card2)', padding: 3, borderRadius: 'var(--radius-full)', border: '1px solid var(--border-soft)' }}>
+          <button
+            type="button"
+            onClick={() => handleSetViewMode('table')}
+            className="btn btn-ghost btn-sm"
+            style={{
+              padding: '4px 14px',
+              fontSize: 12,
+              fontWeight: 600,
+              background: viewMode === 'table' ? 'var(--bg-card)' : 'transparent',
+              color: viewMode === 'table' ? 'var(--text-1)' : 'var(--text-3)',
+              boxShadow: viewMode === 'table' ? 'var(--shadow-soft)' : 'none',
+              borderRadius: 'var(--radius-full)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              height: 28,
+            }}
+            title="Visualização em Tabela"
+          >
+            <TableIcon size={14} /> Tabela
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSetViewMode('kanban')}
+            className="btn btn-ghost btn-sm"
+            style={{
+              padding: '4px 14px',
+              fontSize: 12,
+              fontWeight: 600,
+              background: viewMode === 'kanban' ? 'var(--bg-card)' : 'transparent',
+              color: viewMode === 'kanban' ? 'var(--text-1)' : 'var(--text-3)',
+              boxShadow: viewMode === 'kanban' ? 'var(--shadow-soft)' : 'none',
+              borderRadius: 'var(--radius-full)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              height: 28,
+            }}
+            title="Visualização Kanban (Pipeline)"
+          >
+            <LayoutGrid size={14} /> Kanban
+          </button>
         </div>
+
+        {!readOnly && <button onClick={() => setNewOpen(true)} className="btn btn-soft btn-sm">
+          <Plus size={16} strokeWidth={1.75} /> Novo lead
+        </button>}
+        <button onClick={refetch} disabled={loading} className="btn btn-outline btn-sm">
+          <RefreshCw size={16} strokeWidth={1.75} style={{ animation: loading ? 'spin 1s linear infinite' : undefined }} />
+          Atualizar
+        </button>
       </div>
 
       {viewMode === 'kanban' ? (
@@ -330,7 +327,7 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
       ) : (
         /* Tabela */
         <div style={{
-          overflowX: 'auto', WebkitOverflowScrolling: 'touch', border: '1px solid var(--border)',
+          overflowX: 'auto', border: '1px solid var(--border)',
           borderTop: 'none', borderRadius: '0 0 16px 16px',
           background: 'var(--bg-card)', boxShadow: 'var(--shadow-soft)',
         }}>

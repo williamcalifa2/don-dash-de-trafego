@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, ChevronDown, Eye, Target, X, Calendar as CalendarIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Calendar as CalendarIcon } from 'lucide-react'
 import type { DailySummary } from '@/lib/meta'
 import type { ResultKind } from '@/lib/resultKind'
 import { KIND_LABELS } from '@/lib/resultKind'
@@ -154,7 +154,7 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="card calendar-modal-box"
+        className="card"
         style={{
           width: '100%',
           maxWidth: 1040,
@@ -171,7 +171,6 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
       >
         {/* Header */}
         <div
-          className="calendar-modal-header"
           style={{
             padding: '16px 20px',
             borderBottom: '1px solid var(--border-soft)',
@@ -256,7 +255,7 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                 title="Clique para escolher o mês"
               >
                 <span>{MONTH_NAMES[currentMonth]} {currentYear}</span>
-                <ChevronDown size={13} strokeWidth={2} style={{ opacity: 0.7 }} />
+                <span style={{ fontSize: 10, color: 'var(--text-3)' }}>▼</span>
               </button>
 
               <button
@@ -405,7 +404,6 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                   <div
                     key={cell.dateStr}
                     onClick={() => setSelectedDateStr(cell.dateStr)}
-                    className="calendar-day-cell"
                     style={{
                       minHeight: 84,
                       padding: '8px 6px',
@@ -580,14 +578,8 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
 
                   {/* Secondary row */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--text-2)' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                      <Eye size={13} strokeWidth={1.75} />
-                      {selectedMetrics.impressions.toLocaleString('pt-BR')} impressões
-                    </span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                      <Target size={13} strokeWidth={1.75} />
-                      {selectedMetrics.leads > 0 ? `${((selectedMetrics.leads / (selectedMetrics.impressions || 1)) * 100).toFixed(2)}% taxa` : '0%'}
-                    </span>
+                    <span>👁 {selectedMetrics.impressions.toLocaleString('pt-BR')} impressões</span>
+                    <span>🎯 {selectedMetrics.leads > 0 ? `${((selectedMetrics.leads / (selectedMetrics.impressions || 1)) * 100).toFixed(2)}% taxa` : '0%'}</span>
                   </div>
                 </>
               ) : (
