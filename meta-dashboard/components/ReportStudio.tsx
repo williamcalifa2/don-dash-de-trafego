@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, Download, Eye, EyeOff, FileText, Loader2, RefreshCw, X, UploadCloud, RotateCcw, Sun, Moon, ChevronDown } from 'lucide-react'
+import { Check, Download, Eye, EyeOff, FileText, Loader2, RefreshCw, X, UploadCloud, RotateCcw, Sun, Moon, ChevronDown, Bookmark, BookmarkCheck } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
-import { compact, type ReportData, type ReportMode, type ReportNotes, type ReportPreset } from '@/lib/report'
+import { compact, type ReportData, type ReportMode, type ReportNotes, type ReportPreset, type SavedReport } from '@/lib/report'
 import { buildSlides, FONT, PALETTE, PALETTE_LIGHT, STAGE, type El, type SlideSpec } from '@/lib/reportSlides'
 import { useTheme } from '@/lib/useTheme'
 
@@ -616,14 +616,21 @@ export function ReportStudio({
   onClose,
   initialPreset = 'last_month',
   initialMode = 'standard',
+  savedReport = null,
+  onSaveSuccess,
+  readOnly = false,
 }: {
   onClose: () => void
   initialPreset?: ReportPreset
   initialMode?: ReportMode
+  savedReport?: SavedReport | null
+  onSaveSuccess?: () => void
+  readOnly?: boolean
 }) {
-  const [preset, setPreset] = useState<ReportPreset>(initialPreset)
-  const [mode, setMode] = useState<ReportMode>(initialMode)
+  const [preset, setPreset] = useState<ReportPreset>(savedReport?.preset ?? initialPreset)
+  const [mode, setMode] = useState<ReportMode>(savedReport?.mode ?? initialMode)
   const [reportTheme, setReportTheme] = useState<'light' | 'dark'>(() => {
+    if (savedReport) return savedReport.theme
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('report_theme')
       if (stored === 'light' || stored === 'dark') return stored
@@ -633,8 +640,19 @@ export function ReportStudio({
   const [formatMenuOpen, setFormatMenuOpen] = useState(false)
   const formatMenuRef = useRef<HTMLDivElement>(null)
 
-  const [phase, setPhase] = useState<Phase>({ kind: 'loading', text: 'Carregando o relatório…' })
-  const [notes, setNotes] = useState<ReportNotes | null>(null)
+  const [phase, setPhase] = useState<Phase>(() => {
+    if (savedReport) {
+      return {
+        kind: 'ready',
+        data: {
+          ...savedReport.snapshot.data,
+          draftAnalysis: savedReport.snapshot.notes.analysis || '',
+        },
+      }
+    }
+    return { kind: 'loading', text: 'Carregando o relatório…' }
+  })
+  const [notes, setNotes] = useState<ReportNotes | null>(() => savedReport?.snapshot.notes ?? null)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [current, setCurrent] = useState(0)
   const [saved, setSaved] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -643,6 +661,12 @@ export function ReportStudio({
   const stageBox = useRef<HTMLDivElement>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dirty = useRef(false)
+
+  // Salvar versão permanente no Report Studio
+  const [saveModalOpen, setSaveModalOpen] = useState(false)
+  const [saveTitle, setSaveTitle] = useState('')
+  const [savingLibrary, setSavingLibrary] = useState(false)
+  const [librarySaved, setLibrarySaved] = useState(false)
 
   const toggleReportTheme = () => {
     setReportTheme(prev => {
@@ -653,6 +677,7 @@ export function ReportStudio({
   }
 
   const load = useCallback(async (opts: { prepare?: boolean; targetPreset?: ReportPreset } = {}) => {
+    if (savedReport) return
     const p = opts.targetPreset ?? preset
     let prepared = false
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -672,7 +697,7 @@ export function ReportStudio({
       setPhase({ kind: 'ready', data: j })
       return
     }
-  }, [preset])
+  }, [preset, savedReport])
 
   useEffect(() => { load() }, [load])
 
@@ -738,13 +763,15 @@ export function ReportStudio({
   }, [phase.kind])
 
   const save = useCallback(async (n: ReportNotes, p = preset) => {
+    if (readOnly || savedReport) return
     setSaved('saving')
     const r = await apiFetch('/api/report/monthly', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'save', notes: n, preset: p }) }).catch(() => null)
     dirty.current = false
     setSaved(r?.ok ? 'saved' : 'error')
-  }, [preset])
+  }, [preset, readOnly, savedReport])
 
   const edit = useCallback((key: keyof ReportNotes, value: string) => {
+    if (readOnly) return
     setNotes(prev => {
       if (!prev) return prev
       const next = { ...prev, [key]: value }
@@ -753,19 +780,54 @@ export function ReportStudio({
       saveTimer.current = setTimeout(() => save(next), 1200)
       return next
     })
-  }, [save])
+  }, [save, readOnly])
 
   const switchPreset = useCallback((next: ReportPreset) => {
-    if (next === preset) return
+    if (savedReport || next === preset) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
     if (dirty.current && notes) void save(notes, preset)
     setPreset(next)
     setPhase({ kind: 'loading', text: next === 'last_7d' ? 'Carregando relatório dos últimos 7 dias…' : 'Carregando relatório do último mês…' })
     void load({ targetPreset: next, prepare: true })
-  }, [preset, notes, save, load])
+  }, [preset, notes, save, load, savedReport])
 
   // não perde o texto se fechar logo depois de editar
-  const close = useCallback(() => { if (saveTimer.current) clearTimeout(saveTimer.current); if (dirty.current && notes) void save(notes); onClose() }, [notes, onClose, save])
+  const close = useCallback(() => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    if (dirty.current && notes && !readOnly && !savedReport) void save(notes)
+    onClose()
+  }, [notes, onClose, save, readOnly, savedReport])
+
+  const handleSaveToLibrary = async () => {
+    if (!data || !notes) return
+    setSavingLibrary(true)
+    try {
+      const titleToSave = (saveTitle || savedReport?.title || `Relatório · ${data.month.label}`).trim()
+      const res = await apiFetch('/api/report/saved', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: savedReport?.id,
+          title: titleToSave,
+          preset,
+          periodKey: data.month.key,
+          periodLabel: data.month.label,
+          mode,
+          theme: reportTheme,
+          slidesCount: included.length,
+          snapshot: { data, notes },
+        }),
+      })
+      if (res.ok) {
+        setLibrarySaved(true)
+        setSaveModalOpen(false)
+        onSaveSuccess?.()
+        setTimeout(() => setLibrarySaved(false), 3000)
+      }
+    } finally {
+      setSavingLibrary(false)
+    }
+  }
 
   const fileName = data
     ? `Relatorio-${mode === 'advanced' ? 'Avancado-' : ''}${data.month.key}-${data.client.name.normalize('NFD').replace(/[^\w]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')}`
@@ -794,44 +856,56 @@ export function ReportStudio({
       <header style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>
-              {data ? (preset === 'last_7d' ? 'Relatório semanal' : 'Relatório mensal') : 'Relatório'}
-              {data ? ` · ${data.month.label}` : ''}
+            <div style={{ fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>{savedReport ? savedReport.title : (data ? (preset === 'last_7d' ? 'Relatório semanal' : 'Relatório mensal') : 'Relatório')}</span>
+              {savedReport && (
+                <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--accent)', fontSize: 11, padding: '2px 8px', borderRadius: 999 }}>
+                  Arquivo Salvo
+                </span>
+              )}
             </div>
-            {data && <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{data.client.name} · {included.length} de {slides.length} slides</div>}
+            {data && <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{data.client.name} · {included.length} de {slides.length} slides · {data.month.label}</div>}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--bg-card2, rgba(0,0,0,0.06))', padding: '3px 4px', borderRadius: 20 }}>
-            <button
-              type="button"
-              className={`btn btn-sm ${preset === 'last_month' ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ height: 28, padding: '0 12px', fontSize: 12, borderRadius: 16 }}
-              onClick={() => switchPreset('last_month')}
-              title="Relatório do mês anterior fechado"
-            >
-              Mês passado
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm ${preset === 'this_month' ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ height: 28, padding: '0 12px', fontSize: 12, borderRadius: 16 }}
-              onClick={() => switchPreset('this_month')}
-              title="Relatório do mês atual até o momento"
-            >
-              Este mês
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm ${preset === 'last_7d' ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ height: 28, padding: '0 12px', fontSize: 12, borderRadius: 16 }}
-              onClick={() => switchPreset('last_7d')}
-              title="Relatório dos últimos 7 dias"
-            >
-              Últimos 7 dias
-            </button>
-          </div>
+          {!savedReport && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--bg-card2, rgba(0,0,0,0.06))', padding: '3px 4px', borderRadius: 20 }}>
+              <button
+                type="button"
+                className={`btn btn-sm ${preset === 'last_month' ? 'btn-primary' : 'btn-ghost'}`}
+                style={{ height: 28, padding: '0 12px', fontSize: 12, borderRadius: 16 }}
+                onClick={() => switchPreset('last_month')}
+                title="Relatório do mês anterior fechado"
+              >
+                Mês passado
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${preset === 'this_month' ? 'btn-primary' : 'btn-ghost'}`}
+                style={{ height: 28, padding: '0 12px', fontSize: 12, borderRadius: 16 }}
+                onClick={() => switchPreset('this_month')}
+                title="Relatório do mês atual até o momento"
+              >
+                Este mês
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${preset === 'last_7d' ? 'btn-primary' : 'btn-ghost'}`}
+                style={{ height: 28, padding: '0 12px', fontSize: 12, borderRadius: 16 }}
+                onClick={() => switchPreset('last_7d')}
+                title="Relatório dos últimos 7 dias"
+              >
+                Últimos 7 dias
+              </button>
+            </div>
+          )}
         </div>
 
-        {data && <span aria-live="polite" style={{ fontSize: 12, color: saved === 'error' ? 'var(--red)' : 'var(--text-3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        {readOnly && (
+          <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--accent)', borderRadius: 20, padding: '4px 12px', fontWeight: 600, fontSize: 12 }}>
+            Modo Apresentação
+          </span>
+        )}
+
+        {!readOnly && !savedReport && data && <span aria-live="polite" style={{ fontSize: 12, color: saved === 'error' ? 'var(--red)' : 'var(--text-3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           {saved === 'saving' && <><Loader2 size={13} className="spin" /> Salvando…</>}{saved === 'saved' && <><Check size={13} /> Textos salvos</>}{saved === 'error' && 'Não foi possível salvar os textos'}
         </span>}
 
@@ -919,6 +993,31 @@ export function ReportStudio({
           </div>
         )}
 
+        {/* Botão Salvar no Report Studio (visível para Staff) */}
+        {!readOnly && data && (
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            style={{
+              borderRadius: 20,
+              padding: '0 14px',
+              borderColor: librarySaved ? 'var(--green)' : undefined,
+              color: librarySaved ? 'var(--green)' : undefined,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+            onClick={() => {
+              setSaveTitle(savedReport?.title || `Relatório · ${data.month.label}`)
+              setSaveModalOpen(true)
+            }}
+            title="Salvar versão permanente na biblioteca do Report Studio"
+          >
+            {librarySaved ? <Check size={14} strokeWidth={2} /> : <Bookmark size={14} strokeWidth={1.75} />}
+            <span>{librarySaved ? 'Salvo no Studio!' : savedReport ? 'Atualizar no Studio' : 'Salvar no Studio'}</span>
+          </button>
+        )}
+
         {data && (
           <button className="btn btn-outline btn-sm" style={{ borderRadius: 20, padding: '0 14px' }} onClick={exportPdf} disabled={!!exporting}>
             <FileText size={14} strokeWidth={1.75} /> {exporting === 'pdf' ? 'Preparando…' : 'Baixar PDF'}
@@ -979,9 +1078,9 @@ export function ReportStudio({
           </nav>
           <div ref={stageBox} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, background: 'var(--muted-bg, rgba(127,127,160,.08))' }}>
             <div style={{ boxShadow: '0 8px 30px rgba(0,0,0,.18)', borderRadius: 8 }}>
-              <Slide spec={active} scale={scale} onEdit={edit} />
+              <Slide spec={active} scale={scale} onEdit={readOnly ? undefined : edit} />
             </div>
-            {active.id === 'creatives' && data.paid.top.length > 0 && (
+            {!readOnly && active.id === 'creatives' && data.paid.top.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card, #FFFFFF)', border: '1px solid var(--border, #E2E2EA)', borderRadius: 8, padding: '6px 14px', flexWrap: 'wrap', justifyContent: 'center' }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2, #55556A)' }}>Melhorar resolução dos criativos:</span>
                 {data.paid.top.slice(0, 3).map((a, idx) => {
@@ -1036,7 +1135,64 @@ export function ReportStudio({
                 })}
               </div>
             )}
-            <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>Os campos com contorno tracejado são textos seus: clique e escreva. O resto vem dos dados da Meta.</p>
+            {!readOnly ? (
+              <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>Os campos com contorno tracejado são textos seus: clique e escreva. O resto vem dos dados da Meta.</p>
+            ) : (
+              <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>Use as setas do teclado (← e →) para navegar pelos slides da apresentação.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Salvar no Report Studio */}
+      {saveModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: 'var(--bg-card, #FFFFFF)', border: '1px solid var(--border)', borderRadius: 16, maxWidth: 440, width: '100%', padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 8px', color: 'var(--text-1)' }}>Salvar no Report Studio</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 16px', lineHeight: 1.4 }}>
+              Este relatório ficará salvo permanentemente na biblioteca do cliente. Ele poderá acessá-lo, assistir à apresentação e baixar em PDF ou PowerPoint a qualquer momento.
+            </p>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>
+              Título do Relatório
+            </label>
+            <input
+              type="text"
+              value={saveTitle}
+              onChange={e => setSaveTitle(e.target.value)}
+              placeholder={`Relatório · ${data?.month.label || 'Mensal'}`}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: 'var(--bg)',
+                color: 'var(--text-1)',
+                fontSize: 14,
+                marginBottom: 20,
+                outline: 'none',
+                boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setSaveModalOpen(false)}
+                disabled={savingLibrary}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={handleSaveToLibrary}
+                disabled={savingLibrary}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                {savingLibrary ? <Loader2 size={14} className="spin" /> : <Bookmark size={14} />}
+                <span>{savingLibrary ? 'Salvando…' : savedReport ? 'Atualizar no Studio' : 'Salvar no Studio'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

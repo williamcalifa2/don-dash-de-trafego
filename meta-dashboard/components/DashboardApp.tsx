@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Download, FileBarChart, RefreshCw, TrendingUp, AlertCircle, Moon, Sun, Settings2, Tv, Bell, BellOff, LogOut, Shield, ChevronDown, CalendarDays, DollarSign } from 'lucide-react'
+import { Download, FileBarChart, RefreshCw, TrendingUp, AlertCircle, Moon, Sun, Settings2, Tv, Bell, BellOff, LogOut, Shield, ChevronDown, CalendarDays, DollarSign, Presentation } from 'lucide-react'
 import { MetricTile } from '@/components/MetricTile'
 import { CampaignTable } from '@/components/CampaignTable'
 import { DailyChart } from '@/components/DailyChart'
@@ -12,6 +12,7 @@ import { MetricPicker, useSelectedMetrics } from '@/components/MetricPicker'
 import { TvMode } from '@/components/TvMode'
 import { ReportTab } from '@/components/ReportTab'
 import { ReportStudio } from '@/components/ReportStudio'
+import { ReportStudioTab } from '@/components/ReportStudioTab'
 import { LeadToast } from '@/components/LeadToast'
 import { BudgetPacingPopover } from '@/components/BudgetPacingPopover'
 import { ClientGoalsTab } from '@/components/ClientGoalsTab'
@@ -114,7 +115,7 @@ function Dashboard() {
   const [reportOpen, setReportOpen] = useState(false)
   const [monthlyOpen, setMonthlyOpen] = useState(false)
   const [monthlyMode, setMonthlyMode] = useState<ReportMode>('standard')
-  const [tab, setTab] = useState<'metrics' | 'funnel' | 'audience' | 'organic' | 'simulator' | 'leads' | 'goals'>('metrics')
+  const [tab, setTab] = useState<'metrics' | 'funnel' | 'audience' | 'organic' | 'simulator' | 'leads' | 'goals' | 'reports'>('metrics')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -546,7 +547,7 @@ function Dashboard() {
       {/* Abas sublinhadas com Ações de Relatório */}
       <div className="no-print" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div className="tabs" role="tablist" style={{ borderBottom: 'none', marginBottom: 0 }}>
-          {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads'], ['goals', 'Metas']] as const).filter(([key]) => (key !== 'simulator' || !!me?.admin)).map(([key, label]) => (
+          {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads'], ['goals', 'Metas'], ['reports', 'Report Studio']] as const).filter(([key]) => (key !== 'simulator' || !!me?.admin)).map(([key, label]) => (
             <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
               {label}
               {key === 'leads' && staleCount > 0 && (
@@ -609,6 +610,29 @@ function Dashboard() {
                     gap: 2,
                   }}
                 >
+                  <button
+                    role="menuitem"
+                    onClick={() => { setTab('reports'); setReportMenuOpen(false) }}
+                    className="btn btn-ghost btn-sm"
+                    style={{
+                      justifyContent: 'flex-start',
+                      textAlign: 'left',
+                      padding: '8px 12px',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: 'var(--accent)',
+                      borderRadius: 8,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <Presentation size={15} strokeWidth={2} />
+                    <span>Abrir Report Studio</span>
+                  </button>
+
+                  <div style={{ height: 1, background: 'var(--border-soft)', margin: '4px 0' }} />
+
                   <button
                     role="menuitem"
                     onClick={() => { setMonthlyMode('standard'); setMonthlyOpen(true); setReportMenuOpen(false) }}
@@ -740,6 +764,15 @@ function Dashboard() {
       {tab === 'simulator' && me?.admin && <SimuladorTab summary={s ? (kind === 'form' ? s : { ...s, leads: s.results }) : undefined} currency={currency} />}
       {tab === 'leads' && <LeadsTab openId={openLeadId} onOpenConsumed={() => setOpenLeadId(null)} readOnly={me?.role === 'reader'} />}
       {tab === 'goals' && <ClientGoalsTab slug={me?.slug || 'meta'} isStaff={isStaff} />}
+      {tab === 'reports' && (
+        <ReportStudioTab
+          clientSlug={me?.slug || 'default'}
+          clientName={me?.name || 'Cliente'}
+          clientLogo={me?.logoUrl}
+          isStaff={isStaff}
+          defaultPreset={preset === 'last_7d' ? 'last_7d' : preset === 'this_month' ? 'this_month' : 'last_month'}
+        />
+      )}
       {!isLoading && tab === 'funnel' && !s && !error && (
         <div style={{ color: 'var(--text-3)', fontSize: 13, textAlign: 'center', padding: 40 }}>Carregando dados...</div>
       )}

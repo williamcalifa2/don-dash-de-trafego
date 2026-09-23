@@ -191,6 +191,57 @@ export interface ReportData {
   notes: ReportNotes
 }
 
+export interface SavedReportKpis {
+  spend?: number
+  results?: number
+  cpl?: number
+  roas?: number
+  impressions?: number
+}
+
+export interface SavedReportSummary {
+  id: string
+  title: string
+  preset: ReportPreset
+  periodKey: string
+  periodLabel: string
+  mode: ReportMode
+  theme: 'light' | 'dark'
+  createdAt: number
+  updatedAt: number
+  author?: string
+  slidesCount: number
+  kpis?: SavedReportKpis
+}
+
+export interface SavedReport extends SavedReportSummary {
+  snapshot: {
+    data: ReportData
+    notes: ReportNotes
+  }
+}
+
+export function extractReportKpis(data: ReportData): SavedReportKpis {
+  let spend: number | undefined
+  let results: number | undefined
+  let cpl: number | undefined
+  let roas: number | undefined
+  let impressions: number | undefined
+
+  if (data.campaigns && data.campaigns.length > 0) {
+    spend = data.campaigns.reduce((acc, c) => acc + (c.spend || 0), 0)
+    results = data.campaigns.reduce((acc, c) => acc + (c.results || 0), 0)
+    if (results > 0 && spend > 0) cpl = spend / results
+  } else if (data.funnel) {
+    spend = data.funnel.spend
+    results = data.funnel.results
+    cpl = data.funnel.costPerResult ?? (spend && results ? spend / results : undefined)
+    roas = data.funnel.roas ?? undefined
+    impressions = data.funnel.impressions
+  }
+  return { spend, results, cpl, roas, impressions }
+}
+
 // ── formatação ───────────────────────────────────────────────────────────────
 const nf = (v: number, d = 0) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }).format(v)
 /** 9.600 → "9,6 mil"; 98.700 → "98,7 mil"; 1.250.000 → "1,25 mi". Abaixo de mil, o número inteiro. */
