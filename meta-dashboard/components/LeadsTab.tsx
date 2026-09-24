@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Search, Users, TrendingUp, DollarSign, StickyNote, Clock, LayoutGrid, Table as TableIcon } from 'lucide-react'
 import { Plus, Search, Users, TrendingUp, DollarSign, StickyNote, Clock, LayoutGrid, Table as TableIcon, Zap, ShieldCheck } from 'lucide-react'
 import { useLeadsData as useLeads } from '@/lib/leadsContext'
 import type { Lead, LeadStatus } from '@/lib/leadTypes'
@@ -427,7 +426,6 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
                           <ValorCell value={lead.valor_pedido} onSave={v => patchLead(lead.id, { valor_pedido: v })} />
                         </div>
                       ) : col.key === 'contato' ? (
-                        <div style={{ width: '100%', padding: '0 8px', display: 'flex', alignItems: 'center', fontSize: 12 }}>
                         <div style={{ width: '100%', padding: '0 8px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                           {lead.sla_violado ? (
                             <span className="badge" style={{ background: 'var(--red-soft)', color: 'var(--red)', padding: '1px 6px', fontSize: 10, fontWeight: 700 }} title="SLA de primeiro contato estourado">SLA</span>

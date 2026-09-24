@@ -37,7 +37,6 @@ export const LOSS_REASONS = [
 ] as const
 export type LossReason = typeof LOSS_REASONS[number]
 
-export type LeadUpdate = Partial<Pick<Lead, 'status' | 'valor_pedido' | 'notas' | 'motivo_perda' | 'ultimo_contato' | 'atendido_por'>>
 export type LeadUpdate = Partial<Pick<Lead, 'status' | 'valor_pedido' | 'notas' | 'motivo_perda' | 'ultimo_contato' | 'atendido_por' | 'primeiro_contato' | 'tempo_primeiro_contato_seg' | 'sla_violado'>>
 
 export interface Fechamento {

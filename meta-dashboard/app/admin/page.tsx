@@ -51,7 +51,6 @@ const isResultsView = (c: AdminClient) => !!c.resultKind && c.resultKind !== 'fo
 interface RecentLead { client: string; slug: string; nome: string | null; campanha: string | null; status: string; createdAt: string }
 interface MetaOption { id: string; name: string; currency?: string }
 
-type ManagerTab = 'cadastro' | 'acessos' | 'metas'
 type ManagerTab = 'cadastro' | 'acessos' | 'metas' | 'integracoes'
 type Modal =
   | { kind: 'new' }
@@ -486,7 +485,6 @@ function ClientsManager({ clients, initial, initialTab, canManage, baseDomain, a
   const list = clients.filter(c => !q || c.name.toLowerCase().includes(q) || c.slug.includes(q))
   const status = (c: AdminClient) => (c.locked ? { text: 'Bloqueado', dot: 'var(--red)' } : c.active === false ? { text: 'Pausado', dot: 'var(--amber)' } : { text: 'Ativo', dot: 'var(--green)' })
   const pick = (slug: string | 'new') => { setSelected(slug); setTab(slug === 'new' ? 'cadastro' : tab) }
-  const TABS: Array<[ManagerTab, string]> = [['cadastro', 'Cadastro'], ['acessos', 'Acessos'], ['metas', 'Metas e status']]
   const TABS: Array<[ManagerTab, string]> = [['cadastro', 'Cadastro'], ['acessos', 'Acessos'], ['metas', 'Metas e status'], ['integracoes', 'Webhooks & Integrações']]
 
   return (
