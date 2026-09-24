@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import type { MetricsSummary } from '@/lib/meta'
 import { PulseLoader } from './PulseLoader'
+import { EcommerceLiveView } from './EcommerceLiveView'
 
 interface EcommerceTabProps {
   clientSlug?: string
@@ -106,6 +107,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
   const [orders, setOrders] = useState<Order[]>([])
   const [isMock, setIsMock] = useState(false)
   const [baseTopProducts, setBaseTopProducts] = useState<TopProduct[]>([])
+  const [subTab, setSubTab] = useState<'overview' | 'live'>('overview')
 
   // Filtros interativos
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending' | 'cancelled'>('all')
@@ -410,12 +412,90 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Indicador discreto de webhook quando em modo de demonstração */}
-      {isMock && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 2px' }}>
-          <div style={{ fontSize: 13, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>Visão integrada da loja virtual</span>
-          </div>
+      {/* Sub-navegação interna: Visão Geral vs Live View (Tempo Real) */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12,
+          padding: '2px 0 6px 0',
+        }}
+      >
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={() => setSubTab('overview')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 8,
+              border: '1px solid',
+              borderColor: subTab === 'overview' ? 'var(--accent-dim)' : 'var(--border)',
+              background: subTab === 'overview' ? 'var(--accent-soft)' : 'var(--bg-card)',
+              color: subTab === 'overview' ? 'var(--accent-dim)' : 'var(--text-2)',
+              fontWeight: subTab === 'overview' ? 700 : 600,
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <ShoppingBag size={15} />
+            <span>Visão Geral</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSubTab('live')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 8,
+              border: '1px solid',
+              borderColor: subTab === 'live' ? '#10b981' : 'var(--border)',
+              background: subTab === 'live' ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-card)',
+              color: subTab === 'live' ? '#10b981' : 'var(--text-2)',
+              fontWeight: subTab === 'live' ? 700 : 600,
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: '#10b981',
+                boxShadow: '0 0 8px #10b981',
+                display: 'inline-block',
+              }}
+            />
+            <Globe size={15} />
+            <span>Live View (Tempo Real)</span>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 800,
+                background: 'rgba(16, 185, 129, 0.2)',
+                color: '#10b981',
+                padding: '2px 7px',
+                borderRadius: 99,
+                letterSpacing: '.04em',
+              }}
+            >
+              AO VIVO
+            </span>
+          </button>
+        </div>
+
+        {/* Indicador discreto de webhook quando em modo de demonstração */}
+        {isMock && (
           <span
             className="badge"
             style={{
@@ -432,8 +512,18 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
           >
             <Clock size={12} /> Aguardando Webhook
           </span>
-        </div>
-      )}
+        )}
+      </div>
+
+      {subTab === 'live' ? (
+        <EcommerceLiveView
+          initialRevenue={totals.totalRevenue > 0 ? totals.totalRevenue : 4890.0}
+          initialOrdersCount={totals.paidCount > 0 ? totals.paidCount : 31}
+          currency={currency}
+          clientSlug={clientSlug}
+        />
+      ) : (
+        <>
 
       {/* Topo: KPIs de E-commerce (Preenche 100% da linha sem sobrar espaço) */}
       <div className="kpi-grid-5">
@@ -1766,6 +1856,8 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   )
