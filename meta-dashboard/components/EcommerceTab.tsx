@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import {
   ShoppingBag,
   DollarSign,
@@ -23,6 +23,8 @@ import {
   Tag,
   Globe,
   RotateCcw,
+  Eye,
+  Check,
 } from 'lucide-react'
 import type { MetricsSummary } from '@/lib/meta'
 import { PulseLoader } from './PulseLoader'
@@ -80,7 +82,27 @@ function cleanPhone(phone?: string | null) {
   return digits.length <= 11 ? `55${digits}` : digits
 }
 
-export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabel = 'Este mês' }: EcommerceTabProps) {
+function getProductImage(name: string): string {
+  const n = name.toLowerCase()
+  if (n.includes('sérum') || n.includes('serum')) {
+    return 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=400&auto=format&fit=crop&q=80'
+  }
+  if (n.includes('espuma') || n.includes('limpeza')) {
+    return 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&auto=format&fit=crop&q=80'
+  }
+  if (n.includes('hidratante') || n.includes('fps')) {
+    return 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=400&auto=format&fit=crop&q=80'
+  }
+  if (n.includes('combo') || n.includes('glow')) {
+    return 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400&auto=format&fit=crop&q=80'
+  }
+  if (n.includes('gel') || n.includes('noturno') || n.includes('creme')) {
+    return 'https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=400&auto=format&fit=crop&q=80'
+  }
+  return 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?w=400&auto=format&fit=crop&q=80'
+}
+
+export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: EcommerceTabProps) {
   const [loading, setLoading] = useState(true)
   const [orders, setOrders] = useState<Order[]>([])
   const [isMock, setIsMock] = useState(false)
@@ -93,7 +115,19 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
   const [selectedChannel, setSelectedChannel] = useState<'meta' | 'google' | 'whatsapp' | null>(null)
   const [selectedUtmSource, setSelectedUtmSource] = useState<string | null>(null)
   const [selectedUtmCampaign, setSelectedUtmCampaign] = useState<string | null>(null)
+
+  // Modais de detalhe
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [productSummary, setProductSummary] = useState<TopProduct | null>(null)
+
+  // Menus suspensos de filtro
+  const [showUtmFilterMenu, setShowUtmFilterMenu] = useState(false)
+  const [showProductFilterMenu, setShowProductFilterMenu] = useState(false)
+  const [showChannelFilterMenu, setShowChannelFilterMenu] = useState(false)
+
+  const utmMenuRef = useRef<HTMLDivElement>(null)
+  const productMenuRef = useRef<HTMLDivElement>(null)
+  const channelMenuRef = useRef<HTMLDivElement>(null)
 
   // Metas e gasto vindo dos anúncios (Meta Ads)
   const spend = summary?.spend ?? 0
@@ -118,6 +152,23 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
 
   useEffect(() => {
     loadData()
+  }, [])
+
+  // Fechar menus suspensos ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (utmMenuRef.current && !utmMenuRef.current.contains(event.target as Node)) {
+        setShowUtmFilterMenu(false)
+      }
+      if (productMenuRef.current && !productMenuRef.current.contains(event.target as Node)) {
+        setShowProductFilterMenu(false)
+      }
+      if (channelMenuRef.current && !channelMenuRef.current.contains(event.target as Node)) {
+        setShowChannelFilterMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   // Lista única de UTMs presentes nos pedidos para os filtros
@@ -248,7 +299,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
     setSearch('')
   }
 
-  // Top Produtos dinâmico (calculado sobre os pedidos ou filtrado pelo selecionado)
+  // Top Produtos dinâmico
   const topProducts = useMemo(() => {
     const map = new Map<string, { quantity: number; revenue: number }>()
     for (const ord of filteredOrders) {
@@ -296,6 +347,14 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
     }
     return { meta, google, whatsapp }
   }, [filteredOrders])
+
+  // Pedidos relacionados ao produto selecionado para o modal de resumo
+  const productSummaryOrders = useMemo(() => {
+    if (!productSummary) return []
+    return orders.filter(o =>
+      o.items?.some(it => it.name.toLowerCase() === productSummary.name.toLowerCase())
+    )
+  }, [orders, productSummary])
 
   // Métricas do Funil de E-commerce
   const baseSessions = Math.max(linkClicks > 0 ? linkClicks : 1850, orders.length * 18)
@@ -427,9 +486,9 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
         </div>
       </div>
 
-      {/* FUNIL DE E-COMMERCE (5 Etapas ocupando 100% da linha sem quebra de texto) */}
+      {/* FUNIL DE E-COMMERCE (5 Etapas ocupando 100% da linha, sem badge de dias) */}
       <div className="card" style={{ padding: 24, position: 'relative', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Layers size={20} color="var(--accent)" />
@@ -439,9 +498,6 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
               Jornada completa da loja: do primeiro clique ao pagamento aprovado.
             </p>
           </div>
-          <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--text-1)', padding: '6px 12px', fontSize: 12 }}>
-            {presetLabel}
-          </span>
         </div>
 
         {/* 5 Etapas do Funil Visual */}
@@ -588,70 +644,188 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
         </div>
       </div>
 
-      {/* Meio: Produtos Mais Vendidos & Canais de Tráfego (Com Filtro Interativo ao Clicar) */}
+      {/* Meio: Produtos Mais Vendidos & Canais de Tráfego */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
-        {/* Top Produtos Interativo */}
+        {/* Top Produtos com Resumo e Filtro com Ícone */}
         <div className="card" style={{ padding: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Package size={18} color="var(--accent)" />
               <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Produtos Mais Vendidos</h4>
             </div>
-            <span style={{ fontSize: 11, color: 'var(--text-2)' }}>
-              {selectedProduct ? 'Clique para desselecionar' : 'Clique no produto para filtrar'}
-            </span>
+
+            {/* Ícone de Filtro de Produtos */}
+            <div style={{ position: 'relative' }} ref={productMenuRef}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs btn-icon"
+                title="Filtrar por produto"
+                onClick={() => setShowProductFilterMenu(prev => !prev)}
+                style={{
+                  color: selectedProduct ? 'var(--accent)' : 'var(--text-2)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 6px',
+                }}
+              >
+                <Filter size={15} />
+                {selectedProduct && (
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />
+                )}
+              </button>
+
+              {/* Popover de Seleção de Produto para Filtrar */}
+              {showProductFilterMenu && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: 'calc(100% + 6px)',
+                    zIndex: 100,
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    boxShadow: 'var(--shadow-elegant, 0 10px 30px rgba(0,0,0,0.15))',
+                    padding: 10,
+                    width: 260,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 4px 6px', borderBottom: '1px solid var(--border-soft)' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>Filtrar por Produto</span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs btn-icon"
+                      onClick={() => setShowProductFilterMenu(false)}
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+
+                  <div
+                    onClick={() => {
+                      setSelectedProduct(null)
+                      setShowProductFilterMenu(false)
+                    }}
+                    style={{
+                      padding: '6px 8px',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      background: !selectedProduct ? 'var(--accent-soft)' : 'transparent',
+                      fontWeight: !selectedProduct ? 600 : 400,
+                    }}
+                  >
+                    <span>Todos os produtos</span>
+                    {!selectedProduct && <Check size={14} color="var(--accent)" />}
+                  </div>
+
+                  {(baseTopProducts.length > 0 ? baseTopProducts : topProducts).map(p => {
+                    const isCurrent = selectedProduct?.toLowerCase() === p.name.toLowerCase()
+                    return (
+                      <div
+                        key={p.name}
+                        onClick={() => {
+                          setSelectedProduct(isCurrent ? null : p.name)
+                          setShowProductFilterMenu(false)
+                        }}
+                        style={{
+                          padding: '6px 8px',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          background: isCurrent ? 'var(--accent-soft)' : 'transparent',
+                          fontWeight: isCurrent ? 600 : 400,
+                        }}
+                      >
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 190 }}>
+                          {p.name}
+                        </span>
+                        {isCurrent && <Check size={14} color="var(--accent)" />}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {topProducts.map((p, idx) => {
               const maxRev = topProducts[0]?.revenue || 1
               const pct = Math.round((p.revenue / maxRev) * 100)
-              const isSelected = selectedProduct?.toLowerCase() === p.name.toLowerCase()
+              const imgUrl = getProductImage(p.name)
 
               return (
                 <div
                   key={p.name}
-                  onClick={() => setSelectedProduct(isSelected ? null : p.name)}
+                  onClick={() => setProductSummary(p)}
+                  title="Clique para ver o resumo do produto"
                   style={{
                     display: 'flex',
-                    flexDirection: 'column',
-                    gap: 4,
+                    alignItems: 'center',
+                    gap: 12,
                     padding: '8px 10px',
                     borderRadius: 8,
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
-                    border: isSelected ? '1px solid var(--accent)' : '1px solid transparent',
-                    background: isSelected ? 'var(--accent-soft)' : 'transparent',
+                    border: '1px solid transparent',
                   }}
                   onMouseEnter={e => {
-                    if (!isSelected) e.currentTarget.style.background = 'var(--bg-card2)'
+                    e.currentTarget.style.background = 'var(--bg-card2)'
+                    e.currentTarget.style.borderColor = 'var(--border-soft)'
                   }}
                   onMouseLeave={e => {
-                    if (!isSelected) e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.borderColor = 'transparent'
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  {/* Thumbnail do Produto */}
+                  <img
+                    src={imgUrl}
+                    alt={p.name}
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 8,
+                      objectFit: 'cover',
+                      border: '1px solid var(--border-soft)',
+                      flexShrink: 0,
+                    }}
+                  />
+
+                  {/* Informações */}
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
                       <span style={{ fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {idx + 1}. {p.name}
                       </span>
-                      {isSelected && (
-                        <span className="badge" style={{ background: 'var(--accent)', color: '#fff', fontSize: 10, padding: '1px 5px' }}>
-                          Filtro Ativo
-                        </span>
-                      )}
+                      <span style={{ fontWeight: 700, color: 'var(--green)', flexShrink: 0 }}>
+                        {fmtMoney(p.revenue, currency)}
+                      </span>
                     </div>
-                    <span style={{ fontWeight: 700, color: 'var(--green)', flexShrink: 0 }}>
-                      {fmtMoney(p.revenue, currency)}
-                    </span>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-2)' }}>
+                      <span>{p.quantity} unidade(s) vendida(s)</span>
+                      <span>{pct}% do líder</span>
+                    </div>
+
+                    <div style={{ height: 5, background: 'var(--bg-card2)', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent)', borderRadius: 3 }} />
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-2)' }}>
-                    <span>{p.quantity} unidade(s) vendida(s)</span>
-                    <span>{pct}% do líder</span>
-                  </div>
-                  <div style={{ height: 5, background: 'var(--bg-card2)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${pct}%`, background: isSelected ? 'var(--accent)' : 'var(--text-2)', borderRadius: 3 }} />
-                  </div>
+
+                  {/* Ícone de abrir resumo */}
+                  <ArrowRight size={14} color="var(--text-3)" style={{ flexShrink: 0 }} />
                 </div>
               )
             })}
@@ -663,30 +837,130 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
           </div>
         </div>
 
-        {/* Canais e Desempenho de Aquisição Interativo */}
+        {/* Canais de Origem dos Pedidos com Filtro com Ícone */}
         <div className="card" style={{ padding: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <TrendingUp size={18} color="var(--green)" />
               <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Canais de Origem dos Pedidos</h4>
             </div>
-            <span style={{ fontSize: 11, color: 'var(--text-2)' }}>
-              {selectedChannel ? 'Clique para desselecionar' : 'Clique no canal para filtrar'}
-            </span>
+
+            {/* Ícone de Filtro de Canais */}
+            <div style={{ position: 'relative' }} ref={channelMenuRef}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs btn-icon"
+                title="Filtrar por canal"
+                onClick={() => setShowChannelFilterMenu(prev => !prev)}
+                style={{
+                  color: selectedChannel ? 'var(--green)' : 'var(--text-2)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 6px',
+                }}
+              >
+                <Filter size={15} />
+                {selectedChannel && (
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)' }} />
+                )}
+              </button>
+
+              {/* Popover de Seleção de Canal para Filtrar */}
+              {showChannelFilterMenu && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: 'calc(100% + 6px)',
+                    zIndex: 100,
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    boxShadow: 'var(--shadow-elegant, 0 10px 30px rgba(0,0,0,0.15))',
+                    padding: 10,
+                    width: 250,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 4px 6px', borderBottom: '1px solid var(--border-soft)' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>Filtrar por Canal</span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs btn-icon"
+                      onClick={() => setShowChannelFilterMenu(false)}
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+
+                  <div
+                    onClick={() => {
+                      setSelectedChannel(null)
+                      setShowChannelFilterMenu(false)
+                    }}
+                    style={{
+                      padding: '6px 8px',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      background: !selectedChannel ? 'var(--green-soft)' : 'transparent',
+                      fontWeight: !selectedChannel ? 600 : 400,
+                    }}
+                  >
+                    <span>Todos os canais</span>
+                    {!selectedChannel && <Check size={14} color="var(--green)" />}
+                  </div>
+
+                  {[
+                    { key: 'meta', label: 'Meta Ads (Instagram / FB)' },
+                    { key: 'google', label: 'Google & Tráfego Direto' },
+                    { key: 'whatsapp', label: 'WhatsApp / Outros' },
+                  ].map(c => {
+                    const isCurrent = selectedChannel === c.key
+                    return (
+                      <div
+                        key={c.key}
+                        onClick={() => {
+                          setSelectedChannel(isCurrent ? null : (c.key as any))
+                          setShowChannelFilterMenu(false)
+                        }}
+                        style={{
+                          padding: '6px 8px',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          background: isCurrent ? 'var(--green-soft)' : 'transparent',
+                          fontWeight: isCurrent ? 600 : 400,
+                        }}
+                      >
+                        <span>{c.label}</span>
+                        {isCurrent && <Check size={14} color="var(--green)" />}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {/* Canal Meta Ads */}
             <div
-              onClick={() => setSelectedChannel(selectedChannel === 'meta' ? null : 'meta')}
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 padding: '12px 14px',
                 borderRadius: 8,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
                 border: selectedChannel === 'meta' ? '1px solid var(--accent)' : '1px solid var(--border)',
                 background: selectedChannel === 'meta' ? 'var(--accent-soft)' : 'var(--bg-card2)',
               }}
@@ -698,29 +972,19 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
                   <div style={{ fontSize: 11, color: 'var(--text-2)' }}>Campanhas ativas de anúncio</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {selectedChannel === 'meta' && (
-                  <span className="badge" style={{ background: 'var(--accent)', color: '#fff', fontSize: 10, padding: '1px 5px' }}>
-                    Filtro Ativo
-                  </span>
-                )}
-                <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--text-1)', fontWeight: 700 }}>
-                  {channelBreakdown.meta} vendas
-                </span>
-              </div>
+              <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--text-1)', fontWeight: 700 }}>
+                {channelBreakdown.meta} vendas
+              </span>
             </div>
 
             {/* Canal Google / Direto */}
             <div
-              onClick={() => setSelectedChannel(selectedChannel === 'google' ? null : 'google')}
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 padding: '12px 14px',
                 borderRadius: 8,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
                 border: selectedChannel === 'google' ? '1px solid var(--green)' : '1px solid var(--border)',
                 background: selectedChannel === 'google' ? 'var(--green-soft)' : 'var(--bg-card2)',
               }}
@@ -732,29 +996,19 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
                   <div style={{ fontSize: 11, color: 'var(--text-2)' }}>Pesquisa orgânica, Google Ads e direto</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {selectedChannel === 'google' && (
-                  <span className="badge" style={{ background: 'var(--green)', color: '#fff', fontSize: 10, padding: '1px 5px' }}>
-                    Filtro Ativo
-                  </span>
-                )}
-                <span className="badge" style={{ background: 'var(--green-soft)', color: 'var(--text-1)', fontWeight: 700 }}>
-                  {channelBreakdown.google} vendas
-                </span>
-              </div>
+              <span className="badge" style={{ background: 'var(--green-soft)', color: 'var(--text-1)', fontWeight: 700 }}>
+                {channelBreakdown.google} vendas
+              </span>
             </div>
 
             {/* Canal WhatsApp / Outros */}
             <div
-              onClick={() => setSelectedChannel(selectedChannel === 'whatsapp' ? null : 'whatsapp')}
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 padding: '12px 14px',
                 borderRadius: 8,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
                 border: selectedChannel === 'whatsapp' ? '1px solid var(--amber)' : '1px solid var(--border)',
                 background: selectedChannel === 'whatsapp' ? 'var(--amber-soft)' : 'var(--bg-card2)',
               }}
@@ -766,24 +1020,17 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
                   <div style={{ fontSize: 11, color: 'var(--text-2)' }}>Vendas manuais, Typebot e CRM</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {selectedChannel === 'whatsapp' && (
-                  <span className="badge" style={{ background: 'var(--amber)', color: '#000', fontSize: 10, padding: '1px 5px' }}>
-                    Filtro Ativo
-                  </span>
-                )}
-                <span className="badge" style={{ background: 'var(--amber-soft)', color: 'var(--text-1)', fontWeight: 700 }}>
-                  {channelBreakdown.whatsapp} vendas
-                </span>
-              </div>
+              <span className="badge" style={{ background: 'var(--amber-soft)', color: 'var(--text-1)', fontWeight: 700 }}>
+                {channelBreakdown.whatsapp} vendas
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tabela de Pedidos estilo Shopify com Filtros Avançados de UTMs */}
+      {/* Tabela de Pedidos com Botão Redondinho de Filtro */}
       <div className="card" style={{ padding: 20 }}>
-        {/* Barra de Filtros e Controles */}
+        {/* Barra Superior da Tabela */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <div>
@@ -793,7 +1040,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
               </p>
             </div>
 
-            {/* Busca e Status */}
+            {/* Controles: Busca, Status e Botão Redondo de Filtro */}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               {/* Campo de Busca */}
               <div style={{ position: 'relative' }}>
@@ -834,59 +1081,137 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
                   </button>
                 ))}
               </div>
+
+              {/* Botão Redondinho com Ícone do Funil de Filtro */}
+              <div style={{ position: 'relative' }} ref={utmMenuRef}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  title="Opções de filtros de UTM"
+                  onClick={() => setShowUtmFilterMenu(prev => !prev)}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    padding: 0,
+                    borderRadius: '50%',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: (selectedUtmSource || selectedUtmCampaign) ? 'var(--accent)' : 'transparent',
+                    borderColor: (selectedUtmSource || selectedUtmCampaign) ? 'var(--accent)' : 'var(--border)',
+                    color: (selectedUtmSource || selectedUtmCampaign) ? '#fff' : 'var(--text-1)',
+                    position: 'relative',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Filter size={14} />
+                  {(selectedUtmSource || selectedUtmCampaign) && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: -2,
+                        right: -2,
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: 'var(--green)',
+                        border: '2px solid var(--bg-card)',
+                      }}
+                    />
+                  )}
+                </button>
+
+                {/* Popover com Opções de Filtro de UTM */}
+                {showUtmFilterMenu && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 'calc(100% + 8px)',
+                      zIndex: 100,
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 12,
+                      boxShadow: 'var(--shadow-elegant, 0 10px 30px rgba(0,0,0,0.15))',
+                      padding: 16,
+                      width: 280,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 12,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700 }}>Filtros de UTM</span>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs btn-icon"
+                        onClick={() => setShowUtmFilterMenu(false)}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)' }}>Origem (utm_source)</label>
+                      <select
+                        value={selectedUtmSource || ''}
+                        onChange={e => setSelectedUtmSource(e.target.value || null)}
+                        style={{
+                          fontSize: 12,
+                          padding: '7px 10px',
+                          borderRadius: 8,
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg)',
+                          color: 'var(--text-1)',
+                          width: '100%',
+                        }}
+                      >
+                        <option value="">Todas as origens</option>
+                        {availableUtmSources.map(src => (
+                          <option key={src} value={src}>{src}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)' }}>Campanha (utm_campaign)</label>
+                      <select
+                        value={selectedUtmCampaign || ''}
+                        onChange={e => setSelectedUtmCampaign(e.target.value || null)}
+                        style={{
+                          fontSize: 12,
+                          padding: '7px 10px',
+                          borderRadius: 8,
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg)',
+                          color: 'var(--text-1)',
+                          width: '100%',
+                        }}
+                      >
+                        <option value="">Todas as campanhas</option>
+                        {availableUtmCampaigns.map(camp => (
+                          <option key={camp} value={camp}>{camp}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {(selectedUtmSource || selectedUtmCampaign) && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs"
+                        style={{ alignSelf: 'flex-start', fontSize: 11, color: 'var(--red)', padding: 0 }}
+                        onClick={() => {
+                          setSelectedUtmSource(null)
+                          setSelectedUtmCampaign(null)
+                        }}
+                      >
+                        Limpar filtros de UTM
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-
-          {/* Dropdowns de UTM (Origem e Campanha) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', paddingTop: 4, borderTop: '1px solid var(--border-soft)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-2)', fontWeight: 600 }}>
-              <Filter size={13} color="var(--accent)" />
-              <span>Filtrar por UTM:</span>
-            </div>
-
-            {/* Dropdown UTM Source */}
-            <select
-              value={selectedUtmSource || ''}
-              onChange={e => setSelectedUtmSource(e.target.value || null)}
-              style={{
-                fontSize: 12,
-                padding: '6px 10px',
-                borderRadius: 8,
-                border: '1px solid var(--border)',
-                background: selectedUtmSource ? 'var(--accent-soft)' : 'var(--bg)',
-                color: 'var(--text-1)',
-                cursor: 'pointer',
-              }}
-            >
-              <option value="">Todas as origens (utm_source)</option>
-              {availableUtmSources.map(src => (
-                <option key={src} value={src}>
-                  Origem: {src}
-                </option>
-              ))}
-            </select>
-
-            {/* Dropdown UTM Campaign */}
-            <select
-              value={selectedUtmCampaign || ''}
-              onChange={e => setSelectedUtmCampaign(e.target.value || null)}
-              style={{
-                fontSize: 12,
-                padding: '6px 10px',
-                borderRadius: 8,
-                border: '1px solid var(--border)',
-                background: selectedUtmCampaign ? 'var(--accent-soft)' : 'var(--bg)',
-                color: 'var(--text-1)',
-                cursor: 'pointer',
-              }}
-            >
-              <option value="">Todas as campanhas (utm_campaign)</option>
-              {availableUtmCampaigns.map(camp => (
-                <option key={camp} value={camp}>
-                  Campanha: {camp}
-                </option>
-              ))}
-            </select>
           </div>
 
           {/* Barra de Filtros Ativos (Pills com remoção) */}
@@ -1175,6 +1500,174 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
               <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--green)' }}>
                 {fmtMoney(selectedOrder.total, currency)}
               </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Resumo do Produto (com Imagem e Estatísticas) */}
+      {productSummary && (
+        <div
+          onClick={() => setProductSummary(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            background: 'rgba(0,0,0,0.7)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <div
+            className="card"
+            onClick={e => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 540, padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}
+          >
+            {/* Cabeçalho do Modal */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 700, fontSize: 11, marginBottom: 6 }}>
+                  Resumo do Produto
+                </span>
+                <h3 style={{ fontSize: 18, fontWeight: 700, margin: '2px 0 0', color: 'var(--text-1)' }}>
+                  {productSummary.name}
+                </h3>
+              </div>
+              <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setProductSummary(null)}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Destaque com Imagem e Métricas Chave */}
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center', background: 'var(--bg-card2)', padding: 14, borderRadius: 12 }}>
+              <img
+                src={getProductImage(productSummary.name)}
+                alt={productSummary.name}
+                style={{
+                  width: 90,
+                  height: 90,
+                  borderRadius: 10,
+                  objectFit: 'cover',
+                  border: '1px solid var(--border)',
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, flex: 1 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-2)', textTransform: 'uppercase', fontWeight: 600 }}>
+                    Faturamento Gerado
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--green)' }}>
+                    {fmtMoney(productSummary.revenue, currency)}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-2)', textTransform: 'uppercase', fontWeight: 600 }}>
+                    Vendas Aprovadas
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)' }}>
+                    {productSummary.quantity} un.
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-2)', textTransform: 'uppercase', fontWeight: 600 }}>
+                    Preço Médio
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>
+                    {fmtMoney(productSummary.revenue / Math.max(productSummary.quantity, 1), currency)}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-2)', textTransform: 'uppercase', fontWeight: 600 }}>
+                    Share na Loja
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)' }}>
+                    {totals.totalRevenue > 0 ? ((productSummary.revenue / totals.totalRevenue) * 100).toFixed(1) : 100}%
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Pedidos que contêm este produto */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>
+                  Pedidos Recentes com este Produto ({productSummaryOrders.length}):
+                </span>
+              </div>
+
+              <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {productSummaryOrders.map(ord => (
+                  <div
+                    key={ord.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px 10px',
+                      background: 'var(--bg)',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-soft)',
+                      fontSize: 12,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 700, color: 'var(--accent)' }}>
+                        {ord.order_number || `#${ord.id.slice(0, 6)}`}
+                      </span>
+                      <span style={{ color: 'var(--text-2)' }}>{ord.customer_name || 'Cliente'}</span>
+                      <span style={{ color: 'var(--text-3)', fontSize: 11 }}>{fmtDate(ord.created_at)}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span
+                        className="badge"
+                        style={{
+                          fontSize: 10,
+                          padding: '1px 6px',
+                          background: ord.status === 'paid' ? 'var(--green-soft)' : 'var(--amber-soft)',
+                          color: ord.status === 'paid' ? 'var(--green)' : 'var(--amber)',
+                        }}
+                      >
+                        {ord.status === 'paid' ? 'Pago' : 'Pendente'}
+                      </span>
+                      <span style={{ fontWeight: 700 }}>{fmtMoney(ord.total, currency)}</span>
+                    </div>
+                  </div>
+                ))}
+                {productSummaryOrders.length === 0 && (
+                  <div style={{ fontSize: 12, color: 'var(--text-2)', padding: '12px 0', textAlign: 'center' }}>
+                    Nenhum pedido associado encontrado.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Rodapé com Ações */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setProductSummary(null)}
+              >
+                Fechar
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  setSelectedProduct(productSummary.name)
+                  setProductSummary(null)
+                }}
+              >
+                Filtrar pedidos deste produto
+              </button>
             </div>
           </div>
         </div>
