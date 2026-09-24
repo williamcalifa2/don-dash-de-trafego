@@ -19,6 +19,10 @@ import {
   Filter,
   RefreshCw,
   Sparkles,
+  X,
+  Tag,
+  Globe,
+  RotateCcw,
 } from 'lucide-react'
 import type { MetricsSummary } from '@/lib/meta'
 import { PulseLoader } from './PulseLoader'
@@ -80,19 +84,15 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
   const [loading, setLoading] = useState(true)
   const [orders, setOrders] = useState<Order[]>([])
   const [isMock, setIsMock] = useState(false)
-  const [totals, setTotals] = useState({
-    totalOrders: 0,
-    paidCount: 0,
-    pendingCount: 0,
-    cancelledCount: 0,
-    totalRevenue: 0,
-    averageTicket: 0,
-    approvalRate: 0,
-  })
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([])
+  const [baseTopProducts, setBaseTopProducts] = useState<TopProduct[]>([])
 
+  // Filtros interativos
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending' | 'cancelled'>('all')
   const [search, setSearch] = useState('')
+  const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
+  const [selectedChannel, setSelectedChannel] = useState<'meta' | 'google' | 'whatsapp' | null>(null)
+  const [selectedUtmSource, setSelectedUtmSource] = useState<string | null>(null)
+  const [selectedUtmCampaign, setSelectedUtmCampaign] = useState<string | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
 
   // Metas e gasto vindo dos anúncios (Meta Ads)
@@ -106,8 +106,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
       const json = await res.json()
       if (json.ok) {
         setOrders(json.orders || [])
-        setTotals(json.totals || {})
-        setTopProducts(json.topProducts || [])
+        setBaseTopProducts(json.topProducts || [])
         setIsMock(Boolean(json.is_mock))
       }
     } catch (e) {
@@ -121,24 +120,191 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
     loadData()
   }, [])
 
-  // Filtragem de pedidos
+  // Lista única de UTMs presentes nos pedidos para os filtros
+  const availableUtmSources = useMemo(() => {
+    const set = new Set<string>()
+    for (const o of orders) {
+      if (o.utm_source) set.add(o.utm_source)
+    }
+    return Array.from(set).sort()
+  }, [orders])
+
+  const availableUtmCampaigns = useMemo(() => {
+    const set = new Set<string>()
+    for (const o of orders) {
+      if (o.utm_campaign) set.add(o.utm_campaign)
+    }
+    return Array.from(set).sort()
+  }, [orders])
+
+  // Filtragem combinada de pedidos
   const filteredOrders = useMemo(() => {
     const q = search.trim().toLowerCase()
     return orders.filter(o => {
+      // Filtro de Status
       if (statusFilter !== 'all' && o.status !== statusFilter) return false
-      if (!q) return true
-      const matchNumber = o.order_number?.toLowerCase().includes(q)
-      const matchCustomer = o.customer_name?.toLowerCase().includes(q) || o.customer_email?.toLowerCase().includes(q)
-      const matchCampaign = o.utm_campaign?.toLowerCase().includes(q)
-      const matchItem = o.items?.some(it => it.name.toLowerCase().includes(q))
-      return Boolean(matchNumber || matchCustomer || matchCampaign || matchItem)
+
+      // Busca textual
+      if (q) {
+        const matchNumber = o.order_number?.toLowerCase().includes(q)
+        const matchCustomer = o.customer_name?.toLowerCase().includes(q) || o.customer_email?.toLowerCase().includes(q)
+        const matchCampaign = o.utm_campaign?.toLowerCase().includes(q)
+        const matchSource = o.utm_source?.toLowerCase().includes(q)
+        const matchItem = o.items?.some(it => it.name.toLowerCase().includes(q))
+        if (!matchNumber && !matchCustomer && !matchCampaign && !matchSource && !matchItem) {
+          return false
+        }
+      }
+
+      // Filtro por Produto
+      if (selectedProduct) {
+        const hasProd = o.items?.some(it => it.name.toLowerCase() === selectedProduct.toLowerCase())
+        if (!hasProd) return false
+      }
+
+      // Filtro por Canal
+      if (selectedChannel) {
+        const src = (o.utm_source || '').toLowerCase()
+        const camp = (o.utm_campaign || '').toLowerCase()
+        if (selectedChannel === 'meta') {
+          const isMeta = src.includes('meta') || src.includes('facebook') || src.includes('instagram') || src.includes('fb') || src.includes('ig') || camp.includes('feed') || camp.includes('reels') || camp.includes('escala')
+          if (!isMeta) return false
+        } else if (selectedChannel === 'google') {
+          const isGoogle = src.includes('google') || src.includes('gads') || src.includes('search') || src.includes('direto') || (!src && !camp)
+          if (!isGoogle) return false
+        } else if (selectedChannel === 'whatsapp') {
+          const isWpp = src.includes('whatsapp') || src.includes('wpp') || src.includes('zap') || (!src.includes('google') && !src.includes('meta') && !src.includes('facebook') && !src.includes('instagram'))
+          if (!isWpp) return false
+        }
+      }
+
+      // Filtro por UTM Source
+      if (selectedUtmSource) {
+        if ((o.utm_source || '').toLowerCase() !== selectedUtmSource.toLowerCase()) {
+          return false
+        }
+      }
+
+      // Filtro por UTM Campaign
+      if (selectedUtmCampaign) {
+        if ((o.utm_campaign || '').toLowerCase() !== selectedUtmCampaign.toLowerCase()) {
+          return false
+        }
+      }
+
+      return true
     })
-  }, [orders, statusFilter, search])
+  }, [orders, statusFilter, search, selectedProduct, selectedChannel, selectedUtmSource, selectedUtmCampaign])
+
+  // Recalculo dinâmico de totais e KPIs para os pedidos filtrados
+  const totals = useMemo(() => {
+    let totalRevenue = 0
+    let paidCount = 0
+    let pendingCount = 0
+    let cancelledCount = 0
+
+    for (const ord of filteredOrders) {
+      const val = Number(ord.total || 0)
+      if (ord.status === 'paid') {
+        paidCount++
+        totalRevenue += val
+      } else if (ord.status === 'cancelled' || ord.status === 'refunded') {
+        cancelledCount++
+      } else {
+        pendingCount++
+      }
+    }
+
+    const averageTicket = paidCount > 0 ? totalRevenue / paidCount : 0
+    const approvalRate = filteredOrders.length > 0 ? (paidCount / filteredOrders.length) * 100 : 0
+
+    return {
+      totalOrders: filteredOrders.length,
+      paidCount,
+      pendingCount,
+      cancelledCount,
+      totalRevenue,
+      averageTicket,
+      approvalRate,
+    }
+  }, [filteredOrders])
+
+  // Indicador de filtros ativos
+  const hasActiveFilters = Boolean(
+    selectedProduct ||
+    selectedChannel ||
+    selectedUtmSource ||
+    selectedUtmCampaign ||
+    statusFilter !== 'all' ||
+    search.trim()
+  )
+
+  function clearAllFilters() {
+    setSelectedProduct(null)
+    setSelectedChannel(null)
+    setSelectedUtmSource(null)
+    setSelectedUtmCampaign(null)
+    setStatusFilter('all')
+    setSearch('')
+  }
+
+  // Top Produtos dinâmico (calculado sobre os pedidos ou filtrado pelo selecionado)
+  const topProducts = useMemo(() => {
+    const map = new Map<string, { quantity: number; revenue: number }>()
+    for (const ord of filteredOrders) {
+      if (ord.status !== 'paid') continue
+      if (Array.isArray(ord.items)) {
+        for (const it of ord.items) {
+          const existing = map.get(it.name) || { quantity: 0, revenue: 0 }
+          existing.quantity += Number(it.quantity || 1)
+          existing.revenue += Number(it.price || 0) * Number(it.quantity || 1)
+          map.set(it.name, existing)
+        }
+      }
+    }
+
+    if (map.size === 0) {
+      if (selectedProduct) {
+        return [{ name: selectedProduct, quantity: totals.paidCount, revenue: totals.totalRevenue }]
+      }
+      return baseTopProducts
+    }
+
+    return Array.from(map.entries())
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5)
+  }, [filteredOrders, selectedProduct, totals, baseTopProducts])
+
+  // Distribuição de canais de acordo com os pedidos atuais
+  const channelBreakdown = useMemo(() => {
+    let meta = 0
+    let google = 0
+    let whatsapp = 0
+
+    for (const o of filteredOrders) {
+      if (o.status !== 'paid') continue
+      const src = (o.utm_source || '').toLowerCase()
+      const camp = (o.utm_campaign || '').toLowerCase()
+      if (src.includes('meta') || src.includes('facebook') || src.includes('instagram') || src.includes('fb') || src.includes('ig') || camp.includes('feed') || camp.includes('reels') || camp.includes('escala')) {
+        meta++
+      } else if (src.includes('google') || src.includes('gads') || src.includes('search') || src.includes('direto')) {
+        google++
+      } else {
+        whatsapp++
+      }
+    }
+    return { meta, google, whatsapp }
+  }, [filteredOrders])
 
   // Métricas do Funil de E-commerce
-  const sessions = Math.max(linkClicks > 0 ? linkClicks : 1850, orders.length * 18)
-  const addCart = Math.round(sessions * 0.092) // 9.2% média do mercado
-  const checkouts = Math.round(sessions * 0.045) // 4.5% média do mercado
+  const baseSessions = Math.max(linkClicks > 0 ? linkClicks : 1850, orders.length * 18)
+  const sessions = hasActiveFilters
+    ? Math.max(Math.round(baseSessions * (Math.max(totals.totalOrders, 1) / Math.max(orders.length, 1))), totals.totalOrders * 12)
+    : baseSessions
+
+  const addCart = Math.max(Math.round(sessions * 0.092), totals.totalOrders * 2)
+  const checkouts = Math.max(Math.round(sessions * 0.045), Math.round(totals.totalOrders * 1.3))
   const ordersCount = totals.totalOrders > 0 ? totals.totalOrders : Math.round(checkouts * 0.65)
   const paidCount = totals.paidCount > 0 ? totals.paidCount : Math.round(ordersCount * 0.84)
 
@@ -157,36 +323,34 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Banner de Demonstração quando ainda não houver pedidos reais gravados */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Indicador discreto de webhook quando em modo de demonstração */}
       {isMock && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'var(--amber-soft)',
-            border: '1px solid var(--amber)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '12px 18px',
-            fontSize: 13,
-            color: 'var(--text-1)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Sparkles size={18} color="var(--amber)" />
-            <span>
-              <strong>Visão de Demonstração Ativa:</strong> Estes dados de exemplo mostram como o faturamento, funil e pedidos aparecem quando a Shopify ou Nuvemshop estão conectadas.
-            </span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 2px' }}>
+          <div style={{ fontSize: 13, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Visão integrada da loja virtual</span>
           </div>
-          <span className="badge" style={{ background: 'var(--amber)', color: '#000', fontWeight: 700 }}>
-            Aguardando Webhook
+          <span
+            className="badge"
+            style={{
+              background: 'var(--amber-soft)',
+              color: 'var(--amber)',
+              border: '1px solid var(--amber)',
+              fontWeight: 600,
+              fontSize: 11,
+              padding: '3px 8px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+            }}
+          >
+            <Clock size={12} /> Aguardando Webhook
           </span>
         </div>
       )}
 
-      {/* Topo: KPIs de E-commerce (Estilo Shopify) */}
-      <div className="kpi-grid">
+      {/* Topo: KPIs de E-commerce (Preenche 100% da linha sem sobrar espaço) */}
+      <div className="kpi-grid-5">
         <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-2)' }}>
             <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>
@@ -263,7 +427,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
         </div>
       </div>
 
-      {/* FUNIL DE E-COMMERCE (Vibe do Funil com Curva e Passos Visuais) */}
+      {/* FUNIL DE E-COMMERCE (5 Etapas ocupando 100% da linha sem quebra de texto) */}
       <div className="card" style={{ padding: 24, position: 'relative', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
           <div>
@@ -281,15 +445,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
         </div>
 
         {/* 5 Etapas do Funil Visual */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: 12,
-            position: 'relative',
-            zIndex: 2,
-          }}
-        >
+        <div className="funnel-grid-5" style={{ position: 'relative', zIndex: 2 }}>
           {/* Etapa 1: Visitas */}
           <div
             className="card"
@@ -304,17 +460,17 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
           >
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', marginBottom: 4 }}>
-                1. Visitas na Loja
+                1. Visitas
               </div>
               <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-1)' }}>
                 {sessions.toLocaleString('pt-BR')}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
-                Sessões / Cliques
+                Sessões na loja
               </div>
             </div>
-            <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>
-              {rateCart.toFixed(1)}% foram pro carrinho →
+            <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              → {rateCart.toFixed(1)}% carrinho
             </div>
           </div>
 
@@ -332,17 +488,17 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
           >
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', marginBottom: 4 }}>
-                2. Adições ao Carrinho
+                2. Carrinho
               </div>
               <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-1)' }}>
                 {addCart.toLocaleString('pt-BR')}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
-                Interesse de compra
+                Adições ao carrinho
               </div>
             </div>
-            <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>
-              {rateCheckout.toFixed(1)}% foram pro checkout →
+            <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              → {rateCheckout.toFixed(1)}% checkout
             </div>
           </div>
 
@@ -360,17 +516,17 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
           >
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', marginBottom: 4 }}>
-                3. Checkouts Iniciados
+                3. Checkout
               </div>
               <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-1)' }}>
                 {checkouts.toLocaleString('pt-BR')}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
-                Preenchimento de dados
+                Iniciados
               </div>
             </div>
-            <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>
-              {rateOrder.toFixed(1)}% geraram pedido →
+            <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              → {rateOrder.toFixed(1)}% geraram pedido
             </div>
           </div>
 
@@ -388,17 +544,17 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
           >
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', marginBottom: 4 }}>
-                4. Pedidos Criados
+                4. Pedidos
               </div>
               <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-1)' }}>
                 {ordersCount.toLocaleString('pt-BR')}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
-                Aguardando aprovação
+                Criados na loja
               </div>
             </div>
-            <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--green)', fontWeight: 600 }}>
-              {ratePaid.toFixed(1)}% foram aprovados →
+            <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--green)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              → {ratePaid.toFixed(1)}% foram pagos
             </div>
           </div>
 
@@ -416,7 +572,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
           >
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--green)', marginBottom: 4 }}>
-                5. Vendas Pagas (Faturadas)
+                5. Pagos
               </div>
               <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--green)' }}>
                 {paidCount.toLocaleString('pt-BR')}
@@ -425,42 +581,76 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
                 {fmtMoney(totals.totalRevenue, currency)}
               </div>
             </div>
-            <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--green)', fontWeight: 700 }}>
-              Conversão Geral: {overallConv.toFixed(2)}%
+            <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--green)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Conversão: {overallConv.toFixed(1)}%
             </div>
           </div>
         </div>
       </div>
 
-      {/* Meio: Produtos Mais Vendidos & Canais de Tráfego */}
+      {/* Meio: Produtos Mais Vendidos & Canais de Tráfego (Com Filtro Interativo ao Clicar) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
-        {/* Top Produtos */}
+        {/* Top Produtos Interativo */}
         <div className="card" style={{ padding: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <Package size={18} color="var(--accent)" />
-            <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Produtos Mais Vendidos</h4>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Package size={18} color="var(--accent)" />
+              <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Produtos Mais Vendidos</h4>
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--text-2)' }}>
+              {selectedProduct ? 'Clique para desselecionar' : 'Clique no produto para filtrar'}
+            </span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {topProducts.map((p, idx) => {
               const maxRev = topProducts[0]?.revenue || 1
               const pct = Math.round((p.revenue / maxRev) * 100)
+              const isSelected = selectedProduct?.toLowerCase() === p.name.toLowerCase()
+
               return (
-                <div key={p.name} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div
+                  key={p.name}
+                  onClick={() => setSelectedProduct(isSelected ? null : p.name)}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    border: isSelected ? '1px solid var(--accent)' : '1px solid transparent',
+                    background: isSelected ? 'var(--accent-soft)' : 'transparent',
+                  }}
+                  onMouseEnter={e => {
+                    if (!isSelected) e.currentTarget.style.background = 'var(--bg-card2)'
+                  }}
+                  onMouseLeave={e => {
+                    if (!isSelected) e.currentTarget.style.background = 'transparent'
+                  }}
+                >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
-                    <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>
-                      {idx + 1}. {p.name}
-                    </span>
-                    <span style={{ fontWeight: 700, color: 'var(--green)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {idx + 1}. {p.name}
+                      </span>
+                      {isSelected && (
+                        <span className="badge" style={{ background: 'var(--accent)', color: '#fff', fontSize: 10, padding: '1px 5px' }}>
+                          Filtro Ativo
+                        </span>
+                      )}
+                    </div>
+                    <span style={{ fontWeight: 700, color: 'var(--green)', flexShrink: 0 }}>
                       {fmtMoney(p.revenue, currency)}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-2)' }}>
                     <span>{p.quantity} unidade(s) vendida(s)</span>
-                    <span>{pct}% do produto líder</span>
+                    <span>{pct}% do líder</span>
                   </div>
                   <div style={{ height: 5, background: 'var(--bg-card2)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent)', borderRadius: 3 }} />
+                    <div style={{ height: '100%', width: `${pct}%`, background: isSelected ? 'var(--accent)' : 'var(--text-2)', borderRadius: 3 }} />
                   </div>
                 </div>
               )
@@ -473,101 +663,337 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
           </div>
         </div>
 
-        {/* Canais e Desempenho de Aquisição */}
+        {/* Canais e Desempenho de Aquisição Interativo */}
         <div className="card" style={{ padding: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <TrendingUp size={18} color="var(--green)" />
-            <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Canais de Origem dos Pedidos</h4>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <TrendingUp size={18} color="var(--green)" />
+              <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Canais de Origem dos Pedidos</h4>
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--text-2)' }}>
+              {selectedChannel ? 'Clique para desselecionar' : 'Clique no canal para filtrar'}
+            </span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--bg-card2)', borderRadius: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)' }} />
-                <span style={{ fontSize: 13, fontWeight: 600 }}>Meta Ads (Instagram / Facebook)</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Canal Meta Ads */}
+            <div
+              onClick={() => setSelectedChannel(selectedChannel === 'meta' ? null : 'meta')}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 14px',
+                borderRadius: 8,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                border: selectedChannel === 'meta' ? '1px solid var(--accent)' : '1px solid var(--border)',
+                background: selectedChannel === 'meta' ? 'var(--accent-soft)' : 'var(--bg-card2)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent)' }} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>Meta Ads (Instagram / Facebook)</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-2)' }}>Campanhas ativas de anúncio</div>
+                </div>
               </div>
-              <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--text-1)', fontWeight: 700 }}>
-                {Math.round(totals.paidCount * 0.72) || 4} vendas
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {selectedChannel === 'meta' && (
+                  <span className="badge" style={{ background: 'var(--accent)', color: '#fff', fontSize: 10, padding: '1px 5px' }}>
+                    Filtro Ativo
+                  </span>
+                )}
+                <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--text-1)', fontWeight: 700 }}>
+                  {channelBreakdown.meta} vendas
+                </span>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--bg-card2)', borderRadius: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />
-                <span style={{ fontSize: 13, fontWeight: 600 }}>Google & Tráfego Direto</span>
+            {/* Canal Google / Direto */}
+            <div
+              onClick={() => setSelectedChannel(selectedChannel === 'google' ? null : 'google')}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 14px',
+                borderRadius: 8,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                border: selectedChannel === 'google' ? '1px solid var(--green)' : '1px solid var(--border)',
+                background: selectedChannel === 'google' ? 'var(--green-soft)' : 'var(--bg-card2)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--green)' }} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>Google & Tráfego Direto</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-2)' }}>Pesquisa orgânica, Google Ads e direto</div>
+                </div>
               </div>
-              <span className="badge" style={{ background: 'var(--green-soft)', color: 'var(--text-1)', fontWeight: 700 }}>
-                {Math.round(totals.paidCount * 0.18) || 1} vendas
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {selectedChannel === 'google' && (
+                  <span className="badge" style={{ background: 'var(--green)', color: '#fff', fontSize: 10, padding: '1px 5px' }}>
+                    Filtro Ativo
+                  </span>
+                )}
+                <span className="badge" style={{ background: 'var(--green-soft)', color: 'var(--text-1)', fontWeight: 700 }}>
+                  {channelBreakdown.google} vendas
+                </span>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--bg-card2)', borderRadius: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--amber)' }} />
-                <span style={{ fontSize: 13, fontWeight: 600 }}>WhatsApp / Outros</span>
+            {/* Canal WhatsApp / Outros */}
+            <div
+              onClick={() => setSelectedChannel(selectedChannel === 'whatsapp' ? null : 'whatsapp')}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 14px',
+                borderRadius: 8,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                border: selectedChannel === 'whatsapp' ? '1px solid var(--amber)' : '1px solid var(--border)',
+                background: selectedChannel === 'whatsapp' ? 'var(--amber-soft)' : 'var(--bg-card2)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--amber)' }} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>WhatsApp / Outros</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-2)' }}>Vendas manuais, Typebot e CRM</div>
+                </div>
               </div>
-              <span className="badge" style={{ background: 'var(--amber-soft)', color: 'var(--text-1)', fontWeight: 700 }}>
-                {Math.round(totals.paidCount * 0.10) || 0} vendas
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {selectedChannel === 'whatsapp' && (
+                  <span className="badge" style={{ background: 'var(--amber)', color: '#000', fontSize: 10, padding: '1px 5px' }}>
+                    Filtro Ativo
+                  </span>
+                )}
+                <span className="badge" style={{ background: 'var(--amber-soft)', color: 'var(--text-1)', fontWeight: 700 }}>
+                  {channelBreakdown.whatsapp} vendas
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tabela de Pedidos estilo Shopify */}
+      {/* Tabela de Pedidos estilo Shopify com Filtros Avançados de UTMs */}
       <div className="card" style={{ padding: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Pedidos Recentes</h4>
-            <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '2px 0 0' }}>
-              Gerenciamento em tempo real de pedidos sincronizados via webhook.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Campo de Busca */}
-            <div style={{ position: 'relative' }}>
-              <Search size={14} color="var(--text-2)" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
-              <input
-                type="text"
-                placeholder="Buscar pedido, cliente..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                style={{
-                  padding: '6px 12px 6px 30px',
-                  borderRadius: 8,
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg)',
-                  color: 'var(--text-1)',
-                  fontSize: 12,
-                  minWidth: 180,
-                }}
-              />
+        {/* Barra de Filtros e Controles */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Pedidos Recentes</h4>
+              <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '2px 0 0' }}>
+                Gerenciamento em tempo real de pedidos sincronizados via webhook.
+              </p>
             </div>
 
-            {/* Filtros de Status */}
-            <div style={{ display: 'flex', gap: 4 }}>
-              {[
-                { key: 'all', label: 'Todos' },
-                { key: 'paid', label: 'Pagos' },
-                { key: 'pending', label: 'Pendentes' },
-                { key: 'cancelled', label: 'Cancelados' },
-              ].map(f => (
-                <button
-                  key={f.key}
-                  type="button"
-                  className={`btn btn-sm ${statusFilter === f.key ? 'btn-primary' : 'btn-outline'}`}
-                  style={{ fontSize: 11, padding: '4px 10px' }}
-                  onClick={() => setStatusFilter(f.key as any)}
-                >
-                  {f.label}
-                </button>
+            {/* Busca e Status */}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Campo de Busca */}
+              <div style={{ position: 'relative' }}>
+                <Search size={14} color="var(--text-2)" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="text"
+                  placeholder="Buscar pedido, cliente..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  style={{
+                    padding: '6px 12px 6px 30px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg)',
+                    color: 'var(--text-1)',
+                    fontSize: 12,
+                    minWidth: 170,
+                  }}
+                />
+              </div>
+
+              {/* Filtros de Status */}
+              <div style={{ display: 'flex', gap: 4 }}>
+                {[
+                  { key: 'all', label: 'Todos' },
+                  { key: 'paid', label: 'Pagos' },
+                  { key: 'pending', label: 'Pendentes' },
+                  { key: 'cancelled', label: 'Cancelados' },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    type="button"
+                    className={`btn btn-sm ${statusFilter === f.key ? 'btn-primary' : 'btn-outline'}`}
+                    style={{ fontSize: 11, padding: '4px 10px' }}
+                    onClick={() => setStatusFilter(f.key as any)}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Dropdowns de UTM (Origem e Campanha) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', paddingTop: 4, borderTop: '1px solid var(--border-soft)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-2)', fontWeight: 600 }}>
+              <Filter size={13} color="var(--accent)" />
+              <span>Filtrar por UTM:</span>
+            </div>
+
+            {/* Dropdown UTM Source */}
+            <select
+              value={selectedUtmSource || ''}
+              onChange={e => setSelectedUtmSource(e.target.value || null)}
+              style={{
+                fontSize: 12,
+                padding: '6px 10px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: selectedUtmSource ? 'var(--accent-soft)' : 'var(--bg)',
+                color: 'var(--text-1)',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="">Todas as origens (utm_source)</option>
+              {availableUtmSources.map(src => (
+                <option key={src} value={src}>
+                  Origem: {src}
+                </option>
               ))}
-            </div>
+            </select>
+
+            {/* Dropdown UTM Campaign */}
+            <select
+              value={selectedUtmCampaign || ''}
+              onChange={e => setSelectedUtmCampaign(e.target.value || null)}
+              style={{
+                fontSize: 12,
+                padding: '6px 10px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: selectedUtmCampaign ? 'var(--accent-soft)' : 'var(--bg)',
+                color: 'var(--text-1)',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="">Todas as campanhas (utm_campaign)</option>
+              {availableUtmCampaigns.map(camp => (
+                <option key={camp} value={camp}>
+                  Campanha: {camp}
+                </option>
+              ))}
+            </select>
           </div>
+
+          {/* Barra de Filtros Ativos (Pills com remoção) */}
+          {hasActiveFilters && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                flexWrap: 'wrap',
+                background: 'var(--bg-card2)',
+                padding: '8px 12px',
+                borderRadius: 8,
+                fontSize: 12,
+              }}
+            >
+              <span style={{ fontWeight: 600, color: 'var(--text-2)' }}>Filtros ativos:</span>
+
+              {selectedProduct && (
+                <span
+                  className="badge"
+                  style={{ background: 'var(--accent-soft)', color: 'var(--text-1)', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+                  onClick={() => setSelectedProduct(null)}
+                  title="Remover filtro de produto"
+                >
+                  <Package size={11} /> {selectedProduct}
+                  <X size={12} />
+                </span>
+              )}
+
+              {selectedChannel && (
+                <span
+                  className="badge"
+                  style={{ background: 'var(--accent-soft)', color: 'var(--text-1)', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+                  onClick={() => setSelectedChannel(null)}
+                  title="Remover filtro de canal"
+                >
+                  <Globe size={11} /> Canal: {selectedChannel.toUpperCase()}
+                  <X size={12} />
+                </span>
+              )}
+
+              {selectedUtmSource && (
+                <span
+                  className="badge"
+                  style={{ background: 'var(--accent-soft)', color: 'var(--text-1)', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+                  onClick={() => setSelectedUtmSource(null)}
+                  title="Remover filtro de origem"
+                >
+                  <Tag size={11} /> Origem: {selectedUtmSource}
+                  <X size={12} />
+                </span>
+              )}
+
+              {selectedUtmCampaign && (
+                <span
+                  className="badge"
+                  style={{ background: 'var(--accent-soft)', color: 'var(--text-1)', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+                  onClick={() => setSelectedUtmCampaign(null)}
+                  title="Remover filtro de campanha"
+                >
+                  <Tag size={11} /> Campanha: {selectedUtmCampaign}
+                  <X size={12} />
+                </span>
+              )}
+
+              {statusFilter !== 'all' && (
+                <span
+                  className="badge"
+                  style={{ background: 'var(--accent-soft)', color: 'var(--text-1)', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+                  onClick={() => setStatusFilter('all')}
+                  title="Remover filtro de status"
+                >
+                  Status: {statusFilter}
+                  <X size={12} />
+                </span>
+              )}
+
+              {search.trim() && (
+                <span
+                  className="badge"
+                  style={{ background: 'var(--accent-soft)', color: 'var(--text-1)', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+                  onClick={() => setSearch('')}
+                  title="Limpar busca"
+                >
+                  Busca: &ldquo;{search}&rdquo;
+                  <X size={12} />
+                </span>
+              )}
+
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs"
+                style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}
+                onClick={clearAllFilters}
+              >
+                <RotateCcw size={11} /> Limpar todos
+              </button>
+
+              <span style={{ fontSize: 11, color: 'var(--text-2)' }}>
+                ({filteredOrders.length} de {orders.length} pedidos)
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Tabela */}
+        {/* Tabela de Pedidos */}
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
             <thead>
@@ -576,7 +1002,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
                 <th style={{ padding: '10px 12px' }}>Data</th>
                 <th style={{ padding: '10px 12px' }}>Cliente</th>
                 <th style={{ padding: '10px 12px' }}>Itens</th>
-                <th style={{ padding: '10px 12px' }}>Origem / Campanha</th>
+                <th style={{ padding: '10px 12px' }}>Origem / UTM</th>
                 <th style={{ padding: '10px 12px' }}>Status</th>
                 <th style={{ padding: '10px 12px', textAlign: 'right' }}>Total</th>
               </tr>
@@ -634,9 +1060,16 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
                         : '1 produto'}
                     </td>
                     <td style={{ padding: '12px' }}>
-                      <span className="badge" style={{ background: 'var(--bg-card2)', color: 'var(--text-1)', fontSize: 11 }}>
-                        {ord.utm_campaign || ord.utm_source || 'Direto'}
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span className="badge" style={{ background: 'var(--bg-card2)', color: 'var(--text-1)', fontSize: 11 }}>
+                          {ord.utm_campaign || ord.utm_source || 'Direto'}
+                        </span>
+                        {ord.utm_source && ord.utm_campaign && (
+                          <span style={{ fontSize: 10, color: 'var(--text-3)' }}>
+                            origem: {ord.utm_source}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '12px' }}>
                       {isPaid ? (
@@ -662,7 +1095,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
               {filteredOrders.length === 0 && (
                 <tr>
                   <td colSpan={7} style={{ padding: '30px', textAlign: 'center', color: 'var(--text-2)' }}>
-                    Nenhum pedido encontrado para o filtro selecionado.
+                    Nenhum pedido encontrado para os filtros selecionados.
                   </td>
                 </tr>
               )}
@@ -749,4 +1182,3 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
     </div>
   )
 }
-

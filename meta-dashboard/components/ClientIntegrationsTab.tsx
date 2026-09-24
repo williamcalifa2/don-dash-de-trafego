@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Copy, Check, RefreshCw, Send, ShieldCheck, ShoppingBag, ExternalLink, Zap, ChevronDown, ChevronUp, BookOpen } from 'lucide-react'
+import { Copy, Check, RefreshCw, Send, ShieldCheck, ShoppingBag, Zap, ChevronDown, ChevronUp, BookOpen } from 'lucide-react'
 import type { ClientConfig, ClientIntegrationsConfig } from '@/lib/clientConfig'
 import { PulseLoader } from './PulseLoader'
 
@@ -192,35 +192,22 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
 
       {/* Integração 1: Shopify */}
       <div className="card" style={{ padding: 18, border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <ShoppingBag size={18} color="#95bf47" strokeWidth={2} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <ShoppingBag size={18} color="#95bf47" strokeWidth={2} style={{ flexShrink: 0 }} />
             <h4 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Shopify</h4>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              type="button"
-              className="btn btn-outline btn-xs"
-              onClick={() => toggleGuide('shopify')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-            >
-              <BookOpen size={12} />
-              <span>{openGuide === 'shopify' ? 'Ocultar guia' : 'Como instalar na Shopify'}</span>
-              {openGuide === 'shopify' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-            </button>
-            <a
-              href="https://help.shopify.com/pt-BR/manual/apps/app-administration/webhooks"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-ghost btn-xs"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
-              title="Abrir documentação da Shopify em nova aba"
-            >
-              <span>Doc oficial</span>
-              <ExternalLink size={12} />
-            </a>
-          </div>
+          <button
+            type="button"
+            className="btn btn-outline btn-xs"
+            onClick={() => toggleGuide('shopify')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
+          >
+            <BookOpen size={12} />
+            <span>{openGuide === 'shopify' ? 'Ocultar guia' : 'Como instalar'}</span>
+            {openGuide === 'shopify' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button>
         </div>
 
         <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 12 }}>
@@ -294,35 +281,22 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
 
       {/* Integração 2: Nuvemshop */}
       <div className="card" style={{ padding: 18, border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <ShoppingBag size={18} color="#2d3277" strokeWidth={2} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <ShoppingBag size={18} color="#2d3277" strokeWidth={2} style={{ flexShrink: 0 }} />
             <h4 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Nuvemshop</h4>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              type="button"
-              className="btn btn-outline btn-xs"
-              onClick={() => toggleGuide('nuvemshop')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-            >
-              <BookOpen size={12} />
-              <span>{openGuide === 'nuvemshop' ? 'Ocultar guia' : 'Como instalar na Nuvemshop'}</span>
-              {openGuide === 'nuvemshop' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-            </button>
-            <a
-              href="https://tiendanube.github.io/api-documentation/resources/webhook"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-ghost btn-xs"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
-              title="Abrir documentação da Nuvemshop em nova aba"
-            >
-              <span>Doc oficial</span>
-              <ExternalLink size={12} />
-            </a>
-          </div>
+          <button
+            type="button"
+            className="btn btn-outline btn-xs"
+            onClick={() => toggleGuide('nuvemshop')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
+          >
+            <BookOpen size={12} />
+            <span>{openGuide === 'nuvemshop' ? 'Ocultar guia' : 'Como instalar'}</span>
+            {openGuide === 'nuvemshop' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button>
         </div>
 
         <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 12 }}>
@@ -369,9 +343,9 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
 
       {/* Integração 3: Webhook Genérico (CRM, n8n, Typebot, WhatsApp) */}
       <div className="card" style={{ padding: 18, border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Zap size={18} color="var(--accent)" strokeWidth={2} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <Zap size={18} color="var(--accent)" strokeWidth={2} style={{ flexShrink: 0 }} />
             <h4 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Webhook Genérico (CRM, n8n, Typebot, WhatsApp)</h4>
           </div>
 
@@ -379,10 +353,10 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
             type="button"
             className="btn btn-outline btn-xs"
             onClick={() => toggleGuide('crm')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
           >
             <BookOpen size={12} />
-            <span>{openGuide === 'crm' ? 'Ocultar guia' : 'Como configurar no n8n / CRM'}</span>
+            <span>{openGuide === 'crm' ? 'Ocultar guia' : 'Como instalar'}</span>
             {openGuide === 'crm' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
           </button>
         </div>

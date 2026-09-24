@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Search, Users, TrendingUp, DollarSign, StickyNote, Clock, LayoutGrid, Table as TableIcon, Zap, ShieldCheck } from 'lucide-react'
+import { Plus, Search, Users, TrendingUp, DollarSign, StickyNote, Clock, LayoutGrid, Table as TableIcon } from 'lucide-react'
 import { useLeadsData as useLeads } from '@/lib/leadsContext'
 import type { Lead, LeadStatus } from '@/lib/leadTypes'
 import { LeadDrawer } from './LeadDrawer'
@@ -204,29 +204,6 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
   const emAndamento = leads.filter(l => l.status === 'Em andamento').length
   const perdido = leads.filter(l => l.status === 'Perdido').length
 
-  // Métricas de SLA
-  const leadsWithContact = leads.filter(l => l.tempo_primeiro_contato_seg != null || l.primeiro_contato != null || (l.status !== 'Novo' && l.ultimo_contato))
-  const avgSlaSec = leadsWithContact.length
-    ? Math.round(leadsWithContact.reduce((acc, l) => {
-        if (l.tempo_primeiro_contato_seg != null) return acc + l.tempo_primeiro_contato_seg
-        const t0 = new Date(l.created_at).getTime()
-        const t1 = new Date(l.primeiro_contato || l.ultimo_contato || l.created_at).getTime()
-        return acc + Math.max(0, Math.round((t1 - t0) / 1000))
-      }, 0) / leadsWithContact.length)
-    : null
-
-  const fmtSla = (sec: number | null) => {
-    if (sec == null) return '-'
-    if (sec < 60) return `${sec}s`
-    if (sec < 3600) return `${Math.round(sec / 60)}m`
-    return `${(sec / 3600).toFixed(1)}h`
-  }
-
-  const slaViolatedCount = leads.filter(l => l.sla_violado).length
-  const slaCumpridoPct = leadsWithContact.length
-    ? Math.round(((leadsWithContact.length - slaViolatedCount) / leadsWithContact.length) * 100)
-    : 100
-
   const STAT_TILES: { label: string; value: string; color: string; icon?: React.ReactNode; dot?: string }[] = [
     { icon: <Users size={16} strokeWidth={1.75} />, label: 'Total leads', value: String(stats.total), color: 'var(--text-1)' },
     { dot: STATUS_META['Novo'].dot, label: 'Novo', value: String(novo), color: 'var(--text-1)' },
@@ -234,8 +211,6 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
     { dot: STATUS_META['Convertido'].dot, label: 'Convertidos', value: String(stats.convertido), color: 'var(--green)' },
     { dot: STATUS_META['Perdido'].dot, label: 'Perdidos', value: String(perdido), color: 'var(--red)' },
     { icon: <Clock size={16} strokeWidth={1.75} />, label: `Sem contato +${STALE_HOURS}h`, value: String(staleCount), color: staleCount > 0 ? 'var(--amber)' : 'var(--text-1)' },
-    { icon: <Zap size={16} strokeWidth={1.75} />, label: 'TMA Atendimento', value: fmtSla(avgSlaSec), color: 'var(--text-1)' },
-    { icon: <ShieldCheck size={16} strokeWidth={1.75} />, label: 'SLA no prazo', value: `${slaCumpridoPct}%`, color: slaCumpridoPct >= 80 ? 'var(--green)' : 'var(--amber)' },
     { icon: <TrendingUp size={16} strokeWidth={1.75} />, label: 'Taxa de conv.', value: `${stats.convRate.toFixed(1)}%`, color: 'var(--text-1)' },
     { icon: <DollarSign size={16} strokeWidth={1.75} />, label: 'Receita', value: fmtBRL(stats.revenue).replace(/,00$/, '') || 'R$ 0', color: 'var(--green)' },
   ]
@@ -427,9 +402,6 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
                         </div>
                       ) : col.key === 'contato' ? (
                         <div style={{ width: '100%', padding: '0 8px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                          {lead.sla_violado ? (
-                            <span className="badge" style={{ background: 'var(--red-soft)', color: 'var(--red)', padding: '1px 6px', fontSize: 10, fontWeight: 700 }} title="SLA de primeiro contato estourado">SLA</span>
-                          ) : null}
                           {stale ? (
                             <span className="badge" style={{ background: 'var(--amber-soft)', color: 'var(--text-1)', padding: '0 8px', fontSize: 11 }}>Sem contato</span>
                           ) : (
