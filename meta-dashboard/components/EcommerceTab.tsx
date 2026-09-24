@@ -23,7 +23,6 @@ import {
   Tag,
   Globe,
   RotateCcw,
-  Eye,
   Check,
 } from 'lucide-react'
 import type { MetricsSummary } from '@/lib/meta'
@@ -120,7 +119,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [productSummary, setProductSummary] = useState<TopProduct | null>(null)
 
-  // Menus suspensos de filtro
+  // Menus suspensos de filtro (popovers)
   const [showUtmFilterMenu, setShowUtmFilterMenu] = useState(false)
   const [showProductFilterMenu, setShowProductFilterMenu] = useState(false)
   const [showChannelFilterMenu, setShowChannelFilterMenu] = useState(false)
@@ -356,6 +355,34 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
     )
   }, [orders, productSummary])
 
+  // Origem principal de tráfego/vendas para o produto no modal
+  const productTopOrigin = useMemo(() => {
+    if (!productSummary || productSummaryOrders.length === 0) return 'Meta Ads'
+    const counts = new Map<string, number>()
+    for (const ord of productSummaryOrders) {
+      const src = (ord.utm_source || '').toLowerCase()
+      let label = 'Direto'
+      if (src.includes('instagram') || src.includes('ig')) label = 'Instagram'
+      else if (src.includes('facebook') || src.includes('fb') || src.includes('meta')) label = 'Facebook'
+      else if (src.includes('google') || src.includes('gads')) label = 'Google'
+      else if (src.includes('whatsapp') || src.includes('wpp')) label = 'WhatsApp'
+      else if (ord.utm_campaign) label = ord.utm_campaign.slice(0, 16)
+      else if (src) label = src.charAt(0).toUpperCase() + src.slice(1)
+
+      counts.set(label, (counts.get(label) || 0) + 1)
+    }
+
+    let topLabel = 'Instagram'
+    let topCount = 0
+    for (const [label, count] of counts.entries()) {
+      if (count > topCount) {
+        topCount = count
+        topLabel = label
+      }
+    }
+    return topLabel
+  }, [productSummary, productSummaryOrders])
+
   // Métricas do Funil de E-commerce
   const baseSessions = Math.max(linkClicks > 0 ? linkClicks : 1850, orders.length * 18)
   const sessions = hasActiveFilters
@@ -486,7 +513,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
         </div>
       </div>
 
-      {/* FUNIL DE E-COMMERCE (5 Etapas ocupando 100% da linha, sem badge de dias) */}
+      {/* FUNIL DE E-COMMERCE (5 Etapas ocupando 100% da linha, sem badge de dias no canto) */}
       <div className="card" style={{ padding: 24, position: 'relative', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
@@ -814,9 +841,8 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-2)' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-2)' }}>
                       <span>{p.quantity} unidade(s) vendida(s)</span>
-                      <span>{pct}% do líder</span>
                     </div>
 
                     <div style={{ height: 5, background: 'var(--bg-card2)', borderRadius: 3, overflow: 'hidden' }}>
@@ -1385,12 +1411,40 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
                         : '1 produto'}
                     </td>
                     <td style={{ padding: '12px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <span className="badge" style={{ background: 'var(--bg-card2)', color: 'var(--text-1)', fontSize: 11 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 210 }}>
+                        <span
+                          className="badge"
+                          title={ord.utm_campaign || ord.utm_source || 'Direto'}
+                          style={{
+                            background: 'var(--bg-card2)',
+                            color: 'var(--text-1)',
+                            fontSize: 11,
+                            maxWidth: 200,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            display: 'block',
+                            textAlign: 'left',
+                            padding: '3px 8px',
+                            borderRadius: 'var(--radius-full)',
+                            boxSizing: 'border-box',
+                          }}
+                        >
                           {ord.utm_campaign || ord.utm_source || 'Direto'}
                         </span>
-                        {ord.utm_source && ord.utm_campaign && (
-                          <span style={{ fontSize: 10, color: 'var(--text-3)' }}>
+                        {ord.utm_source && (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              color: 'var(--text-3)',
+                              paddingLeft: 8,
+                              maxWidth: 200,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              display: 'block',
+                            }}
+                          >
                             origem: {ord.utm_source}
                           </span>
                         )}
@@ -1505,7 +1559,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
         </div>
       )}
 
-      {/* Modal de Resumo do Produto (com Imagem e Estatísticas) */}
+      {/* Modal de Resumo do Produto (com Imagem, Origem Principal e Link para a Loja) */}
       {productSummary && (
         <div
           onClick={() => setProductSummary(null)}
@@ -1526,16 +1580,37 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
             onClick={e => e.stopPropagation()}
             style={{ width: '100%', maxWidth: 540, padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}
           >
-            {/* Cabeçalho do Modal */}
+            {/* Cabeçalho do Modal com Link para a Loja */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 700, fontSize: 11, marginBottom: 6 }}>
                   Resumo do Produto
                 </span>
                 <h3 style={{ fontSize: 18, fontWeight: 700, margin: '2px 0 0', color: 'var(--text-1)' }}>
                   {productSummary.name}
                 </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                  <a
+                    href={`https://${clientSlug || 'loja'}.com.br/produtos/${encodeURIComponent(productSummary.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      fontSize: 12,
+                      color: 'var(--accent)',
+                      textDecoration: 'none',
+                      fontWeight: 600,
+                    }}
+                    title="Abrir página do produto na loja virtual"
+                  >
+                    <span>Ver produto na loja</span>
+                    <ExternalLink size={12} />
+                  </a>
+                </div>
               </div>
+
               <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setProductSummary(null)}>
                 <X size={16} />
               </button>
@@ -1585,10 +1660,10 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
 
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--text-2)', textTransform: 'uppercase', fontWeight: 600 }}>
-                    Share na Loja
+                    Origem Principal
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)' }}>
-                    {totals.totalRevenue > 0 ? ((productSummary.revenue / totals.totalRevenue) * 100).toFixed(1) : 100}%
+                    {productTopOrigin}
                   </div>
                 </div>
               </div>
@@ -1650,24 +1725,44 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
             </div>
 
             {/* Rodapé com Ações */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
-              <button
-                type="button"
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+              <a
+                href={`https://${clientSlug || 'loja'}.com.br/produtos/${encodeURIComponent(productSummary.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="btn btn-outline btn-sm"
-                onClick={() => setProductSummary(null)}
-              >
-                Fechar
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                onClick={() => {
-                  setSelectedProduct(productSummary.name)
-                  setProductSummary(null)
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  textDecoration: 'none',
+                  fontSize: 12,
                 }}
+                title="Abrir página do produto na loja virtual"
               >
-                Filtrar pedidos deste produto
-              </button>
+                <ExternalLink size={13} />
+                <span>Ver na loja</span>
+              </a>
+
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setProductSummary(null)}
+                >
+                  Fechar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => {
+                    setSelectedProduct(productSummary.name)
+                    setProductSummary(null)
+                  }}
+                >
+                  Filtrar pedidos deste produto
+                </button>
+              </div>
             </div>
           </div>
         </div>
