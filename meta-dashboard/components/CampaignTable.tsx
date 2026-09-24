@@ -2,7 +2,7 @@
 
 import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
 import { Fragment, useState, useCallback } from 'react'
-import { ChevronRight, ExternalLink, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { ChevronRight, ExternalLink, X, ArrowUpDown, ArrowUp, ArrowDown, ImageIcon } from 'lucide-react'
 import { resolveDelivery, type CampaignRow, type ConversionItem } from '@/lib/meta'
 import { apiFetch } from '@/lib/apiFetch'
 import { previewSrc } from '@/lib/adPreview'
@@ -367,7 +367,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                                                           {ad.thumb ? (
                                                             <img src={ad.thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                           ) : (
-                                                            <span style={{ fontSize: 20 }}>🖼</span>
+                                                            <ImageIcon size={22} color="var(--text-3)" />
                                                           )}
                                                           <a
                                                             href={ad.preview_shareable_link || `/api/meta/ad/${ad.id}/preview`}
@@ -521,7 +521,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                         </div>
                       </>
                     ) : (
-                      <span style={{ fontSize: 32 }}>🖼</span>
+                      <ImageIcon size={36} color="var(--text-3)" />
                     )}
                   </div>
                 </>

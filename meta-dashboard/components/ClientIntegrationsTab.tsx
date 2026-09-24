@@ -217,7 +217,7 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
         {/* Guia Passo a Passo Shopify */}
         {openGuide === 'shopify' && (
           <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-soft)', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 12, lineHeight: 1.6, color: 'var(--text-1)' }}>
-            <strong style={{ display: 'block', marginBottom: 6, color: 'var(--accent)' }}>📖 Passo a passo de instalação na Shopify:</strong>
+            <strong style={{ display: 'block', marginBottom: 6, color: 'var(--accent)' }}>Passo a passo de instalação na Shopify:</strong>
             <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
               <li>No painel administrativo da sua Shopify, acesse <strong>Configurações</strong> (ícone de engrenagem no canto inferior esquerdo).</li>
               <li>No menu lateral, clique em <strong>Notificações</strong> e role até o final da página na seção <strong>Webhooks</strong>.</li>
@@ -306,7 +306,7 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
         {/* Guia Passo a Passo Nuvemshop */}
         {openGuide === 'nuvemshop' && (
           <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-soft)', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 12, lineHeight: 1.6, color: 'var(--text-1)' }}>
-            <strong style={{ display: 'block', marginBottom: 6, color: 'var(--accent)' }}>📖 Passo a passo de instalação na Nuvemshop:</strong>
+            <strong style={{ display: 'block', marginBottom: 6, color: 'var(--accent)' }}>Passo a passo de instalação na Nuvemshop:</strong>
             <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
               <li>No painel da sua Nuvemshop, acesse a área de <strong>Configurações</strong> &gt; <strong>Canais de Venda / Aplicativos</strong> (ou pelo Portal de Parceiros da Nuvemshop).</li>
               <li>Cadastre uma nova notificação de Webhook para os eventos <code>order/created</code> (criação de pedido) e <code>order/paid</code> (pedido pago).</li>
@@ -368,7 +368,7 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
         {/* Guia Passo a Passo CRM / n8n */}
         {openGuide === 'crm' && (
           <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-soft)', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 12, lineHeight: 1.6, color: 'var(--text-1)' }}>
-            <strong style={{ display: 'block', marginBottom: 6, color: 'var(--accent)' }}>📖 Passo a passo para n8n, Make, Typebot e CRMs:</strong>
+            <strong style={{ display: 'block', marginBottom: 6, color: 'var(--accent)' }}>Passo a passo para n8n, Make, Typebot e CRMs:</strong>
             <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
               <li>No seu fluxo de automação, crie um nó de requisição HTTP com o método <code>POST</code>.</li>
               <li>Cole a <strong>URL Inbound</strong> abaixo.</li>

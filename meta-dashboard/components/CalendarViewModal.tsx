@@ -583,8 +583,8 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
 
                   {/* Secondary row */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--text-2)' }}>
-                    <span>👁 {selectedMetrics.impressions.toLocaleString('pt-BR')} impressões</span>
-                    <span>🎯 {selectedMetrics.leads > 0 ? `${((selectedMetrics.leads / (selectedMetrics.impressions || 1)) * 100).toFixed(2)}% taxa` : '0%'}</span>
+                    <span>{selectedMetrics.impressions.toLocaleString('pt-BR')} impressões</span>
+                    <span>Taxa: {selectedMetrics.leads > 0 ? `${((selectedMetrics.leads / (selectedMetrics.impressions || 1)) * 100).toFixed(2)}% taxa` : '0%'}</span>
                   </div>
                 </>
               ) : (
@@ -642,7 +642,7 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                                   borderRadius: 12,
                                 }}
                               >
-                                WhatsApp ↗
+                                WhatsApp
                               </a>
                             )}
                           </div>

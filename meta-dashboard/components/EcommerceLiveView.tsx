@@ -18,8 +18,6 @@ import {
   DollarSign,
   TrendingUp,
   MapPin,
-  Zap,
-  Flame,
   Check,
   Eye,
 } from 'lucide-react'
@@ -762,57 +760,24 @@ export function EcommerceLiveView({
             foundHover = city
           }
 
-          // Ondas de radar concêntricas
-          const pulseDuration = 1800
-          const maxRadius = isRecentOrder || isSelected ? 30 * zoom : 22 * zoom
+          // Bolinha piscante na superfície do globo (sem pinos e sem ondas de radar)
+          const pulse = 0.5 + 0.5 * Math.sin(now * 0.005 + (city.lat + city.lng))
+          const dotRadius = (isRecentOrder ? 4.8 : 3.6) * zoom + pulse * 1.6
+          const dotColor = isRecentOrder ? '#7e89d1' : isDark ? '#38bdf8' : '#0284c7'
 
-          for (let wave = 0; wave < 3; wave++) {
-            const phase = ((now + wave * 600) % pulseDuration) / pulseDuration
-            const waveR = 4 + phase * maxRadius
-            const waveA = (1 - phase) * (isRecentOrder ? 0.9 : 0.75)
-
-            ctx.strokeStyle = isRecentOrder
-              ? `rgba(126, 137, 209, ${waveA})`
-              : isDark
-              ? `rgba(0, 240, 255, ${waveA})`
-              : `rgba(6, 182, 212, ${waveA})`
-            ctx.lineWidth = 1.5
-            ctx.beginPath()
-            ctx.arc(px, py, waveR, 0, Math.PI * 2)
-            ctx.stroke()
-          }
-
-          // Haste do pino tridimensional
-          const nx = x3d / R
-          const ny = y3d / R
-          const pinHeight = 14 * zoom
-          const pinTopX = px + nx * pinHeight
-          const pinTopY = py - ny * pinHeight
-
-          ctx.strokeStyle = isRecentOrder ? 'var(--secondary)' : isDark ? '#38bdf8' : '#0284c7'
-          ctx.lineWidth = 1.5
+          ctx.fillStyle = dotColor
+          ctx.shadowColor = dotColor
+          ctx.shadowBlur = 8 * zoom
           ctx.beginPath()
-          ctx.moveTo(px, py)
-          ctx.lineTo(pinTopX, pinTopY)
-          ctx.stroke()
-
-          // Ponto luminoso no topo
-          const coreRadius = isRecentOrder ? 5.5 * zoom : 4 * zoom
-          ctx.fillStyle = isRecentOrder ? '#7e89d1' : isDark ? '#00f0ff' : '#06b6d4'
-          ctx.shadowColor = isRecentOrder ? '#7e89d1' : '#00f0ff'
-          ctx.shadowBlur = 10
-          ctx.beginPath()
-          ctx.arc(pinTopX, pinTopY, coreRadius, 0, Math.PI * 2)
+          ctx.arc(px, py, dotRadius, 0, Math.PI * 2)
           ctx.fill()
           ctx.shadowBlur = 0
 
-          // Centro branco reluzente
+          // Centro reluzente branco
           ctx.fillStyle = '#ffffff'
           ctx.beginPath()
-          ctx.arc(pinTopX, pinTopY, coreRadius * 0.45, 0, Math.PI * 2)
+          ctx.arc(px, py, dotRadius * 0.45, 0, Math.PI * 2)
           ctx.fill()
-
-          // NENHUM NOME DE ESTADO/CIDADE É DESENHADO NO MAPA (Conforme solicitado)
         }
       }
 
@@ -986,50 +951,11 @@ export function EcommerceLiveView({
             }}
           >
             <Globe size={20} />
-            <span
-              style={{
-                position: 'absolute',
-                top: 4,
-                right: 4,
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                background: 'var(--green)',
-                boxShadow: '0 0 6px var(--green)',
-              }}
-            />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: 'var(--text-1)' }}>
-                Live View • Tempo Real
-              </h2>
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  padding: '3px 8px',
-                  borderRadius: 9999,
-                  background: 'var(--green-soft)',
-                  color: 'var(--green)',
-                  border: '1px solid var(--green)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                }}
-              >
-                <span
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: 'var(--green)',
-                  }}
-                />
-                Ao vivo
-              </span>
-            </div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: 'var(--text-1)' }}>
+              Live View
+            </h2>
             <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
               {liveTime || 'Atualizando em tempo real'}
             </div>
@@ -1800,26 +1726,10 @@ export function EcommerceLiveView({
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 9999,
-                  background: 'var(--accent-soft)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--accent-dim)',
-                }}
-              >
-                <Compass size={16} />
-              </div>
-              <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text-1)' }}>
-                Top Estados por Acesso
-              </h3>
-            </div>
-            <span style={{ fontSize: 12, color: 'var(--text-2)' }}>Sessões hoje</span>
+            <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text-1)' }}>
+              Top Estados por Acesso
+            </h3>
+            <span style={{ fontSize: 12, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>Sessões hoje</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1895,25 +1805,9 @@ export function EcommerceLiveView({
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 9999,
-                  background: 'var(--amber-soft)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--amber)',
-                }}
-              >
-                <Zap size={16} />
-              </div>
-              <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text-1)' }}>
-                Feed em Tempo Real
-              </h3>
-            </div>
+            <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text-1)' }}>
+              Feed em Tempo Real
+            </h3>
             <div
               style={{
                 display: 'inline-flex',
@@ -1979,13 +1873,13 @@ export function EcommerceLiveView({
                       background: isOrder
                         ? 'var(--accent-soft)'
                         : isCheckout
-                        ? 'rgba(56, 189, 248, 0.12)'
-                        : 'var(--amber-soft)',
+                          ? 'rgba(56, 189, 248, 0.12)'
+                          : 'var(--amber-soft)',
                       color: isOrder
                         ? 'var(--secondary)'
                         : isCheckout
-                        ? '#0284c7'
-                        : 'var(--amber)',
+                          ? '#0284c7'
+                          : 'var(--amber)',
                     }}
                   >
                     {isOrder ? (
@@ -2058,27 +1952,11 @@ export function EcommerceLiveView({
             gap: 16,
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 9999,
-                  background: 'var(--red-soft)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--red)',
-                }}
-              >
-                <Flame size={16} />
-              </div>
-              <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text-1)' }}>
-                Produtos em Alta Agora
-              </h3>
-            </div>
-            <span style={{ fontSize: 12, color: 'var(--text-2)' }}>Mais vistos e comprados</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text-1)' }}>
+              Produtos em Alta Agora
+            </h3>
+            <span style={{ fontSize: 12, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>Mais vistos e comprados</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

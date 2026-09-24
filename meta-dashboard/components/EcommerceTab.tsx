@@ -454,12 +454,12 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
             onClick={() => setSubTab('live')}
             style={{
               height: 38,
-              padding: '0 18px',
+              padding: '0 20px',
               borderRadius: 9999,
               border: '1.5px solid',
-              borderColor: subTab === 'live' ? '#10b981' : 'var(--border)',
-              background: subTab === 'live' ? 'rgba(16, 185, 129, 0.10)' : 'var(--bg-card)',
-              color: subTab === 'live' ? '#059669' : 'var(--text-2)',
+              borderColor: subTab === 'live' ? 'var(--accent)' : 'var(--border)',
+              background: subTab === 'live' ? 'var(--accent-soft)' : 'var(--bg-card)',
+              color: subTab === 'live' ? 'var(--text-1)' : 'var(--text-2)',
               fontWeight: subTab === 'live' ? 700 : 500,
               fontSize: 13,
               display: 'inline-flex',
@@ -467,34 +467,11 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
               gap: 8,
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              boxShadow: subTab === 'live' ? '0 2px 10px rgba(16, 185, 129, 0.2)' : 'var(--shadow-soft)',
+              boxShadow: subTab === 'live' ? '0 2px 8px rgba(99, 102, 241, 0.15)' : 'var(--shadow-soft)',
             }}
           >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: '#10b981',
-                boxShadow: '0 0 8px #10b981',
-                display: 'inline-block',
-              }}
-            />
-            <Globe size={15} color={subTab === 'live' ? '#10b981' : 'var(--text-2)'} />
-            <span>Live View (Tempo Real)</span>
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 800,
-                background: subTab === 'live' ? 'rgba(16, 185, 129, 0.2)' : 'var(--bg-card2)',
-                color: subTab === 'live' ? '#047857' : 'var(--text-2)',
-                padding: '2px 8px',
-                borderRadius: 9999,
-                letterSpacing: '.04em',
-              }}
-            >
-              AO VIVO
-            </span>
+            <Globe size={15} color={subTab === 'live' ? 'var(--accent)' : 'var(--text-2)'} />
+            <span>Live View</span>
           </button>
         </div>
 
@@ -1493,7 +1470,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
                                 onClick={e => e.stopPropagation()}
                                 style={{ fontSize: 11, color: 'var(--green)', textDecoration: 'none' }}
                               >
-                                {ord.customer_phone} 💬
+                                {ord.customer_phone}
                               </a>
                             ) : (
                               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{ord.customer_email || '—'}</span>
