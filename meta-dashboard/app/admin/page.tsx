@@ -17,6 +17,7 @@ import { PlatformBadges } from '@/components/PlatformBadges'
 import { useTheme } from '@/lib/useTheme'
 import { StatusToggle } from '@/components/StatusToggle'
 import { ClientConfigModal } from '@/components/ClientConfigModal'
+import { ClientIntegrationsTab } from '@/components/ClientIntegrationsTab'
 import { StaffShell, STAFF_EVENT, type StaffAction } from '@/components/StaffShell'
 import { ProfileMenu } from '@/components/ProfileMenu'
 import { PulseLoader } from '@/components/PulseLoader'
@@ -51,6 +52,7 @@ interface RecentLead { client: string; slug: string; nome: string | null; campan
 interface MetaOption { id: string; name: string; currency?: string }
 
 type ManagerTab = 'cadastro' | 'acessos' | 'metas'
+type ManagerTab = 'cadastro' | 'acessos' | 'metas' | 'integracoes'
 type Modal =
   | { kind: 'new' }
   | { kind: 'edit'; client: AdminClient }
@@ -485,6 +487,7 @@ function ClientsManager({ clients, initial, initialTab, canManage, baseDomain, a
   const status = (c: AdminClient) => (c.locked ? { text: 'Bloqueado', dot: 'var(--red)' } : c.active === false ? { text: 'Pausado', dot: 'var(--amber)' } : { text: 'Ativo', dot: 'var(--green)' })
   const pick = (slug: string | 'new') => { setSelected(slug); setTab(slug === 'new' ? 'cadastro' : tab) }
   const TABS: Array<[ManagerTab, string]> = [['cadastro', 'Cadastro'], ['acessos', 'Acessos'], ['metas', 'Metas e status']]
+  const TABS: Array<[ManagerTab, string]> = [['cadastro', 'Cadastro'], ['acessos', 'Acessos'], ['metas', 'Metas e status'], ['integracoes', 'Webhooks & Integrações']]
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Clientes" className="no-print" style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
@@ -559,6 +562,7 @@ function ClientsManager({ clients, initial, initialTab, canManage, baseDomain, a
                   : <p style={{ fontSize: 14, color: 'var(--text-2)' }}>Só administradores editam o cadastro.</p>)}
                 {tab === 'acessos' && <div className="card" style={{ padding: 20 }}><AccessPanel key={client.slug} client={client} canManage={canManage} urlFor={urlFor} /></div>}
                 {tab === 'metas' && <div className="card" style={{ padding: 20 }}><ClientConfigModal key={client.slug} embedded slug={client.slug} clientName={client.name} onClose={() => { }} onSaved={cfg => { onConfigSaved(client.slug, cfg.active); onNotice(`Configurações de ${client.name} salvas.`) }} /></div>}
+                {tab === 'integracoes' && <div className="card" style={{ padding: 20 }}><ClientIntegrationsTab key={client.slug} slug={client.slug} clientName={client.name} baseDomain={baseDomain} onNotice={onNotice} /></div>}
               </>
             )}
 

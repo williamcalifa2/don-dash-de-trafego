@@ -1,11 +1,20 @@
 import { getSupabaseServer } from './supabase'
 
+export interface ClientIntegrationsConfig {
+  webhookToken?: string
+  shopifySecret?: string
+  nuvemshopSecret?: string
+  slaTargetMinutes?: number // ex: 15 min
+  businessHoursOnly?: boolean
+}
+
 export interface ClientConfig {
   active: boolean // true = ativo (sincronizando), false = pausado (sem chamadas à API)
   strategicObjective?: string
   goalsPeriod?: string
   funnelGoals?: string
   targetBudget?: number
+  integrations?: ClientIntegrationsConfig
   updatedAt?: string
 }
 
@@ -15,6 +24,9 @@ const DEFAULT_CONFIG: ClientConfig = {
   goalsPeriod: '',
   funnelGoals: '',
   targetBudget: undefined,
+  integrations: {
+    slaTargetMinutes: 15,
+  },
 }
 
 const CONFIG_PREFIX = 'client_config_'

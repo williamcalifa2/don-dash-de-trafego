@@ -49,6 +49,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     const num = Number(body.targetBudget)
     patch.targetBudget = !isNaN(num) && num >= 0 ? num : undefined
   }
+  if ('integrations' in body && typeof body.integrations === 'object' && body.integrations !== null) {
+    const raw = body.integrations as Record<string, unknown>
+    patch.integrations = {
+      webhookToken: typeof raw.webhookToken === 'string' ? raw.webhookToken.slice(0, 100) : undefined,
+      shopifySecret: typeof raw.shopifySecret === 'string' ? raw.shopifySecret.slice(0, 200) : undefined,
+      nuvemshopSecret: typeof raw.nuvemshopSecret === 'string' ? raw.nuvemshopSecret.slice(0, 200) : undefined,
+      slaTargetMinutes: typeof raw.slaTargetMinutes === 'number' && raw.slaTargetMinutes > 0 ? Math.round(raw.slaTargetMinutes) : 15,
+      businessHoursOnly: typeof raw.businessHoursOnly === 'boolean' ? raw.businessHoursOnly : false,
+    }
+  }
 
   const updated = await setClientConfig(slug, patch)
   return NextResponse.json({ ok: true, config: updated })
