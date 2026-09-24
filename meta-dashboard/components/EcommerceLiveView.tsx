@@ -1,42 +1,59 @@
 'use client'
 
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import {
   Globe,
-  Eye,
-  ShoppingCart,
+  Filter,
+  Search,
+  Maximize2,
+  Minimize2,
+  ZoomIn,
+  ZoomOut,
+  Play,
+  Pause,
+  Compass,
   ShoppingBag,
+  ShoppingCart,
   CreditCard,
   DollarSign,
   TrendingUp,
   Users,
   MapPin,
   Zap,
-  RefreshCw,
-  Play,
-  Pause,
-  ZoomIn,
-  ZoomOut,
-  Search,
-  ArrowUpRight,
-  Clock,
-  Sparkles,
-  Compass,
-  ChevronRight,
   Flame,
-  CheckCircle2,
+  Check,
+  ChevronDown,
+  Sparkles,
   X,
+  ExternalLink,
+  Eye,
 } from 'lucide-react'
 
-interface LiveOrder {
-  id: string
-  total: number
+interface CityLocation {
+  name: string
   city: string
   state: string
-  product: string
+  lat: number
+  lng: number
+  visitors: number
+  ordersToday: number
   channel: string
-  timeAgo: string
-  timestamp: number
+  recentOrder?: { product: string; total: number; time: string }
+}
+
+interface FlightArc {
+  id: string
+  fromCity: string
+  toCity: string
+  fromLat: number
+  fromLng: number
+  toLat: number
+  toLng: number
+  progress: number // 0 to 1
+  speed: number
+  product: string
+  value: number
+  color: string
 }
 
 interface LiveEvent {
@@ -52,18 +69,6 @@ interface LiveEvent {
   timestamp: number
 }
 
-interface CityLocation {
-  name: string
-  city: string
-  state: string
-  lat: number
-  lng: number
-  visitors: number
-  ordersToday: number
-  channel: string
-  recentOrder?: { product: string; total: number; time: string }
-}
-
 interface EcommerceLiveViewProps {
   initialRevenue?: number
   initialOrdersCount?: number
@@ -75,7 +80,7 @@ function fmtMoney(v: number, cur = 'BRL') {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: cur }).format(v)
 }
 
-// Cidades ativas pré-configuradas (foco Brasil + internacionais)
+// Cidades ativas pré-configuradas (foco Brasil + hubs internacionais)
 const INITIAL_CITIES: CityLocation[] = [
   { name: 'São Paulo, SP', city: 'São Paulo', state: 'SP', lat: -23.5505, lng: -46.6333, visitors: 7, ordersToday: 14, channel: 'Instagram Ads', recentOrder: { product: 'Sérum Facial Vitamina C', total: 189.90, time: 'há 12s' } },
   { name: 'Rio de Janeiro, RJ', city: 'Rio de Janeiro', state: 'RJ', lat: -22.9068, lng: -43.1729, visitors: 3, ordersToday: 6, channel: 'Meta Ads', recentOrder: { product: 'Combo Pele Radiante', total: 297.00, time: 'há 45s' } },
@@ -94,78 +99,79 @@ const INITIAL_CITIES: CityLocation[] = [
   { name: 'Miami, EUA', city: 'Miami', state: 'EUA', lat: 25.7617, lng: -80.1918, visitors: 1, ordersToday: 0, channel: 'Direto' },
 ]
 
-// Pontos de amostragem geográfica para os continentes (estilo Shopfiy Live View dot-matrix)
-function isLandCoordinate(lat: number, lng: number): boolean {
-  // América do Sul (com grande detalhe no Brasil)
-  if (lat >= -56 && lat <= 13 && lng >= -82 && lng <= -34) {
-    if (lat > 5 && lng < -77) return false
-    if (lat > 0 && lng > -48 && lat > 8) return false
-    if (lat < -20 && lng > -39) return false
-    if (lat < -40 && lng > -60) return false
-    if (lat < -15 && lng < -75) return false
-    if (lat < -45 && lng < -76) return false
-    return true
-  }
-  // América Central & Caribe
-  if (lat >= 8 && lat <= 24 && lng >= -105 && lng <= -60) {
-    if (lng > -80 && lat < 18 && (lng > -75 || lat < 10)) return false
-    return true
-  }
-  // América do Norte
-  if (lat >= 24 && lat <= 71 && lng >= -168 && lng <= -52) {
-    if (lat < 30 && lng > -80) return false
-    if (lat < 28 && lng < -100 && lat < 32 && lng < -115) return false
-    if (lat > 55 && lng > -55) return false
-    if (lng < -130 && lat < 50) return false
-    return true
-  }
-  // Europa
-  if (lat >= 36 && lat <= 71 && lng >= -10 && lng <= 42) {
-    if (lat < 42 && lng > 28) return false
-    if (lat < 38 && lng < -5) return false
-    return true
-  }
-  // África
-  if (lat >= -35 && lat <= 37 && lng >= -18 && lng <= 52) {
-    if (lat > 20 && lng < -17) return false
-    if (lat < -5 && lng < 10) return false
-    if (lat < -20 && lng < 14) return false
-    if (lat < -30 && lng > 33) return false
-    if (lat > 15 && lng > 43 && lat < 30) return false
-    return true
-  }
-  // Ásia
-  if (lat >= 1 && lat <= 75 && lng >= 42 && lng <= 145) {
-    if (lat < 10 && lng < 95) return false
-    if (lat < 22 && lng < 60) return false
-    if (lat > 5 && lat < 25 && lng > 60 && lng < 70) return false
-    if (lat < 20 && lng > 80 && lng < 95) return false
-    return true
-  }
-  // Oceania / Austrália
-  if (lat >= -44 && lat <= -10 && lng >= 112 && lng <= 154) {
-    if (lat < -38 && lng < 140) return false
-    return true
-  }
-  if (lat >= -47 && lat <= -34 && lng >= 166 && lng <= 178) {
-    return true
-  }
-  return false
-}
-
-// Gera a malha estática de pontos globais uma única vez
+// Geração de alta fidelidade dos continentes com densidade precisa (estilo Shopify Live View)
 const CONTINENT_DOTS: { lat: number; lng: number; phi: number; lam: number }[] = (() => {
+  const landBoxes = [
+    // América do Sul (Brasil destacado com costa e interior detalhados)
+    { lat1: -55, lat2: 12, lng1: -81, lng2: -34, test: (lat: number, lng: number) => {
+      if (lat > 8 && lng < -73) return false
+      if (lat > 2 && lng > -50 && lat > 5) return false
+      if (lat < -40 && lng > -62) return false
+      if (lat < -20 && lng > -38) return false
+      if (lat < -10 && lng > -35) return false
+      if (lat > -10 && lat < 5 && lng > -48 && lng < -40 && lat > -2) return true
+      if (lat < -15 && lng < -74 && lat > -45) return false
+      return true
+    }},
+    // América Central e Caribe
+    { lat1: 8, lat2: 22, lng1: -105, lng2: -75, test: (lat: number, lng: number) => {
+      if (lat > 16 && lng < -95 && lat > 18 && lng > -90) return false
+      return Math.abs(lat - ((-0.4 * lng) - 25)) < 12
+    }},
+    // América do Norte
+    { lat1: 24, lat2: 70, lng1: -168, lng2: -52, test: (lat: number, lng: number) => {
+      if (lat < 30 && lng > -82) return false
+      if (lat > 24 && lat < 30 && lng < -105) return false
+      if (lat > 50 && lng > -55) return false
+      if (lat < 48 && lng < -125) return false
+      if (lat > 30 && lat < 45 && lng > -70) return false
+      return true
+    }},
+    // Europa
+    { lat1: 36, lat2: 71, lng1: -10, lng2: 45, test: (lat: number, lng: number) => {
+      if (lat < 44 && lng > 30) return false
+      if (lat < 38 && lng < -6) return false
+      if (lat > 55 && lng < 4 && lat < 58 && lng > -4) return false
+      return true
+    }},
+    // África
+    { lat1: -35, lat2: 37, lng1: -18, lng2: 52, test: (lat: number, lng: number) => {
+      if (lat > 20 && lng < -16) return false
+      if (lat < 4 && lng < 8 && lat > -12) return false
+      if (lat < -20 && lng < 14) return false
+      if (lat < -30 && lng > 33) return false
+      if (lat > 12 && lng > 44 && lat < 28) return false
+      return true
+    }},
+    // Ásia
+    { lat1: 2, lat2: 75, lng1: 45, lng2: 150, test: (lat: number, lng: number) => {
+      if (lat < 10 && lng < 98) return false
+      if (lat < 22 && lng < 60) return false
+      if (lat > 5 && lat < 24 && lng > 65 && lng < 72) return false
+      if (lat > 5 && lat < 22 && lng > 80 && lng < 95) return false
+      return true
+    }},
+    // Oceania / Austrália / NZ
+    { lat1: -44, lat2: -10, lng1: 112, lng2: 155, test: (lat: number, lng: number) => {
+      if (lat < -38 && lng < 140) return false
+      return true
+    }},
+    { lat1: -47, lat2: -34, lng1: 166, lng2: 178, test: () => true },
+  ]
+
   const dots: { lat: number; lng: number; phi: number; lam: number }[] = []
-  const step = 3.6
-  for (let lat = -58; lat <= 72; lat += step) {
-    for (let lng = -180; lng <= 180; lng += step) {
-      if (isLandCoordinate(lat, lng)) {
-        dots.push({
-          lat,
-          lng,
-          phi: (lat * Math.PI) / 180,
-          lam: (lng * Math.PI) / 180,
-        })
+  const step = 2.8
+  for (const b of landBoxes) {
+    for (let lat = b.lat1; lat <= b.lat2; lat += step) {
+      for (let lng = b.lng1; lng <= b.lng2; lng += step) {
+        if (b.test(lat, lng)) {
+          dots.push({
+            lat,
+            lng,
+            phi: (lat * Math.PI) / 180,
+            lam: (lng * Math.PI) / 180,
+          })
+        }
       }
     }
   }
@@ -177,17 +183,21 @@ export function EcommerceLiveView({
   initialOrdersCount = 31,
   currency = 'BRL',
 }: EcommerceLiveViewProps) {
-  // Estado de data & hora ao vivo
+  // Container para Fullscreen
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // Relógio ao vivo
   const [liveTime, setLiveTime] = useState('')
 
   // Métricas em tempo real
-  const [visitorsOnline, setVisitorsOnline] = useState(17)
+  const [visitorsOnline, setVisitorsOnline] = useState(18)
   const [totalSalesToday, setTotalSalesToday] = useState(initialRevenue)
   const [totalOrdersToday, setTotalOrdersToday] = useState(initialOrdersCount)
   const [totalSessionsToday, setTotalSessionsToday] = useState(2418)
 
-  // Funil de 10 minutos (Customer behavior)
-  const [behaviorVisiting, setBehaviorVisiting] = useState(17)
+  // Funil de Comportamento (10 min)
+  const [behaviorVisiting, setBehaviorVisiting] = useState(18)
   const [behaviorCart, setBehaviorCart] = useState(6)
   const [behaviorCheckout, setBehaviorCheckout] = useState(3)
   const [behaviorPurchased, setBehaviorPurchased] = useState(4)
@@ -195,6 +205,10 @@ export function EcommerceLiveView({
   // Cidades e eventos
   const [cities, setCities] = useState<CityLocation[]>(INITIAL_CITIES)
   const [selectedStateFilter, setSelectedStateFilter] = useState<string | null>(null)
+  const [showFilterPopover, setShowFilterPopover] = useState(false)
+  const [filterSearch, setFilterSearch] = useState('')
+  const filterPopoverRef = useRef<HTMLDivElement>(null)
+
   const [hoveredCity, setHoveredCity] = useState<CityLocation | null>(null)
   const [activeOrderBeacon, setActiveOrderBeacon] = useState<{
     city: string
@@ -210,7 +224,39 @@ export function EcommerceLiveView({
     time: Date.now(),
   })
 
-  // Feed de atividades em tempo real
+  // Arcos 3D animados de transação
+  const flightArcsRef = useRef<FlightArc[]>([
+    {
+      id: 'arc-1',
+      fromCity: 'Curitiba',
+      toCity: 'São Paulo',
+      fromLat: -25.4290,
+      fromLng: -49.2671,
+      toLat: -23.5505,
+      toLng: -46.6333,
+      progress: 0.35,
+      speed: 0.007,
+      product: 'Sérum Facial Vitamina C',
+      value: 189.90,
+      color: '#a855f7',
+    },
+    {
+      id: 'arc-2',
+      fromCity: 'Rio de Janeiro',
+      toCity: 'São Paulo',
+      fromLat: -22.9068,
+      fromLng: -43.1729,
+      toLat: -23.5505,
+      toLng: -46.6333,
+      progress: 0.8,
+      speed: 0.009,
+      product: 'Combo Pele Radiante',
+      value: 297.00,
+      color: '#00f0ff',
+    },
+  ])
+
+  // Feed de eventos ao vivo
   const [events, setEvents] = useState<LiveEvent[]>([
     {
       id: 'ev-1',
@@ -221,8 +267,8 @@ export function EcommerceLiveView({
       state: 'SP',
       value: 189.90,
       channel: 'Instagram Ads',
-      timeAgo: 'há 12s',
-      timestamp: Date.now() - 12000,
+      timeAgo: 'há 10s',
+      timestamp: Date.now() - 10000,
     },
     {
       id: 'ev-2',
@@ -233,8 +279,8 @@ export function EcommerceLiveView({
       state: 'RJ',
       value: 297.00,
       channel: 'Meta Ads',
-      timeAgo: 'há 45s',
-      timestamp: Date.now() - 45000,
+      timeAgo: 'há 38s',
+      timestamp: Date.now() - 38000,
     },
     {
       id: 'ev-3',
@@ -246,7 +292,7 @@ export function EcommerceLiveView({
       value: 98.50,
       channel: 'Instagram Stories',
       timeAgo: 'há 1m',
-      timestamp: Date.now() - 75000,
+      timestamp: Date.now() - 70000,
     },
     {
       id: 'ev-4',
@@ -258,7 +304,7 @@ export function EcommerceLiveView({
       value: 149.00,
       channel: 'Google Ads',
       timeAgo: 'há 2m',
-      timestamp: Date.now() - 120000,
+      timestamp: Date.now() - 110000,
     },
     {
       id: 'ev-5',
@@ -269,42 +315,31 @@ export function EcommerceLiveView({
       state: 'RS',
       channel: 'Meta Ads',
       timeAgo: 'há 2m',
-      timestamp: Date.now() - 145000,
-    },
-    {
-      id: 'ev-6',
-      type: 'checkout',
-      title: 'Iniciou Checkout',
-      description: 'Kit Essencial Skincare (R$ 229,00)',
-      city: 'Florianópolis',
-      state: 'SC',
-      value: 229.00,
-      channel: 'Instagram Reels',
-      timeAgo: 'há 3m',
-      timestamp: Date.now() - 180000,
+      timestamp: Date.now() - 140000,
     },
   ])
 
-  // Busca e filtro
+  // Busca rápida de localização
   const [searchQuery, setSearchQuery] = useState('')
 
   // Controles do Globo 3D
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [autoRotate, setAutoRotate] = useState(true)
-  const [zoom, setZoom] = useState(1.0)
+  const [zoom, setZoom] = useState(1.05)
 
-  // Ângulos de rotação do Globo (radianos)
-  // rotY: longitude (centralizado em torno de -48° para o Brasil)
-  // rotX: latitude/tilt (inclinado em torno de -16° para visualizar bem o Brasil)
-  const rotYRef = useRef(-0.84)
-  const rotXRef = useRef(-0.28)
+  // Física de rotação: inércia e amortecimento suave
+  const rotYRef = useRef(-0.84) // Longitude centrada no Brasil (~-48°)
+  const rotXRef = useRef(-0.25) // Tilt / Latitude (~-15°)
+  const velXRef = useRef(0)
+  const velYRef = useRef(0)
   const targetRotRef = useRef<{ x: number; y: number } | null>(null)
 
   const isDraggingRef = useRef(false)
   const dragStartRef = useRef({ x: 0, y: 0 })
   const lastMousePosRef = useRef({ x: 0, y: 0 })
+  const lastDragTimeRef = useRef(0)
 
-  // Atualizador de relógio ao vivo
+  // Relógio em tempo real
   useEffect(() => {
     const updateTime = () => {
       const now = new Date()
@@ -312,7 +347,6 @@ export function EcommerceLiveView({
         now.toLocaleString('pt-BR', {
           day: '2-digit',
           month: 'short',
-          year: 'numeric',
           hour: '2-digit',
           minute: '2-digit',
           second: '2-digit',
@@ -324,37 +358,44 @@ export function EcommerceLiveView({
     return () => clearInterval(timer)
   }, [])
 
-  // Atualização em tempo real dos contadores e eventos periódicos
+  // Fechar popover de filtro ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filterPopoverRef.current && !filterPopoverRef.current.contains(event.target as Node)) {
+        setShowFilterPopover(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Simulador de atividade ao vivo
   useEffect(() => {
     const interval = setInterval(() => {
-      // Flutuação orgânica do número de visitantes
+      // Flutuação orgânica dos visitantes online
       setVisitorsOnline(prev => {
-        const delta = Math.floor(Math.random() * 3) - 1 // -1, 0, +1
-        const next = Math.max(12, Math.min(24, prev + delta))
+        const delta = Math.floor(Math.random() * 3) - 1
+        const next = Math.max(14, Math.min(26, prev + delta))
         setBehaviorVisiting(next)
         return next
       })
 
-      // Sessões incrementam lentamente
       setTotalSessionsToday(prev => prev + (Math.random() > 0.4 ? 1 : 0))
-
-      // Atualiza os minutos do funil de comportamento
-      setBehaviorCart(prev => Math.max(4, Math.min(9, prev + (Math.random() > 0.5 ? 1 : -1))))
+      setBehaviorCart(prev => Math.max(4, Math.min(10, prev + (Math.random() > 0.5 ? 1 : -1))))
       setBehaviorCheckout(prev => Math.max(2, Math.min(6, prev + (Math.random() > 0.6 ? 1 : -1))))
 
-      // Sorteio de novo evento aleatório (carrinho, checkout, visita ou compra)
+      // Dispara novas transações ou eventos
       const roll = Math.random()
       const availableCities = INITIAL_CITIES.filter(c => c.state !== 'PT' && c.state !== 'EUA')
       const targetCity = availableCities[Math.floor(Math.random() * availableCities.length)]
 
-      if (roll < 0.20) {
+      if (roll < 0.28) {
         // Novo pedido aprovado!
         const products = [
-          { name: 'Sérum Facial Vitamina C', price: 189.90 },
+          { name: 'Sérum Facial Vitamina C 15%', price: 189.90 },
           { name: 'Combo Pele Radiante Glow', price: 297.00 },
-          { name: 'Espuma de Limpeza Profunda', price: 98.50 },
+          { name: 'Espuma Facial Purificante', price: 98.50 },
           { name: 'Hidratante Noturno Reparador', price: 149.00 },
-          { name: 'Protetor Solar Facial FPS 50', price: 119.00 },
         ]
         const prod = products[Math.floor(Math.random() * products.length)]
 
@@ -370,6 +411,23 @@ export function EcommerceLiveView({
           time: Date.now(),
         })
 
+        // Cria arco 3D de transação voando até a sede
+        flightArcsRef.current.push({
+          id: `arc-${Date.now()}`,
+          fromCity: targetCity.city,
+          toCity: 'São Paulo',
+          fromLat: targetCity.lat,
+          fromLng: targetCity.lng,
+          toLat: -23.5505,
+          toLng: -46.6333,
+          progress: 0,
+          speed: 0.008 + Math.random() * 0.004,
+          product: prod.name,
+          value: prod.price,
+          color: '#a855f7',
+        })
+
+        // Adiciona evento ao feed
         const newEv: LiveEvent = {
           id: `ev-${Date.now()}`,
           type: 'order',
@@ -382,9 +440,8 @@ export function EcommerceLiveView({
           timeAgo: 'agora',
           timestamp: Date.now(),
         }
-
         setEvents(prev => [newEv, ...prev.slice(0, 14)])
-      } else if (roll < 0.50) {
+      } else if (roll < 0.58) {
         // Novo checkout
         const newEv: LiveEvent = {
           id: `ev-${Date.now()}`,
@@ -398,13 +455,13 @@ export function EcommerceLiveView({
           timestamp: Date.now(),
         }
         setEvents(prev => [newEv, ...prev.slice(0, 14)])
-      } else if (roll < 0.75) {
+      } else if (roll < 0.85) {
         // Adicionou ao carrinho
         const newEv: LiveEvent = {
           id: `ev-${Date.now()}`,
           type: 'cart',
           title: 'Adicionou ao Carrinho',
-          description: 'Item adicionado à sacola de compras',
+          description: 'Produto inserido na sacola de compras',
           city: targetCity.city,
           state: targetCity.state,
           channel: targetCity.channel,
@@ -413,35 +470,37 @@ export function EcommerceLiveView({
         }
         setEvents(prev => [newEv, ...prev.slice(0, 14)])
       }
-    }, 4500)
+    }, 4200)
 
     return () => clearInterval(interval)
   }, [currency])
 
-  // Função para girar suavemente até uma coordenada
+  // Rotação suave da câmera até uma coordenada específica
   const focusOnCoordinates = useCallback((lat: number, lng: number) => {
     setAutoRotate(false)
+    velXRef.current = 0
+    velYRef.current = 0
     const targetY = -(lng * Math.PI) / 180
-    const targetX = -(lat * Math.PI) / 180 * 0.75 // amortecimento leve de inclinação
+    const targetX = -(lat * Math.PI) / 180 * 0.75
     targetRotRef.current = { x: targetX, y: targetY }
   }, [])
 
-  // Foco em um estado específico
+  // Seleção de estado via popover
   const handleSelectState = (st: string) => {
     if (selectedStateFilter === st) {
       setSelectedStateFilter(null)
-      // Volta a focar no centro do Brasil
       focusOnCoordinates(-14.235, -51.9253)
-      return
+    } else {
+      setSelectedStateFilter(st)
+      const match = cities.find(c => c.state === st)
+      if (match) {
+        focusOnCoordinates(match.lat, match.lng)
+      }
     }
-    setSelectedStateFilter(st)
-    const match = cities.find(c => c.state === st)
-    if (match) {
-      focusOnCoordinates(match.lat, match.lng)
-    }
+    setShowFilterPopover(false)
   }
 
-  // Executa busca de cidade
+  // Busca rápida de localização
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (!searchQuery.trim()) return
@@ -455,7 +514,20 @@ export function EcommerceLiveView({
     }
   }
 
-  // Engine do Canvas 3D do Globo
+  // Alterna tela cheia
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen?.()
+      setIsFullscreen(true)
+    } else {
+      document.exitFullscreen?.()
+      setIsFullscreen(false)
+    }
+  }
+
+  // -------------------------------------------------------------
+  // ENGINE 3D DO GLOBO INTERATIVO (CANVAS 60FPS)
+  // -------------------------------------------------------------
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -464,7 +536,6 @@ export function EcommerceLiveView({
 
     let animationFrameId: number
 
-    // Render loop
     const render = () => {
       const rect = canvas.getBoundingClientRect()
       const dpr = window.devicePixelRatio || 1
@@ -480,60 +551,100 @@ export function EcommerceLiveView({
       ctx.scale(dpr, dpr)
       ctx.clearRect(0, 0, width, height)
 
-      // Animação de rotação suave até o target selecionado
+      // Animação de rotação: Target suave ou Inércia com amortecimento
       if (targetRotRef.current) {
         const dx = targetRotRef.current.x - rotXRef.current
         const dy = targetRotRef.current.y - rotYRef.current
-        rotXRef.current += dx * 0.08
-        rotYRef.current += dy * 0.08
+        rotXRef.current += dx * 0.09
+        rotYRef.current += dy * 0.09
         if (Math.abs(dx) < 0.002 && Math.abs(dy) < 0.002) {
           targetRotRef.current = null
         }
-      } else if (autoRotate && !isDraggingRef.current) {
-        rotYRef.current += 0.0025
+      } else if (!isDraggingRef.current) {
+        // Aplica velocidade residual (física de inércia)
+        if (Math.abs(velXRef.current) > 0.0001 || Math.abs(velYRef.current) > 0.0001) {
+          rotXRef.current = Math.max(-1.1, Math.min(1.1, rotXRef.current + velXRef.current))
+          rotYRef.current += velYRef.current
+          velXRef.current *= 0.92
+          velYRef.current *= 0.92
+        } else if (autoRotate) {
+          rotYRef.current += 0.0022
+        }
       }
 
       const cx = width / 2
       const cy = height / 2
-      const baseRadius = Math.min(width, height) * 0.38
+      // Tamanho expansivo do globo para preencher elegantemente o espaço da tela
+      const baseRadius = Math.min(width * 0.44, height * 0.46)
       const R = baseRadius * zoom
 
       const rotX = rotXRef.current
       const rotY = rotYRef.current
+      const sinRotX = Math.sin(rotX)
+      const cosRotX = Math.cos(rotX)
 
-      // 1. Halo atmosférico suave externo
-      const haloGrad = ctx.createRadialGradient(cx, cy, R * 0.95, cx, cy, R * 1.15)
-      haloGrad.addColorStop(0, 'rgba(56, 189, 248, 0.18)')
-      haloGrad.addColorStop(0.5, 'rgba(99, 102, 241, 0.08)')
-      haloGrad.addColorStop(1, 'rgba(56, 189, 248, 0)')
-      ctx.fillStyle = haloGrad
+      // Identifica se o tema atual é dark ou light
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+        (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+      // 1. Sombra suave de contato no chão (Drop shadow tridimensional)
+      const shadowY = cy + R * 0.92
+      const shadowGrad = ctx.createRadialGradient(cx, shadowY, R * 0.2, cx, shadowY, R * 0.85)
+      shadowGrad.addColorStop(0, isDark ? 'rgba(0, 0, 0, 0.45)' : 'rgba(15, 23, 42, 0.16)')
+      shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)')
+      ctx.fillStyle = shadowGrad
       ctx.beginPath()
-      ctx.arc(cx, cy, R * 1.15, 0, Math.PI * 2)
+      ctx.ellipse(cx, shadowY, R * 0.85, R * 0.18, 0, 0, Math.PI * 2)
       ctx.fill()
 
-      // 2. Esfera do Oceano (Globo 3D)
+      // 2. Halo de atmosfera externa luminosa (Corona)
+      const atmosphereGrad = ctx.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.18)
+      if (isDark) {
+        atmosphereGrad.addColorStop(0, 'rgba(56, 189, 248, 0.32)')
+        atmosphereGrad.addColorStop(0.45, 'rgba(99, 102, 241, 0.12)')
+        atmosphereGrad.addColorStop(1, 'rgba(56, 189, 248, 0)')
+      } else {
+        atmosphereGrad.addColorStop(0, 'rgba(34, 211, 238, 0.38)')
+        atmosphereGrad.addColorStop(0.5, 'rgba(14, 165, 233, 0.14)')
+        atmosphereGrad.addColorStop(1, 'rgba(14, 165, 233, 0)')
+      }
+      ctx.fillStyle = atmosphereGrad
+      ctx.beginPath()
+      ctx.arc(cx, cy, R * 1.18, 0, Math.PI * 2)
+      ctx.fill()
+
+      // 3. Esfera do Oceano (Globo Cristalino Estilo Shopify)
       ctx.save()
       ctx.beginPath()
       ctx.arc(cx, cy, R, 0, Math.PI * 2)
       ctx.clip()
 
-      // Fundo oceânico com gradiente radial de iluminação realista
+      // Gradiente esférico realista com iluminação especular no topo esquerdo
       const oceanGrad = ctx.createRadialGradient(
-        cx - R * 0.35,
-        cy - R * 0.35,
-        R * 0.1,
+        cx - R * 0.38,
+        cy - R * 0.38,
+        R * 0.05,
         cx,
         cy,
         R
       )
-      oceanGrad.addColorStop(0, '#1e293b') // Iluminado
-      oceanGrad.addColorStop(0.6, '#0f172a') // Profundo
-      oceanGrad.addColorStop(1, '#050914') // Borda escura
+      if (isDark) {
+        oceanGrad.addColorStop(0, '#1e293b') // Especular suave
+        oceanGrad.addColorStop(0.35, '#0f172a') // Profundeza
+        oceanGrad.addColorStop(0.75, '#080d1a')
+        oceanGrad.addColorStop(1, '#020617') // Limb escuro
+      } else {
+        oceanGrad.addColorStop(0, '#ffffff') // Brilho puro de vidro
+        oceanGrad.addColorStop(0.25, '#f0fdfa') // Ciano leitoso
+        oceanGrad.addColorStop(0.65, '#e0f2fe') // Oceano gelo
+        oceanGrad.addColorStop(0.9, '#bae6fd') // Borda azulada
+        oceanGrad.addColorStop(1, '#7dd3fc')
+      }
       ctx.fillStyle = oceanGrad
       ctx.fill()
 
-      // Paralelos e Meridianos sutis (Graticule)
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)'
+      // Paralelos e Meridianos finos (Graticule)
+      ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(14, 165, 233, 0.12)'
       ctx.lineWidth = 1
       for (let lat = -60; lat <= 60; lat += 30) {
         ctx.beginPath()
@@ -544,51 +655,110 @@ export function EcommerceLiveView({
         ctx.stroke()
       }
 
-      // 3. Matriz de pontos dos continentes (Dotted continents)
-      const sinRotX = Math.sin(rotX)
-      const cosRotX = Math.cos(rotX)
-
+      // 4. Matriz de Pontos dos Continentes (Hex/Dot Matrix)
       for (let i = 0; i < CONTINENT_DOTS.length; i++) {
         const dot = CONTINENT_DOTS[i]
         const deltaLam = dot.lam - rotY
 
-        // Projeção ortográfica tridimensional
         const x3d = R * Math.cos(dot.phi) * Math.sin(deltaLam)
         const y3d = R * (cosRotX * Math.sin(dot.phi) - sinRotX * Math.cos(dot.phi) * Math.cos(deltaLam))
         const z3d = sinRotX * Math.sin(dot.phi) + cosRotX * Math.cos(dot.phi) * Math.cos(deltaLam)
 
-        // Se estiver na face frontal (visível)
-        if (z3d > 0.05) {
+        if (z3d > 0.04) {
           const px = cx + x3d
           const py = cy - y3d
-          const dotRadius = Math.max(1.2, 2.3 * zoom * Math.min(1.2, z3d + 0.2))
+          const dotRadius = Math.max(1.1, 2.2 * zoom * Math.min(1.2, z3d + 0.2))
 
-          // Brilho ciano com desvanecimento suave nas bordas
-          const alpha = Math.min(0.9, Math.max(0.12, z3d * 0.95))
-          ctx.fillStyle = `rgba(56, 189, 248, ${alpha})`
+          // Brilho e opacidade de acordo com o ângulo de visão
+          const alpha = Math.min(0.95, Math.max(0.12, z3d * 0.98))
+          if (isDark) {
+            ctx.fillStyle = `rgba(56, 189, 248, ${alpha})`
+          } else {
+            // Em tema claro: ciano/esmeralda vibrante estilo Shopify
+            ctx.fillStyle = `rgba(6, 182, 212, ${alpha * 0.95})`
+          }
           ctx.beginPath()
           ctx.arc(px, py, dotRadius, 0, Math.PI * 2)
           ctx.fill()
         }
       }
 
-      // 4. Borda de sombra interna para reforçar profundidade 3D
-      const rimGrad = ctx.createRadialGradient(cx, cy, R * 0.85, cx, cy, R)
+      // Sombra de oclusão esférica interna (reforça volume 3D)
+      const rimGrad = ctx.createRadialGradient(cx, cy, R * 0.82, cx, cy, R)
       rimGrad.addColorStop(0, 'rgba(0, 0, 0, 0)')
-      rimGrad.addColorStop(1, 'rgba(0, 0, 0, 0.45)')
+      rimGrad.addColorStop(1, isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(2, 132, 199, 0.22)')
       ctx.fillStyle = rimGrad
       ctx.fill()
 
-      ctx.restore() // Remove clip do oceano
+      ctx.restore() // Remove clip da esfera
 
-      // Anel sutil de contorno do globo
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)'
+      // Contorno fino cristalino da esfera
+      ctx.strokeStyle = isDark ? 'rgba(56, 189, 248, 0.35)' : 'rgba(14, 165, 233, 0.45)'
       ctx.lineWidth = 1.5
       ctx.beginPath()
       ctx.arc(cx, cy, R, 0, Math.PI * 2)
       ctx.stroke()
 
-      // 5. Pontos Ao Vivo (Pings de Visitantes e Pedidos)
+      // 5. Arcos 3D Animados de Transações (Shopify Flight Arcs)
+      const activeArcs = flightArcsRef.current
+      for (let a = activeArcs.length - 1; a >= 0; a--) {
+        const arc = activeArcs[a]
+        arc.progress += arc.speed
+
+        if (arc.progress >= 1) {
+          activeArcs.splice(a, 1)
+          continue
+        }
+
+        // Converte coordenadas geográficas dos dois pontos
+        const phi1 = (arc.fromLat * Math.PI) / 180
+        const lam1 = (arc.fromLng * Math.PI) / 180 - rotY
+        const phi2 = (arc.toLat * Math.PI) / 180
+        const lam2 = (arc.toLng * Math.PI) / 180 - rotY
+
+        // Ponto A
+        const ax = R * Math.cos(phi1) * Math.sin(lam1)
+        const ay = R * (cosRotX * Math.sin(phi1) - sinRotX * Math.cos(phi1) * Math.cos(lam1))
+        const az = sinRotX * Math.sin(phi1) + cosRotX * Math.cos(phi1) * Math.cos(lam1)
+
+        // Ponto B
+        const bx = R * Math.cos(phi2) * Math.sin(lam2)
+        const by = R * (cosRotX * Math.sin(phi2) - sinRotX * Math.cos(phi2) * Math.cos(lam2))
+        const bz = sinRotX * Math.sin(phi2) + cosRotX * Math.cos(phi2) * Math.cos(lam2)
+
+        // Se ao menos um dos pontos estiver visível
+        if (az > -0.1 || bz > -0.1) {
+          const t = arc.progress
+          // Interpolação com elevação parabólica 3D
+          const arcHeight = Math.sin(Math.PI * t) * 45 * zoom
+          const curX = ax + (bx - ax) * t
+          const curY = ay + (by - ay) * t - arcHeight
+
+          const pScreenX = cx + curX
+          const pScreenY = cy - curY
+
+          // Rastro do arco
+          ctx.strokeStyle = arc.color
+          ctx.lineWidth = 2
+          ctx.beginPath()
+          ctx.moveTo(cx + ax, cy - ay)
+          ctx.quadraticCurveTo(cx + (ax + bx) / 2, cy - (ay + by) / 2 - arcHeight * 1.5, cx + bx, cy - by)
+          ctx.globalAlpha = Math.sin(Math.PI * t) * 0.6
+          ctx.stroke()
+          ctx.globalAlpha = 1
+
+          // Partícula de luz viajante
+          ctx.fillStyle = '#ffffff'
+          ctx.shadowColor = arc.color
+          ctx.shadowBlur = 10
+          ctx.beginPath()
+          ctx.arc(pScreenX, pScreenY, 4 * zoom, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.shadowBlur = 0
+        }
+      }
+
+      // 6. Pontos Ao Vivo (Pings de Visitantes e Pedidos com Pinos 3D)
       const now = Date.now()
       let foundHover: CityLocation | null = null
 
@@ -608,55 +778,68 @@ export function EcommerceLiveView({
           const isRecentOrder = city.recentOrder && (now - (city.recentOrder.total || 0) < 60000)
           const isSelected = selectedStateFilter === city.state
 
-          // Detecção de hover do mouse
+          // Detecção de mouse hover
           const distToMouse = Math.hypot(lastMousePosRef.current.x - px, lastMousePosRef.current.y - py)
-          if (distToMouse < 18) {
+          if (distToMouse < 20) {
             foundHover = city
           }
 
-          // Ondas de radar pulsantes concêntricas
-          const pulseSpeed = 1600
-          const phase1 = (now % pulseSpeed) / pulseSpeed
-          const phase2 = ((now + 800) % pulseSpeed) / pulseSpeed
+          // Ondas de radar concêntricas (3 ondas contínuas de alta frequência)
+          const pulseDuration = 1800
+          const maxRadius = isRecentOrder || isSelected ? 32 * zoom : 24 * zoom
 
-          const maxRadius = isRecentOrder || isSelected ? 26 * zoom : 20 * zoom
+          for (let wave = 0; wave < 3; wave++) {
+            const phase = ((now + wave * 600) % pulseDuration) / pulseDuration
+            const waveR = 4 + phase * maxRadius
+            const waveA = (1 - phase) * (isRecentOrder ? 0.9 : 0.75)
 
-          // Anel 1
-          const r1 = 4 + phase1 * maxRadius
-          const a1 = (1 - phase1) * (isRecentOrder ? 0.9 : 0.7)
-          ctx.strokeStyle = isRecentOrder ? `rgba(168, 85, 247, ${a1})` : `rgba(0, 240, 255, ${a1})`
+            ctx.strokeStyle = isRecentOrder
+              ? `rgba(168, 85, 247, ${waveA})`
+              : isDark
+              ? `rgba(0, 240, 255, ${waveA})`
+              : `rgba(6, 182, 212, ${waveA})`
+            ctx.lineWidth = 2
+            ctx.beginPath()
+            ctx.arc(px, py, waveR, 0, Math.PI * 2)
+            ctx.stroke()
+          }
+
+          // Haste do pino tridimensional projetada para fora da superfície
+          const nx = x3d / R
+          const ny = y3d / R
+          const pinHeight = 16 * zoom
+          const pinTopX = px + nx * pinHeight
+          const pinTopY = py - ny * pinHeight
+
+          ctx.strokeStyle = isRecentOrder ? '#c084fc' : isDark ? '#38bdf8' : '#0284c7'
           ctx.lineWidth = 2
           ctx.beginPath()
-          ctx.arc(px, py, r1, 0, Math.PI * 2)
+          ctx.moveTo(px, py)
+          ctx.lineTo(pinTopX, pinTopY)
           ctx.stroke()
 
-          // Anel 2
-          const r2 = 4 + phase2 * maxRadius
-          const a2 = (1 - phase2) * (isRecentOrder ? 0.9 : 0.7)
-          ctx.strokeStyle = isRecentOrder ? `rgba(168, 85, 247, ${a2})` : `rgba(0, 240, 255, ${a2})`
-          ctx.beginPath()
-          ctx.arc(px, py, r2, 0, Math.PI * 2)
-          ctx.stroke()
-
-          // Ponto central luminoso
+          // Esfera luminosa no topo do pino 3D
           const coreRadius = isRecentOrder ? 6 * zoom : 4.5 * zoom
-          ctx.fillStyle = isRecentOrder ? '#c084fc' : '#38bdf8'
+          ctx.fillStyle = isRecentOrder ? '#a855f7' : isDark ? '#00f0ff' : '#06b6d4'
+          ctx.shadowColor = isRecentOrder ? '#a855f7' : '#00f0ff'
+          ctx.shadowBlur = 12
           ctx.beginPath()
-          ctx.arc(px, py, coreRadius, 0, Math.PI * 2)
+          ctx.arc(pinTopX, pinTopY, coreRadius, 0, Math.PI * 2)
           ctx.fill()
+          ctx.shadowBlur = 0
 
-          // Centro branco
+          // Centro branco reluzente
           ctx.fillStyle = '#ffffff'
           ctx.beginPath()
-          ctx.arc(px, py, coreRadius * 0.5, 0, Math.PI * 2)
+          ctx.arc(pinTopX, pinTopY, coreRadius * 0.45, 0, Math.PI * 2)
           ctx.fill()
 
-          // Rótulo discreto de cidade se estiver em foco ou no topo da visualização
+          // Rótulo da cidade quando em foco ou em evidência
           if (z3d > 0.45 || isSelected || foundHover?.city === city.city) {
             ctx.font = '600 11px Montserrat, sans-serif'
-            ctx.fillStyle = isRecentOrder ? '#f3e8ff' : '#e0f2fe'
+            ctx.fillStyle = isDark ? '#ffffff' : '#0f172a'
             ctx.textAlign = 'center'
-            ctx.fillText(city.city, px, py - (coreRadius + 8))
+            ctx.fillText(city.city, pinTopX, pinTopY - (coreRadius + 8))
           }
         }
       }
@@ -674,10 +857,15 @@ export function EcommerceLiveView({
     }
   }, [autoRotate, zoom, cities, selectedStateFilter])
 
-  // Controles de mouse para girar o globo
+  // -------------------------------------------------------------
+  // CONTROLES DE MOUSE / TOQUE COM INÉRCIA (MOMENTUM)
+  // -------------------------------------------------------------
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     isDraggingRef.current = true
     dragStartRef.current = { x: e.clientX, y: e.clientY }
+    lastDragTimeRef.current = performance.now()
+    velXRef.current = 0
+    velYRef.current = 0
     setAutoRotate(false)
   }
 
@@ -691,25 +879,32 @@ export function EcommerceLiveView({
     }
 
     if (!isDraggingRef.current) return
+    const now = performance.now()
+    const dt = Math.max(1, now - lastDragTimeRef.current)
     const dx = e.clientX - dragStartRef.current.x
     const dy = e.clientY - dragStartRef.current.y
 
+    // Calcula velocidade para inércia
+    velYRef.current = (dx * 0.006) / (dt * 0.1)
+    velXRef.current = (dy * 0.006) / (dt * 0.1)
+
     rotYRef.current += dx * 0.006
-    // Limita inclinação para não virar de cabeça para baixo
     rotXRef.current = Math.max(-1.1, Math.min(1.1, rotXRef.current + dy * 0.006))
 
     dragStartRef.current = { x: e.clientX, y: e.clientY }
+    lastDragTimeRef.current = now
   }
 
   const handleMouseUp = () => {
     isDraggingRef.current = false
   }
 
-  // Controles de touch para mobile
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
     if (e.touches.length === 1) {
       isDraggingRef.current = true
       dragStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+      velXRef.current = 0
+      velYRef.current = 0
       setAutoRotate(false)
     }
   }
@@ -729,18 +924,29 @@ export function EcommerceLiveView({
     isDraggingRef.current = false
   }
 
-  // Ranking dos Top Estados
-  const topStates = useMemo(() => {
+  // Lista de estados para o Popover de Filtro (somente ícone, sem poluir a tela)
+  const stateList = useMemo(() => {
     return [
-      { uf: 'SP', name: 'São Paulo', percent: 44, sessions: 1063, live: 7, orders: 14 },
-      { uf: 'RJ', name: 'Rio de Janeiro', percent: 19, sessions: 459, live: 3, orders: 6 },
-      { uf: 'MG', name: 'Minas Gerais', percent: 13, sessions: 314, live: 2, orders: 4 },
-      { uf: 'PR', name: 'Paraná', percent: 9, sessions: 217, live: 2, orders: 3 },
-      { uf: 'RS', name: 'Rio Grande do Sul', percent: 7, sessions: 169, live: 1, orders: 2 },
-      { uf: 'SC', name: 'Santa Catarina', percent: 5, sessions: 121, live: 1, orders: 1 },
-      { uf: 'Outros', name: 'Demais Estados', percent: 3, sessions: 75, live: 1, orders: 1 },
+      { uf: 'SP', name: 'São Paulo', live: 7, orders: 14, percent: 44, sessions: 1063 },
+      { uf: 'RJ', name: 'Rio de Janeiro', live: 3, orders: 6, percent: 19, sessions: 459 },
+      { uf: 'MG', name: 'Minas Gerais', live: 2, orders: 4, percent: 13, sessions: 314 },
+      { uf: 'PR', name: 'Paraná', live: 2, orders: 3, percent: 9, sessions: 217 },
+      { uf: 'RS', name: 'Rio Grande do Sul', live: 1, orders: 2, percent: 7, sessions: 169 },
+      { uf: 'SC', name: 'Santa Catarina', live: 1, orders: 1, percent: 5, sessions: 121 },
+      { uf: 'BA', name: 'Bahia', live: 1, orders: 1, percent: 4, sessions: 98 },
+      { uf: 'DF', name: 'Distrito Federal', live: 1, orders: 1, percent: 3, sessions: 85 },
+      { uf: 'CE', name: 'Ceará', live: 1, orders: 1, percent: 3, sessions: 76 },
+      { uf: 'GO', name: 'Goiás', live: 1, orders: 0, percent: 2, sessions: 54 },
+      { uf: 'PE', name: 'Pernambuco', live: 1, orders: 0, percent: 2, sessions: 49 },
+      { uf: 'ES', name: 'Espírito Santo', live: 1, orders: 0, percent: 2, sessions: 42 },
     ]
   }, [])
+
+  const filteredStates = useMemo(() => {
+    if (!filterSearch.trim()) return stateList
+    const q = filterSearch.toLowerCase().trim()
+    return stateList.filter(s => s.name.toLowerCase().includes(q) || s.uf.toLowerCase().includes(q))
+  }, [stateList, filterSearch])
 
   // Produtos em alta no momento
   const trendingProducts = useMemo(() => {
@@ -770,7 +976,17 @@ export function EcommerceLiveView({
   }, [])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div
+      ref={containerRef}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 20,
+        background: isFullscreen ? 'var(--bg)' : 'transparent',
+        padding: isFullscreen ? 24 : 0,
+        minHeight: isFullscreen ? '100vh' : 'auto',
+      }}
+    >
       {/* 1. Header do Live View no estilo Shopify */}
       <div
         className="card"
@@ -781,7 +997,6 @@ export function EcommerceLiveView({
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: 14,
-          background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-card2) 100%)',
           border: '1px solid var(--border)',
         }}
       >
@@ -851,79 +1066,48 @@ export function EcommerceLiveView({
           </div>
         </div>
 
-        {/* Legenda de cores e busca rápida */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, color: 'var(--text-2)' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  background: '#a855f7',
-                  boxShadow: '0 0 6px #a855f7',
-                }}
-              />
-              Pedidos Recentes
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  background: '#38bdf8',
-                  boxShadow: '0 0 6px #38bdf8',
-                }}
-              />
-              Visitantes Online
-            </span>
-          </div>
-
-          {/* Campo de busca de localização */}
-          <form onSubmit={handleSearch} style={{ position: 'relative' }}>
-            <Search
-              size={14}
+        {/* Legenda de cores oficial da Shopify */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, color: 'var(--text-2)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span
               style={{
-                position: 'absolute',
-                left: 10,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: 'var(--text-2)',
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: '#a855f7',
+                boxShadow: '0 0 8px #a855f7',
               }}
             />
-            <input
-              type="text"
-              placeholder="Buscar cidade ou estado..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+            Pedidos Recentes
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span
               style={{
-                padding: '6px 12px 6px 30px',
-                borderRadius: 20,
-                border: '1px solid var(--border)',
-                background: 'var(--bg-card)',
-                color: 'var(--text-1)',
-                fontSize: 12,
-                outline: 'none',
-                width: 190,
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: '#00f0ff',
+                boxShadow: '0 0 8px #00f0ff',
               }}
             />
-          </form>
+            Visitantes Online
+          </span>
         </div>
       </div>
 
-      {/* 2. Grid Principal: Coluna Esquerda (KPIs Shopify) + Coluna Direita (Globo 3D Interativo) */}
+      {/* 2. Cenário Principal: Painel Esquerdo (Shopify Cards) + Palco do Globo 3D Fluido */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gridTemplateColumns: 'minmax(300px, 340px) 1fr',
           gap: 20,
           alignItems: 'stretch',
         }}
+        className="live-view-stage"
       >
-        {/* Coluna Esquerda: Cartões de Métricas Shopify */}
+        {/* Painel Esquerdo: Cards Flutuantes de Métricas (Shopify Style) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Card 1: Visitantes Agora */}
+          {/* Card: Visitantes Agora */}
           <div
             className="card"
             style={{
@@ -948,7 +1132,7 @@ export function EcommerceLiveView({
                   padding: '2px 8px',
                   borderRadius: 12,
                   background: 'rgba(56, 189, 248, 0.12)',
-                  color: '#38bdf8',
+                  color: '#0284c7',
                   fontSize: 11,
                   fontWeight: 600,
                 }}
@@ -958,14 +1142,14 @@ export function EcommerceLiveView({
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-              <span style={{ fontSize: 34, fontWeight: 800, color: '#38bdf8', lineHeight: 1 }}>
+              <span style={{ fontSize: 36, fontWeight: 800, color: '#0284c7', lineHeight: 1 }}>
                 {visitorsOnline}
               </span>
               <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                pessoas navegando na loja neste instante
+                pessoas ativas na loja
               </span>
             </div>
-            {/* Barra de atividade ao vivo */}
+            {/* Barra de atividade orgânica */}
             <div
               style={{
                 height: 4,
@@ -980,7 +1164,7 @@ export function EcommerceLiveView({
                 style={{
                   height: '100%',
                   width: `${Math.min(100, (visitorsOnline / 30) * 100)}%`,
-                  background: 'linear-gradient(90deg, #38bdf8, #0ea5e9)',
+                  background: 'linear-gradient(90deg, #06b6d4, #0284c7)',
                   borderRadius: 2,
                   transition: 'width 0.6s ease',
                 }}
@@ -1002,7 +1186,7 @@ export function EcommerceLiveView({
                 {fmtMoney(totalSalesToday, currency)}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>
-                Meta diária: 82% atingida
+                Meta diária: 82%
               </div>
               <div style={{ height: 3, width: '100%', background: 'var(--bg-card2)', borderRadius: 2, marginTop: 6 }}>
                 <div style={{ height: '100%', width: '82%', background: 'var(--green)', borderRadius: 2 }} />
@@ -1021,7 +1205,7 @@ export function EcommerceLiveView({
                 {totalOrdersToday}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>
-                Ticket Médio: {fmtMoney(totalOrdersToday > 0 ? totalSalesToday / totalOrdersToday : 0, currency)}
+                Ticket: {fmtMoney(totalOrdersToday > 0 ? totalSalesToday / totalOrdersToday : 0, currency)}
               </div>
               <div style={{ height: 3, width: '100%', background: 'var(--bg-card2)', borderRadius: 2, marginTop: 6 }}>
                 <div style={{ height: '100%', width: '75%', background: 'var(--accent-dim)', borderRadius: 2 }} />
@@ -1047,7 +1231,7 @@ export function EcommerceLiveView({
             </div>
           </div>
 
-          {/* Customer Behavior (Funil em Tempo Real - 10 min) exatamente como Shopify */}
+          {/* Comportamento do Cliente (Funil 10 min com Nós Conectados Shopify) */}
           <div
             className="card"
             style={{
@@ -1076,7 +1260,7 @@ export function EcommerceLiveView({
               </span>
             </div>
 
-            {/* Pipeline visual com nós conectados no estilo Shopify */}
+            {/* Pipeline de nós luminosos conectados */}
             <div
               style={{
                 position: 'relative',
@@ -1086,7 +1270,7 @@ export function EcommerceLiveView({
                 padding: '16px 8px 8px 8px',
               }}
             >
-              {/* Linha conectora de fundo */}
+              {/* Linha de conexão */}
               <div
                 style={{
                   position: 'absolute',
@@ -1094,28 +1278,28 @@ export function EcommerceLiveView({
                   left: '12%',
                   right: '12%',
                   height: 3,
-                  background: 'linear-gradient(90deg, #38bdf8, #818cf8, #a855f7, #10b981)',
+                  background: 'linear-gradient(90deg, #06b6d4, #818cf8, #a855f7, #10b981)',
                   zIndex: 0,
-                  opacity: 0.6,
+                  opacity: 0.65,
                 }}
               />
 
-              {/* Nó 1: Ativos */}
+              {/* Nó 1: Visitando */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 1, gap: 6 }}>
                 <div
                   style={{
                     width: 24,
                     height: 24,
                     borderRadius: '50%',
-                    background: '#38bdf8',
-                    boxShadow: '0 0 12px rgba(56, 189, 248, 0.7)',
+                    background: '#06b6d4',
+                    boxShadow: '0 0 12px rgba(6, 182, 212, 0.7)',
                     border: '3px solid var(--bg-card)',
                   }}
                 />
                 <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-1)' }}>
                   {behaviorVisiting}
                 </span>
-                <span style={{ fontSize: 10, color: 'var(--text-2)', textAlign: 'center' }}>
+                <span style={{ fontSize: 10, color: 'var(--text-2)' }}>
                   Visitando
                 </span>
               </div>
@@ -1135,8 +1319,8 @@ export function EcommerceLiveView({
                 <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-1)' }}>
                   {behaviorCart}
                 </span>
-                <span style={{ fontSize: 10, color: 'var(--text-2)', textAlign: 'center' }}>
-                  No Carrinho
+                <span style={{ fontSize: 10, color: 'var(--text-2)' }}>
+                  Carrinho
                 </span>
               </div>
 
@@ -1155,7 +1339,7 @@ export function EcommerceLiveView({
                 <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-1)' }}>
                   {behaviorCheckout}
                 </span>
-                <span style={{ fontSize: 10, color: 'var(--text-2)', textAlign: 'center' }}>
+                <span style={{ fontSize: 10, color: 'var(--text-2)' }}>
                   Checkout
                 </span>
               </div>
@@ -1175,7 +1359,7 @@ export function EcommerceLiveView({
                 <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--green)' }}>
                   {behaviorPurchased}
                 </span>
-                <span style={{ fontSize: 10, color: 'var(--text-2)', textAlign: 'center' }}>
+                <span style={{ fontSize: 10, color: 'var(--text-2)' }}>
                   Compraram
                 </span>
               </div>
@@ -1183,24 +1367,22 @@ export function EcommerceLiveView({
           </div>
         </div>
 
-        {/* Coluna Direita: O Mundinho 3D Interativo (Canvas Dotted Globe) */}
+        {/* Palco do Globo 3D Fluido: Sem aspecto de caixa/iframe, integrado de forma cinematográfica */}
         <div
-          className="card"
           style={{
             position: 'relative',
-            minHeight: 460,
+            minHeight: 560,
             display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
             alignItems: 'center',
-            background: 'radial-gradient(circle at 50% 50%, #0d1527 0%, #060a14 100%)',
-            border: '1px solid var(--border)',
+            justifyContent: 'center',
             borderRadius: 'var(--radius)',
             overflow: 'hidden',
+            background: 'radial-gradient(ellipse at 50% 50%, var(--bg-card) 0%, var(--bg) 100%)',
+            border: '1px solid var(--border)',
             cursor: isDraggingRef.current ? 'grabbing' : 'grab',
           }}
         >
-          {/* Canvas WebGL/2D do Globo */}
+          {/* Canvas WebGL/2D de alta definição */}
           <canvas
             ref={canvasRef}
             onMouseDown={handleMouseDown}
@@ -1213,30 +1395,340 @@ export function EcommerceLiveView({
             style={{
               width: '100%',
               height: '100%',
-              minHeight: 460,
+              minHeight: 560,
               display: 'block',
             }}
           />
 
-          {/* Banner de Pedido em Tempo Real flutuante no Globo */}
+          {/* Barra Flutuante Superior da Shopify (Busca + Ícones de Ação) */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 16,
+              left: 16,
+              right: 16,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              pointerEvents: 'none',
+              zIndex: 10,
+            }}
+          >
+            {/* Campo de Busca de Localização Flutuante */}
+            <form
+              onSubmit={handleSearch}
+              style={{
+                pointerEvents: 'auto',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <Search
+                size={14}
+                style={{
+                  position: 'absolute',
+                  left: 12,
+                  color: 'var(--text-2)',
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Buscar localização..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{
+                  padding: '8px 14px 8px 34px',
+                  borderRadius: 99,
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-1)',
+                  fontSize: 12,
+                  outline: 'none',
+                  width: 210,
+                  boxShadow: 'var(--shadow-soft)',
+                }}
+              />
+            </form>
+
+            {/* Grupo de Botões Ícones Flutuantes (Shopify Icon Bar) */}
+            <div
+              style={{
+                pointerEvents: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              {/* 1. Botão ÍCONE de Filtro com Popover Elegante */}
+              <div style={{ position: 'relative' }} ref={filterPopoverRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowFilterPopover(prev => !prev)}
+                  title="Filtrar por estado / localização"
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 99,
+                    border: '1px solid',
+                    borderColor: selectedStateFilter ? 'var(--accent-dim)' : 'var(--border)',
+                    background: selectedStateFilter ? 'var(--accent-soft)' : 'var(--bg-card)',
+                    color: selectedStateFilter ? 'var(--accent-dim)' : 'var(--text-1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    boxShadow: 'var(--shadow-soft)',
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                  }}
+                >
+                  <Filter size={16} />
+                  {selectedStateFilter && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 2,
+                        right: 2,
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: 'var(--accent-dim)',
+                      }}
+                    />
+                  )}
+                </button>
+
+                {/* Popover Suspenso de Filtro por Estado */}
+                {showFilterPopover && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 44,
+                      right: 0,
+                      width: 260,
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 12,
+                      boxShadow: '0 12px 30px rgba(0, 0, 0, 0.2)',
+                      padding: 12,
+                      zIndex: 100,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)' }}>
+                        Filtrar no Globo
+                      </span>
+                      {selectedStateFilter && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedStateFilter(null)
+                            focusOnCoordinates(-14.235, -51.9253)
+                            setShowFilterPopover(false)
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--accent-dim)',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Limpar filtro
+                        </button>
+                      )}
+                    </div>
+
+                    <input
+                      type="text"
+                      placeholder="Pesquisar estado..."
+                      value={filterSearch}
+                      onChange={e => setFilterSearch(e.target.value)}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: 8,
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg-card2)',
+                        color: 'var(--text-1)',
+                        fontSize: 11,
+                        outline: 'none',
+                      }}
+                    />
+
+                    <div
+                      style={{
+                        maxHeight: 220,
+                        overflowY: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedStateFilter(null)
+                          focusOnCoordinates(-14.235, -51.9253)
+                          setShowFilterPopover(false)
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '6px 8px',
+                          borderRadius: 6,
+                          border: 'none',
+                          background: selectedStateFilter === null ? 'var(--accent-soft)' : 'transparent',
+                          color: selectedStateFilter === null ? 'var(--accent-dim)' : 'var(--text-1)',
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          textAlign: 'left',
+                        }}
+                      >
+                        <span style={{ fontWeight: 600 }}>🇧🇷 Todos os Estados</span>
+                        {selectedStateFilter === null && <Check size={14} />}
+                      </button>
+
+                      {filteredStates.map(st => (
+                        <button
+                          key={st.uf}
+                          type="button"
+                          onClick={() => handleSelectState(st.uf)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '6px 8px',
+                            borderRadius: 6,
+                            border: 'none',
+                            background: selectedStateFilter === st.uf ? 'var(--accent-soft)' : 'transparent',
+                            color: selectedStateFilter === st.uf ? 'var(--accent-dim)' : 'var(--text-1)',
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            textAlign: 'left',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontWeight: 700, width: 24 }}>{st.uf}</span>
+                            <span>{st.name}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span
+                              style={{
+                                fontSize: 10,
+                                background: 'var(--bg-card2)',
+                                padding: '1px 5px',
+                                borderRadius: 6,
+                                color: 'var(--text-2)',
+                              }}
+                            >
+                              {st.live} online
+                            </span>
+                            {selectedStateFilter === st.uf && <Check size={14} />}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Botão Centrar no Brasil */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedStateFilter(null)
+                  focusOnCoordinates(-14.235, -51.9253)
+                }}
+                title="Centrar visualização no Brasil"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 99,
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: 'var(--shadow-soft)',
+                }}
+              >
+                <Compass size={16} />
+              </button>
+
+              {/* 3. Botão Auto-Girar Play/Pause */}
+              <button
+                type="button"
+                onClick={() => setAutoRotate(prev => !prev)}
+                title={autoRotate ? 'Pausar rotação' : 'Girar automaticamente'}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 99,
+                  border: '1px solid var(--border)',
+                  background: autoRotate ? 'var(--accent-soft)' : 'var(--bg-card)',
+                  color: autoRotate ? 'var(--accent-dim)' : 'var(--text-1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: 'var(--shadow-soft)',
+                }}
+              >
+                {autoRotate ? <Pause size={15} /> : <Play size={15} />}
+              </button>
+
+              {/* 4. Botão Tela Cheia */}
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                title={isFullscreen ? 'Sair da tela cheia' : 'Expandir para tela cheia'}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 99,
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: 'var(--shadow-soft)',
+                }}
+              >
+                {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Banner Flutuante de Pedido Aprovado (Shopify Live Event Pop) */}
           {activeOrderBeacon && (
             <div
               style={{
                 position: 'absolute',
-                top: 16,
+                top: 70,
                 left: 16,
-                background: 'rgba(15, 23, 42, 0.85)',
+                background: 'rgba(15, 23, 42, 0.88)',
                 backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(168, 85, 247, 0.4)',
+                border: '1px solid rgba(168, 85, 247, 0.45)',
                 borderRadius: 10,
-                padding: '8px 14px',
+                padding: '10px 14px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
-                boxShadow: '0 4px 20px rgba(168, 85, 247, 0.25)',
+                boxShadow: '0 8px 24px rgba(168, 85, 247, 0.3)',
                 pointerEvents: 'none',
-                animation: 'fade-in 0.4s ease-out',
-                maxWidth: 280,
+                animation: 'fade-in 0.3s ease-out',
+                maxWidth: 290,
+                zIndex: 10,
               }}
             >
               <div
@@ -1259,30 +1751,31 @@ export function EcommerceLiveView({
             </div>
           )}
 
-          {/* Tooltip do ponto em hover */}
+          {/* Tooltip flutuante ao passar o mouse sobre uma cidade */}
           {hoveredCity && (
             <div
               style={{
                 position: 'absolute',
-                bottom: 60,
+                bottom: 30,
                 left: '50%',
                 transform: 'translateX(-50%)',
-                background: 'rgba(15, 23, 42, 0.90)',
+                background: 'rgba(15, 23, 42, 0.92)',
                 backdropFilter: 'blur(10px)',
                 border: '1px solid rgba(56, 189, 248, 0.4)',
                 borderRadius: 8,
-                padding: '8px 14px',
+                padding: '8px 16px',
                 fontSize: 12,
                 color: '#ffffff',
                 pointerEvents: 'none',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
-                boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+                boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
                 whiteSpace: 'nowrap',
+                zIndex: 15,
               }}
             >
-              <MapPin size={15} color="#38bdf8" />
+              <MapPin size={15} color="#00f0ff" />
               <div>
                 <div style={{ fontWeight: 700 }}>{hoveredCity.name}</div>
                 <div style={{ fontSize: 11, color: '#94a3b8' }}>
@@ -1292,180 +1785,62 @@ export function EcommerceLiveView({
             </div>
           )}
 
-          {/* Controles flutuantes de câmera / rotação (canto inferior direito) */}
+          {/* Controles de Zoom Flutuantes (Shopify Pill no Canto Inferior Direito) */}
           <div
             style={{
               position: 'absolute',
-              bottom: 14,
-              right: 14,
+              bottom: 20,
+              right: 20,
               display: 'flex',
-              gap: 6,
-              background: 'rgba(15, 23, 42, 0.75)',
-              backdropFilter: 'blur(8px)',
-              padding: 4,
-              borderRadius: 8,
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              flexDirection: 'column',
+              background: 'var(--bg-card)',
+              borderRadius: 99,
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-soft)',
+              overflow: 'hidden',
+              zIndex: 10,
             }}
           >
             <button
               type="button"
-              onClick={() => focusOnCoordinates(-14.235, -51.9253)}
-              title="Centrar no Brasil"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#94a3b8',
-                padding: '6px 8px',
-                borderRadius: 6,
-                cursor: 'pointer',
-                fontSize: 11,
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-              }}
-            >
-              🇧🇷 Brasil
-            </button>
-            <button
-              type="button"
-              onClick={() => setAutoRotate(prev => !prev)}
-              title={autoRotate ? 'Pausar rotação' : 'Girar automaticamente'}
-              style={{
-                background: autoRotate ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
-                border: 'none',
-                color: autoRotate ? '#38bdf8' : '#94a3b8',
-                padding: 6,
-                borderRadius: 6,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              {autoRotate ? <Pause size={14} /> : <Play size={14} />}
-            </button>
-            <button
-              type="button"
-              onClick={() => setZoom(z => Math.min(1.5, z + 0.15))}
+              onClick={() => setZoom(z => Math.min(1.5, z + 0.12))}
               title="Aproximar (+)"
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: '#94a3b8',
-                padding: 6,
-                borderRadius: 6,
+                borderBottom: '1px solid var(--border)',
+                color: 'var(--text-1)',
+                padding: '8px 10px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
               <ZoomIn size={14} />
             </button>
             <button
               type="button"
-              onClick={() => setZoom(z => Math.max(0.75, z - 0.15))}
+              onClick={() => setZoom(z => Math.max(0.75, z - 0.12))}
               title="Afastar (-)"
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: '#94a3b8',
-                padding: 6,
-                borderRadius: 6,
+                color: 'var(--text-1)',
+                padding: '8px 10px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
               <ZoomOut size={14} />
             </button>
           </div>
-
-          {/* Dica de arrastar no canto superior direito */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 14,
-              right: 14,
-              fontSize: 11,
-              color: 'rgba(255, 255, 255, 0.4)',
-              background: 'rgba(0, 0, 0, 0.3)',
-              padding: '4px 8px',
-              borderRadius: 6,
-              pointerEvents: 'none',
-            }}
-          >
-            Arraste para girar o globo
-          </div>
         </div>
       </div>
 
-      {/* Chips Rápidos de Estados Brasileiros */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
-          Filtrar no Globo:
-        </span>
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedStateFilter(null)
-            focusOnCoordinates(-14.235, -51.9253)
-          }}
-          className={selectedStateFilter === null ? 'btn-filter-chip-active' : 'btn-filter-chip'}
-          style={{
-            padding: '5px 12px',
-            fontSize: 12,
-            borderRadius: 99,
-            cursor: 'pointer',
-            border: '1px solid var(--border)',
-            background: selectedStateFilter === null ? 'var(--accent-soft)' : 'var(--bg-card)',
-            color: selectedStateFilter === null ? 'var(--accent-dim)' : 'var(--text-2)',
-            fontWeight: selectedStateFilter === null ? 700 : 500,
-          }}
-        >
-          🇧🇷 Todos os Estados
-        </button>
-        {topStates
-          .filter(s => s.uf !== 'Outros')
-          .map(st => {
-            const isSelected = selectedStateFilter === st.uf
-            return (
-              <button
-                key={st.uf}
-                type="button"
-                onClick={() => handleSelectState(st.uf)}
-                style={{
-                  padding: '5px 12px',
-                  fontSize: 12,
-                  borderRadius: 99,
-                  cursor: 'pointer',
-                  border: isSelected ? '1px solid var(--accent-dim)' : '1px solid var(--border)',
-                  background: isSelected ? 'var(--accent-soft)' : 'var(--bg-card)',
-                  color: isSelected ? 'var(--accent-dim)' : 'var(--text-1)',
-                  fontWeight: isSelected ? 700 : 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <span>{st.uf}</span>
-                <span
-                  style={{
-                    fontSize: 10,
-                    background: 'var(--bg-card2)',
-                    padding: '1px 5px',
-                    borderRadius: 8,
-                    color: 'var(--text-2)',
-                  }}
-                >
-                  {st.live} online
-                </span>
-              </button>
-            )
-          })}
-      </div>
-
-      {/* 3. Seção Inferior: Analytics de Estados, Feed de Pedidos em Tempo Real e Produtos em Alta */}
+      {/* 3. Seção Inferior: Analytics de Localização, Feed ao Vivo e Produtos em Alta */}
       <div
         style={{
           display: 'grid',
@@ -1473,7 +1848,7 @@ export function EcommerceLiveView({
           gap: 20,
         }}
       >
-        {/* Card: Top Estados / Localizações */}
+        {/* Card: Top Estados por Acesso */}
         <div
           className="card"
           style={{
@@ -1495,15 +1870,15 @@ export function EcommerceLiveView({
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {topStates.map((st, idx) => (
+            {stateList.slice(0, 6).map((st, idx) => (
               <div
                 key={st.uf}
-                onClick={() => st.uf !== 'Outros' && handleSelectState(st.uf)}
+                onClick={() => handleSelectState(st.uf)}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 4,
-                  cursor: st.uf !== 'Outros' ? 'pointer' : 'default',
+                  cursor: 'pointer',
                   padding: '6px 8px',
                   borderRadius: 6,
                   background: selectedStateFilter === st.uf ? 'var(--accent-soft)' : 'transparent',
@@ -1520,7 +1895,7 @@ export function EcommerceLiveView({
                       <span
                         style={{
                           fontSize: 10,
-                          color: '#38bdf8',
+                          color: '#0284c7',
                           background: 'rgba(56, 189, 248, 0.1)',
                           padding: '1px 6px',
                           borderRadius: 8,
@@ -1553,7 +1928,7 @@ export function EcommerceLiveView({
           </div>
         </div>
 
-        {/* Card: Feed de Atividades ao Vivo (Resumo de Pedidos & Ações) */}
+        {/* Card: Feed em Tempo Real (Resumo de Pedidos e Ações) */}
         <div
           className="card"
           style={{
@@ -1588,7 +1963,7 @@ export function EcommerceLiveView({
                   background: '#10b981',
                 }}
               />
-              Atualizando
+              Ao vivo
             </div>
           </div>
 
@@ -1702,7 +2077,7 @@ export function EcommerceLiveView({
           </div>
         </div>
 
-        {/* Card: Produtos em Alta no Momento */}
+        {/* Card: Produtos em Alta Agora */}
         <div
           className="card"
           style={{
@@ -1724,7 +2099,7 @@ export function EcommerceLiveView({
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {trendingProducts.map((p, idx) => (
+            {trendingProducts.map(p => (
               <div
                 key={p.name}
                 style={{

@@ -1306,3 +1306,10 @@ input:focus-visible {
     padding-left: 0 !important;
   }
 }
+
+/* Live View Shopify Stage responsivo */
+@media (max-width: 900px) {
+  .live-view-stage {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
