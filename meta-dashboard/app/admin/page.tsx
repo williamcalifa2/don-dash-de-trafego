@@ -87,13 +87,16 @@ function CopyIconButton({ value, label }: { value: string; label: string }) {
 }
 
 function ModalShell({ title, onClose, children, maxWidth = 512 }: { title: string; onClose?: () => void; children: React.ReactNode; maxWidth?: number }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
   useEffect(() => {
     if (!onClose) return
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', k)
     return () => window.removeEventListener('keydown', k)
   }, [onClose])
-  return (
+
+  const content = (
     <div
       className="overlay"
       onClick={e => {
@@ -102,7 +105,7 @@ function ModalShell({ title, onClose, children, maxWidth = 512 }: { title: strin
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 1000,
+        zIndex: 10000,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -144,6 +147,9 @@ function ModalShell({ title, onClose, children, maxWidth = 512 }: { title: strin
       </div>
     </div>
   )
+
+  if (!mounted || typeof document === 'undefined') return null
+  return createPortal(content, document.body)
 }
 
 
@@ -486,9 +492,11 @@ function ClientsManager({ clients, initial, initialTab, canManage, baseDomain, a
   const status = (c: AdminClient) => (c.locked ? { text: 'Bloqueado', dot: 'var(--red)' } : c.active === false ? { text: 'Pausado', dot: 'var(--amber)' } : { text: 'Ativo', dot: 'var(--green)' })
   const pick = (slug: string | 'new') => { setSelected(slug); setTab(slug === 'new' ? 'cadastro' : tab) }
   const TABS: Array<[ManagerTab, string]> = [['cadastro', 'Cadastro'], ['acessos', 'Acessos'], ['metas', 'Metas e status'], ['integracoes', 'Integrações']]
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
-  return (
-    <div role="dialog" aria-modal="true" aria-label="Clientes" className="no-print" style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+  const content = (
+    <div role="dialog" aria-modal="true" aria-label="Clientes" className="no-print" style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
       <header style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 24px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
         <button className="btn btn-outline btn-sm" onClick={onClose}><ArrowLeft size={16} strokeWidth={1.75} /> Voltar</button>
         <div style={{ flex: 1, minWidth: 200 }}>
@@ -570,6 +578,9 @@ function ClientsManager({ clients, initial, initialTab, canManage, baseDomain, a
       </div>
     </div>
   )
+
+  if (!mounted || typeof document === 'undefined') return null
+  return createPortal(content, document.body)
 }
 
 

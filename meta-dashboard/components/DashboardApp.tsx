@@ -5,7 +5,6 @@ import { Download, FileBarChart, RefreshCw, TrendingUp, AlertCircle, Moon, Sun, 
 import { MetricTile } from '@/components/MetricTile'
 import { DailyChart } from '@/components/DailyChart'
 import { FunnelTab } from '@/components/FunnelTab'
-import { SimuladorTab } from '@/components/SimuladorTab'
 import { LeadsTab } from '@/components/LeadsTab'
 import { MetricPicker, useSelectedMetrics } from '@/components/MetricPicker'
 import { TvMode } from '@/components/TvMode'
@@ -131,7 +130,7 @@ function Dashboard() {
   const [preset, setPreset] = useState<DatePreset>('last_7d')
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [reportOpen, setReportOpen] = useState(false)
-  const [tab, setTab] = useState<'metrics' | 'campaigns' | 'ecommerce' | 'funnel' | 'audience' | 'organic' | 'simulator' | 'leads' | 'integracoes' | 'reports'>('metrics')
+  const [tab, setTab] = useState<'metrics' | 'campaigns' | 'organic' | 'audience' | 'funnel' | 'leads' | 'ecommerce' | 'reports' | 'integracoes'>('metrics')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -491,7 +490,17 @@ function Dashboard() {
         {/* Abas */}
         <div className="no-print" style={{ borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
           <div className="tabs" role="tablist" style={{ borderBottom: 'none', marginBottom: 0 }}>
-            {([['metrics', 'Geral'], ['campaigns', 'Campanhas'], ['ecommerce', 'Ecommerce'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads'], ['integracoes', 'Integrações'], ['reports', 'Report Studio']] as const).map(([key, label]) => (
+            {([
+              ['metrics', 'Geral'],
+              ['campaigns', 'Campanhas'],
+              ['organic', 'Orgânico'],
+              ['audience', 'Público'],
+              ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'],
+              ['leads', 'Leads'],
+              ['ecommerce', 'Ecommerce'],
+              ['reports', 'Report Studio'],
+              ['integracoes', 'Integrações'],
+            ] as const).map(([key, label]) => (
               <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
                 {label}
                 {key === 'leads' && staleCount > 0 && (
@@ -539,7 +548,6 @@ function Dashboard() {
         )}
         {tab === 'audience' && <AudienceTab preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} kind={kind} />}
         {tab === 'organic' && <OrganicTab preset="this_month" presetLabel="Este mês" isStaff={!me?.authEnabled || !!me?.admin} canLink={me?.role === 'owner' || me?.role === 'admin'} slug={me?.slug} />}
-        {tab === 'simulator' && <SimuladorTab summary={s ? (kind === 'form' ? s : { ...s, leads: s.results }) : undefined} currency={currency} />}
         {tab === 'leads' && <LeadsTab openId={openLeadId} onOpenConsumed={() => setOpenLeadId(null)} readOnly={me?.role === 'reader'} />}
         {tab === 'integracoes' && (
           <div className="card" style={{ padding: 24, maxWidth: 860, margin: '0 auto' }}>

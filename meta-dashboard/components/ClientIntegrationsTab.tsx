@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Copy, Check, RefreshCw, Send, ShieldCheck, ShoppingBag, Clock, Sparkles, ExternalLink, Zap } from 'lucide-react'
+import { Copy, Check, RefreshCw, Send, ShieldCheck, ShoppingBag, ExternalLink, Zap, ChevronDown, ChevronUp, BookOpen } from 'lucide-react'
 import type { ClientConfig, ClientIntegrationsConfig } from '@/lib/clientConfig'
-import { generateWebhookToken } from '@/lib/integrations'
 import { PulseLoader } from './PulseLoader'
 
 interface ClientIntegrationsTabProps {
@@ -25,7 +24,7 @@ function CopyBtn({ text }: { text: string }) {
           await navigator.clipboard.writeText(text)
           setCopied(true)
           setTimeout(() => setCopied(false), 1600)
-        } catch {}
+        } catch { }
       }}
     >
       {copied ? <Check size={14} color="var(--green)" /> : <Copy size={14} />}
@@ -42,7 +41,9 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
   const [webhookToken, setWebhookToken] = useState('')
   const [shopifySecret, setShopifySecret] = useState('')
   const [nuvemshopSecret, setNuvemshopSecret] = useState('')
-  const [slaTargetMinutes, setSlaTargetMinutes] = useState(15)
+
+  // Guias de instalação expandidos
+  const [openGuide, setOpenGuide] = useState<'shopify' | 'nuvemshop' | 'crm' | null>(null)
 
   const origin = typeof window !== 'undefined'
     ? window.location.origin
@@ -63,9 +64,8 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
         setWebhookToken(integ.webhookToken || generateRandomToken())
         setShopifySecret(integ.shopifySecret || '')
         setNuvemshopSecret(integ.nuvemshopSecret || '')
-        setSlaTargetMinutes(integ.slaTargetMinutes || 15)
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => {
         if (alive) setLoading(false)
       })
@@ -88,7 +88,6 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
         webhookToken: webhookToken.trim(),
         shopifySecret: shopifySecret.trim() || undefined,
         nuvemshopSecret: nuvemshopSecret.trim() || undefined,
-        slaTargetMinutes: Number(slaTargetMinutes) > 0 ? Number(slaTargetMinutes) : 15,
       }
 
       const res = await fetch(`/api/admin/clients/${slug}/config`, {
@@ -98,7 +97,7 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
       })
 
       if (!res.ok) throw new Error('Falha ao salvar integrações')
-      onNotice('Integrações e configurações de SLA salvas com sucesso!')
+      onNotice('Integrações salvas com sucesso!')
     } catch (e) {
       onNotice('Erro ao salvar integrações.')
     } finally {
@@ -137,6 +136,10 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
     }
   }
 
+  const toggleGuide = (which: 'shopify' | 'nuvemshop' | 'crm') => {
+    setOpenGuide(cur => (cur === which ? null : which))
+  }
+
   if (loading) {
     return <PulseLoader size={40} caption="Carregando integrações..." />
   }
@@ -147,57 +150,11 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
           <Zap size={20} color="var(--accent)" strokeWidth={2} />
-          <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Webhooks & Integrações</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Integrações</h3>
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
-          Conecte Shopify, Nuvemshop, CRMs (RD Station, Kommo) e configure o tempo limite de SLA para <strong>{clientName}</strong>.
+          Conecte sua loja (Shopify, Nuvemshop) e CRMs para sincronizar vendas, pedidos e leads em tempo real para <strong>{clientName}</strong>.
         </p>
-      </div>
-
-      {/* SLA Setting */}
-      <div className="card" style={{ padding: 16, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <Clock size={18} color="var(--amber)" strokeWidth={2} />
-          <h4 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Meta de SLA de Atendimento</h4>
-        </div>
-        <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 12 }}>
-          Tempo máximo esperado para a equipe realizar o primeiro contato com o lead após a entrada. Leads que ultrapassarem essa meta serão marcados como "SLA Estourado".
-        </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input
-              type="number"
-              min={1}
-              max={1440}
-              value={slaTargetMinutes}
-              onChange={e => setSlaTargetMinutes(Number(e.target.value))}
-              style={{
-                width: 90,
-                padding: '8px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--border)',
-                background: 'var(--bg)',
-                color: 'var(--text-1)',
-                fontSize: 14,
-                fontWeight: 600,
-              }}
-            />
-            <span style={{ fontSize: 13, color: 'var(--text-2)' }}>minutos</span>
-          </div>
-
-          <div style={{ display: 'flex', gap: 6 }}>
-            {[15, 30, 60, 120].map(mins => (
-              <button
-                key={mins}
-                type="button"
-                className={`btn btn-sm ${slaTargetMinutes === mins ? 'btn-primary' : 'btn-outline'}`}
-                onClick={() => setSlaTargetMinutes(mins)}
-              >
-                {mins} min
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* Token Geral */}
@@ -235,13 +192,57 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
 
       {/* Integração 1: Shopify */}
       <div className="card" style={{ padding: 18, border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <ShoppingBag size={18} color="#95bf47" strokeWidth={2} />
-          <h4 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Shopify</h4>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ShoppingBag size={18} color="#95bf47" strokeWidth={2} />
+            <h4 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Shopify</h4>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-outline btn-xs"
+              onClick={() => toggleGuide('shopify')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              <BookOpen size={12} />
+              <span>{openGuide === 'shopify' ? 'Ocultar guia' : 'Como instalar na Shopify'}</span>
+              {openGuide === 'shopify' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
+            <a
+              href="https://help.shopify.com/pt-BR/manual/apps/app-administration/webhooks"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-ghost btn-xs"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
+              title="Abrir documentação da Shopify em nova aba"
+            >
+              <span>Doc oficial</span>
+              <ExternalLink size={12} />
+            </a>
+          </div>
         </div>
+
         <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 12 }}>
-          Receba pedidos pagos, carrinhos abandonados e cálculo de ROAS Real em tempo real.
+          Receba pedidos pagos, faturamento e cálculo de ROAS Real e CPA em tempo real.
         </p>
+
+        {/* Guia Passo a Passo Shopify */}
+        {openGuide === 'shopify' && (
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-soft)', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 12, lineHeight: 1.6, color: 'var(--text-1)' }}>
+            <strong style={{ display: 'block', marginBottom: 6, color: 'var(--accent)' }}>📖 Passo a passo de instalação na Shopify:</strong>
+            <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <li>No painel administrativo da sua Shopify, acesse <strong>Configurações</strong> (ícone de engrenagem no canto inferior esquerdo).</li>
+              <li>No menu lateral, clique em <strong>Notificações</strong> e role até o final da página na seção <strong>Webhooks</strong>.</li>
+              <li>Clique no botão <strong>Criar webhook</strong>.</li>
+              <li>No campo <strong>Evento</strong>, selecione <code>Criação de pedido (Order creation)</code> ou <code>Pagamento do pedido (Order payment)</code>.</li>
+              <li>Em <strong>Formato</strong>, selecione <code>JSON</code>.</li>
+              <li>No campo <strong>URL</strong>, cole a URL de Webhook abaixo.</li>
+              <li>Clique em <strong>Salvar</strong>.</li>
+              <li><em>(Opcional)</em> Copie o segredo de assinatura exibido no rodapé da seção de Webhooks da Shopify e cole no campo de Chave Secreta abaixo.</li>
+            </ol>
+          </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div>
@@ -293,13 +294,53 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
 
       {/* Integração 2: Nuvemshop */}
       <div className="card" style={{ padding: 18, border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <ShoppingBag size={18} color="#2d3277" strokeWidth={2} />
-          <h4 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Nuvemshop</h4>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ShoppingBag size={18} color="#2d3277" strokeWidth={2} />
+            <h4 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Nuvemshop</h4>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-outline btn-xs"
+              onClick={() => toggleGuide('nuvemshop')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              <BookOpen size={12} />
+              <span>{openGuide === 'nuvemshop' ? 'Ocultar guia' : 'Como instalar na Nuvemshop'}</span>
+              {openGuide === 'nuvemshop' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
+            <a
+              href="https://tiendanube.github.io/api-documentation/resources/webhook"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-ghost btn-xs"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
+              title="Abrir documentação da Nuvemshop em nova aba"
+            >
+              <span>Doc oficial</span>
+              <ExternalLink size={12} />
+            </a>
+          </div>
         </div>
+
         <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 12 }}>
           Sincronização de vendas e pedidos para cálculo automático de faturamento e ticket médio.
         </p>
+
+        {/* Guia Passo a Passo Nuvemshop */}
+        {openGuide === 'nuvemshop' && (
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-soft)', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 12, lineHeight: 1.6, color: 'var(--text-1)' }}>
+            <strong style={{ display: 'block', marginBottom: 6, color: 'var(--accent)' }}>📖 Passo a passo de instalação na Nuvemshop:</strong>
+            <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <li>No painel da sua Nuvemshop, acesse a área de <strong>Configurações</strong> &gt; <strong>Canais de Venda / Aplicativos</strong> (ou pelo Portal de Parceiros da Nuvemshop).</li>
+              <li>Cadastre uma nova notificação de Webhook para os eventos <code>order/created</code> (criação de pedido) e <code>order/paid</code> (pedido pago).</li>
+              <li>Cole a URL abaixo no campo correspondente (ela já contém seu token de autenticação seguro embutido).</li>
+              <li>Salve as configurações para que todos os pedidos pagos entrem no painel em tempo real.</li>
+            </ol>
+          </div>
+        )}
 
         <div>
           <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
@@ -326,15 +367,42 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
         </div>
       </div>
 
-      {/* Integração 3: Webhook Genérico (CRM / n8n / Typebot / SLA) */}
+      {/* Integração 3: Webhook Genérico (CRM, n8n, Typebot, WhatsApp) */}
       <div className="card" style={{ padding: 18, border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <Zap size={18} color="var(--accent)" strokeWidth={2} />
-          <h4 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Webhook Genérico (CRM, n8n, Typebot, WhatsApp)</h4>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Zap size={18} color="var(--accent)" strokeWidth={2} />
+            <h4 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Webhook Genérico (CRM, n8n, Typebot, WhatsApp)</h4>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-outline btn-xs"
+            onClick={() => toggleGuide('crm')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+          >
+            <BookOpen size={12} />
+            <span>{openGuide === 'crm' ? 'Ocultar guia' : 'Como configurar no n8n / CRM'}</span>
+            {openGuide === 'crm' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button>
         </div>
+
         <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 12 }}>
-          Envie leads de qualquer ferramenta externa ou envie eventos de atendimento para fechar o cálculo de SLA.
+          Envie leads ou vendas externas de qualquer ferramenta (RD Station, Kommo, Typebot, n8n, Make).
         </p>
+
+        {/* Guia Passo a Passo CRM / n8n */}
+        {openGuide === 'crm' && (
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-soft)', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 12, lineHeight: 1.6, color: 'var(--text-1)' }}>
+            <strong style={{ display: 'block', marginBottom: 6, color: 'var(--accent)' }}>📖 Passo a passo para n8n, Make, Typebot e CRMs:</strong>
+            <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <li>No seu fluxo de automação, crie um nó de requisição HTTP com o método <code>POST</code>.</li>
+              <li>Cole a <strong>URL Inbound</strong> abaixo.</li>
+              <li>No cabeçalho (Headers), inclua: <code>Authorization: Bearer {webhookToken}</code> (ou use o header <code>x-webhook-token</code>).</li>
+              <li>Envie o corpo da requisição em formato JSON com os campos correspondentes (veja os exemplos abaixo).</li>
+            </ol>
+          </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div>
@@ -363,8 +431,8 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
 
           <div style={{ background: 'var(--bg-card2)', padding: 12, borderRadius: 8, fontSize: 11, color: 'var(--text-2)' }}>
             <strong>Header de Autenticação:</strong> <code>Authorization: Bearer {webhookToken}</code><br />
-            <strong>Exemplo de Payload de Lead:</strong> <code>&#123; "nome": "Maria", "telefone": "(11) 99999-9999", "origem": "RD Station" &#125;</code><br />
-            <strong>Exemplo de Fechamento de SLA:</strong> <code>&#123; "tipo": "atendimento", "telefone": "(11) 99999-9999", "atendido_por": "Vendedor 1" &#125;</code>
+            <strong>Exemplo de Payload de Lead:</strong> <code>&#123; "nome": "Maria Silva", "telefone": "(11) 99999-9999", "email": "maria@email.com", "origem": "RD Station" &#125;</code><br />
+            <strong>Exemplo de Registro de Venda:</strong> <code>&#123; "tipo": "venda", "valor": 197.00, "status": "paid", "customer_name": "Maria Silva" &#125;</code>
           </div>
         </div>
       </div>
@@ -411,4 +479,3 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
     </div>
   )
 }
-
