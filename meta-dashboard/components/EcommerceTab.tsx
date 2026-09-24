@@ -423,27 +423,29 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
           padding: '2px 0 6px 0',
         }}
       >
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <button
             type="button"
             onClick={() => setSubTab('overview')}
             style={{
-              padding: '8px 16px',
-              borderRadius: 8,
-              border: '1px solid',
-              borderColor: subTab === 'overview' ? 'var(--accent-dim)' : 'var(--border)',
+              height: 38,
+              padding: '0 20px',
+              borderRadius: 9999,
+              border: '1.5px solid',
+              borderColor: subTab === 'overview' ? 'var(--accent)' : 'var(--border)',
               background: subTab === 'overview' ? 'var(--accent-soft)' : 'var(--bg-card)',
-              color: subTab === 'overview' ? 'var(--accent-dim)' : 'var(--text-2)',
-              fontWeight: subTab === 'overview' ? 700 : 600,
+              color: subTab === 'overview' ? 'var(--text-1)' : 'var(--text-2)',
+              fontWeight: subTab === 'overview' ? 700 : 500,
               fontSize: 13,
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
               cursor: 'pointer',
               transition: 'all 0.2s ease',
+              boxShadow: subTab === 'overview' ? '0 2px 8px rgba(99, 102, 241, 0.15)' : 'var(--shadow-soft)',
             }}
           >
-            <ShoppingBag size={15} />
+            <ShoppingBag size={15} color={subTab === 'overview' ? 'var(--accent)' : 'var(--text-2)'} />
             <span>Visão Geral</span>
           </button>
 
@@ -451,19 +453,21 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
             type="button"
             onClick={() => setSubTab('live')}
             style={{
-              padding: '8px 16px',
-              borderRadius: 8,
-              border: '1px solid',
+              height: 38,
+              padding: '0 18px',
+              borderRadius: 9999,
+              border: '1.5px solid',
               borderColor: subTab === 'live' ? '#10b981' : 'var(--border)',
-              background: subTab === 'live' ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-card)',
-              color: subTab === 'live' ? '#10b981' : 'var(--text-2)',
-              fontWeight: subTab === 'live' ? 700 : 600,
+              background: subTab === 'live' ? 'rgba(16, 185, 129, 0.10)' : 'var(--bg-card)',
+              color: subTab === 'live' ? '#059669' : 'var(--text-2)',
+              fontWeight: subTab === 'live' ? 700 : 500,
               fontSize: 13,
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
               cursor: 'pointer',
               transition: 'all 0.2s ease',
+              boxShadow: subTab === 'live' ? '0 2px 10px rgba(16, 185, 129, 0.2)' : 'var(--shadow-soft)',
             }}
           >
             <span
@@ -476,16 +480,16 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
                 display: 'inline-block',
               }}
             />
-            <Globe size={15} />
+            <Globe size={15} color={subTab === 'live' ? '#10b981' : 'var(--text-2)'} />
             <span>Live View (Tempo Real)</span>
             <span
               style={{
                 fontSize: 10,
                 fontWeight: 800,
-                background: 'rgba(16, 185, 129, 0.2)',
-                color: '#10b981',
-                padding: '2px 7px',
-                borderRadius: 99,
+                background: subTab === 'live' ? 'rgba(16, 185, 129, 0.2)' : 'var(--bg-card2)',
+                color: subTab === 'live' ? '#047857' : 'var(--text-2)',
+                padding: '2px 8px',
+                borderRadius: 9999,
                 letterSpacing: '.04em',
               }}
             >
@@ -504,10 +508,11 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
               border: '1px solid var(--amber)',
               fontWeight: 600,
               fontSize: 11,
-              padding: '3px 8px',
+              padding: '4px 12px',
+              borderRadius: 9999,
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 5,
+              gap: 6,
             }}
           >
             <Clock size={12} /> Aguardando Webhook
