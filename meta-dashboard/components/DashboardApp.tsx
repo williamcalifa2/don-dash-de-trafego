@@ -144,10 +144,14 @@ function Dashboard() {
   const [selectedMetrics, setSelectedMetrics] = useSelectedMetrics()
   // A sidebar da agência abre o Report Studio; o link de outra tela traz ?tab=reports.
   useEffect(() => {
-    const onEvent = (e: Event) => { if ((e as CustomEvent<StaffAction>).detail === 'reports') setTab('reports') }
+    const onEvent = (e: Event) => {
+      const act = (e as CustomEvent<StaffAction>).detail
+      if (act === 'reports') setTab('reports')
+      if (act === 'integracoes') setTab('integracoes')
+    }
     window.addEventListener(STAFF_EVENT, onEvent)
     const q = new URLSearchParams(window.location.search).get('tab')
-    if (q === 'reports') { setTab('reports'); window.history.replaceState(null, '', window.location.pathname) }
+    if (q === 'reports' || q === 'integracoes') { setTab(q); window.history.replaceState(null, '', window.location.pathname) }
     return () => window.removeEventListener(STAFF_EVENT, onEvent)
   }, [])
 

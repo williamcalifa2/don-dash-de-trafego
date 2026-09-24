@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Building2, FileBarChart, LayoutGrid, Menu, PanelLeftClose, PanelLeftOpen, Users, X } from 'lucide-react'
+import { Building2, FileBarChart, LayoutGrid, Menu, PanelLeftClose, PanelLeftOpen, Users, Webhook, X } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import type { Me } from '@/components/ProfileMenu'
 import { PulseLoader } from '@/components/PulseLoader'
 
 /** Ações que a sidebar pede para a tela em que a pessoa está (a tela escuta o evento e abre o que for dela). */
-export type StaffAction = 'clients' | 'new' | 'team' | 'sync' | 'reports' | 'access'
+export type StaffAction = 'clients' | 'new' | 'team' | 'sync' | 'reports' | 'access' | 'integracoes'
 export const STAFF_EVENT = 'staff-open'
 const ROLE_KEY = 'staff_role'
 const COLLAPSE_KEY = 'staff_sidebar_collapsed'
@@ -91,6 +91,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
           <Item collapsed={collapsed} icon={<LayoutGrid size={18} strokeWidth={1.75} />} label="Painel de clientes" active={onPanel} onClick={() => { setDrawer(false); if (!onPanel) go('/admin'); else window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
           <div className="staff-group">Administração</div>
           {canOperate && <Item collapsed={collapsed} icon={<Building2 size={18} strokeWidth={1.75} />} label="Clientes" onClick={() => open('clients')} />}
+          {canOperate && <Item collapsed={collapsed} icon={<Webhook size={18} strokeWidth={1.75} />} label="Integrações" onClick={() => open('integracoes')} />}
           {canManage && <Item collapsed={collapsed} icon={<Users size={18} strokeWidth={1.75} />} label="Equipe" onClick={() => open('team')} />}
           {canOperate && <>
             <div className="staff-group">Ferramentas</div>

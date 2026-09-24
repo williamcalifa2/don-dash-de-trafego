@@ -4,7 +4,7 @@ import MetaSyncPopover from '@/components/MetaSyncPopover'
 import AdminOverview from '@/components/AdminOverview'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, UserPlus, Copy, Check, ExternalLink, Settings2, Pencil, KeyRound, Trash2, Ban, LockOpen, Link2, X, Moon, Sun, Search, GripVertical, Users, RefreshCw, CalendarDays, ChevronDown, TrendingUp, DollarSign, Clock, ArrowRight, Loader2 } from 'lucide-react'
+import { ArrowLeft, UserPlus, Copy, Check, ExternalLink, Settings2, Pencil, KeyRound, Trash2, Ban, LockOpen, Link2, X, Moon, Sun, Search, GripVertical, Users, RefreshCw, CalendarDays, ChevronDown, TrendingUp, DollarSign, Clock, ArrowRight, Loader2, Webhook } from 'lucide-react'
 import { Sparkline } from '@/components/Sparkline'
 import { STATUS_META } from '@/components/LeadsTab'
 import { timeAgo } from '@/lib/leadUtils'
@@ -1043,6 +1043,7 @@ export default function AdminPage() {
       else if (a === 'team' && canManage) setModal({ kind: 'team' })
       else if (a === 'sync') setSyncSignal(n => n + 1)
       else if (a === 'access') setModal({ kind: 'clients', select: null, tab: 'acessos' })
+      else if (a === 'integracoes') setModal({ kind: 'clients', select: null, tab: 'integracoes' })
     }
     const onEvent = (e: Event) => run((e as CustomEvent<StaffAction>).detail)
     window.addEventListener(STAFF_EVENT, onEvent)
@@ -1305,11 +1306,22 @@ export default function AdminPage() {
             <Search size={16} color="var(--text-2)" strokeWidth={1.75} aria-hidden="true" />
             <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente" />
           </label>
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
             {([['todos', 'Todos'], ['ativos', 'Ativos'], ['pausados', 'Pausados'], ['bloqueados', 'Bloqueados']] as const).map(([k, l]) => (
               <button key={k} className="pill-btn" aria-pressed={filter === k} onClick={() => setFilter(k)}>{l}</button>
             ))}
           </div>
+          {canOperate && (
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => setModal({ kind: 'clients', select: null, tab: 'integracoes' })}
+              title="Configurar Integrações e Webhooks"
+              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <Webhook size={15} strokeWidth={1.75} />
+              <span>Integrações</span>
+            </button>
+          )}
         </div>
 
         {clients.length === 0 ? (
@@ -1329,6 +1341,7 @@ export default function AdminPage() {
                   : { bg: 'var(--green-soft)', dot: 'var(--green)', text: 'Ativo' }
               const items: MenuItem[] = [
                 ...(canManage ? [{ icon: <Pencil size={16} strokeWidth={1.75} />, text: 'Editar cliente e metas', onClick: () => setModal({ kind: 'clients', select: c.slug, tab: 'cadastro' }) }] : []),
+                ...(canOperate ? [{ icon: <Webhook size={16} strokeWidth={1.75} />, text: 'Integrações', onClick: () => setModal({ kind: 'clients', select: c.slug, tab: 'integracoes' }) }] : []),
                 ...(canOperate ? [{ icon: <Settings2 size={16} strokeWidth={1.75} />, text: 'Métricas do card', onClick: () => setModal({ kind: 'metrics', client: c }) }] : []),
                 ...(canOperate ? [{ icon: <KeyRound size={16} strokeWidth={1.75} />, text: 'Acessos (e-mail e token)', onClick: () => setModal({ kind: 'clients', select: c.slug, tab: 'acessos' }) }] : []),
                 ...(canManage ? [{ icon: <KeyRound size={16} strokeWidth={1.75} />, text: c.hasCode ? 'Revogar código antigo' : 'Gerar código antigo', onClick: () => c.hasCode ? setModal({ kind: 'confirm', action: 'rotate', client: c }) : runAction('rotate', c) }] : []),
