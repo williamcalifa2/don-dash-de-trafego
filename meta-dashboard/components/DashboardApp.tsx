@@ -29,6 +29,8 @@ import type { PlatformKey } from '@/lib/platforms'
 import type { ReportMode } from '@/lib/report'
 import { PlatformBadges } from '@/components/PlatformBadges'
 import { OrganicTab } from '@/components/OrganicTab'
+import { EcommerceTab } from '@/components/EcommerceTab'
+import { ClientIntegrationsTab } from '@/components/ClientIntegrationsTab'
 import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
 
 function getDashboardPresets(): { value: DatePreset; label: string }[] {
@@ -129,7 +131,7 @@ function Dashboard() {
   const [preset, setPreset] = useState<DatePreset>('last_7d')
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [reportOpen, setReportOpen] = useState(false)
-  const [tab, setTab] = useState<'metrics' | 'campaigns' | 'funnel' | 'audience' | 'organic' | 'simulator' | 'leads' | 'reports'>('metrics')
+  const [tab, setTab] = useState<'metrics' | 'campaigns' | 'ecommerce' | 'funnel' | 'audience' | 'organic' | 'simulator' | 'leads' | 'integracoes' | 'reports'>('metrics')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -300,353 +302,371 @@ function Dashboard() {
 
   return (
     <StaffShell>
-    <div className="page page-ready">
+      <div className="page page-ready">
 
-      {me?.admin && (
-        <div className="card no-print" style={{ padding: '8px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontSize: 14 }}>
-          <Shield size={16} strokeWidth={1.75} color="var(--accent)" />
-          <span style={{ flex: 1, minWidth: 200 }}>Visualizando <strong style={{ fontWeight: 600 }}>{me.name}</strong> como administrador</span>
-          <button className="btn btn-outline btn-sm" onClick={backToAdmin}>Voltar para administração</button>
-        </div>
-      )}
-
-      {/* Cabeçalho: bloco 56×56 + título 24 + subtítulo 14 */}
-      <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
-          {me?.logoUrl ? (
-            <img
-              src={me.logoUrl}
-              alt="Logo"
-              style={{ height: 56, width: 'auto', maxWidth: 140, objectFit: 'contain', borderRadius: 'var(--radius-lg)' }}
-            />
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 56, height: 56, background: 'var(--accent-soft)', borderRadius: 'var(--radius-lg)', flexShrink: 0 }}>
-              <TrendingUp size={28} color="var(--accent)" strokeWidth={1.75} />
-            </div>
-          )}
-          <div style={{ minWidth: 0 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, color: 'var(--text-1)', margin: 0 }}>
-              {me?.name ?? '\u00A0'}
-            </h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6, minHeight: 22 }}>
-              <PlatformBadges platforms={me?.platforms ?? []} />
-              {data?.account_name && !data.is_mock && (
-                <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--text-1)' }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', flexShrink: 0 }} />
-                  {data.account_name}
-                </span>
-              )}
-              {data?.is_mock && (
-                <span className="badge" style={{ background: 'var(--amber-soft)', color: 'var(--text-1)' }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--amber)', flexShrink: 0 }} />
-                  Demo · dados fictícios
-                </span>
-              )}
-              {!isLoading && (
-                <span className="badge" style={{ background: isValidating ? 'var(--accent-soft)' : 'var(--green-soft)', color: 'var(--text-1)' }}>
-                  <span style={{ position: 'relative', width: 7, height: 7, flexShrink: 0 }}>
-                    <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: isValidating ? 'var(--accent)' : 'var(--green)', animation: 'live-ping 1.4s ease-out infinite' }} />
-                    <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: isValidating ? 'var(--accent)' : 'var(--green)' }} />
-                  </span>
-                  {isValidating ? 'Atualizando…' : 'Ao vivo'}
-                </span>
-              )}
-            </div>
+        {me?.admin && (
+          <div className="card no-print" style={{ padding: '8px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontSize: 14 }}>
+            <Shield size={16} strokeWidth={1.75} color="var(--accent)" />
+            <span style={{ flex: 1, minWidth: 200 }}>Visualizando <strong style={{ fontWeight: 600 }}>{me.name}</strong> como administrador</span>
+            <button className="btn btn-outline btn-sm" onClick={backToAdmin}>Voltar para administração</button>
           </div>
-        </div>
+        )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {/* Seletor de Período Único Dropdown */}
-          <div ref={presetMenuRef} style={{ position: 'relative' }}>
-            <button
-              type="button"
-              onClick={() => setPresetMenuOpen(v => !v)}
-              className="btn btn-outline btn-sm"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '0 12px',
-                height: 32,
-                fontSize: 13,
-                fontWeight: 600,
-                color: 'var(--text-1)',
-              }}
-              title="Selecionar período"
-              aria-expanded={presetMenuOpen}
-              aria-haspopup="listbox"
-            >
-              <span>{PRESETS.find(p => p.value === (tab === 'organic' ? 'this_month' : preset))?.label ?? 'Período'}</span>
-              <ChevronDown size={14} style={{ opacity: 0.7, transform: presetMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
-            </button>
-
-            {presetMenuOpen && (
-              <div
-                role="listbox"
-                style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 4px)',
-                  left: 0,
-                  zIndex: 100,
-                  minWidth: 220,
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 12,
-                  boxShadow: 'var(--shadow-soft)',
-                  padding: 4,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 2,
-                }}
-              >
-                {(tab === 'organic' ? PRESETS.filter(pr => pr.value === 'this_month') : PRESETS).map(pr => {
-                  const active = (tab === 'organic' ? 'this_month' : preset) === pr.value
-                  return (
-                    <button
-                      key={pr.value}
-                      type="button"
-                      role="option"
-                      aria-selected={active}
-                      onClick={() => {
-                        setPreset(pr.value)
-                        setPresetMenuOpen(false)
-                      }}
-                      className="btn btn-ghost btn-sm"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        textAlign: 'left',
-                        padding: '6px 10px',
-                        fontSize: 12,
-                        fontWeight: active ? 700 : 500,
-                        color: active ? 'var(--accent)' : 'var(--text-1)',
-                        background: active ? 'var(--accent-soft)' : 'transparent',
-                        borderRadius: 8,
-                        marginTop: pr.value === 'this_month' ? 4 : 0,
-                        borderTop: pr.value === 'this_month' ? '1px solid var(--border)' : 'none',
-                        paddingTop: pr.value === 'this_month' ? 8 : 6,
-                      }}
-                    >
-                      <span>{pr.label}</span>
-                      {active && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />}
-                    </button>
-                  )
-                })}
+        {/* Cabeçalho: bloco 56×56 + título 24 + subtítulo 14 */}
+        <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
+            {me?.logoUrl ? (
+              <img
+                src={me.logoUrl}
+                alt="Logo"
+                style={{ height: 56, width: 'auto', maxWidth: 140, objectFit: 'contain', borderRadius: 'var(--radius-lg)' }}
+              />
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 56, height: 56, background: 'var(--accent-soft)', borderRadius: 'var(--radius-lg)', flexShrink: 0 }}>
+                <TrendingUp size={28} color="var(--accent)" strokeWidth={1.75} />
               </div>
             )}
-          </div>
-
-          <div className="hdr-sep" style={{ width: 1, height: 24, background: 'var(--border)' }} />
-
-          {/* Popover Ancorado de Ritmo de Verba (Budget Pacing) */}
-          <BudgetPacingPopover
-            campaigns={data?.campaigns || []}
-            currentSpend={s?.spend || 0}
-            currency={currency}
-            clientSlug={me?.slug}
-          />
-
-          {/* Botão Calendário redondo igual aos outros */}
-          <button
-            onClick={() => setCalendarOpen(true)}
-            title="Calendário de Performance"
-            aria-label="Calendário de Performance"
-            className="btn btn-outline btn-icon btn-sm"
-          >
-            <CalendarDays size={16} strokeWidth={1.75} />
-          </button>
-
-          <button onClick={() => setPickerOpen(true)} title="Personalizar métricas" aria-label="Personalizar métricas" className="btn btn-outline btn-icon btn-sm">
-            <Settings2 size={16} strokeWidth={1.75} />
-          </button>
-          <button onClick={alerts.toggle} aria-pressed={alerts.enabled}
-            title={alerts.enabled ? 'Alertas de lead novo ligados (som e notificação)' : 'Ligar som e notificação de lead novo'}
-            aria-label="Alertas de lead novo" className="btn btn-outline btn-icon btn-sm">
-            {alerts.enabled ? <Bell size={16} strokeWidth={1.75} color="var(--accent)" /> : <BellOff size={16} strokeWidth={1.75} />}
-          </button>
-          <button onClick={enterTv} title="Modo TV" aria-label="Modo TV" className="btn btn-outline btn-icon btn-sm">
-            <Tv size={16} strokeWidth={1.75} />
-          </button>
-          <button onClick={toggleTheme} title="Alternar tema" aria-label="Alternar tema" className="btn btn-outline btn-icon btn-sm">
-            {theme === 'dark' ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}
-          </button>
-          <button onClick={handleManualRefresh} disabled={isValidating || refreshing} title="Atualizar dados" aria-label="Atualizar dados" className="btn btn-outline btn-icon btn-sm">
-            <RefreshCw size={16} strokeWidth={1.75} style={{ animation: (isValidating || refreshing) ? 'spin 1s linear infinite' : undefined }} />
-          </button>
-          {me?.authEnabled && (
-            <button onClick={logout} title="Sair" aria-label="Sair" className="btn btn-ghost btn-icon btn-sm">
-              <LogOut size={16} strokeWidth={1.75} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Abas */}
-      <div className="no-print" style={{ borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
-        <div className="tabs" role="tablist" style={{ borderBottom: 'none', marginBottom: 0 }}>
-          {([['metrics', 'Geral'], ['campaigns', 'Campanhas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads'], ['reports', 'Report Studio']] as const).map(([key, label]) => (
-            <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
-              {label}
-              {key === 'leads' && staleCount > 0 && (
-                <span className="badge" title={`${staleCount} lead(s) sem contato`} style={{ marginLeft: 8, padding: '0 8px', background: 'var(--amber-soft)', color: 'var(--text-1)' }}>{staleCount}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Erro */}
-      {(error || data?.error) && !data?.is_mock && (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: 'var(--red-soft)', border: '1px solid hsl(0 84% 60% / .3)', borderRadius: 'var(--radius-lg)', padding: 16, marginBottom: 24 }}>
-          <AlertCircle size={16} color="var(--red)" strokeWidth={1.75} style={{ flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--red)', marginBottom: 2 }}>
-              {hasEnvError ? 'Configuração incompleta' : 'Erro ao buscar dados'}
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
-              {data?.error ?? 'Não foi possível conectar com a Meta API.'}
-              {hasEnvError && (
-                <span> Adicione <code style={{ background: 'var(--bg-card2)', padding: '1px 6px', borderRadius: 4 }}>META_ACCESS_TOKEN</code> e <code style={{ background: 'var(--bg-card2)', padding: '1px 6px', borderRadius: 4 }}>META_AD_ACCOUNT_ID</code> no <code style={{ background: 'var(--bg-card2)', padding: '1px 6px', borderRadius: 4 }}>.env.local</code>.</span>
-              )}
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, color: 'var(--text-1)', margin: 0 }}>
+                {me?.name ?? '\u00A0'}
+              </h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6, minHeight: 22 }}>
+                <PlatformBadges platforms={me?.platforms ?? []} />
+                {data?.account_name && !data.is_mock && (
+                  <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--text-1)' }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', flexShrink: 0 }} />
+                    {data.account_name}
+                  </span>
+                )}
+                {data?.is_mock && (
+                  <span className="badge" style={{ background: 'var(--amber-soft)', color: 'var(--text-1)' }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--amber)', flexShrink: 0 }} />
+                    Demo · dados fictícios
+                  </span>
+                )}
+                {!isLoading && (
+                  <span className="badge" style={{ background: isValidating ? 'var(--accent-soft)' : 'var(--green-soft)', color: 'var(--text-1)' }}>
+                    <span style={{ position: 'relative', width: 7, height: 7, flexShrink: 0 }}>
+                      <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: isValidating ? 'var(--accent)' : 'var(--green)', animation: 'live-ping 1.4s ease-out infinite' }} />
+                      <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: isValidating ? 'var(--accent)' : 'var(--green)' }} />
+                    </span>
+                    {isValidating ? 'Atualizando…' : 'Ao vivo'}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
 
-      {reportOpen && data && (
-        <div className="print-report-root">
-          <ReportTab data={data} preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} clientName={me?.name ?? ''} kind={kind} showCrm={showCrm} onReady={printReport} />
-        </div>
-      )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {/* Seletor de Período Único Dropdown */}
+            <div ref={presetMenuRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setPresetMenuOpen(v => !v)}
+                className="btn btn-outline btn-sm"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '0 12px',
+                  height: 32,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--text-1)',
+                }}
+                title="Selecionar período"
+                aria-expanded={presetMenuOpen}
+                aria-haspopup="listbox"
+              >
+                <span>{PRESETS.find(p => p.value === (tab === 'organic' ? 'this_month' : preset))?.label ?? 'Período'}</span>
+                <ChevronDown size={14} style={{ opacity: 0.7, transform: presetMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+              </button>
 
-      {/* Funnel tab */}
-      {!isLoading && tab === 'funnel' && s && <FunnelTab summary={s} currency={currency} kind={kind} />}
-      {tab === 'campaigns' && <CampaignsTab campaigns={data?.campaigns ?? []} summary={s} summaryPrev={p} currency={currency} kind={kind} preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} loading={isLoading} />}
-      {tab === 'audience' && <AudienceTab preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} kind={kind} />}
-      {tab === 'organic' && <OrganicTab preset="this_month" presetLabel="Este mês" isStaff={!me?.authEnabled || !!me?.admin} canLink={me?.role === 'owner' || me?.role === 'admin'} slug={me?.slug} />}
-      {tab === 'simulator' && <SimuladorTab summary={s ? (kind === 'form' ? s : { ...s, leads: s.results }) : undefined} currency={currency} />}
-      {tab === 'leads' && <LeadsTab openId={openLeadId} onOpenConsumed={() => setOpenLeadId(null)} readOnly={me?.role === 'reader'} />}
-      {tab === 'reports' && (
-        <ReportStudioTab
-          clientSlug={me?.slug || 'default'}
-          clientName={me?.name || 'Cliente'}
-          clientLogo={me?.logoUrl}
-          isStaff={false} /* o estúdio do cliente é só para ver: criar, editar, apresentar e excluir é no Report Studio da administração */
-          defaultPreset={preset === 'last_7d' ? 'last_7d' : preset === 'this_month' ? 'this_month' : 'last_month'}
-        />
-      )}
-      {!isLoading && tab === 'funnel' && !s && !error && (
-        <PulseLoader size={40} />
-      )}
-
-      {/* Loading skeleton (apenas se não houver dados anteriores) */}
-      {isLoading && !s && tab === 'metrics' && (
-        <div className="tile-grid" style={{ marginBottom: 12 }}>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="card" style={{ padding: 16, minHeight: 100 }}>
-              <div style={{ height: 10, width: '60%', background: 'var(--bg-card2)', borderRadius: 4, marginBottom: 12, animation: 'pulse 1.5s ease-in-out infinite' }} />
-              <div style={{ height: 24, width: '40%', background: 'var(--bg-card2)', borderRadius: 4, animation: 'pulse 1.5s ease-in-out infinite' }} />
+              {presetMenuOpen && (
+                <div
+                  role="listbox"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    zIndex: 100,
+                    minWidth: 220,
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                    boxShadow: 'var(--shadow-soft)',
+                    padding: 4,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2,
+                  }}
+                >
+                  {(tab === 'organic' ? PRESETS.filter(pr => pr.value === 'this_month') : PRESETS).map(pr => {
+                    const active = (tab === 'organic' ? 'this_month' : preset) === pr.value
+                    return (
+                      <button
+                        key={pr.value}
+                        type="button"
+                        role="option"
+                        aria-selected={active}
+                        onClick={() => {
+                          setPreset(pr.value)
+                          setPresetMenuOpen(false)
+                        }}
+                        className="btn btn-ghost btn-sm"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          textAlign: 'left',
+                          padding: '6px 10px',
+                          fontSize: 12,
+                          fontWeight: active ? 700 : 500,
+                          color: active ? 'var(--accent)' : 'var(--text-1)',
+                          background: active ? 'var(--accent-soft)' : 'transparent',
+                          borderRadius: 8,
+                          marginTop: pr.value === 'this_month' ? 4 : 0,
+                          borderTop: pr.value === 'this_month' ? '1px solid var(--border)' : 'none',
+                          paddingTop: pr.value === 'this_month' ? 8 : 6,
+                        }}
+                      >
+                        <span>{pr.label}</span>
+                        {active && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
-          ))}
+
+            <div className="hdr-sep" style={{ width: 1, height: 24, background: 'var(--border)' }} />
+
+            {/* Popover Ancorado de Ritmo de Verba (Budget Pacing) */}
+            <BudgetPacingPopover
+              campaigns={data?.campaigns || []}
+              currentSpend={s?.spend || 0}
+              currency={currency}
+              clientSlug={me?.slug}
+            />
+
+            {/* Botão Calendário redondo igual aos outros */}
+            <button
+              onClick={() => setCalendarOpen(true)}
+              title="Calendário de Performance"
+              aria-label="Calendário de Performance"
+              className="btn btn-outline btn-icon btn-sm"
+            >
+              <CalendarDays size={16} strokeWidth={1.75} />
+            </button>
+
+            <button onClick={() => setPickerOpen(true)} title="Personalizar métricas" aria-label="Personalizar métricas" className="btn btn-outline btn-icon btn-sm">
+              <Settings2 size={16} strokeWidth={1.75} />
+            </button>
+            <button onClick={alerts.toggle} aria-pressed={alerts.enabled}
+              title={alerts.enabled ? 'Alertas de lead novo ligados (som e notificação)' : 'Ligar som e notificação de lead novo'}
+              aria-label="Alertas de lead novo" className="btn btn-outline btn-icon btn-sm">
+              {alerts.enabled ? <Bell size={16} strokeWidth={1.75} color="var(--accent)" /> : <BellOff size={16} strokeWidth={1.75} />}
+            </button>
+            <button onClick={enterTv} title="Modo TV" aria-label="Modo TV" className="btn btn-outline btn-icon btn-sm">
+              <Tv size={16} strokeWidth={1.75} />
+            </button>
+            <button onClick={toggleTheme} title="Alternar tema" aria-label="Alternar tema" className="btn btn-outline btn-icon btn-sm">
+              {theme === 'dark' ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}
+            </button>
+            <button onClick={handleManualRefresh} disabled={isValidating || refreshing} title="Atualizar dados" aria-label="Atualizar dados" className="btn btn-outline btn-icon btn-sm">
+              <RefreshCw size={16} strokeWidth={1.75} style={{ animation: (isValidating || refreshing) ? 'spin 1s linear infinite' : undefined }} />
+            </button>
+            {me?.authEnabled && (
+              <button onClick={logout} title="Sair" aria-label="Sair" className="btn btn-ghost btn-icon btn-sm">
+                <LogOut size={16} strokeWidth={1.75} />
+              </button>
+            )}
+          </div>
         </div>
-      )}
 
-
-
-      {/* Metric tiles */}
-      {s && tab === 'metrics' && (
-        <>
-          <div className="tile-grid" style={{ marginBottom: 4, opacity: isLoading ? 0.7 : 1, transition: 'opacity 0.2s' }}>
-            {tiles.map((t) => (
-              <MetricTile
-                key={t.label}
-                label={t.label}
-                value={t.value}
-                sparkData={t.spark}
-                currentRaw={t.cur ?? undefined}
-                prevValue={t.prev ?? undefined}
-                lowerIsBetter={t.lowerIsBetter}
-              />
+        {/* Abas */}
+        <div className="no-print" style={{ borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
+          <div className="tabs" role="tablist" style={{ borderBottom: 'none', marginBottom: 0 }}>
+            {([['metrics', 'Geral'], ['campaigns', 'Campanhas'], ['ecommerce', 'Ecommerce'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads'], ['integracoes', 'Integrações'], ['reports', 'Report Studio']] as const).map(([key, label]) => (
+              <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
+                {label}
+                {key === 'leads' && staleCount > 0 && (
+                  <span className="badge" title={`${staleCount} lead(s) sem contato`} style={{ marginLeft: 8, padding: '0 8px', background: 'var(--amber-soft)', color: 'var(--text-1)' }}>{staleCount}</span>
+                )}
+              </button>
             ))}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-2)', textAlign: 'right', margin: '8px 0 24px' }}>
-            ↑↓ vs período anterior equivalente
+        </div>
+
+        {/* Erro */}
+        {(error || data?.error) && !data?.is_mock && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: 'var(--red-soft)', border: '1px solid hsl(0 84% 60% / .3)', borderRadius: 'var(--radius-lg)', padding: 16, marginBottom: 24 }}>
+            <AlertCircle size={16} color="var(--red)" strokeWidth={1.75} style={{ flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--red)', marginBottom: 2 }}>
+                {hasEnvError ? 'Configuração incompleta' : 'Erro ao buscar dados'}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                {data?.error ?? 'Não foi possível conectar com a Meta API.'}
+                {hasEnvError && (
+                  <span> Adicione <code style={{ background: 'var(--bg-card2)', padding: '1px 6px', borderRadius: 4 }}>META_ACCESS_TOKEN</code> e <code style={{ background: 'var(--bg-card2)', padding: '1px 6px', borderRadius: 4 }}>META_AD_ACCOUNT_ID</code> no <code style={{ background: 'var(--bg-card2)', padding: '1px 6px', borderRadius: 4 }}>.env.local</code>.</span>
+                )}
+              </div>
+            </div>
           </div>
-        </>
-      )}
+        )}
 
-      {/* Daily chart */}
-      {!isLoading && d && tab === 'metrics' && (
-        <div className="card" style={{ padding: 24, marginBottom: 24 }}>
-          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Evolução diária</div>
-          <DailyChart daily={d} currency={currency} kind={kind} />
-        </div>
-      )}
+        {reportOpen && data && (
+          <div className="print-report-root">
+            <ReportTab data={data} preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} clientName={me?.name ?? ''} kind={kind} showCrm={showCrm} onReady={printReport} />
+          </div>
+        )}
 
-      {/* Last update */}
-      {data?.generated_at && !isLoading && tab === 'metrics' && (
-        <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 24, textAlign: 'right' }}>
-          Atualizado em {new Date(data.generated_at).toLocaleString('pt-BR')}{data.freshness ? '' : ' · atualiza a cada 1 min'}
-          {data.freshness?.note && <div style={{ color: 'var(--amber)', marginTop: 4 }} role="status">{data.freshness.note}</div>}
-        </div>
-      )}
+        {/* Funnel tab */}
+        {!isLoading && tab === 'funnel' && s && <FunnelTab summary={s} currency={currency} kind={kind} />}
+        {tab === 'campaigns' && <CampaignsTab campaigns={data?.campaigns ?? []} summary={s} summaryPrev={p} currency={currency} kind={kind} preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} loading={isLoading} />}
+        {tab === 'ecommerce' && (
+          <EcommerceTab
+            clientSlug={me?.slug}
+            currency={currency}
+            summary={s}
+            presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''}
+          />
+        )}
+        {tab === 'audience' && <AudienceTab preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} kind={kind} />}
+        {tab === 'organic' && <OrganicTab preset="this_month" presetLabel="Este mês" isStaff={!me?.authEnabled || !!me?.admin} canLink={me?.role === 'owner' || me?.role === 'admin'} slug={me?.slug} />}
+        {tab === 'simulator' && <SimuladorTab summary={s ? (kind === 'form' ? s : { ...s, leads: s.results }) : undefined} currency={currency} />}
+        {tab === 'leads' && <LeadsTab openId={openLeadId} onOpenConsumed={() => setOpenLeadId(null)} readOnly={me?.role === 'reader'} />}
+        {tab === 'integracoes' && (
+          <div className="card" style={{ padding: 24, maxWidth: 860, margin: '0 auto' }}>
+            <ClientIntegrationsTab
+              slug={me?.slug || 'default'}
+              clientName={me?.name || 'Cliente'}
+              baseDomain={null}
+              onNotice={() => { }}
+            />
+          </div>
+        )}
+        {tab === 'reports' && (
+          <ReportStudioTab
+            clientSlug={me?.slug || 'default'}
+            clientName={me?.name || 'Cliente'}
+            clientLogo={me?.logoUrl}
+            isStaff={false} /* o estúdio do cliente é só para ver: criar, editar, apresentar e excluir é no Report Studio da administração */
+            defaultPreset={preset === 'last_7d' ? 'last_7d' : preset === 'this_month' ? 'this_month' : 'last_month'}
+          />
+        )}
+        {!isLoading && tab === 'funnel' && !s && !error && (
+          <PulseLoader size={40} />
+        )}
+
+        {/* Loading skeleton (apenas se não houver dados anteriores) */}
+        {isLoading && !s && tab === 'metrics' && (
+          <div className="tile-grid" style={{ marginBottom: 12 }}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="card" style={{ padding: 16, minHeight: 100 }}>
+                <div style={{ height: 10, width: '60%', background: 'var(--bg-card2)', borderRadius: 4, marginBottom: 12, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                <div style={{ height: 24, width: '40%', background: 'var(--bg-card2)', borderRadius: 4, animation: 'pulse 1.5s ease-in-out infinite' }} />
+              </div>
+            ))}
+          </div>
+        )}
+
+
+
+        {/* Metric tiles */}
+        {s && tab === 'metrics' && (
+          <>
+            <div className="tile-grid" style={{ marginBottom: 4, opacity: isLoading ? 0.7 : 1, transition: 'opacity 0.2s' }}>
+              {tiles.map((t) => (
+                <MetricTile
+                  key={t.label}
+                  label={t.label}
+                  value={t.value}
+                  sparkData={t.spark}
+                  currentRaw={t.cur ?? undefined}
+                  prevValue={t.prev ?? undefined}
+                  lowerIsBetter={t.lowerIsBetter}
+                />
+              ))}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-2)', textAlign: 'right', margin: '8px 0 24px' }}>
+              ↑↓ vs período anterior equivalente
+            </div>
+          </>
+        )}
+
+        {/* Daily chart */}
+        {!isLoading && d && tab === 'metrics' && (
+          <div className="card" style={{ padding: 24, marginBottom: 24 }}>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Evolução diária</div>
+            <DailyChart daily={d} currency={currency} kind={kind} />
+          </div>
+        )}
+
+        {/* Last update */}
+        {data?.generated_at && !isLoading && tab === 'metrics' && (
+          <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 24, textAlign: 'right' }}>
+            Atualizado em {new Date(data.generated_at).toLocaleString('pt-BR')}{data.freshness ? '' : ' · atualiza a cada 1 min'}
+            {data.freshness?.note && <div style={{ color: 'var(--amber)', marginTop: 4 }} role="status">{data.freshness.note}</div>}
+          </div>
+        )}
 
 
 
 
 
-      {alerts.toast && (
-        <LeadToast
-          lead={alerts.toast.lead}
-          extra={alerts.toast.extra}
-          scale={tv ? Math.max(1, window.innerWidth / 1360) : 1}
-          onView={tv ? undefined : () => { setTab('leads'); setOpenLeadId(alerts.toast!.lead.id); alerts.dismiss() }}
-          onDismiss={alerts.dismiss}
-        />
-      )}
+        {alerts.toast && (
+          <LeadToast
+            lead={alerts.toast.lead}
+            extra={alerts.toast.extra}
+            scale={tv ? Math.max(1, window.innerWidth / 1360) : 1}
+            onView={tv ? undefined : () => { setTab('leads'); setOpenLeadId(alerts.toast!.lead.id); alerts.dismiss() }}
+            onDismiss={alerts.dismiss}
+          />
+        )}
 
-      {tv && (
-        <TvMode
-          data={data ?? null}
-          summary={s}
-          tiles={tiles}
-          currency={currency}
-          presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''}
-          clientName={me?.name ?? ''}
-          logoUrl={me?.logoUrl ?? undefined}
-          onExit={exitTv}
-          onToggleTheme={toggleTheme}
-          staleCount={staleCount}
-          kind={kind}
-          showCrm={showCrm}
-        />
-      )}
+        {tv && (
+          <TvMode
+            data={data ?? null}
+            summary={s}
+            tiles={tiles}
+            currency={currency}
+            presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''}
+            clientName={me?.name ?? ''}
+            logoUrl={me?.logoUrl ?? undefined}
+            onExit={exitTv}
+            onToggleTheme={toggleTheme}
+            staleCount={staleCount}
+            kind={kind}
+            showCrm={showCrm}
+          />
+        )}
 
-      {/* Metric Picker modal */}
-      {pickerOpen && (
-        <MetricPicker
-          selected={selectedMetrics}
-          summary={s}
-          currency={currency}
-          onClose={(keys) => {
-            setSelectedMetrics(keys)
-            setPickerOpen(false)
-          }}
-        />
-      )}
+        {/* Metric Picker modal */}
+        {pickerOpen && (
+          <MetricPicker
+            selected={selectedMetrics}
+            summary={s}
+            currency={currency}
+            onClose={(keys) => {
+              setSelectedMetrics(keys)
+              setPickerOpen(false)
+            }}
+          />
+        )}
 
-      {/* Calendar View Modal */}
-      {calendarOpen && (
-        <CalendarViewModal
-          onClose={() => setCalendarOpen(false)}
-          daily={d}
-          currency={currency}
-          kind={kind}
-          leads={leadsApi.leads}
-        />
-      )}
-    </div>
+        {/* Calendar View Modal */}
+        {calendarOpen && (
+          <CalendarViewModal
+            onClose={() => setCalendarOpen(false)}
+            daily={d}
+            currency={currency}
+            kind={kind}
+            leads={leadsApi.leads}
+          />
+        )}
+      </div>
     </StaffShell>
   )
 }
