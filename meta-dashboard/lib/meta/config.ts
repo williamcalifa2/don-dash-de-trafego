@@ -79,6 +79,13 @@ export interface MetaConfig {
   blockDefaultWaitSec: number
   freqMultiplierMax: number
   killSwitchMinutes: number
+  /** Erro de limite do app (código 4) com uso do app abaixo disto e sem repetição: bloqueia só a conta que errou, não o sistema todo. */
+  appErrorGlobalPct: number
+  /** Quantos erros código 4 (de qualquer conta) dentro da janela viram kill switch global. */
+  appErrorRepeat: number
+  appErrorWindowMin: number
+  /** Espera curta da conta que recebeu um código 4 isolado. */
+  softBlockMin: number
   resumeStepSec: number
 
   // Tetos absolutos
@@ -188,6 +195,10 @@ export function readMetaConfig(env: Env = process.env): MetaConfig {
     blockDefaultWaitSec: num(env, 'META_BLOCK_DEFAULT_WAIT_SEC', 900),
     freqMultiplierMax: num(env, 'META_FREQ_MULTIPLIER_MAX', 8, 1),
     killSwitchMinutes: num(env, 'META_KILL_SWITCH_MINUTES', 30),
+    appErrorGlobalPct: num(env, 'META_APP_ERROR_GLOBAL_PCT', 30),
+    appErrorRepeat: Math.floor(num(env, 'META_APP_ERROR_REPEAT', 3, 1)),
+    appErrorWindowMin: num(env, 'META_APP_ERROR_WINDOW_MIN', 60, 1),
+    softBlockMin: num(env, 'META_SOFT_BLOCK_MIN', 10, 1),
     resumeStepSec: num(env, 'META_RESUME_STEP_SEC', 120),
 
     maxCallsPerAccountHour: Math.floor(num(env, 'META_MAX_CALLS_PER_ACCOUNT_HOUR', 60, 1)),

@@ -110,6 +110,24 @@ export function createLimitController(deps: LimitDeps) {
     await raise({ level: 'critical', kind: 'kill_switch', message: `Kill switch ativado: todas as chamadas à Meta pausadas por ${cfg.killSwitchMinutes} min (${reason}).`, data: { until, reason } })
   }
 
+  /** Erros código 4 recentes (de qualquer conta), para separar um tropeço isolado de um limite de verdade do app. */
+  async function noteAppError(t: number): Promise<number> {
+    const cfg = config()
+    const cur = (await store.getSetting<{ at: number[] }>('app_errors'))?.at ?? []
+    const keep = [...cur.filter(x => t - x < cfg.appErrorWindowMin * 60_000), t].slice(-20)
+    await store.setSetting('app_errors', { at: keep })
+    return keep.length
+  }
+
+  /** Espera curta só desta conta: não conta como bloqueio (não dobra espera, não suspende, não reduz frequência). */
+  async function softBlockAccount(clientId: string, minutes: number, reason: string, data: Record<string, unknown>) {
+    const t = now()
+    const st = await store.getState(clientId)
+    if (st.blockedUntil && st.blockedUntil > t) return
+    await store.patchState(clientId, { blockedUntil: t + minutes * 60_000, lastError: reason.slice(0, 300) })
+    await raise({ level: 'warning', kind: 'account_blocked', clientId, message: `Conta em espera por ${minutes} min (${reason}).`, data })
+  }
+
   async function blockAccount(clientId: string, regainMinutes: number, reason: string) {
     const cfg = config(); const t = now()
     const st = await store.getState(clientId)
@@ -198,9 +216,20 @@ export function createLimitController(deps: LimitDeps) {
         }
 
         const err = result.error
-        const appLevel = (err?.kind === 'rate_limit' && err.code === 4) || (u?.appMaxPct ?? 0) >= cfg.appUsageThresholdPct
-        if (appLevel) {
-          await activateKill(err?.code === 4 ? 'erro de limite do app (código 4)' : `uso do app em ${u?.appMaxPct}%`)
+        const appPct = u?.appMaxPct ?? 0
+        // O que a Meta disse, guardado no alerta: sem isso não dá para saber qual limite foi (código, subcódigo e mensagem).
+        const detail = err ? { code: err.code ?? null, subcode: err.subcode ?? null, message: err.message.slice(0, 300), type: err.type ?? null, path: meta.path, appPct, accountPct: u?.accountMaxPct ?? 0 } : {}
+        const why = err ? `código ${err.code ?? 'HTTP ' + err.status}${err.subcode ? `/${err.subcode}` : ''}: ${err.message.slice(0, 160)}` : ''
+        if (err?.kind === 'rate_limit' && err.code === 4) {
+          // Código 4 isolado, com o app longe do limite: só esta conta espera. Uso alto do app ou vários erros seguidos (qualquer conta): sistema todo.
+          const repeats = await noteAppError(t)
+          const global = appPct >= cfg.appErrorGlobalPct || repeats >= cfg.appErrorRepeat || !ctx.clientId
+          if (global) { await activateKill(`erro de limite do app (${why}; uso do app ${appPct}%; ${repeats} erro(s) na última hora)`); return }
+          await softBlockAccount(ctx.clientId!, cfg.softBlockMin, `limite do app, ${why}`, detail)
+          return
+        }
+        if (appPct >= cfg.appUsageThresholdPct) {
+          await activateKill(`uso do app em ${appPct}%`)
           return
         }
 
@@ -212,7 +241,7 @@ export function createLimitController(deps: LimitDeps) {
 
         const limited = err?.kind === 'rate_limit' || (u?.accountMaxPct ?? 0) >= cfg.usageThresholdPct
         if (limited) {
-          if (ctx.clientId) await blockAccount(ctx.clientId, u?.regainMinutes ?? 0, err?.kind === 'rate_limit' ? `limite da Meta (código ${err.code ?? 'HTTP ' + err.status})` : `uso em ${u?.accountMaxPct}% (limiar ${cfg.usageThresholdPct}%)`)
+          if (ctx.clientId) await blockAccount(ctx.clientId, u?.regainMinutes ?? 0, err?.kind === 'rate_limit' ? `limite da Meta (${why})` : `uso em ${u?.accountMaxPct}% (limiar ${cfg.usageThresholdPct}%)`)
           else await activateKill('limite da Meta sem conta identificada')
           return
         }

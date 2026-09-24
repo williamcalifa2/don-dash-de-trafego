@@ -55,6 +55,14 @@ export async function sessionRole(session: SessionPayload | null): Promise<Role 
   return memberRoleFor(session.m, session.h)
 }
 
+/** Quem está logado na administração: nível e e-mail (do dono ou do colega). */
+export async function requestIdentity(req: NextRequest): Promise<{ role: Role; email: string } | null> {
+  const session = await readSession(req.cookies.get(SESSION_COOKIE)?.value)
+  const role = await sessionRole(session)
+  if (!role || !session) return null
+  return { role, email: (session.m ?? adminEmail()).toLowerCase() }
+}
+
 export async function requestRole(req: NextRequest): Promise<Role | null> {
   return sessionRole(await readSession(req.cookies.get(SESSION_COOKIE)?.value))
 }

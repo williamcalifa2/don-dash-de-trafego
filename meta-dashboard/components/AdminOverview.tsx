@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { MetricTile } from './MetricTile'
+import { PulseLoader } from '@/components/PulseLoader'
 import { DailyChart } from './DailyChart'
 import type { Overview } from '@/lib/adminOverview'
 import type { AdminPeriod } from '@/lib/periods'
@@ -13,7 +14,7 @@ const pct = (v: number) => `${v.toFixed(2)}%`
 const div = (a: number, b: number) => (b > 0 ? a / b : null)
 
 /** Métricas de todos os clientes somadas, no mesmo estilo do painel de cada cliente. */
-export default function AdminOverview({ days, refreshKey = 0, clients = [] }: { days: AdminPeriod; refreshKey?: number; clients?: Array<{ slug: string; name: string }> }) {
+export default function AdminOverview({ days, refreshKey = 0, clients = [], actions }: { days: AdminPeriod; refreshKey?: number; clients?: Array<{ slug: string; name: string }>; /** botões no fim da linha (período e atualizar tudo) */ actions?: React.ReactNode }) {
   const [client, setClient] = useState('')
   const [open, setOpen] = useState(true)
   const [o, setO] = useState<Overview | null>(null)
@@ -66,12 +67,13 @@ export default function AdminOverview({ days, refreshKey = 0, clients = [] }: { 
             {clients.map(c => <option key={c.slug} value={c.slug}>{c.name}</option>)}
           </select>
         )}
+        {actions && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>{actions}</div>}
       </div>
 
       {open && (
         <>
           {error && <p role="alert" style={{ fontSize: 13, color: 'var(--text-2)' }}>Não foi possível carregar a visão geral agora. Tente de novo em instantes.</p>}
-          {!o && !error && <p style={{ fontSize: 13, color: 'var(--text-2)' }}>Carregando…</p>}
+          {!o && !error && <PulseLoader size={36} />}
           {o && o.clientsWithData === 0 && !error && <p style={{ fontSize: 13, color: 'var(--text-2)' }}>Ainda sem dados. Eles aparecem aqui assim que a sincronização com a Meta guardar as métricas dos clientes.</p>}
           {o && o.clientsWithData > 0 && (
             <>

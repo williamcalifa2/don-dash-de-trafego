@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { hostSlug, SLUG_RE } from '@/lib/host'
 import { publicClient } from '@/lib/tenant'
+import { hasEmails } from '@/lib/clientAccess'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,5 +11,5 @@ export async function GET(req: NextRequest) {
   const slug = hostSlug(req.headers.get('host')) ?? (SLUG_RE.test(c) ? c : null)
   if (!slug) return NextResponse.json({ slug: null })
   const client = await publicClient(slug)
-  return client ? NextResponse.json(client) : NextResponse.json({ slug })
+  return client ? NextResponse.json({ ...client, emailLogin: await hasEmails(slug) }) : NextResponse.json({ slug })
 }

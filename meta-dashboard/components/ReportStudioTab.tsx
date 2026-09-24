@@ -20,6 +20,7 @@ import {
 import { apiFetch } from '@/lib/apiFetch'
 import type { ReportMode, ReportPreset, SavedReport, SavedReportSummary } from '@/lib/report'
 import { ReportStudio } from '@/components/ReportStudio'
+import { PulseLoader } from '@/components/PulseLoader'
 import { buildSlides } from '@/lib/reportSlides'
 
 interface ReportStudioTabProps {
@@ -380,10 +381,7 @@ export function ReportStudioTab({
 
       {/* Estado de Carregamento Inicial */}
       {loading && !reports.length && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', gap: 12 }}>
-          <Loader2 size={28} className="spin" color="var(--accent)" />
-          <span style={{ fontSize: 13, color: 'var(--text-3)' }}>Carregando biblioteca do Report Studio…</span>
-        </div>
+        <PulseLoader size={44} caption="Carregando a biblioteca do Report Studio" />
       )}
 
       {/* Empty State */}

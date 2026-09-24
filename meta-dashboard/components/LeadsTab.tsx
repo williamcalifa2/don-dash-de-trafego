@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Plus, RefreshCw, Search, Users, TrendingUp, DollarSign, StickyNote, Clock, LayoutGrid, Table as TableIcon, MessageSquare } from 'lucide-react'
+import { Plus, Search, Users, TrendingUp, DollarSign, StickyNote, Clock, LayoutGrid, Table as TableIcon } from 'lucide-react'
 import { useLeadsData as useLeads } from '@/lib/leadsContext'
 import type { Lead, LeadStatus } from '@/lib/leadTypes'
 import { LeadDrawer } from './LeadDrawer'
 import { NewLeadModal } from './NewLeadModal'
 import { LeadsKanban } from './LeadsKanban'
+import { LeadsFilters, ActiveFilterChips } from './LeadsFilters'
+import { activeCount, applyFilters, EMPTY_FILTERS, type LeadFilters } from '@/lib/leadFilters'
 import { isStale, timeAgo, STALE_HOURS, waLink, fmtPhone } from '@/lib/leadUtils'
 
 export const STATUS_META: Record<LeadStatus, { dot: string; bg: string }> = {
@@ -124,10 +126,10 @@ function StatusCell({ status, onChange }: { status: LeadStatus; onChange: (s: Le
 interface ColDef { key: string; label: string; width: number; align?: 'left' | 'right' }
 
 const COLS: ColDef[] = [
+  { key: 'status', label: 'Status', width: 132 },
   { key: 'date', label: 'Data', width: 76 },
   { key: 'nome', label: 'Nome', width: 170 },
   { key: 'telefone', label: 'WhatsApp', width: 150 },
-  { key: 'status', label: 'Status', width: 132 },
   { key: 'valor_pedido', label: 'Valor', width: 100, align: 'right' },
   { key: 'contato', label: 'Contato', width: 150 },
   { key: 'motivo', label: 'Motivo', width: 132 },
@@ -141,9 +143,9 @@ const ID_W = 80
 const ROW_H = 24
 
 export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?: string | null; onOpenConsumed?: () => void; readOnly?: boolean }) {
-  const { leads, loading, error, saveError, clearSaveError, refetch, patchLead } = useLeads()
+  const { leads, loading, error, saveError, clearSaveError, patchLead } = useLeads()
   const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState<LeadStatus | 'Todos' | 'Parados'>('Todos')
+  const [filters, setFilters] = useState<LeadFilters>(EMPTY_FILTERS)
   const [newOpen, setNewOpen] = useState(false)
   const [drawer, setDrawer] = useState<{ id: string; focus: 'motivo' | 'valor' | null } | null>(null)
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table')
@@ -173,13 +175,8 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
     else if (status === 'Convertido' && lead.valor_pedido == null) setDrawer({ id: lead.id, focus: 'valor' })
   }
 
-  const filtered = leads.filter(l => {
-    const matchStatus = filterStatus === 'Todos' || (filterStatus === 'Parados' ? isStale(l) : l.status === filterStatus)
-    const q = search.toLowerCase()
-    const matchSearch = !q || [l.nome, l.email, l.telefone, l.campanha, l.ad_name]
-      .some(v => v?.toLowerCase().includes(q))
-    return matchStatus && matchSearch
-  })
+  const q = search.toLowerCase()
+  const filtered = applyFilters(leads, filters).filter(l => !q || [l.nome, l.email, l.telefone, l.campanha, l.ad_name].some(v => v?.toLowerCase().includes(q)))
 
   const stats = {
     total: leads.length,
@@ -252,13 +249,7 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
           />
         </label>
 
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {(['Todos', ...ALL_STATUSES, ...(staleCount > 0 ? ['Parados' as const] : [])] as const).map(st => (
-            <button key={st} className="pill-btn" aria-pressed={filterStatus === st} onClick={() => setFilterStatus(st)}>
-              {st === 'Parados' ? `Sem contato (${staleCount})` : st}
-            </button>
-          ))}
-        </div>
+        <LeadsFilters leads={leads} value={filters} onChange={setFilters} />
 
         {/* View Mode Switcher: Tabela / Kanban */}
         <div style={{ display: 'inline-flex', background: 'var(--bg-card2)', padding: 3, borderRadius: 'var(--radius-full)', border: '1px solid var(--border-soft)' }}>
@@ -309,11 +300,9 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
         {!readOnly && <button onClick={() => setNewOpen(true)} className="btn btn-soft btn-sm">
           <Plus size={16} strokeWidth={1.75} /> Novo lead
         </button>}
-        <button onClick={refetch} disabled={loading} className="btn btn-outline btn-sm">
-          <RefreshCw size={16} strokeWidth={1.75} style={{ animation: loading ? 'spin 1s linear infinite' : undefined }} />
-          Atualizar
-        </button>
       </div>
+
+      <ActiveFilterChips value={filters} onChange={setFilters} />
 
       {viewMode === 'kanban' ? (
         <div style={{ marginTop: 14 }}>
@@ -340,17 +329,10 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
               borderBottom: '1px solid var(--border)',
               userSelect: 'none', position: 'sticky', top: 0, zIndex: 10,
             }}>
-              <div style={{
-                width: ID_W, minWidth: ID_W, height: ROW_H + 4,
-                borderRight: '1px solid var(--border-soft)',
-                display: 'flex', alignItems: 'center', padding: '0 8px',
-              }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '.06em' }}>ID</span>
-              </div>
-              {COLS.map((col, ci) => (
+              {COLS.map((col) => (
                 <div key={col.key} style={{
                   width: col.width, minWidth: col.width, height: ROW_H + 4,
-                  borderRight: ci < COLS.length - 1 ? '1px solid var(--border-soft)' : 'none',
+                  borderRight: '1px solid var(--border-soft)',
                   padding: '0 8px', display: 'flex', alignItems: 'center',
                   justifyContent: col.align === 'right' ? 'flex-end' : 'flex-start',
                   fontSize: 10, fontWeight: 700, color: 'var(--text-2)',
@@ -359,6 +341,12 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
                   {col.label}
                 </div>
               ))}
+              <div style={{
+                width: ID_W, minWidth: ID_W, height: ROW_H + 4,
+                display: 'flex', alignItems: 'center', padding: '0 8px',
+              }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '.06em' }}>ID</span>
+              </div>
             </div>
 
             {saveError && (
@@ -398,29 +386,10 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
                     background: isSelected ? 'var(--accent-soft)' : stale ? 'var(--amber-soft)' : undefined,
                   }}
                 >
-                  {/* ID cell */}
-                  <div
-                    title={lead.id}
-                    style={{
-                      width: ID_W, minWidth: ID_W, height: ROW_H,
-                      borderRight: '1px solid var(--border-soft)',
-                      display: 'flex', alignItems: 'center', padding: '0 8px',
-                      background: 'var(--bg-card2)',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <span style={{
-                      fontSize: 11, color: 'var(--text-2)',
-                      userSelect: 'all',
-                    }}>
-                      {lead.id.slice(0, 8)}
-                    </span>
-                  </div>
-
-                  {COLS.map((col, ci) => (
+                  {COLS.map((col) => (
                     <div key={col.key} style={{
                       width: col.width, minWidth: col.width, height: ROW_H, flexShrink: 0,
-                      borderRight: ci < COLS.length - 1 ? '1px solid var(--border-soft)' : 'none',
+                      borderRight: '1px solid var(--border-soft)',
                       display: 'flex', alignItems: 'stretch',
                     }}>
                       {col.key === 'status' ? (
@@ -475,6 +444,25 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
                       )}
                     </div>
                   ))}
+
+                  {/* ID por último: não interessa a quem atende */}
+                  <div
+                    title={lead.id}
+                    style={{
+                      width: ID_W, minWidth: ID_W, height: ROW_H,
+                      display: 'flex', alignItems: 'center', padding: '0 8px',
+                      background: 'var(--bg-card2)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span style={{
+                      fontSize: 11, color: 'var(--text-2)',
+                      userSelect: 'all',
+                    }}>
+                      {lead.id.slice(0, 8)}
+                    </span>
+                  </div>
+
                 </div>
               )
             })}
@@ -485,7 +473,7 @@ export function LeadsTab({ openId, onOpenConsumed, readOnly = false }: { openId?
               background: 'var(--bg-card2)', fontVariantNumeric: 'tabular-nums',
             }}>
               <span>{filtered.length} registro{filtered.length !== 1 ? 's' : ''}</span>
-              {filterStatus !== 'Todos' && <span>· {filterStatus}</span>}
+              {activeCount(filters) > 0 && <span>· {activeCount(filters)} filtro{activeCount(filters) !== 1 ? 's' : ''}</span>}
               {search && <span>· “{search}”</span>}
               {stats.convertido > 0 && (
                 <span style={{ marginLeft: 'auto', color: 'var(--green)', fontWeight: 600 }}>

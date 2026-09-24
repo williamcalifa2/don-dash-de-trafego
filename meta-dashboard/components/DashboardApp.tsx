@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Download, FileBarChart, RefreshCw, TrendingUp, AlertCircle, Moon, Sun, Settings2, Tv, Bell, BellOff, LogOut, Shield, ChevronDown, CalendarDays, DollarSign, Presentation } from 'lucide-react'
 import { MetricTile } from '@/components/MetricTile'
-import { CampaignTable } from '@/components/CampaignTable'
 import { DailyChart } from '@/components/DailyChart'
 import { FunnelTab } from '@/components/FunnelTab'
 import { SimuladorTab } from '@/components/SimuladorTab'
@@ -11,8 +10,11 @@ import { LeadsTab } from '@/components/LeadsTab'
 import { MetricPicker, useSelectedMetrics } from '@/components/MetricPicker'
 import { TvMode } from '@/components/TvMode'
 import { ReportTab } from '@/components/ReportTab'
-import { ReportStudio } from '@/components/ReportStudio'
 import { ReportStudioTab } from '@/components/ReportStudioTab'
+import { CampaignsTab } from '@/components/CampaignsTab'
+import { PulseLoader } from '@/components/PulseLoader'
+import { StaffShell, STAFF_EVENT, type StaffAction } from '@/components/StaffShell'
+import { AudienceTab } from '@/components/AudienceTab'
 import { LeadToast } from '@/components/LeadToast'
 import { BudgetPacingPopover } from '@/components/BudgetPacingPopover'
 import { ClientGoalsTab } from '@/components/ClientGoalsTab'
@@ -28,7 +30,6 @@ import type { ReportMode } from '@/lib/report'
 import { PlatformBadges } from '@/components/PlatformBadges'
 import { OrganicTab } from '@/components/OrganicTab'
 import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
-import { AudienceTab } from '@/components/AudienceTab'
 
 function getDashboardPresets(): { value: DatePreset; label: string }[] {
   const br = new Date(Date.now() - 3 * 3600 * 1000)
@@ -128,9 +129,7 @@ function Dashboard() {
   const [preset, setPreset] = useState<DatePreset>('last_7d')
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [reportOpen, setReportOpen] = useState(false)
-  const [monthlyOpen, setMonthlyOpen] = useState(false)
-  const [monthlyMode, setMonthlyMode] = useState<ReportMode>('standard')
-  const [tab, setTab] = useState<'metrics' | 'funnel' | 'audience' | 'organic' | 'simulator' | 'leads' | 'reports'>('metrics')
+  const [tab, setTab] = useState<'metrics' | 'campaigns' | 'funnel' | 'audience' | 'organic' | 'simulator' | 'leads' | 'reports'>('metrics')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -141,7 +140,14 @@ function Dashboard() {
   const alerts = useLeadAlerts(leadsApi.leads, !leadsApi.loading && !leadsApi.error)
   const staleCount = useMemo(() => leadsApi.leads.filter(l => isStale(l)).length, [leadsApi.leads])
   const [selectedMetrics, setSelectedMetrics] = useSelectedMetrics()
-  const isStaff = !me?.authEnabled || !!me?.admin || me?.role === 'owner' || me?.role === 'member'
+  // A sidebar da agência abre o Report Studio; o link de outra tela traz ?tab=reports.
+  useEffect(() => {
+    const onEvent = (e: Event) => { if ((e as CustomEvent<StaffAction>).detail === 'reports') setTab('reports') }
+    window.addEventListener(STAFF_EVENT, onEvent)
+    const q = new URLSearchParams(window.location.search).get('tab')
+    if (q === 'reports') { setTab('reports'); window.history.replaceState(null, '', window.location.pathname) }
+    return () => window.removeEventListener(STAFF_EVENT, onEvent)
+  }, [])
 
   useEffect(() => {
     let saved: 'dark' | 'light' | null = null
@@ -169,8 +175,25 @@ function Dashboard() {
     if (new URLSearchParams(window.location.search).get('tv') === '1') setTv(true)
   }, [])
 
+  const [meLoaded, setMeLoaded] = useState(false)
+  const [minTimeReady, setMinTimeReady] = useState(false)
+  const [safetyReady, setSafetyReady] = useState(false)
+
   useEffect(() => {
-    apiFetch('/api/me').then(r => r.ok ? r.json() : null).then(j => { if (j) { setMe(j); document.title = `Dashboard Don - ${j.name}` } }).catch(() => { })
+    let alive = true
+    apiFetch('/api/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        if (!alive) return
+        if (j) { setMe(j); document.title = `Dashboard Don - ${j.name}` }
+      })
+      .catch(() => { })
+      .finally(() => { if (alive) setMeLoaded(true) })
+
+    // Garante que o loader fique tempo suficiente para renderizar a tela completa sem micro-flickers
+    const timer = setTimeout(() => { if (alive) setMinTimeReady(true) }, 800)
+    const safety = setTimeout(() => { if (alive) setSafetyReady(true) }, 3500)
+    return () => { alive = false; clearTimeout(timer); clearTimeout(safety) }
   }, [])
 
   useEffect(() => {
@@ -227,9 +250,12 @@ function Dashboard() {
   const hasResults = (s?.results ?? 0) > 0
   const [storedKind, setStoredKind] = useState<ResultKind | null>(null)
   const kindKey = `resultKind:${me?.slug ?? 'default'}`
-  useEffect(() => { try { const v = localStorage.getItem(kindKey); if (v === 'form' || v === 'site' || v === 'conversa' || v === 'misto') setStoredKind(v) } catch { } }, [kindKey])
-  useEffect(() => { try { const v = localStorage.getItem(kindKey); if (v === 'form' || v === 'site' || v === 'conversa' || v === 'custom' || v === 'sales' || v === 'misto') setStoredKind(v) } catch { } }, [kindKey])
-  useEffect(() => { try { const v = localStorage.getItem(kindKey); if (v === 'form' || v === 'site' || v === 'conversa' || v === 'custom' || v === 'sales' || v === 'misto') setStoredKind(v as ResultKind) } catch { } }, [kindKey])
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(kindKey)
+      if (v === 'form' || v === 'site' || v === 'conversa' || v === 'custom' || v === 'sales' || v === 'misto') setStoredKind(v as ResultKind)
+    } catch { }
+  }, [kindKey])
   useEffect(() => { if (hasResults) { setStoredKind(detected); try { localStorage.setItem(kindKey, detected) } catch { } } }, [hasResults, detected, kindKey])
   const kind: ResultKind = hasResults ? detected : (storedKind ?? detected)
   const showCrm = kind === 'form' || kind === 'misto' || leadsApi.leads.length > 0
@@ -266,105 +292,15 @@ function Dashboard() {
 
   const hasEnvError = data?.error?.includes('META_ACCESS_TOKEN')
 
-  if (isLoading && !data) {
-    return (
-      <div className="page" style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-        <style>{`
-          @keyframes clientFluidPulse {
-            0%, 100% {
-              transform: translateY(0px) scale(1);
-              border-color: var(--border);
-              box-shadow: 0 8px 24px -4px rgba(99, 102, 241, 0.16);
-            }
-            50% {
-              transform: translateY(-3px) scale(1.02);
-              border-color: var(--accent);
-              box-shadow: 0 16px 36px -6px rgba(99, 102, 241, 0.38);
-            }
-          }
-          @keyframes clientBarShimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-          }
-          @keyframes clientDotFade {
-            0%, 100% { opacity: 0.2; }
-            50% { opacity: 1; }
-          }
-        `}</style>
+  const isInitialReady = safetyReady || (minTimeReady && meLoaded && (!isLoading || data != null || error != null))
 
-        {/* Fluid Rounded Card for Client Logo with Border and Breathing Glow */}
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minWidth: 140,
-            maxWidth: 280,
-            minHeight: 68,
-            maxHeight: 90,
-            padding: '14px 28px',
-            borderRadius: 24,
-            background: 'var(--bg-card)',
-            border: '1.5px solid var(--border)',
-            animation: 'clientFluidPulse 2.6s ease-in-out infinite',
-            boxShadow: 'var(--shadow-elegant)',
-          }}
-        >
-          {me?.logoUrl ? (
-            <img
-              src={me.logoUrl}
-              alt={me.name || 'Cliente'}
-              style={{
-                maxHeight: 52,
-                maxWidth: 220,
-                width: 'auto',
-                height: 'auto',
-                objectFit: 'contain',
-                display: 'block',
-              }}
-            />
-          ) : (
-            <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-1)', letterSpacing: '0.02em' }}>
-              {me?.name || 'Carregando…'}
-            </span>
-          )}
-        </div>
-
-        {/* Subtle Animated Progress Shimmer Bar */}
-        <div style={{ width: 140, height: 4, borderRadius: 999, background: 'var(--bg-card2)', overflow: 'hidden', position: 'relative', border: '1px solid var(--border-soft)' }}>
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              bottom: 0,
-              left: 0,
-              width: '70%',
-              borderRadius: 999,
-              background: 'linear-gradient(90deg, transparent, var(--accent), transparent)',
-              animation: 'clientBarShimmer 1.6s ease-in-out infinite',
-            }}
-          />
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, textAlign: 'center' }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 2 }}>
-            <span>Carregando painel{me?.name ? ` de ${me.name}` : ''}</span>
-            <span style={{ display: 'inline-flex', gap: 2 }}>
-              <span style={{ animation: 'clientDotFade 1.4s infinite 0s' }}>.</span>
-              <span style={{ animation: 'clientDotFade 1.4s infinite 0.2s' }}>.</span>
-              <span style={{ animation: 'clientDotFade 1.4s infinite 0.4s' }}>.</span>
-            </span>
-          </div>
-          <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
-            Sincronizando métricas e campanhas
-          </p>
-        </div>
-      </div>
-    )
+  if (!isInitialReady) {
+    return <PulseLoader fullscreen size={72} caption={me?.name ? `Carregando o painel de ${me.name}` : 'Carregando o painel'} />
   }
 
   return (
-    <div className="page">
+    <StaffShell>
+    <div className="page page-ready">
 
       {me?.admin && (
         <div className="card no-print" style={{ padding: '8px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontSize: 14 }}>
@@ -535,9 +471,8 @@ function Dashboard() {
           <button onClick={toggleTheme} title="Alternar tema" aria-label="Alternar tema" className="btn btn-outline btn-icon btn-sm">
             {theme === 'dark' ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}
           </button>
-          <button onClick={handleManualRefresh} disabled={isValidating || refreshing} className="btn btn-soft btn-sm">
+          <button onClick={handleManualRefresh} disabled={isValidating || refreshing} title="Atualizar dados" aria-label="Atualizar dados" className="btn btn-outline btn-icon btn-sm">
             <RefreshCw size={16} strokeWidth={1.75} style={{ animation: (isValidating || refreshing) ? 'spin 1s linear infinite' : undefined }} />
-            Atualizar
           </button>
           {me?.authEnabled && (
             <button onClick={logout} title="Sair" aria-label="Sair" className="btn btn-ghost btn-icon btn-sm">
@@ -550,7 +485,7 @@ function Dashboard() {
       {/* Abas */}
       <div className="no-print" style={{ borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
         <div className="tabs" role="tablist" style={{ borderBottom: 'none', marginBottom: 0 }}>
-          {([['metrics', 'Métricas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads'], ['reports', 'Report Studio']] as const).map(([key, label]) => (
+          {([['metrics', 'Geral'], ['campaigns', 'Campanhas'], ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'], ['audience', 'Público'], ['organic', 'Orgânico'], ['simulator', 'Simulador'], ['leads', 'Leads'], ['reports', 'Report Studio']] as const).map(([key, label]) => (
             <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
               {label}
               {key === 'leads' && staleCount > 0 && (
@@ -587,8 +522,9 @@ function Dashboard() {
 
       {/* Funnel tab */}
       {!isLoading && tab === 'funnel' && s && <FunnelTab summary={s} currency={currency} kind={kind} />}
+      {tab === 'campaigns' && <CampaignsTab campaigns={data?.campaigns ?? []} summary={s} summaryPrev={p} currency={currency} kind={kind} preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} loading={isLoading} />}
       {tab === 'audience' && <AudienceTab preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} kind={kind} />}
-      {tab === 'organic' && <OrganicTab preset="this_month" presetLabel="Este mês" canLink={me?.role === 'owner' || me?.role === 'admin'} slug={me?.slug} />}
+      {tab === 'organic' && <OrganicTab preset="this_month" presetLabel="Este mês" isStaff={!me?.authEnabled || !!me?.admin} canLink={me?.role === 'owner' || me?.role === 'admin'} slug={me?.slug} />}
       {tab === 'simulator' && <SimuladorTab summary={s ? (kind === 'form' ? s : { ...s, leads: s.results }) : undefined} currency={currency} />}
       {tab === 'leads' && <LeadsTab openId={openLeadId} onOpenConsumed={() => setOpenLeadId(null)} readOnly={me?.role === 'reader'} />}
       {tab === 'reports' && (
@@ -596,16 +532,16 @@ function Dashboard() {
           clientSlug={me?.slug || 'default'}
           clientName={me?.name || 'Cliente'}
           clientLogo={me?.logoUrl}
-          isStaff={isStaff}
+          isStaff={false} /* o estúdio do cliente é só para ver: criar, editar, apresentar e excluir é no Report Studio da administração */
           defaultPreset={preset === 'last_7d' ? 'last_7d' : preset === 'this_month' ? 'this_month' : 'last_month'}
         />
       )}
       {!isLoading && tab === 'funnel' && !s && !error && (
-        <div style={{ color: 'var(--text-3)', fontSize: 13, textAlign: 'center', padding: 40 }}>Carregando dados...</div>
+        <PulseLoader size={40} />
       )}
 
-      {/* Loading skeleton */}
-      {isLoading && tab === 'metrics' && (
+      {/* Loading skeleton (apenas se não houver dados anteriores) */}
+      {isLoading && !s && tab === 'metrics' && (
         <div className="tile-grid" style={{ marginBottom: 12 }}>
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="card" style={{ padding: 16, minHeight: 100 }}>
@@ -619,25 +555,25 @@ function Dashboard() {
 
 
       {/* Metric tiles */}
-      {!isLoading && s && tab === 'metrics' && (
-        <div className="tile-grid stagger" style={{ marginBottom: 4 }}>
-          {tiles.map((t) => (
-            <MetricTile
-              key={t.label}
-              label={t.label}
-              value={t.value}
-              sparkData={t.spark}
-              currentRaw={t.cur ?? undefined}
-              prevValue={t.prev ?? undefined}
-              lowerIsBetter={t.lowerIsBetter}
-            />
-          ))}
-        </div>
-      )}
-      {!isLoading && s && tab === 'metrics' && (
-        <div style={{ fontSize: 12, color: 'var(--text-2)', textAlign: 'right', margin: '8px 0 24px' }}>
-          ↑↓ vs período anterior equivalente
-        </div>
+      {s && tab === 'metrics' && (
+        <>
+          <div className="tile-grid" style={{ marginBottom: 4, opacity: isLoading ? 0.7 : 1, transition: 'opacity 0.2s' }}>
+            {tiles.map((t) => (
+              <MetricTile
+                key={t.label}
+                label={t.label}
+                value={t.value}
+                sparkData={t.spark}
+                currentRaw={t.cur ?? undefined}
+                prevValue={t.prev ?? undefined}
+                lowerIsBetter={t.lowerIsBetter}
+              />
+            ))}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-2)', textAlign: 'right', margin: '8px 0 24px' }}>
+            ↑↓ vs período anterior equivalente
+          </div>
+        </>
       )}
 
       {/* Daily chart */}
@@ -659,12 +595,6 @@ function Dashboard() {
 
 
 
-      {/* Campaigns table */}
-      {!isLoading && data?.campaigns && tab === 'metrics' && (
-        <div className="card" style={{ overflow: 'hidden' }}>
-          <CampaignTable campaigns={data.campaigns} currency={currency} datePreset={preset} kind={kind} />
-        </div>
-      )}
 
       {alerts.toast && (
         <LeadToast
@@ -673,14 +603,6 @@ function Dashboard() {
           scale={tv ? Math.max(1, window.innerWidth / 1360) : 1}
           onView={tv ? undefined : () => { setTab('leads'); setOpenLeadId(alerts.toast!.lead.id); alerts.dismiss() }}
           onDismiss={alerts.dismiss}
-        />
-      )}
-
-      {monthlyOpen && (
-        <ReportStudio
-          onClose={() => setMonthlyOpen(false)}
-          initialPreset={preset === 'last_7d' ? 'last_7d' : preset === 'this_month' ? 'this_month' : 'last_month'}
-          initialMode={monthlyMode}
         />
       )}
 
@@ -725,5 +647,6 @@ function Dashboard() {
         />
       )}
     </div>
+    </StaffShell>
   )
 }

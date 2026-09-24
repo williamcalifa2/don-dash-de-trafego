@@ -202,8 +202,10 @@ input:focus-visible { outline-offset: 0; }
 .overlay { background: hsl(0 0% 0% / .8); }
 
 /* ── Entrada em cascata (40 ms por item, máx. 320 ms) ── */
+/* ── Entrada suave sem pop-in individual ── */
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: none; }
 }
 .stagger > * { animation: fade-up .3s ease backwards; }
@@ -215,6 +217,15 @@ input:focus-visible { outline-offset: 0; }
 .stagger > *:nth-child(7) { animation-delay: 240ms; }
 .stagger > *:nth-child(8) { animation-delay: 280ms; }
 .stagger > *:nth-child(n+9) { animation-delay: 320ms; }
+.stagger > * { animation: fade-up .2s ease-out backwards; }
+
+@keyframes page-appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.page-ready {
+  animation: page-appear .25s ease-out forwards;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -287,6 +298,82 @@ input:focus-visible { outline-offset: 0; }
   .page { max-width: none; padding: 0; min-height: 0; }
   .card, .report section { break-inside: avoid; box-shadow: none; }
   .stagger > * { animation: none; }
+}
+
+/* Moldura da equipe: sidebar com administração e ferramentas. Só aparece para quem é da agência. */
+.staff-shell { display: flex; min-height: 100vh; }
+.staff-main { flex: 1; min-width: 0; }
+.staff-sidebar { width: 236px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; overflow-x: hidden; background: var(--bg-card); border-right: 1px solid var(--border); padding: 16px 12px; display: flex; flex-direction: column; gap: 12px; transition: width .18s ease; z-index: 60; }
+.staff-shell.is-collapsed .staff-sidebar { width: 68px; }
+.staff-top { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 4px; }
+.staff-logo { height: 24px; width: auto; object-fit: contain; flex: 1; min-width: 0; object-position: left; }
+.staff-logo-dark { display: none; }
+:root[data-theme="dark"] .staff-logo-light { display: none; }
+:root[data-theme="dark"] .staff-logo-dark { display: block; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .staff-logo-light { display: none; } :root:not([data-theme="light"]) .staff-logo-dark { display: block; } }
+.staff-shell.is-collapsed .staff-logo { display: none !important; }
+.staff-shell.is-collapsed .staff-top { flex-direction: column; justify-content: center; gap: 6px; }
+.staff-close, .staff-burger { display: none; }
+.staff-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.staff-group { margin: 14px 10px 4px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+.staff-shell.is-collapsed .staff-group { height: 1px; margin: 10px 8px; background: var(--border-soft); font-size: 0; }
+.staff-item { display: flex; align-items: center; gap: 10px; width: 100%; height: 40px; padding: 0 10px; border: none; border-radius: 10px; background: none; color: var(--text-2); font-size: 14px; font-weight: 500; text-align: left; cursor: pointer; }
+.staff-item:hover { background: var(--hover); color: var(--text-1); }
+.staff-item[aria-current="page"] { background: var(--accent-soft); color: var(--text-1); font-weight: 600; }
+.staff-item:focus-visible, .staff-collapse:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.staff-icon { display: inline-flex; flex-shrink: 0; }
+.staff-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.staff-shell.is-collapsed .staff-label { display: none; }
+.staff-shell.is-collapsed .staff-item { justify-content: center; padding: 0; }
+.staff-foot { padding: 8px 0 0; border-top: 1px solid var(--border-soft); }
+.staff-user { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border: none; border-radius: 12px; background: none; cursor: pointer; }
+.staff-user:hover { background: var(--hover); }
+.staff-shell.is-collapsed .staff-user { justify-content: center; padding: 6px 0; }
+@media (max-width: 899px) {
+  .staff-sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 264px !important; transform: translateX(-105%); transition: transform .2s ease; box-shadow: var(--shadow-elegant); }
+  .staff-sidebar.is-open { transform: none; }
+  .staff-shell.is-collapsed .staff-label, .staff-shell.is-collapsed .staff-logo { display: revert !important; }
+  .staff-shell.is-collapsed .staff-item { justify-content: flex-start; padding: 0 10px; }
+  .staff-shell.is-collapsed .staff-group { height: auto; margin: 14px 10px 4px; background: none; font-size: 10px; }
+  .staff-collapse { display: none; }
+  .staff-close { display: inline-flex; }
+  .staff-burger { display: inline-flex; position: fixed; top: 12px; left: 12px; z-index: 55; background: var(--bg-card); }
+  .staff-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 59; }
+  .staff-main .page { padding-top: 60px; }
+}
+@media (prefers-reduced-motion: reduce) { .staff-sidebar { transition: none; } }
+@media print { .staff-sidebar, .staff-burger, .staff-backdrop { display: none !important; } }
+
+/* Logo da Don pulsando em toda espera entre telas. */
+.pulse-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 48px 16px; }
+.pulse-inline { padding: 12px; }
+.pulse-full { position: fixed; inset: 0; z-index: 9999; background: var(--bg); padding: 0; }
+.pulse-logo { position: relative; display: inline-grid; place-items: center; }
+.pulse-logo img { position: relative; display: block; height: var(--s); width: auto; animation: don-pulse 1.5s ease-in-out infinite; }
+.pulse-logo::before { content: ''; position: absolute; inset: -45%; border-radius: 50%; background: radial-gradient(circle, rgba(123, 126, 255, .38) 0%, rgba(123, 126, 255, 0) 65%); animation: don-glow 1.5s ease-in-out infinite; }
+/* O pulso é bem suave (poucos % de tamanho) e é o sinal de espera: continua mesmo com "reduzir movimento", que desliga o resto das animações. */
+@media (prefers-reduced-motion: reduce) { .pulse-logo img, .pulse-logo::before { animation-duration: 1.8s !important; animation-iteration-count: infinite !important; } }
+@keyframes don-pulse { 0%, 100% { transform: scale(.94); opacity: .72; } 50% { transform: scale(1.04); opacity: 1; } }
+@keyframes don-glow { 0%, 100% { transform: scale(.8); opacity: .25; } 50% { transform: scale(1.05); opacity: .9; } }
+
+/* Gestão de clientes: lista à esquerda e detalhe à direita, cada lado rola sozinho. */
+.cm-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 320px minmax(0, 1fr); overflow: hidden; }
+.cm-aside { min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); overflow: hidden; }
+.cm-aside ul { min-height: 0; }
+.cm-main { min-height: 0; min-width: 0; overflow-y: auto; padding: 24px; }
+@media (max-width: 800px) {
+  .cm-body { grid-template-columns: 1fr; grid-template-rows: minmax(160px, 38%) minmax(0, 1fr); }
+  .cm-aside { border-right: none; border-bottom: 1px solid var(--border); }
+  .cm-main { padding: 16px; }
+}
+
+/* Detalhe do lead: sidebar que desliza da direita. No computador a página abre espaço e a lista segue clicável; no celular cobre a tela. */
+@keyframes lead-drawer-in { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+.lead-drawer { animation: lead-drawer-in .18s ease-out; }
+@media (prefers-reduced-motion: reduce) { .lead-drawer { animation: none; } }
+@media (min-width: 1100px) {
+  .lead-drawer-backdrop { display: none; }
+  body.lead-drawer-open .page { max-width: none; padding-right: 464px; }
 }
 
 /* Relatório mensal em PDF: um slide (1280 x 720) por página. Só aparece ao imprimir, com a classe no body. */

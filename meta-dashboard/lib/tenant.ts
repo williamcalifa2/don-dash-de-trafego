@@ -6,6 +6,7 @@ import { logoPublicUrl } from './logo'
 import { getSupabaseServer, DEFAULT_SLUG, resolveDefaultClientId } from './supabase'
 import { legacyGet } from './meta/legacy'
 import { liveOrigin } from './meta/mode'
+import { accessSessionValid, hasEmails, verifyAccess } from './clientAccess'
 
 export interface Tenant {
   slug: string
@@ -87,7 +88,11 @@ export async function getTenant(req: NextRequest): Promise<Tenant | null> {
     return viewed ? toTenant(viewed) : null
   }
   const row = await fetchClient('slug', session.s)
-  if (!row?.access_code_hash || !row.access_code_hash.startsWith(session.h)) return null
+  if (!row) return null
+  // Entrou por e-mail e token: vale enquanto o e-mail continuar cadastrado com o mesmo token.
+  if (session.m) return (await accessSessionValid(session.s, session.m, session.h)) ? toTenant(row) : null
+  // Entrou pelo código antigo de 6 dígitos: deixa de valer assim que o cliente passa a ter e-mails cadastrados.
+  if (!row.access_code_hash || !row.access_code_hash.startsWith(session.h) || (await hasEmails(session.s))) return null
   return toTenant(row)
 }
 
@@ -110,6 +115,7 @@ export type CodeResult =
 export async function loginWithCode(slug: string, code: string): Promise<CodeResult> {
   const db = getSupabaseServer()
   if (!db || !/^\d{6}$/.test(code)) return { ok: false, reason: 'invalid' }
+  if (await hasEmails(slug)) return { ok: false, reason: 'invalid' } // cliente já migrado para e-mail e token: o código antigo não vale mais
   // Leitura direta (sem cache): o contador de erros precisa estar sempre atualizado.
   const { data } = await db.from('clients').select(COLUMNS).eq('slug', slug).maybeSingle()
   const row = data as ClientRow | null
@@ -132,6 +138,14 @@ export async function loginWithCode(slug: string, code: string): Promise<CodeRes
   }
   await db.from('clients').update({ failed_attempts: attempts }).eq('slug', slug)
   return { ok: false, reason: 'invalid' }
+}
+
+/** Login por e-mail e token do cliente. */
+export async function loginWithEmail(slug: string, email: string, token: string): Promise<CodeResult> {
+  if (!(await fetchClient('slug', slug))) return { ok: false, reason: 'invalid' }
+  const r = await verifyAccess(slug, email, token)
+  if (!r.ok) return r
+  return { ok: true, session: await signSession({ s: slug, h: r.hash.slice(0, 16), m: r.email }) }
 }
 
 /** Cliente pelo endereço (slug), para as rotas de administração. */

@@ -3,15 +3,18 @@
 import { useEffect, useState } from 'react'
 import { X, Check, Settings2, Target, DollarSign, Power, Loader2, Sparkles } from 'lucide-react'
 import type { ClientConfig } from '@/lib/clientConfig'
+import { PulseLoader } from '@/components/PulseLoader'
 
 interface ClientConfigModalProps {
   slug: string
   clientName: string
   onClose: () => void
   onSaved?: (newConfig: ClientConfig) => void
+  /** dentro de outra tela (aba do gerenciador de clientes): sem fundo escuro, sem cabeçalho e sem "Cancelar" */
+  embedded?: boolean
 }
 
-export function ClientConfigModal({ slug, clientName, onClose, onSaved }: ClientConfigModalProps) {
+export function ClientConfigModal({ slug, clientName, onClose, onSaved, embedded = false }: ClientConfigModalProps) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -80,8 +83,8 @@ export function ClientConfigModal({ slug, clientName, onClose, onSaved }: Client
 
   return (
     <div
-      onClick={onClose}
-      style={{
+      onClick={embedded ? undefined : onClose}
+      style={embedded ? { display: 'block' } : {
         position: 'fixed',
         inset: 0,
         zIndex: 2000,
@@ -99,7 +102,7 @@ export function ClientConfigModal({ slug, clientName, onClose, onSaved }: Client
         className="card"
         role="dialog"
         aria-label="Configurações do Cliente"
-        style={{
+        style={embedded ? { display: 'flex', flexDirection: 'column', gap: 18 } : {
           width: '100%',
           maxWidth: 580,
           padding: 24,
@@ -113,7 +116,7 @@ export function ClientConfigModal({ slug, clientName, onClose, onSaved }: Client
         }}
       >
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-soft)', paddingBottom: 14 }}>
+        {!embedded && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-soft)', paddingBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div
               style={{
@@ -146,13 +149,10 @@ export function ClientConfigModal({ slug, clientName, onClose, onSaved }: Client
           >
             <X size={18} />
           </button>
-        </div>
+        </div>}
 
         {loading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0', color: 'var(--text-2)', gap: 8 }}>
-            <Loader2 size={20} className="spin" />
-            <span>Carregando configurações…</span>
-          </div>
+          <PulseLoader size={36} />
         ) : (
           <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Status (Ativo / Pausado) */}
@@ -280,14 +280,14 @@ export function ClientConfigModal({ slug, clientName, onClose, onSaved }: Client
 
             {/* Footer Buttons */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8, borderTop: '1px solid var(--border-soft)', paddingTop: 14 }}>
-              <button
+              {!embedded && <button
                 type="button"
                 className="btn btn-ghost btn-sm"
                 onClick={onClose}
                 disabled={saving}
               >
                 Cancelar
-              </button>
+              </button>}
               <button
                 type="submit"
                 className="btn btn-primary btn-sm"

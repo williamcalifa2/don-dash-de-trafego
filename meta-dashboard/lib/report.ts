@@ -219,6 +219,8 @@ export interface SavedReport extends SavedReportSummary {
     data: ReportData
     notes: ReportNotes
   }
+  /** anotações do apresentador por slide (só a equipe vê, na tela do apresentador) */
+  presenterNotes?: Record<string, string>
 }
 
 export function extractReportKpis(data: ReportData): SavedReportKpis {

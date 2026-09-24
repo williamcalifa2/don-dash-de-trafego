@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { apiFetch } from '@/lib/apiFetch'
+import { PulseLoader } from '@/components/PulseLoader'
 import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
 import type { Audience, Slice } from '@/lib/audience'
 
@@ -146,7 +147,7 @@ export function AudienceTab({ preset, presetLabel, kind }: Props) {
   const hourSeries = a ? activeSeries(a.hours, ['impressions', 'reach']) : (['impressions'] as Metric[])
   const hasResults = !!a && (a.age.some(x => x.results > 0) || a.gender.some(x => x.results > 0))
 
-  if (state === 'loading') return <Empty text="Carregando…" />
+  if (state === 'loading') return <PulseLoader size={40} />
   if (state === 'today') return <Empty text="O público é calculado para períodos de 7, 14 ou 30 dias. Escolha um deles no topo. Escolha um deles no topo." />
   if (state === 'error') return <Empty text="Não foi possível carregar o público agora. Tente de novo em instantes." />
   if (!a) return <Empty text="Os dados de público deste cliente ainda estão sendo sincronizados. Volte em alguns minutos." />

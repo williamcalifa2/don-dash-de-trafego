@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { apiFetch } from '@/lib/apiFetch'
 import { ExternalLink, ImageOff } from 'lucide-react'
 import { MetricTile } from './MetricTile'
+import { PulseLoader } from '@/components/PulseLoader'
 import { useOrganic } from '@/lib/useOrganic'
 import type { Kpi, OrganicPost, OrganicView, Platform } from '@/lib/meta/organicRead'
 import { timeAgo } from '@/lib/leadUtils'
@@ -207,7 +208,7 @@ function LinkPage({ slug, onDone }: { slug: string; onDone: () => Promise<void> 
   )
 }
 
-export function OrganicTab({ preset, presetLabel, canLink = false, slug }: { preset: string; presetLabel: string; canLink?: boolean; slug?: string }) {
+export function OrganicTab({ preset, presetLabel, isStaff = false, canLink = false, slug }: { preset: string; presetLabel: string; /** só a equipe vê "melhores dias para publicar" */ isStaff?: boolean; canLink?: boolean; slug?: string }) {
   const { view, error, refresh, reload } = useOrganic(preset)
   const [platform, setPlatform] = useState<Platform>('all')
   const [sort, setSort] = useState<(typeof SORTS)[number]['v']>('recent')
@@ -220,7 +221,7 @@ export function OrganicTab({ preset, presetLabel, canLink = false, slug }: { pre
   }, [view, plat, sort])
 
   if (error && !view) return <Empty title="Não foi possível carregar o orgânico" text={error} />
-  if (!view) return <div style={{ color: 'var(--text-3)', fontSize: 13, textAlign: 'center', padding: 40 }}>Carregando…</div>
+  if (!view) return <PulseLoader size={40} />
   if (view.status === 'pending') return <Empty title="Estamos coletando o orgânico" text="Os dados da Página e do Instagram deste cliente chegam nos próximos minutos e passam a se atualizar sozinhos. Volte daqui a pouco." />
   if (view.status === 'no_token') return <Empty title="O orgânico ainda não foi ativado" text="A agência precisa liberar o acesso à Página e ao Instagram para mostrar estes números." />
   if (view.status === 'no_page') return (
@@ -357,8 +358,8 @@ export function OrganicTab({ preset, presetLabel, canLink = false, slug }: { pre
         </section>
       )}
 
-      {/* Melhores dias */}
-      <section className="card" style={{ padding: 24 }}>
+      {/* Melhores dias: só a equipe (não é para o cliente) */}
+      {isStaff && <section className="card" style={{ padding: 24 }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>Melhores dias para publicar</h3>
         <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 14 }}>{bestDay ? `Média de interações por publicação. Até agora, ${DAYS[bestDay.day]} lidera.` : 'Precisa de publicações para calcular.'}</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, alignItems: 'end', height: 120 }}>
@@ -370,7 +371,7 @@ export function OrganicTab({ preset, presetLabel, canLink = false, slug }: { pre
             </div>
           ))}
         </div>
-      </section>
+      </section>}
 
       {/* Público */}
       {showIg && v.audience && (v.audience.age.length > 0 || v.audience.gender.length > 0 || v.audience.city.length > 0) && (

@@ -43,12 +43,13 @@ function Row({ label, value, sub, tone }: { label: string; value: string; sub?: 
  * Botão discreto (o escudo do cabeçalho) que abre um menuzinho só de leitura com o estado da sincronização com a Meta.
  * Nada aqui liga, pausa ou altera coisa alguma: o sistema é automático. O ponto colorido do botão avisa se algo pede atenção.
  */
-export default function MetaSyncPopover({ logoUrl = null, onLogoChange, canEditBrand = true }: { logoUrl?: string | null; onLogoChange?: (url: string | null) => void; canEditBrand?: boolean }) {
+export default function MetaSyncPopover({ logoUrl = null, onLogoChange, canEditBrand = true, openSignal = 0 }: { logoUrl?: string | null; onLogoChange?: (url: string | null) => void; canEditBrand?: boolean; /** aumenta para abrir o menu (a sidebar pede isso) */ openSignal?: number }) {
   const [logoMsg, setLogoMsg] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const [s, setS] = useState<MetaStatus | null>(null)
   const [missing, setMissing] = useState(false)
   const [open, setOpen] = useState(false)
+  useEffect(() => { if (openSignal > 0) setOpen(true) }, [openSignal])
   const [now, setNow] = useState(0)
   useEffect(() => { setNow(Date.now()); const id = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(id) }, [])
   const boxRef = useRef<HTMLDivElement>(null)

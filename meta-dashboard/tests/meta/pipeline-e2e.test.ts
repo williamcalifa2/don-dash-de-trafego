@@ -117,7 +117,8 @@ describe('pipeline de ponta a ponta (Meta simulada atrás do cliente central)', 
 
   it('erro de app-level (código 4): kill switch, nenhuma conta chama, retomada gradual depois', async () => {
     let armed = true
-    const w = world({ cfg: { killSwitchMinutes: 30, resumeStepSec: 120 }, respond: url => (armed && url.includes('/insights') ? json({ error: { code: 4, message: 'Application request limit reached' } }, { status: 400 }) : undefined) })
+    // duas contas erram em sequência (appErrorRepeat: 2): deixa de ser tropeço isolado e vira limite do app
+    const w = world({ cfg: { killSwitchMinutes: 30, resumeStepSec: 120, appErrorRepeat: 2 }, respond: url => (armed && url.includes('/insights') ? json({ error: { code: 4, message: 'Application request limit reached' } }, { status: 400 }) : undefined) })
     await store.patchState('c1', { enabled: true }); await store.patchState('c2', { enabled: true })
     await cycle(w.d, 3)
     expect(w.alerts).toContain('kill_switch')

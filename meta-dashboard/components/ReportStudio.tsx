@@ -33,6 +33,7 @@ import {
   X,
 } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
+import { PulseLoader } from '@/components/PulseLoader'
 import { compact, type ReportData, type ReportMode, type ReportNotes, type ReportPreset, type SavedReport } from '@/lib/report'
 import { buildSlides, FONT, PALETTE, PALETTE_LIGHT, STAGE, type El, type SlideSpec } from '@/lib/reportSlides'
 import { useTheme } from '@/lib/useTheme'
@@ -1639,7 +1640,7 @@ export function ReportStudio({
         </button>
       </header>
 
-      {phase.kind === 'loading' && <div style={{ flex: 1, display: 'grid', placeItems: 'center', color: 'var(--text-2)', fontSize: 14 }}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><Loader2 size={16} className="spin" /> {phase.text}</span></div>}
+      {phase.kind === 'loading' && <div style={{ flex: 1, display: 'grid', placeItems: 'center' }}><PulseLoader size={56} caption={phase.text} /></div>}
       {phase.kind === 'error' && (
         <div style={{ flex: 1, display: 'grid', placeItems: 'center', padding: 24 }}>
           <div style={{ textAlign: 'center', maxWidth: 420 }}>

@@ -3,11 +3,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Lock, Moon, Sun, ArrowRight, Loader2 } from 'lucide-react'
 import { useTheme } from '@/lib/useTheme'
+import { PulseLoader } from '@/components/PulseLoader'
 
 interface PublicClient {
   slug: string | null
   name?: string
   logoUrl?: string | null
+  /** o cliente entra por e-mail e token (tem e-mail cadastrado) */
+  emailLogin?: boolean
 }
 
 export default function LoginPage() {
@@ -16,7 +19,10 @@ export default function LoginPage() {
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [entering, setEntering] = useState(false)
   const codeRef = useRef<HTMLInputElement>(null)
+  const [email, setEmail] = useState('')
+  const [token, setToken] = useState('')
 
   useEffect(() => {
     const c = new URLSearchParams(window.location.search).get('c') ?? ''
@@ -32,6 +38,26 @@ export default function LoginPage() {
   const slug = client?.slug ?? null
   const noAddress = client !== null && !client.slug
 
+  async function submitEmail() {
+    if (loading || !slug || !email.trim() || !token.trim()) return
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), token: token.trim(), c: slug, next: new URLSearchParams(window.location.search).get('next') }),
+      })
+      const json = await res.json().catch(() => ({})) as { ok?: boolean; next?: string; error?: string }
+      if (res.ok && json.ok) { setEntering(true); window.location.href = json.next ?? '/dashboard/meta'; return }
+      setError(json.error ?? 'E-mail ou token incorreto.')
+    } catch {
+      setError('Sem conexão. Verifique sua internet e tente de novo.')
+    }
+    setToken('')
+    setLoading(false)
+  }
+
   async function submit(value: string) {
     if (loading || value.length !== 6 || !slug) return
     setLoading(true)
@@ -44,6 +70,7 @@ export default function LoginPage() {
       })
       const json = await res.json().catch(() => ({})) as { ok?: boolean; next?: string; error?: string }
       if (res.ok && json.ok) {
+        setEntering(true)
         window.location.href = json.next ?? '/dashboard/meta'
         return
       }
@@ -55,6 +82,8 @@ export default function LoginPage() {
     setLoading(false)
     codeRef.current?.focus()
   }
+
+  if (entering) return <PulseLoader fullscreen size={72} caption="Entrando no painel" />
 
   return (
     <main
@@ -94,7 +123,7 @@ export default function LoginPage() {
 
         {/* Card de Login */}
         <form
-          onSubmit={e => { e.preventDefault(); submit(code) }}
+          onSubmit={e => { e.preventDefault(); if (client?.emailLogin) void submitEmail(); else submit(code) }}
           className="card"
           style={{
             width: '100%',
@@ -155,7 +184,7 @@ export default function LoginPage() {
                 {client?.name ?? 'Painel de Performance'}
               </h1>
               <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '4px 0 0' }}>
-                Digite seu código de acesso para entrar
+                {client?.emailLogin ? 'Entre com o seu e-mail e o token de acesso' : 'Digite seu código de acesso para entrar'}
               </p>
             </div>
           </div>
@@ -165,6 +194,16 @@ export default function LoginPage() {
               <p style={{ fontSize: 13, color: 'var(--text-1)', margin: 0, lineHeight: 1.5, textAlign: 'center' }}>
                 Abra o link específico enviado pela equipe da agência para identificar o seu painel de tráfego.
               </p>
+            </div>
+          ) : client?.emailLogin ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-2)' }}>E-mail
+                <input className="field" type="email" name="email" autoComplete="username" autoFocus disabled={loading} value={email} onChange={e => { setEmail(e.target.value); setError(null) }} placeholder="voce@empresa.com.br" style={{ textTransform: 'none', letterSpacing: 'normal', fontWeight: 500 }} />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-2)' }}>Token
+                <input className="field" type="text" name="token" autoComplete="one-time-code" autoCapitalize="characters" spellCheck={false} disabled={loading} value={token} onChange={e => { setToken(e.target.value.toUpperCase().slice(0, 20)); setError(null) }} placeholder="K7QM-2XNP-9TDW" style={{ letterSpacing: '0.1em', fontWeight: 700 }} />
+              </label>
+              {error && <p role="alert" style={{ fontSize: 12, color: 'var(--red)', margin: 0, textAlign: 'center', fontWeight: 600 }}>{error}</p>}
             </div>
           ) : (
             <div>
@@ -262,7 +301,7 @@ export default function LoginPage() {
           <button
             type="submit"
             className="btn btn-primary"
-            disabled={loading || code.length !== 6 || !slug}
+            disabled={loading || !slug || (client?.emailLogin ? !email.trim() || !token.trim() : code.length !== 6)}
             style={{
               width: '100%',
               height: 44,
@@ -290,7 +329,7 @@ export default function LoginPage() {
           </button>
 
           <p style={{ fontSize: 12, color: 'var(--text-3)', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
-            Não possui o código de acesso? Solicite diretamente à sua equipe no <strong>Grupo Don</strong>.
+            {client?.emailLogin ? 'Não tem o token ou o seu e-mail não foi cadastrado?' : 'Não possui o código de acesso?'} Solicite diretamente à sua equipe no <strong>Grupo Don</strong>.
           </p>
         </form>
 

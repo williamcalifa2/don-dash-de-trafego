@@ -109,3 +109,8 @@ Recortes (breakdowns) de insights no nível da conta, somente leitura: plataform
 - Dono (login por ADMIN_EMAIL) > **Administrador** > **Membro** > **Leitor**. Guardado em `admin_team` (meta_settings); convite sem nível vale "membro".
 - Leitor: só vê painéis e números; nada de atualizar, editar leads ou cadastrar. Membro: atualiza (Atualizar tudo, Atualizar), trata leads e personaliza cards. Administrador: cria/edita clientes, tokens, marca, equipe (menos outros administradores). Só o dono cria, muda ou remove administradores.
 - Enforçado no servidor (`requireRole` em `lib/admin.ts`, `denyReader` nas rotas de leads/atualização); a tela só esconde o que a pessoa não pode usar. Mudança de nível vale em até 15 s para sessões abertas.
+
+## Erro de limite do app (código 4): isolado ou geral
+- Um código 4 **isolado** (uso do app abaixo de `META_APP_ERROR_GLOBAL_PCT`=30%) só coloca a conta que errou em espera curta (`META_SOFT_BLOCK_MIN`=10 min). Não conta como bloqueio (não dobra espera, não suspende) e o resto do sistema segue.
+- Vira **kill switch geral** se o uso do app estiver alto, se houver `META_APP_ERROR_REPEAT`=3 erros código 4 (de qualquer conta) em `META_APP_ERROR_WINDOW_MIN`=60 min, ou se o erro vier sem conta identificada.
+- O alerta guarda código, subcódigo, mensagem, endpoint e uso (%) da Meta em `meta_alerts.data`, e o motivo também aparece no texto do alerta e em `lastError` da conta.

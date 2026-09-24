@@ -1,5 +1,7 @@
 'use client'
 
+import { PulseLoader } from '@/components/PulseLoader'
+
 import { useState, useEffect } from 'react'
 import { Target, Compass, Filter, DollarSign, Check, Save, Sparkles } from 'lucide-react'
 import type { ClientConfig } from '@/lib/clientConfig'
@@ -84,9 +86,7 @@ export function ClientGoalsTab({ slug, isStaff = true }: ClientGoalsTabProps) {
 
   if (loading) {
     return (
-      <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--text-3)' }}>
-        Carregando metas e estratégias do cliente...
-      </div>
+      <PulseLoader size={40} />
     )
   }
 

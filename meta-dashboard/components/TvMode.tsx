@@ -10,6 +10,7 @@ import { useLeadsData as useLeads } from '@/lib/leadsContext'
 import { timeAgo, STALE_HOURS } from '@/lib/leadUtils'
 import type { MetricsResponse, MetricsSummary } from '@/lib/meta'
 import type { ResultKind } from '@/lib/resultKind'
+import { PulseLoader } from '@/components/PulseLoader'
 
 export interface TvTile {
   label: string
@@ -216,7 +217,7 @@ export function TvMode({
         {/* Tela atual */}
         <main key={slide} className="tv-slide" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {!data || !summary ? (
-            <div className="card" style={{ padding: 48, textAlign: 'center', color: 'var(--text-2)', fontSize: 18 }}>Carregando dados…</div>
+            <PulseLoader size={64} />
           ) : slide === 0 ? (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, flexShrink: 0 }}>

@@ -40,7 +40,7 @@ export interface SessionPayload {
   s: string
   /** início do hash do token (permite revogar trocando o token) */
   h: string
-  /** e-mail de quem da equipe da agência entrou na administração (ausente = administrador principal) */
+  /** e-mail de quem entrou: colega da equipe na administração (ausente = administrador principal) ou pessoa do cliente que entrou por e-mail e token */
   m?: string
   /** expiração, em ms */
   e: number

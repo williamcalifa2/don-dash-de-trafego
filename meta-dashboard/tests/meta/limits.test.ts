@@ -148,9 +148,57 @@ describe('circuit breaker por conta', () => {
 })
 
 describe('kill switch global', () => {
-  it('código 4 pausa TUDO por N minutos (todas as contas e origens)', async () => {
+  it('código 4 ISOLADO com o app longe do limite: só a conta que errou espera, o sistema segue', async () => {
+    const { c, alerts } = make({ killSwitchMinutes: 30, softBlockMin: 10 }); await enable('c1'); await enable('c2')
+    await c.onResult(pipe('c1'), errRes(4, usage({ appMaxPct: 3, maxPct: 3 })), { path: 'a/insights', calls: 1 })
+    expect(alerts).not.toContain('kill_switch'); expect(alerts).toContain('account_blocked')
+    expect(await c.gate(pipe('c1'), REQ)).toEqual({ allow: false, reason: 'account_blocked' })
+    expect((await c.gate(pipe('c2'), REQ)).allow).toBe(true)
+    const st = await store.getState('c1')
+    expect(st.blockedUntil! - t).toBe(10 * MIN); expect(st.blockEvents).toHaveLength(0); expect(st.suspended).toBe(false) // não vira bloqueio "de verdade"
+    expect(st.lastError).toMatch(/código 4/)
+    t += 10 * MIN + 1
+    expect((await c.gate(pipe('c1'), REQ)).allow).toBe(true)
+  })
+
+  it('erro código 4 grava código, subcódigo e mensagem da Meta no alerta', async () => {
+    const seen: Array<{ kind: string; data?: unknown; message: string }> = []
+    const cc = createLimitController({ store, config: () => ({ ...cfg }), now: clock, notify: a => { seen.push(a as never) } }); await enable('c1')
+    const res = errRes(4, usage({ appMaxPct: 2 })); res.error = { ...res.error!, subcode: 1504022, message: 'Application request limit reached', type: 'OAuthException' }
+    await cc.onResult(pipe('c1'), res, { path: 'act_1/insights', calls: 1 })
+    const a = seen.find(x => x.kind === 'account_blocked')!
+    expect(a.message).toContain('1504022'); expect(a.data).toMatchObject({ code: 4, subcode: 1504022, message: 'Application request limit reached', path: 'act_1/insights', appPct: 2 })
+  })
+
+  it('código 4 com uso do app alto, ou repetido em contas diferentes, pausa TUDO', async () => {
+    const hi = make({ appErrorGlobalPct: 30 }); await enable('c1')
+    await hi.c.onResult(pipe('c1'), errRes(4, usage({ appMaxPct: 35, maxPct: 35 })), { path: 'x', calls: 1 })
+    expect(hi.alerts).toContain('kill_switch')
+    store = new MemoryLimitStore(clock); await goodToken()
+    const rep = make({ appErrorRepeat: 3, appErrorWindowMin: 60 }); await enable('c1'); await enable('c2'); await enable('c3')
+    await rep.c.onResult(pipe('c1'), errRes(4, usage({ appMaxPct: 1 })), { path: 'x', calls: 1 })
+    t += 5 * MIN; await rep.c.onResult(pipe('c2'), errRes(4, usage({ appMaxPct: 1 })), { path: 'x', calls: 1 })
+    expect(rep.alerts).not.toContain('kill_switch')
+    t += 5 * MIN; await rep.c.onResult(pipe('c3'), errRes(4, usage({ appMaxPct: 1 })), { path: 'x', calls: 1 })
+    expect(rep.alerts).toContain('kill_switch') // 3 erros em 10 min: é limite de verdade
+  })
+
+  it('erros código 4 espaçados (fora da janela) não se acumulam', async () => {
+    const { c, alerts } = make({ appErrorRepeat: 2, appErrorWindowMin: 60 }); await enable('c1'); await enable('c2')
+    await c.onResult(pipe('c1'), errRes(4, usage({ appMaxPct: 1 })), { path: 'x', calls: 1 })
+    t += 90 * MIN; await c.onResult(pipe('c2'), errRes(4, usage({ appMaxPct: 1 })), { path: 'x', calls: 1 })
+    expect(alerts).not.toContain('kill_switch')
+  })
+
+  it('código 4 sem conta identificada: pausa TUDO (não há como isolar)', async () => {
+    const { c, alerts } = make(); await enable('c1')
+    await c.onResult({ origin: 'pipeline', purpose: 't' } as never, errRes(4, usage({ appMaxPct: 1 })), { path: 'x', calls: 1 })
+    expect(alerts).toContain('kill_switch')
+  })
+
+  it('código 4 com o app no limite pausa TUDO por N minutos (todas as contas e origens)', async () => {
     const { c, alerts } = make({ killSwitchMinutes: 30 }); await enable('c1'); await enable('c2')
-    await c.onResult(pipe('c1'), errRes(4), { path: 'x', calls: 1 })
+    await c.onResult(pipe('c1'), errRes(4, usage({ appMaxPct: 90, maxPct: 90 })), { path: 'x', calls: 1 })
     expect(alerts).toContain('kill_switch')
     for (const ctx of [pipe('c1'), pipe('c2'), legacy('c3')]) expect(await c.gate(ctx, REQ)).toEqual({ allow: false, reason: 'kill_switch' })
     t += 29 * MIN

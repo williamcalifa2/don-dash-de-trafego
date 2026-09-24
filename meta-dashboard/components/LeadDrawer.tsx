@@ -40,6 +40,12 @@ export function LeadDrawer({ lead, focus, onClose, onPatch }: Props) {
     if (focus === 'valor') valorRef.current?.focus()
   }, [focus])
 
+  // No computador a lista continua visível e clicável ao lado (a página abre espaço); no celular vira painel sobre a tela.
+  useEffect(() => {
+    document.body.classList.add('lead-drawer-open')
+    return () => document.body.classList.remove('lead-drawer-open')
+  }, [])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
@@ -56,8 +62,9 @@ export function LeadDrawer({ lead, focus, onClose, onPatch }: Props) {
 
   return (
     <>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 1499 }} onClick={onClose} />
+      <div className="lead-drawer-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1499 }} onClick={onClose} />
       <aside
+        className="lead-drawer"
         role="dialog"
         aria-label={`Lead ${lead.nome ?? ''}`}
         style={{
@@ -75,6 +82,18 @@ export function LeadDrawer({ lead, focus, onClose, onPatch }: Props) {
           </div>
           <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose} aria-label="Fechar" title="Fechar (Esc)"><X size={16} strokeWidth={1.75} /></button>
         </header>
+
+        <section>
+          <span style={labelStyle}>Status</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }} role="group" aria-label="Status do lead">
+            {STATUSES.map(st => (
+              <button key={st} className="pill-btn" aria-pressed={lead.status === st}
+                onClick={() => { if (lead.status !== st) save({ status: st }, 'Status atualizado') }}>
+                {st}
+              </button>
+            ))}
+          </div>
+        </section>
 
         <section style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           {phoneDigits && (
@@ -97,17 +116,6 @@ export function LeadDrawer({ lead, focus, onClose, onPatch }: Props) {
           </dl>
         </section>
 
-        <section>
-          <span style={labelStyle}>Status</span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }} role="group" aria-label="Status do lead">
-            {STATUSES.map(st => (
-              <button key={st} className="pill-btn" aria-pressed={lead.status === st}
-                onClick={() => { if (lead.status !== st) save({ status: st }, 'Status atualizado') }}>
-                {st}
-              </button>
-            ))}
-          </div>
-        </section>
 
         {lead.status === 'Convertido' && (
           <section>
@@ -172,6 +180,8 @@ export function LeadDrawer({ lead, focus, onClose, onPatch }: Props) {
             onBlur={() => { if ((notas.trim() || null) !== (lead.notas ?? null)) save({ notas: notas.trim() || null }, 'Nota salva') }}
           />
         </section>
+
+        <p style={{ fontSize: 11, color: 'var(--text-3)', margin: 0 }} title={lead.id}>ID {lead.id.slice(0, 8)}</p>
 
         <div aria-live="polite" style={{ minHeight: 20, fontSize: 12, color: saved?.startsWith('Não') ? 'var(--red)' : 'var(--green)', fontWeight: 600, lineHeight: 1.4 }}>{saved}</div>
       </aside>

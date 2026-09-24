@@ -1,11 +1,10 @@
 'use client'
 
 import MetaSyncPopover from '@/components/MetaSyncPopover'
-import ClientCodesMenu from '@/components/ClientCodesMenu'
 import AdminOverview from '@/components/AdminOverview'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Shield, Plus, Copy, Check, ExternalLink, Settings2, Pencil, KeyRound, UserPlus, Trash2, Ban, LockOpen, Link2, X, LogOut, Moon, Sun, Search, GripVertical, Users, RefreshCw, CalendarDays, ChevronDown, TrendingUp, DollarSign, Clock, ArrowRight, Loader2 } from 'lucide-react'
+import { ArrowLeft, UserPlus, Copy, Check, ExternalLink, Settings2, Pencil, KeyRound, Trash2, Ban, LockOpen, Link2, X, Moon, Sun, Search, GripVertical, Users, RefreshCw, CalendarDays, ChevronDown, TrendingUp, DollarSign, Clock, ArrowRight, Loader2 } from 'lucide-react'
 import { Sparkline } from '@/components/Sparkline'
 import { STATUS_META } from '@/components/LeadsTab'
 import { timeAgo } from '@/lib/leadUtils'
@@ -18,6 +17,9 @@ import { PlatformBadges } from '@/components/PlatformBadges'
 import { useTheme } from '@/lib/useTheme'
 import { StatusToggle } from '@/components/StatusToggle'
 import { ClientConfigModal } from '@/components/ClientConfigModal'
+import { StaffShell, STAFF_EVENT, type StaffAction } from '@/components/StaffShell'
+import { ProfileMenu } from '@/components/ProfileMenu'
+import { PulseLoader } from '@/components/PulseLoader'
 import type { LeadStatus } from '@/lib/leadTypes'
 
 interface AdminClient {
@@ -48,6 +50,7 @@ const isResultsView = (c: AdminClient) => !!c.resultKind && c.resultKind !== 'fo
 interface RecentLead { client: string; slug: string; nome: string | null; campanha: string | null; status: string; createdAt: string }
 interface MetaOption { id: string; name: string; currency?: string }
 
+type ManagerTab = 'cadastro' | 'acessos' | 'metas'
 type Modal =
   | { kind: 'new' }
   | { kind: 'edit'; client: AdminClient }
@@ -56,6 +59,7 @@ type Modal =
   | { kind: 'confirm'; action: 'rotate' | 'revoke'; client: AdminClient }
   | { kind: 'metrics'; client: AdminClient }
   | { kind: 'team' }
+  | { kind: 'clients'; select: string | 'new' | null; tab?: ManagerTab }
   | { kind: 'member-token'; email: string; token: string; role: TeamRole }
   | null
 
@@ -241,7 +245,7 @@ function TeamModal({ onClose, onToken }: { onClose: () => void; onToken: (email:
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>
           Membros da equipe ({members?.length ?? 0})
         </div>
-        {members === null && !err && <p style={{ fontSize: 13, color: 'var(--text-2)' }}>Carregando…</p>}
+        {members === null && !err && <PulseLoader size={32} inline />}
         {members?.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-2)', padding: '12px 0' }}>Ninguém na equipe ainda.</p>}
         {members && members.length > 0 && (
           <div
@@ -355,6 +359,103 @@ function MemberTokenModal({ email, token, role, onClose }: { email: string; toke
   )
 }
 
+
+/** Mensagem pronta para mandar ao cliente: nome do negócio, link, e-mail e token. */
+function clientInviteMessage(business: string, url: string, email: string, token: string): string {
+  return `Oi! Segue o seu acesso ao painel de resultados da ${business}:\n\nLink: ${url}\nE-mail: ${email}\nToken de acesso (é a sua senha): ${token}\n\nÉ só entrar com esse e-mail e colar o token no campo "Token".`
+}
+
+interface AccessEntry { email: string; createdAt: string; lastLoginAt: string | null }
+
+/** Quem pode entrar no painel do cliente: e-mails cadastrados pela agência, cada um com o seu token. */
+function AccessPanel({ client, canManage, urlFor }: { client: AdminClient; canManage: boolean; urlFor: (slug: string) => string }) {
+  const slug = client.slug
+  const [list, setList] = useState<AccessEntry[] | null>(null)
+  const [email, setEmail] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const [confirm, setConfirm] = useState<string | null>(null)
+  const [issued, setIssued] = useState<{ email: string; token: string; business: string } | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!slug) return
+    setList(null)
+    const r = await api<{ emails: AccessEntry[] }>(`/api/admin/clients/${slug}/access`)
+    setList(r.ok ? r.data.emails : [])
+  }, [slug])
+  useEffect(() => { void load(); setIssued(null); setErr(null); setEmail(''); setConfirm(null) }, [load])
+
+  async function issue(target: string) {
+    setBusy(true); setErr(null)
+    const r = await api<{ token: string; business: string }>(`/api/admin/clients/${slug}/access`, 'POST', { email: target })
+    setBusy(false)
+    if (!r.ok) return setErr(r.data.error ?? 'Não foi possível gerar o token.')
+    setIssued({ email: target.trim().toLowerCase(), token: r.data.token, business: r.data.business })
+    setEmail('')
+    void load()
+  }
+  async function remove(target: string) {
+    setBusy(true); setErr(null)
+    const r = await api(`/api/admin/clients/${slug}/access?email=${encodeURIComponent(target)}`, 'DELETE')
+    setBusy(false); setConfirm(null)
+    if (!r.ok) return setErr(r.data.error ?? 'Não foi possível remover.')
+    if (issued?.email === target) setIssued(null)
+    void load()
+  }
+  const message = issued ? clientInviteMessage(issued.business, urlFor(slug), issued.email, issued.token) : ''
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {issued && (
+        <div className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10, border: '1.5px solid var(--accent)' }}>
+          <div style={{ fontSize: 13, color: 'var(--text-2)' }}>Token de <strong>{issued.email}</strong>. Ele não aparece de novo depois de fechar: copie a mensagem e envie.</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--bg-card2)', borderRadius: 'var(--radius)' }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 22, fontWeight: 700, letterSpacing: '0.12em', userSelect: 'all', overflowWrap: 'anywhere' }}>{issued.token}</span>
+            <CopyIconButton value={issued.token} label="Copiar token" />
+          </div>
+          <pre style={{ margin: 0, padding: 12, background: 'var(--bg-card2)', borderRadius: 'var(--radius)', fontSize: 12, lineHeight: 1.5, whiteSpace: 'pre-wrap', fontFamily: 'inherit', color: 'var(--text-2)' }}>{message}</pre>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" onClick={async () => { try { await navigator.clipboard.writeText(message); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { } }}>
+              {copied ? <Check size={16} strokeWidth={1.75} /> : <Copy size={16} strokeWidth={1.75} />} {copied ? 'Mensagem copiada' : 'Copiar mensagem'}
+            </button>
+            <button className="btn btn-outline" onClick={() => setIssued(null)}>Fechar token</button>
+          </div>
+        </div>
+      )}
+
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)', marginBottom: 8 }}>E-mails com acesso{list ? ` · ${list.length}` : ''}</div>
+        {list === null ? <PulseLoader size={32} inline /> : list.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0, lineHeight: 1.6 }}>{client.name} ainda entra pelo código antigo de 6 dígitos. Ao cadastrar o primeiro e-mail, o acesso passa a ser por e-mail e token, e o código antigo deixa de valer.</p>
+        ) : (
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>
+            {list.map(a => (
+              <li key={a.email} className="card" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, overflowWrap: 'anywhere' }}>{a.email}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{a.lastLoginAt ? `Último acesso ${new Date(a.lastLoginAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : 'Ainda não entrou'}</div>
+                </div>
+                {canManage && (confirm === a.email
+                  ? <><button className="btn btn-sm" style={{ background: 'var(--red)', color: '#fff' }} onClick={() => remove(a.email)} disabled={busy}>Remover acesso</button><button className="btn btn-outline btn-sm" onClick={() => setConfirm(null)}>Cancelar</button></>
+                  : <><button className="btn btn-outline btn-sm" onClick={() => issue(a.email)} disabled={busy} title="Gera outro token e derruba o atual"><KeyRound size={14} strokeWidth={1.75} /> Novo token</button><button className="btn btn-outline btn-icon btn-sm" onClick={() => setConfirm(a.email)} aria-label={`Remover ${a.email}`} title="Remover"><Trash2 size={14} strokeWidth={1.75} /></button></>)}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {canManage && (
+        <form onSubmit={e => { e.preventDefault(); if (email.trim()) void issue(email) }} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <input className="field" type="email" style={{ flex: '1 1 240px' }} placeholder="E-mail de quem vai entrar" value={email} onChange={e => setEmail(e.target.value)} aria-label="E-mail do cliente" />
+          <button className="btn btn-primary" type="submit" disabled={busy || !email.trim() || !slug}>{busy ? 'Gerando…' : 'Cadastrar e gerar token'}</button>
+        </form>
+      )}
+      {err && <p role="alert" style={{ fontSize: 13, color: 'var(--red)', margin: 0 }}>{err}</p>}
+    </div>
+  )
+}
+
 function Avatar({ name, logoUrl, size = 40 }: { name: string; logoUrl: string | null; size?: number }) {
   return logoUrl ? (
     <img src={logoUrl} alt="" style={{ width: size, height: size, borderRadius: 12, objectFit: 'contain', background: 'var(--bg-card2)', flexShrink: 0 }} />
@@ -364,6 +465,111 @@ function Avatar({ name, logoUrl, size = 40 }: { name: string; logoUrl: string | 
     </div>
   )
 }
+
+/** Gestão de clientes: cadastro, acessos (e-mail e token) e metas num lugar só, com a lista de clientes ao lado. */
+function ClientsManager({ clients, initial, initialTab, canManage, baseDomain, accounts, accountsError, accountsSavedAt, urlFor, onReload, onOpenPanel, onNotice, onConfigSaved, onClose }: {
+  clients: AdminClient[]; initial: string | 'new' | null; initialTab?: ManagerTab; canManage: boolean; baseDomain: string | null
+  accounts: MetaOption[]; accountsError: string | null; accountsSavedAt: number | null; urlFor: (slug: string) => string
+  onReload: () => Promise<void>; onOpenPanel: (slug: string) => void; onNotice: (t: string) => void; onConfigSaved: (slug: string, active: boolean | undefined) => void; onClose: () => void
+}) {
+  const [selected, setSelected] = useState<string | 'new' | null>(initial ?? clients[0]?.slug ?? null)
+  const [tab, setTab] = useState<ManagerTab>(initialTab ?? 'cadastro')
+  const [query, setQuery] = useState('')
+  const [copied, setCopied] = useState(false)
+  const client = selected && selected !== 'new' ? clients.find(c => c.slug === selected) ?? null : null
+
+  useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
+
+  const q = query.trim().toLowerCase()
+  const list = clients.filter(c => !q || c.name.toLowerCase().includes(q) || c.slug.includes(q))
+  const status = (c: AdminClient) => (c.locked ? { text: 'Bloqueado', dot: 'var(--red)' } : c.active === false ? { text: 'Pausado', dot: 'var(--amber)' } : { text: 'Ativo', dot: 'var(--green)' })
+  const pick = (slug: string | 'new') => { setSelected(slug); setTab(slug === 'new' ? 'cadastro' : tab) }
+  const TABS: Array<[ManagerTab, string]> = [['cadastro', 'Cadastro'], ['acessos', 'Acessos'], ['metas', 'Metas e status']]
+
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Clientes" className="no-print" style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+      <header style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 24px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
+        <button className="btn btn-outline btn-sm" onClick={onClose}><ArrowLeft size={16} strokeWidth={1.75} /> Voltar</button>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>Clientes</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>Cadastro, acessos e metas de cada cliente</p>
+        </div>
+        <button className="btn btn-outline btn-icon btn-sm" onClick={onClose} aria-label="Fechar" title="Fechar (Esc)"><X size={16} strokeWidth={1.75} /></button>
+      </header>
+
+      <div className="cm-body">
+        <aside className="cm-aside">
+          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <label className="search" style={{ height: 36 }}>
+              <Search size={16} color="var(--text-2)" strokeWidth={1.75} aria-hidden="true" />
+              <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente" />
+            </label>
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{list.length} de {clients.length} cliente{clients.length !== 1 ? 's' : ''}</div>
+          </div>
+          <ul style={{ listStyle: 'none', margin: 0, padding: '0 8px 16px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {list.map(c => {
+              const st = status(c)
+              return (
+                <li key={c.slug}>
+                  <button type="button" onClick={() => pick(c.slug)} aria-current={selected === c.slug} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: 'none', borderRadius: 12, background: selected === c.slug ? 'var(--accent-soft)' : 'none', cursor: 'pointer', textAlign: 'left', color: 'var(--text-1)' }}>
+                    <Avatar name={c.name} logoUrl={c.logoUrl} size={34} />
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      <span style={{ display: 'block', fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-3)' }}><i style={{ width: 6, height: 6, borderRadius: '50%', background: st.dot }} />{st.text}</span>
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+            {!list.length && <li style={{ padding: 16, fontSize: 13, color: 'var(--text-3)' }}>Nenhum cliente encontrado.</li>}
+          </ul>
+          {canManage && <div style={{ padding: 16, borderTop: '1px solid var(--border)' }}><button className="btn btn-primary" style={{ width: '100%' }} onClick={() => pick('new')}><UserPlus size={16} strokeWidth={1.75} /> Novo cliente</button></div>}
+        </aside>
+
+        <section className="cm-main">
+          <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {selected === 'new' && (
+              <>
+                <div><h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Novo cliente</h2><p style={{ fontSize: 13, color: 'var(--text-2)', margin: '2px 0 0' }}>Depois de salvar, você cadastra o e-mail de quem vai entrar e gera o token.</p></div>
+                <div className="card" style={{ padding: 20 }}>
+                  <ClientForm baseDomain={baseDomain} accounts={accounts} accountsError={accountsError} accountsSavedAt={accountsSavedAt} onCancel={() => setSelected(clients[0]?.slug ?? null)}
+                    onDone={async r => { await onReload(); setSelected(r.slug); setTab('acessos'); onNotice(r.imported ? `${r.name} criado. ${r.imported} leads importados do Meta.` : `${r.name} criado. Cadastre o e-mail de quem vai entrar.`) }} />
+                </div>
+              </>
+            )}
+
+            {client && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                  <Avatar name={client.name} logoUrl={client.logoUrl} size={52} />
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{client.name}</h2>
+                    <div style={{ fontSize: 12, color: 'var(--text-3)', overflowWrap: 'anywhere' }}>{urlFor(client.slug)}</div>
+                  </div>
+                  <button className="btn btn-outline btn-sm" onClick={async () => { try { await navigator.clipboard.writeText(urlFor(client.slug)); setCopied(true); setTimeout(() => setCopied(false), 1800) } catch { } }}>{copied ? <Check size={14} strokeWidth={1.75} /> : <Link2 size={14} strokeWidth={1.75} />} {copied ? 'Link copiado' : 'Copiar link'}</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => onOpenPanel(client.slug)}><ExternalLink size={14} strokeWidth={1.75} /> Abrir painel</button>
+                </div>
+
+                <div role="group" aria-label="Seções do cliente" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+                  {TABS.map(([k, l]) => <button key={k} className="pill-btn" aria-pressed={tab === k} onClick={() => setTab(k)}>{l}</button>)}
+                </div>
+
+                {tab === 'cadastro' && (canManage
+                  ? <div className="card" style={{ padding: 20 }}><ClientForm key={client.slug} initial={client} baseDomain={baseDomain} accounts={accounts} accountsError={accountsError} accountsSavedAt={accountsSavedAt} onCancel={() => setTab('acessos')} onDone={async r => { await onReload(); onNotice(r.imported ? `Cliente atualizado. ${r.imported} leads importados do Meta.` : 'Cliente atualizado.') }} /></div>
+                  : <p style={{ fontSize: 14, color: 'var(--text-2)' }}>Só administradores editam o cadastro.</p>)}
+                {tab === 'acessos' && <div className="card" style={{ padding: 20 }}><AccessPanel key={client.slug} client={client} canManage={canManage} urlFor={urlFor} /></div>}
+                {tab === 'metas' && <div className="card" style={{ padding: 20 }}><ClientConfigModal key={client.slug} embedded slug={client.slug} clientName={client.name} onClose={() => { }} onSaved={cfg => { onConfigSaved(client.slug, cfg.active); onNotice(`Configurações de ${client.name} salvas.`) }} /></div>}
+              </>
+            )}
+
+            {!selected && <div style={{ padding: '60px 16px', textAlign: 'center', color: 'var(--text-3)', fontSize: 14 }}>{canManage ? 'Escolha um cliente na lista ou crie um novo.' : 'Escolha um cliente na lista.'}</div>}
+          </div>
+        </section>
+      </div>
+    </div>
+  )
+}
+
 
 type MenuItem = { icon: React.ReactNode; text: string; onClick: () => void; danger?: boolean } | 'sep'
 
@@ -702,6 +908,7 @@ export default function AdminPage() {
   const [accountsError, setAccountsError] = useState<string | null>(null)
   const [accountsSavedAt, setAccountsSavedAt] = useState<number | null>(null)
   const [modal, setModal] = useState<Modal>(null)
+  const [syncSignal, setSyncSignal] = useState(0)
   // Nível de quem está logado: dono, administrador, membro ou leitor. O servidor confere de novo; aqui só se esconde o que a pessoa não pode usar.
   const [role, setRole] = useState<'owner' | TeamRole | null>(null)
   const canManage = role === 'owner' || role === 'admin'
@@ -726,9 +933,13 @@ export default function AdminPage() {
   useEffect(() => { document.title = 'Painel de controle' }, [])
 
   const load = useCallback(async () => {
+    const start = Date.now()
     const r = await api<{ clients: AdminClient[]; recent: RecentLead[]; keyStatus?: string; baseDomain?: string | null; brandLogoUrl?: string | null; cardMetrics?: Record<string, unknown> }>(`/api/admin/clients?period=${period}`)
     if (r.status === 404) return setPhase('off')
     if (r.status === 401) return setPhase('login')
+    const elapsed = Date.now() - start
+    const wait = Math.max(0, 750 - elapsed)
+    if (wait > 0) await new Promise(res => setTimeout(res, wait))
     if (r.ok) {
       setClients(r.data.clients); setBrandLogo(r.data.brandLogoUrl ?? null); setCardMetrics(r.data.cardMetrics ?? {}); setRecent(r.data.recent ?? []); setKeyStatus(r.data.keyStatus ?? 'service'); setBaseDomain(r.data.baseDomain ?? null); setPhase('ready')
     } else { setNotice(r.data.error ?? 'Erro ao carregar clientes'); setPhase('ready') }
@@ -771,11 +982,6 @@ export default function AdminPage() {
     if (!r.ok) return setLoginError(r.data.error ?? 'Não foi possível entrar.')
     setLoginPassword('')
     load()
-  }
-
-  async function logout() {
-    await api('/api/auth/logout', 'POST')
-    setPhase('login'); setClients([])
   }
 
   async function openPanel(slug: string) {
@@ -827,13 +1033,29 @@ export default function AdminPage() {
         (filter === 'bloqueados' && c.locked)))
   }, [clients, query, filter])
 
+  // A sidebar pede ações (novo cliente, equipe, sincronização, Report Studio); também vale o ?open= quando vem de outra tela.
+  useEffect(() => {
+    const run = (a: StaffAction) => {
+      if (a === 'new' && canManage) setModal({ kind: 'clients', select: 'new' })
+      else if (a === 'clients') setModal({ kind: 'clients', select: null })
+      else if (a === 'team' && canManage) setModal({ kind: 'team' })
+      else if (a === 'sync') setSyncSignal(n => n + 1)
+      else if (a === 'access') setModal({ kind: 'clients', select: null, tab: 'acessos' })
+    }
+    const onEvent = (e: Event) => run((e as CustomEvent<StaffAction>).detail)
+    window.addEventListener(STAFF_EVENT, onEvent)
+    const q = new URLSearchParams(window.location.search).get('open') as StaffAction | null
+    if (q && phase === 'ready') { run(q); window.history.replaceState(null, '', '/admin') }
+    return () => window.removeEventListener(STAFF_EVENT, onEvent)
+  }, [canManage, phase])
+
   const themeButton = (
     <button className="btn btn-outline btn-icon btn-sm" onClick={toggle} aria-label="Alternar tema" title="Alternar tema">
       {theme === 'dark' ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}
     </button>
   )
 
-  if (phase === 'loading') return <main className="page" />
+  if (phase === 'loading') return <PulseLoader fullscreen size={72} />
 
   if (phase === 'off') return (
     <main className="page"><div className="card" style={{ padding: 24, maxWidth: 480, margin: '80px auto' }}>
@@ -1027,22 +1249,17 @@ export default function AdminPage() {
   ]
 
   return (
-    <main className="page">
+    <StaffShell>
+    {openingSlug && <PulseLoader fullscreen size={72} caption="Abrindo o painel" />}
+    <main className="page page-ready">
       <header style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <MetaSyncPopover logoUrl={brandLogo} onLogoChange={canManage ? setBrandLogo : undefined} canEditBrand={canManage} />
+        <MetaSyncPopover logoUrl={brandLogo} onLogoChange={canManage ? setBrandLogo : undefined} canEditBrand={canManage} openSignal={syncSignal} />
         <div style={{ flex: 1, minWidth: 200 }}>
           <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2 }}>Painel de controle</h1>
           <p style={{ fontSize: 14, color: 'var(--text-2)' }}>Acompanhe os clientes, os leads e os acessos em um só lugar</p>
         </div>
-        <PeriodMenu value={period} onChange={setPeriod} />
-        {canOperate && <button className="btn btn-outline btn-sm" onClick={refreshAll} disabled={refreshing} aria-label="Atualizar todos os cards agora" title="Busca agora na Meta os números de todos os clientes">
-          <RefreshCw size={16} strokeWidth={1.75} className={refreshing ? 'spin' : undefined} /> {refreshing ? 'Atualizando…' : 'Atualizar tudo'}
-        </button>}
-        {canManage && <ClientCodesMenu clients={clients} />}
-        {canManage && <button className="btn btn-outline btn-icon btn-sm" onClick={() => setModal({ kind: 'team' })} aria-label="Equipe" title="Equipe"><UserPlus size={16} strokeWidth={1.75} /></button>}
         {themeButton}
-        {canManage && <button className="btn btn-primary" onClick={() => setModal({ kind: 'new' })}><Plus size={16} strokeWidth={1.75} /> Novo cliente</button>}
-        <button className="btn btn-outline btn-icon btn-sm" onClick={logout} aria-label="Sair" title="Sair"><LogOut size={16} strokeWidth={1.75} /></button>
+        <ProfileMenu />
       </header>
 
       {keyStatus !== 'service' && (
@@ -1061,7 +1278,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      <div className="kpi-grid-4 stagger" style={{ marginBottom: 24 }}>
+      <div className="kpi-grid-4" style={{ marginBottom: 24 }}>
         {kpis.map(k => (
           <div key={k.label} className="card" style={{ padding: 16, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-2)' }}>{k.icon}<span style={eyebrow}>{k.label}</span></div>
@@ -1071,7 +1288,14 @@ export default function AdminPage() {
         ))}
       </div>
 
-      <AdminOverview refreshKey={refreshKey} days={period} clients={clients.map(c => ({ slug: c.slug, name: c.name }))} />
+      <AdminOverview refreshKey={refreshKey} days={period} clients={clients.map(c => ({ slug: c.slug, name: c.name }))} actions={
+        <>
+          <PeriodMenu value={period} onChange={setPeriod} />
+          {canOperate && <button className="btn btn-outline btn-icon btn-sm" onClick={refreshAll} disabled={refreshing} aria-label="Atualizar todos os cards agora" title={refreshing ? 'Atualizando…' : 'Atualizar tudo: busca agora na Meta os números de todos os clientes'}>
+            <RefreshCw size={16} strokeWidth={1.75} className={refreshing ? 'spin' : undefined} />
+          </button>}
+        </>
+      } />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <h2 style={{ fontSize: 16, fontWeight: 600, marginRight: 4 }}>Clientes</h2>
@@ -1094,7 +1318,7 @@ export default function AdminPage() {
       ) : visible.length === 0 ? (
         <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>Nenhum cliente encontrado.</div>
       ) : (
-        <div className="stagger" style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
+        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
           {visible.map(c => {
             const badge = c.locked
               ? { bg: 'var(--red-soft)', dot: 'var(--red)', text: 'Bloqueado' }
@@ -1102,9 +1326,10 @@ export default function AdminPage() {
                 ? { bg: 'rgba(245, 158, 11, 0.15)', dot: 'var(--amber)', text: 'Pausado' }
                 : { bg: 'var(--green-soft)', dot: 'var(--green)', text: 'Ativo' }
             const items: MenuItem[] = [
-              ...(canManage ? [{ icon: <Pencil size={16} strokeWidth={1.75} />, text: 'Editar cliente e metas', onClick: () => setModal({ kind: 'edit', client: c }) }] : []),
+              ...(canManage ? [{ icon: <Pencil size={16} strokeWidth={1.75} />, text: 'Editar cliente e metas', onClick: () => setModal({ kind: 'clients', select: c.slug, tab: 'cadastro' }) }] : []),
               ...(canOperate ? [{ icon: <Settings2 size={16} strokeWidth={1.75} />, text: 'Métricas do card', onClick: () => setModal({ kind: 'metrics', client: c }) }] : []),
-              ...(canManage ? [{ icon: <KeyRound size={16} strokeWidth={1.75} />, text: c.hasCode ? 'Revogar token' : 'Gerar token', onClick: () => c.hasCode ? setModal({ kind: 'confirm', action: 'rotate', client: c }) : runAction('rotate', c) }] : []),
+              ...(canOperate ? [{ icon: <KeyRound size={16} strokeWidth={1.75} />, text: 'Acessos (e-mail e token)', onClick: () => setModal({ kind: 'clients', select: c.slug, tab: 'acessos' }) }] : []),
+              ...(canManage ? [{ icon: <KeyRound size={16} strokeWidth={1.75} />, text: c.hasCode ? 'Revogar código antigo' : 'Gerar código antigo', onClick: () => c.hasCode ? setModal({ kind: 'confirm', action: 'rotate', client: c }) : runAction('rotate', c) }] : []),
               { icon: <Link2 size={16} strokeWidth={1.75} />, text: 'Copiar link do painel', onClick: () => { navigator.clipboard?.writeText(clientUrl(c.slug)).then(() => setNotice('Link copiado.')).catch(() => setNotice(clientUrl(c.slug))) } },
             ]
             if (canManage && c.locked) items.push({ icon: <LockOpen size={16} strokeWidth={1.75} />, text: 'Desbloquear acesso', onClick: () => runAction('unlock', c) })
@@ -1200,6 +1425,10 @@ export default function AdminPage() {
         )}
       </section>
 
+      {modal?.kind === 'clients' && (
+        <ClientsManager clients={clients} initial={modal.select} initialTab={modal.tab} canManage={canManage} baseDomain={baseDomain} accounts={accounts} accountsError={accountsError} accountsSavedAt={accountsSavedAt} urlFor={clientUrl}
+          onReload={load} onOpenPanel={openPanel} onNotice={setNotice} onConfigSaved={(slug, active) => setClients(prev => prev.map(cl => (cl.slug === slug ? { ...cl, active } : cl)))} onClose={() => setModal(null)} />
+      )}
       {modal?.kind === 'new' && (
         <ModalShell title="Novo cliente" onClose={() => setModal(null)} maxWidth={560}>
           <ClientForm baseDomain={baseDomain} accounts={accounts} accountsError={accountsError} accountsSavedAt={accountsSavedAt} onCancel={() => setModal(null)}
@@ -1263,5 +1492,6 @@ export default function AdminPage() {
         </ModalShell>
       )}
     </main>
+    </StaffShell>
   )
 }
