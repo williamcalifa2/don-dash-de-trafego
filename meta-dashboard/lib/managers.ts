@@ -216,6 +216,8 @@ export const REASONS: ReadonlyArray<readonly [string, string]> = [
   ['test', 'Teste'], ['client', 'Pedido do cliente'], ['budget', 'Ajuste de verba'], ['fix', 'Correção de erro'], ['other', 'Outro'],
 ]
 export const REASON_LABEL: Record<string, string> = Object.fromEntries(REASONS)
+/** O banco guarda os motivos numa coluna só, separados por vírgula. */
+export const splitReasons = (v: string | null | undefined): string[] => (v ? v.split(',').filter(k => k in REASON_LABEL) : [])
 export const isReasonKind = (v: unknown): v is string => typeof v === 'string' && v in REASON_LABEL
 
 export interface TaskRow {
@@ -228,7 +230,7 @@ export interface Task {
   key: string; ids: number[]; startedAt: string; at: string; clientSlug: string; managerId: string | null; actorKey: string | null; actorName: string | null
   /** o que foi feito, em uma frase ("Pausou 3 conjuntos · Mudou o orçamento de 1 conjunto") */
   headline: string
-  kind: ActivityKind; kinds: ActivityKind[]; count: number; items: TaskItem[]; reason: string | null; reasonKind: string | null; reasonedAt: string | null
+  kind: ActivityKind; kinds: ActivityKind[]; count: number; items: TaskItem[]; reason: string | null; /** motivos escolhidos (pode ser mais de um) */ reasonKinds: string[]; reasonedAt: string | null
 }
 
 type Action = 'pausou' | 'ativou' | 'criou' | 'orcamento' | 'publico' | 'lance' | 'criativo' | 'alterou'
@@ -317,7 +319,7 @@ export function groupTasks(rows: TaskRow[], gapMs = TASK_GAP_MS): Task[] {
       out.push({
         key: String(first.id), ids: cur.map(r => r.id), startedAt: first.at, at: last.at, clientSlug: first.client_slug, managerId: last.manager_id, actorKey: first.actor_key, actorName: first.actor_name,
         headline: headlineOf(forHeadline), kind: kinds.includes('structure') && forHeadline.some(f => f.action === 'criou') ? 'structure' : kinds[0], kinds, count: cur.length, items,
-        reason: answered?.reason ?? null, reasonKind: answered?.reason_kind ?? null, reasonedAt: answered?.reasoned_at ?? null,
+        reason: answered?.reason ?? null, reasonKinds: splitReasons(answered?.reason_kind), reasonedAt: answered?.reasoned_at ?? null,
       })
       cur = []
     }
@@ -330,7 +332,7 @@ export function groupTasks(rows: TaskRow[], gapMs = TASK_GAP_MS): Task[] {
   return out.sort((a, b) => b.at.localeCompare(a.at))
 }
 
-export const isAnswered = (t: Task) => !!(t.reason || t.reasonKind)
+export const isAnswered = (t: Task) => !!(t.reason || t.reasonKinds.length)
 
 /** De quem é a tarefa: de quem fez a alteração, se essa pessoa é um gestor cadastrado; senão, do gestor da conta. */
 export function taskOwner(t: Pick<Task, 'actorKey' | 'managerId'>, managers: Array<{ id: string; email: string | null; metaActorId: string | null }>): string | null {
@@ -338,11 +340,12 @@ export function taskOwner(t: Pick<Task, 'actorKey' | 'managerId'>, managers: Arr
   return own?.id ?? t.managerId
 }
 
-/** Valida a justificativa: um motivo da lista e/ou texto (pelo menos um dos dois). */
-export function cleanReason(body: unknown): { reasonKind: string | null; reason: string | null } | { error: string } {
+/** Valida a justificativa: um ou mais motivos da lista e/ou texto (pelo menos um dos dois). Aceita `reasonKind` (um só) por compatibilidade. */
+export function cleanReason(body: unknown): { reasonKinds: string[]; reason: string | null } | { error: string } {
   const o = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>
-  const kind = isReasonKind(o.reasonKind) ? o.reasonKind : null
+  const raw = Array.isArray(o.reasonKinds) ? o.reasonKinds : o.reasonKind !== undefined ? [o.reasonKind] : []
+  const kinds = [...new Set(raw.filter(isReasonKind))].slice(0, REASONS.length)
   const text = typeof o.reason === 'string' ? o.reason.replace(/\s+/g, ' ').trim().slice(0, 500) : ''
-  if (!kind && text.length < 3) return { error: 'Escolha um motivo ou escreva a justificativa.' }
-  return { reasonKind: kind, reason: text || null }
+  if (!kinds.length && text.length < 3) return { error: 'Escolha um motivo ou escreva a justificativa.' }
+  return { reasonKinds: kinds, reason: text || null }
 }

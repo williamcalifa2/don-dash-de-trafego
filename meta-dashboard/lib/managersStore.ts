@@ -1,5 +1,6 @@
 /** Gestores de tráfego no banco: cadastro, carteira de clientes, histórico de ações e leitura das alterações feitas na Meta. */
 import { getSupabaseServer } from './supabase'
+import { logoPublicUrl } from './logo'
 import { legacyGet } from './meta/legacy'
 import { liveOrigin } from './meta/mode'
 import { metaConfig } from './meta/config'
@@ -183,6 +184,12 @@ export async function timeByEmail(emails: string[], sinceIso: string): Promise<M
   return out
 }
 
+export async function clientLogos(): Promise<Map<string, string | null>> {
+  const db = getSupabaseServer()
+  const { data } = db ? await db.from('clients').select('slug,logo_url') : { data: [] }
+  return new Map(((data ?? []) as Array<{ slug: string; logo_url: string | null }>).map(c => [c.slug, logoPublicUrl(c.slug, c.logo_url)]))
+}
+
 export async function clientNames(): Promise<Map<string, string>> {
   const db = getSupabaseServer()
   const { data } = db ? await db.from('clients').select('slug,display_name') : { data: [] }
@@ -277,10 +284,10 @@ export async function loadTasks(): Promise<TasksResult> {
 }
 
 /** Grava a justificativa nas alterações da tarefa. Devolve mensagem de erro ou null. */
-export async function saveReason(ids: number[], v: { reasonKind: string | null; reason: string | null }, by: string): Promise<string | null> {
+export async function saveReason(ids: number[], v: { reasonKinds: string[]; reason: string | null }, by: string): Promise<string | null> {
   const db = getSupabaseServer()
   if (!db) return 'Banco indisponível.'
-  const { error } = await db.from('activity_log').update({ reason: v.reason, reason_kind: v.reasonKind, reasoned_at: new Date().toISOString(), reasoned_by: by }).in('id', ids)
+  const { error } = await db.from('activity_log').update({ reason: v.reason, reason_kind: v.reasonKinds.length ? v.reasonKinds.join(',') : null, reasoned_at: new Date().toISOString(), reasoned_by: by }).in('id', ids)
   return error ? (/reason/i.test(error.message) ? 'Rode o SQL supabase/2026-09-gestores-3.sql no Supabase.' : error.message) : null
 }
 

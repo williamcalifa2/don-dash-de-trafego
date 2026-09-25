@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requestIdentity } from '@/lib/admin'
 import { isAnswered, cleanReason } from '@/lib/managers'
-import { clientNames, loadRegistry, loadTasks, ownersOf, saveReason } from '@/lib/managersStore'
+import { clientLogos, clientNames, loadRegistry, loadTasks, ownersOf, saveReason } from '@/lib/managersStore'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,9 +25,9 @@ export async function GET(req: NextRequest) {
   if (!a.managerId) return NextResponse.json({ setup: 'ready', manager: null, pending: [], answered: [], counts: { pending: 0, answered: 0, rate: null } })
   const r = await loadTasks()
   if ('error' in r) return NextResponse.json({ setup: r.error })
-  const names = await clientNames()
+  const [names, logos] = await Promise.all([clientNames(), clientLogos()])
   const manager = a.reg.managers.find(m => m.id === a.managerId)
-  const mine = r.tasks.filter(t => t.ownerId === a.managerId).map(t => ({ ...t, clientName: names.get(t.clientSlug) ?? t.clientSlug }))
+  const mine = r.tasks.filter(t => t.ownerId === a.managerId).map(t => ({ ...t, clientName: names.get(t.clientSlug) ?? t.clientSlug, clientLogo: logos.get(t.clientSlug) ?? null }))
   const pending = mine.filter(t => !isAnswered(t))
   const answered = mine.filter(isAnswered)
   return NextResponse.json({
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
   })
 }
 
-/** Salva a justificativa de uma tarefa: { ids, reasonKind, reason }. */
+/** Salva a justificativa de uma tarefa: { ids, reasonKinds, reason }. */
 export async function POST(req: NextRequest) {
   const a = await actor(req, null)
   if ('error' in a) return a.error

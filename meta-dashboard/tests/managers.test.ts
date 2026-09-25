@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activityByClient, classifyChange, cleanManagerInput, cleanReason, groupTasks, isAnswered, matchActor, taskOwner, type TaskRow, countByKind, dailyCounts, idleSlugs, isHumanMetaEvent, kindOfMetaEvent, managerId, metaDelta, metaToLog, objectLabel, type LogRow, type MetaActivity } from '@/lib/managers'
+import { activityByClient, classifyChange, splitReasons, cleanManagerInput, cleanReason, groupTasks, isAnswered, matchActor, taskOwner, type TaskRow, countByKind, dailyCounts, idleSlugs, isHumanMetaEvent, kindOfMetaEvent, managerId, metaDelta, metaToLog, objectLabel, type LogRow, type MetaActivity } from '@/lib/managers'
 
 const ev = (o: Partial<MetaActivity>): MetaActivity => ({ event_time: '2026-09-14T12:27:02+0000', event_type: 'update_campaign_run_status', actor_id: '122128246653277733', actor_name: 'William', object_id: '5252', object_name: 'Campanha X', object_type: 'CAMPAIGN_GROUP', translated_event_type: 'Status da campanha atualizado', ...o })
 const row = (o: Partial<LogRow>): LogRow => ({ at: '2026-09-24T12:00:00Z', source: 'app', client_slug: 'magtag', manager_id: 'ana', actor_key: 'a@x.com', actor_name: 'Ana', kind: 'status', summary: 's', object_name: null, detail: null, ...o })
@@ -150,7 +150,7 @@ describe('justificativas', () => {
   it('respondida quando alguma alteração do grupo tem motivo ou texto', () => {
     const [a] = groupTasks([t(1, 0), t(2, 5, { reason_kind: 'cost', reason: 'CPL alto', reasoned_at: '2026-09-25T13:00:00Z' })])
     expect(isAnswered(a)).toBe(true)
-    expect(a).toMatchObject({ reasonKind: 'cost', reason: 'CPL alto' })
+    expect(a).toMatchObject({ reasonKinds: ['cost'], reason: 'CPL alto' })
     expect(isAnswered(groupTasks([t(1, 0)])[0])).toBe(false)
   })
   it('dono: quem fez, se é gestor cadastrado; senão o gestor da conta', () => {
@@ -160,10 +160,16 @@ describe('justificativas', () => {
     expect(taskOwner({ actorKey: 'meta:99', managerId: 'ana' }, ms)).toBe('ana')
     expect(taskOwner({ actorKey: null, managerId: null }, ms)).toBeNull()
   })
+  it('os motivos ficam numa coluna separados por vírgula', () => {
+    expect(splitReasons('cost,test')).toEqual(['cost', 'test'])
+    expect(splitReasons('cost,lixo')).toEqual(['cost'])
+    expect(splitReasons(null)).toEqual([])
+  })
   it('valida a justificativa: motivo da lista e/ou texto', () => {
-    expect(cleanReason({ reasonKind: 'cost' })).toEqual({ reasonKind: 'cost', reason: null })
-    expect(cleanReason({ reason: '  Custo   alto  ' })).toEqual({ reasonKind: null, reason: 'Custo alto' })
-    expect(cleanReason({ reasonKind: 'inventado', reason: 'custo' })).toEqual({ reasonKind: null, reason: 'custo' })
+    expect(cleanReason({ reasonKinds: ['cost', 'test', 'cost', 'inventado'] })).toEqual({ reasonKinds: ['cost', 'test'], reason: null }) // vários, sem repetir, só os da lista
+    expect(cleanReason({ reasonKind: 'cost' })).toEqual({ reasonKinds: ['cost'], reason: null }) // formato antigo
+    expect(cleanReason({ reason: '  Custo   alto  ' })).toEqual({ reasonKinds: [], reason: 'Custo alto' })
+    expect(cleanReason({ reasonKinds: ['inventado'], reason: 'custo' })).toEqual({ reasonKinds: [], reason: 'custo' })
     expect(cleanReason({})).toHaveProperty('error')
     expect(cleanReason({ reason: 'a' })).toHaveProperty('error')
     expect((cleanReason({ reason: 'x'.repeat(900) }) as { reason: string }).reason).toHaveLength(500)
