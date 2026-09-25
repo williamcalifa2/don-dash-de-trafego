@@ -12,7 +12,7 @@ import { ProfileMenu } from './ProfileMenu'
 import { PulseLoader } from './PulseLoader'
 import { StaffShell } from './StaffShell'
 import { BarChart, ListCard, PagedRows, PeriodPicker, RankRow, SubTabs, Thumb, plural, type Period } from './UsageUi'
-import { DonutChart, KIND_COLOR, MiniBars, paletteAt, topSlices, type Slice } from './Donut'
+import { ChartCard, DonutChart, KIND_COLOR, MiniBars, paletteAt, topSlices, type Slice } from './Donut'
 
 const KIND_ICON: Record<ActivityKind, React.ReactNode> = {
   status: <ToggleRight size={18} strokeWidth={1.75} />, budget: <Wallet size={18} strokeWidth={1.75} />, audience: <Users size={18} strokeWidth={1.75} />, creative: <ImageIcon size={18} strokeWidth={1.75} />,
@@ -53,7 +53,6 @@ function KindChip({ kind, size = 40 }: { kind: ActivityKind; size?: number }) {
 }
 /** Tempo curto para o centro do donut: 3h50 ou 25 min. */
 const shortDur = (sec: number) => { const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return h ? `${h}h${String(m).padStart(2, '0')}` : `${Math.max(1, m)} min` }
-const grid3: React.CSSProperties = { display: 'grid', gap: 24, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))' }
 
 const sqlHint = <div className="card" style={{ padding: 24, fontSize: 14 }}>O banco ainda não tem as tabelas dos gestores. Rode o SQL <code>supabase/2026-09-gestores.sql</code> no Supabase e recarregue a página.</div>
 
@@ -142,6 +141,7 @@ export function TeamManagers() {
 
 function Overview({ list, onOpen, onNew, onAssigned }: { list: ListData; onOpen: (id: string) => void; onNew: () => void; onAssigned: () => void }) {
   const [busy, setBusy] = useState<string | null>(null)
+  const [today] = useState(() => Date.now())
   async function assign(slug: string, managerId: string) {
     if (!managerId) return
     setBusy(slug)
@@ -152,6 +152,13 @@ function Overview({ list, onOpen, onNew, onAssigned }: { list: ListData; onOpen:
   const withManager = list.clients.length - list.unassigned.length
   const perManager: Slice[] = list.managers.map((m, i) => ({ key: m.id, label: m.name, value: m.actions, color: paletteAt(i) }))
   const clientsSlices: Slice[] = [...list.managers.map((m, i) => ({ key: m.id, label: m.name, value: m.clients.length, color: paletteAt(i) })), { key: '_sem', label: 'Sem gestor', value: list.unassigned.length, color: 'hsl(220 9% 72%)' }]
+  const days = Math.max(0, ...list.managers.map(m => m.daily.length))
+  const teamBars = Array.from({ length: days }, (_, i) => {
+    const v = list.managers.reduce((n, m) => n + (m.daily[m.daily.length - days + i] ?? 0), 0)
+    const d = new Date(today - (days - 1 - i) * 86_400_000)
+    const label = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`
+    return { label, value: v, title: `${label}: ${plural(v, 'ação', 'ações')}` }
+  })
   const kindTotals = new Map<ActivityKind, number>()
   for (const m of list.managers) for (const k of m.byKind) kindTotals.set(k.kind, (kindTotals.get(k.kind) ?? 0) + k.n)
   const kindSlices: Slice[] = [...kindTotals.entries()].map(([kind, n]) => ({ key: kind, label: KIND_LABEL[kind], value: n, color: KIND_COLOR[kind] }))
@@ -173,16 +180,19 @@ function Overview({ list, onOpen, onNew, onAssigned }: { list: ListData; onOpen:
         </div>
       ) : (
         <>
-          <div style={grid3}>
-            <ListCard icon={<Activity size={18} strokeWidth={1.75} />} title="Ações por gestor" hint="Quem mais mexeu nas contas no período">
+          <div className="usage-grid">
+            <ChartCard title="Ações por gestor" hint="Quem mais mexeu nas contas no período. Clique para abrir o perfil">
               <DonutChart slices={perManager} center={String(list.totals.actions)} sub="ações" onPick={id => onOpen(id)} />
-            </ListCard>
-            <ListCard icon={<Layers size={18} strokeWidth={1.75} />} title="O que a equipe faz" hint="Ações por tipo, de todos os gestores">
+            </ChartCard>
+            <ChartCard title="O que a equipe faz" hint="Ações por tipo, de todos os gestores">
               <DonutChart slices={topSlices(kindSlices, 7)} center={String(list.totals.actions)} sub="ações" />
-            </ListCard>
-            <ListCard icon={<Building2 size={18} strokeWidth={1.75} />} title="Clientes por gestor" hint="Como a carteira está dividida">
+            </ChartCard>
+            <ChartCard title="Clientes por gestor" hint="Como a carteira está dividida">
               <DonutChart slices={clientsSlices} center={String(list.clients.length)} sub="clientes" />
-            </ListCard>
+            </ChartCard>
+            <ChartCard title="Ações por dia" hint="A equipe toda, pelo painel e pela Meta">
+              <div style={{ width: '100%' }}><BarChart bars={teamBars} labelEvery={teamBars.length > 10 ? Math.ceil(teamBars.length / 6) : 1} summary="Ações por dia da equipe" /></div>
+            </ChartCard>
           </div>
 
           <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))' }}>
@@ -270,9 +280,7 @@ function ProfileView({ id, period, tick, onEdit }: { id: string; period: Period;
   if (!data) return <PulseLoader size={44} />
   if (data.setup === 'tables') return sqlHint
 
-  const maxKind = Math.max(1, ...data.byKind.map(k => k.n))
   const withTime = [...data.clients.filter(c => c.timeSec > 0).map(c => ({ slug: c.slug, name: c.name, sec: c.timeSec, sub: plural(c.actions, 'ação', 'ações') })), ...data.otherTime.map(o => ({ slug: o.slug, name: o.name, sec: o.sec, sub: 'fora da carteira' }))].sort((a, b) => b.sec - a.sec)
-  const maxTime = Math.max(1, ...withTime.map(t => t.sec))
   const goClient = (slug: string) => { setClient(slug); setScope('accounts'); setTab('timeline') }
   const kindSlices: Slice[] = data.byKind.map(k => ({ key: k.kind, label: KIND_LABEL[k.kind], value: k.n, color: KIND_COLOR[k.kind] }))
   const clientSlices = topSlices(data.clients.map((c, i) => ({ key: c.slug, label: c.name, value: c.actions, color: paletteAt(i) })), 7)
@@ -314,28 +322,26 @@ function ProfileView({ id, period, tick, onEdit }: { id: string; period: Period;
             <MetricTile label="Feito por ele" value={String(data.totals.byMe)} />
             <MetricTile label="Tempo no painel" value={data.totals.activeSec == null ? '—' : fmtDuration(data.totals.activeSec)} />
           </div>
-          <div style={grid3}>
-            <ListCard icon={<Layers size={18} strokeWidth={1.75} />} title="O que foi feito" hint="Ações por tipo. Clique num tipo para ver na linha do tempo">
+          <div className="usage-grid">
+            <ChartCard title="O que foi feito" hint="Ações por tipo. Clique num tipo para ver na linha do tempo">
               <DonutChart slices={kindSlices} center={String(data.totals.actions)} sub="ações" onPick={k => { setKind(k); setScope('accounts'); setTab('timeline') }} />
-            </ListCard>
-            <ListCard icon={<Building2 size={18} strokeWidth={1.75} />} title="Onde foi feito" hint="Ações por cliente da carteira. Clique para ver o que foi feito">
+            </ChartCard>
+            <ChartCard title="Onde foi feito" hint="Ações por cliente da carteira. Clique para ver o que foi feito">
               <DonutChart slices={clientSlices} center={String(data.clients.length)} sub="clientes" onPick={goClient} />
-            </ListCard>
-            <ListCard icon={<Clock size={18} strokeWidth={1.75} />} title="Tempo por cliente" hint={data.hasEmail ? 'Tempo ativo dele em cada painel de cliente' : 'Precisa do e-mail de login do gestor'}>
-              {!data.hasEmail ? none('Informe o e-mail de login dele para medir o tempo em cada cliente.')
+            </ChartCard>
+            <ChartCard title="Tempo por cliente" hint={data.hasEmail ? 'Tempo ativo dele em cada painel de cliente' : undefined}>
+              {!data.hasEmail ? <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0, textAlign: 'center' }}>Informe o e-mail de login do gestor para medir o tempo em cada cliente.</p>
                 : <DonutChart slices={timeSlices} center={shortDur(withTime.reduce((n, t) => n + t.sec, 0))} sub="no painel" unit={fmtDuration} onPick={goClient} />}
-            </ListCard>
-          </div>
-          <div style={grid3}>
-            <ListCard icon={<Activity size={18} strokeWidth={1.75} />} title="Ações por dia" hint="Tudo que foi feito nas contas dele, pelo painel e pela Meta">
-              <BarChart bars={dayBars} labelEvery={dayBars.length > 10 ? Math.ceil(dayBars.length / 6) : 1} summary="Ações por dia" />
-            </ListCard>
-            <ListCard icon={<Clock size={18} strokeWidth={1.75} />} title="Horários de trabalho" hint="Ações por hora do dia (horário de Brasília)">
-              <BarChart bars={hourBars} labelEvery={4} summary="Ações por hora do dia" />
-            </ListCard>
-            <ListCard icon={<RefreshCw size={18} strokeWidth={1.75} />} title="Onde as ações acontecem" hint="Gerenciador de Anúncios (Meta) ou painel do app">
+            </ChartCard>
+            <ChartCard title="Onde as ações acontecem" hint="Gerenciador de Anúncios (Meta) ou painel do app">
               <DonutChart slices={sourceSlices} center={String(data.bySource.app + data.bySource.meta)} sub="ações" />
-            </ListCard>
+            </ChartCard>
+            <ChartCard title="Ações por dia" hint="Tudo que foi feito nas contas dele">
+              <div style={{ width: '100%' }}><BarChart bars={dayBars} labelEvery={dayBars.length > 10 ? Math.ceil(dayBars.length / 6) : 1} summary="Ações por dia" /></div>
+            </ChartCard>
+            <ChartCard title="Horários de trabalho" hint="Ações por hora do dia (horário de Brasília)">
+              <div style={{ width: '100%' }}><BarChart bars={hourBars} labelEvery={4} summary="Ações por hora do dia" /></div>
+            </ChartCard>
           </div>
           <div className="usage-grid">
             <ListCard icon={<Building2 size={18} strokeWidth={1.75} />} title="Clientes sem movimentação" hint="Sem nenhuma ação há 7 dias ou mais">

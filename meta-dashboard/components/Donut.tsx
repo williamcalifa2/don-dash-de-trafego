@@ -29,13 +29,13 @@ export function DonutChart({ slices, center, sub, size = 148, thickness = 22, le
   slices: Slice[]; center?: string; sub?: string; size?: number; thickness?: number; legend?: boolean; unit?: (n: number) => string; /** torna cada item da legenda clicável (ex.: filtrar a linha do tempo) */ onPick?: (key: string) => void
 }) {
   const total = slices.reduce((n, s) => n + s.value, 0)
-  const R = 50 - thickness / 4
+  const sw = (thickness / size) * 100 // espessura em unidades do desenho (100 x 100)
+  const R = 50 - sw / 2 - 1 // o traço fica inteiro dentro do desenho, sem cortar nas bordas
   const C = 2 * Math.PI * R
-  const sw = thickness * (100 / size) * 1.2
   let acc = 0
   const pct = (v: number) => `${Math.round((v / total) * 100)}%`
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', justifyContent: legend ? 'center' : 'flex-start' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap', justifyContent: legend ? 'center' : 'flex-start', width: '100%' }}>
       <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
         <svg viewBox="0 0 100 100" width={size} height={size} role="img" aria-label={`${center ?? ''} ${sub ?? ''}`.trim() || 'Gráfico'}>
           <circle cx={50} cy={50} r={R} fill="none" stroke="var(--bg-card2)" strokeWidth={sw} />
@@ -58,7 +58,7 @@ export function DonutChart({ slices, center, sub, size = 148, thickness = 22, le
         )}
       </div>
       {legend && (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 7, fontSize: 13, minWidth: 150, flex: '1 1 150px' }}>
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13, minWidth: 180, flex: '1 1 180px', maxWidth: 320 }}>
           {slices.filter(s => s.value > 0).map(s => (
             <li key={s.key} style={{ minWidth: 0 }}>
               {(() => {
@@ -91,5 +91,16 @@ export function MiniBars({ values, color = 'var(--accent)', height = 30, title }
     <div role="img" aria-label="Ritmo de ações" style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height }}>
       {values.map((v, i) => <div key={i} title={title(i, v)} style={{ flex: 1, minWidth: 2, height: `${Math.max(v > 0 ? 12 : 5, Math.round((v / max) * 100))}%`, borderRadius: 3, background: v > 0 ? color : 'var(--bg-card2)', opacity: v > 0 ? 0.55 + 0.45 * (v / max) : 1 }} />)}
     </div>
+  )
+}
+
+/** Card de gráfico no padrão das telas de Público e Orgânico: 24 px de respiro, título simples e o gráfico centralizado na altura que sobra. */
+export function ChartCard({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <section className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>{title}</h3>
+      {hint && <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '2px 0 0' }}>{hint}</p>}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 16, minHeight: 168 }}>{children}</div>
+    </section>
   )
 }
