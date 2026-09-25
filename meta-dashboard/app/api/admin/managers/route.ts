@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { requireRole } from '@/lib/admin'
 import { usageSince } from '@/lib/usage'
 import { OPTIMIZATION_KINDS, cleanManagerInput, countByKind, dailyCounts } from '@/lib/managers'
-import { clientNames, lastSyncAt, loadRegistry, readLog, saveManager, syncMetaActivity, tablesMissing, timeByEmail } from '@/lib/managersStore'
+import { autoLinkActors, clientNames, lastSyncAt, loadRegistry, readLog, saveManager, syncMetaActivity, tablesMissing, timeByEmail } from '@/lib/managersStore'
 import { getSupabaseServer } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
   const sinceMs = usageSince(period, now)
   const sinceIso = new Date(sinceMs).toISOString()
 
+  if (await autoLinkActors().catch(() => 0)) await loadRegistry(true)
   const reg = await loadRegistry(true)
   if (!reg) {
     const probe = await db.from('traffic_managers').select('id').limit(1)
@@ -57,6 +58,6 @@ export async function POST(req: NextRequest) {
   if ('error' in input) return NextResponse.json({ error: input.error }, { status: 400 })
   const r = await saveManager(input)
   if ('error' in r) return NextResponse.json({ error: r.error }, { status: 400 })
-  after(() => { void syncMetaActivity({ budgetMs: 45_000, limit: 8 }).catch(() => { }) })
+  after(() => { void syncMetaActivity({ budgetMs: 45_000, limit: 8 }).catch(() => { }); void autoLinkActors(true).catch(() => { }) })
   return NextResponse.json({ ok: true, manager: r.manager })
 }

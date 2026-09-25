@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activityByClient, cleanManagerInput, countByKind, dailyCounts, idleSlugs, isHumanMetaEvent, kindOfMetaEvent, managerId, metaDelta, metaToLog, objectLabel, type LogRow, type MetaActivity } from '@/lib/managers'
+import { activityByClient, cleanManagerInput, matchActor, countByKind, dailyCounts, idleSlugs, isHumanMetaEvent, kindOfMetaEvent, managerId, metaDelta, metaToLog, objectLabel, type LogRow, type MetaActivity } from '@/lib/managers'
 
 const ev = (o: Partial<MetaActivity>): MetaActivity => ({ event_time: '2026-09-14T12:27:02+0000', event_type: 'update_campaign_run_status', actor_id: '122128246653277733', actor_name: 'William', object_id: '5252', object_name: 'Campanha X', object_type: 'CAMPAIGN_GROUP', translated_event_type: 'Status da campanha atualizado', ...o })
 const row = (o: Partial<LogRow>): LogRow => ({ at: '2026-09-24T12:00:00Z', source: 'app', client_slug: 'magtag', manager_id: 'ana', actor_key: 'a@x.com', actor_name: 'Ana', kind: 'status', summary: 's', object_name: null, detail: null, ...o })
@@ -82,5 +82,21 @@ describe('números do perfil', () => {
     const now = Date.parse('2026-09-24T12:00:00Z')
     const last = new Map<string, string | null>([['a', '2026-09-23T12:00:00Z'], ['b', '2026-09-10T12:00:00Z'], ['c', null]])
     expect(idleSlugs(last, ['a', 'b', 'c'], 7, now).map(x => [x.slug, x.daysIdle])).toEqual([['c', null], ['b', 14]])
+  })
+})
+
+describe('matchActor', () => {
+  const actors = [{ id: '1', name: 'William Castro Fagundes' }, { id: '2', name: 'Arthur Sauter' }, { id: '3', name: 'Jonatan W Silveira' }, { id: '4', name: 'Paulo Henrique Carvalho Souza' }]
+  it('acha pelo nome, ignorando acento, maiúscula e "de/da"', () => {
+    expect(matchActor('William de Castro', actors)?.id).toBe('1')
+    expect(matchActor('arthur sauter', actors)?.id).toBe('2')
+    expect(matchActor('Jônatan Silveira', actors)?.id).toBe('3') // o acento não atrapalha e a letra do meio da Meta não precisa estar no nome do gestor
+  })
+  it('nome de uma palavra só exige nome igual; ambíguo ou sem par não liga', () => {
+    expect(matchActor('Will', actors)).toBeNull()
+    expect(matchActor('Arthur', actors)).toBeNull() // o nome da Meta tem duas palavras
+    expect(matchActor('Paulo', [...actors, { id: '5', name: 'Paulo Souza' }])).toBeNull()
+    expect(matchActor('Paulo Souza', [{ id: '4', name: 'Paulo Henrique Carvalho Souza' }, { id: '5', name: 'Paulo Souza' }])).toBeNull() // dois candidatos
+    expect(matchActor('', actors)).toBeNull()
   })
 })

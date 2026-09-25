@@ -185,3 +185,21 @@ export function countBySource(rows: Array<{ source: string }>): { app: number; m
   for (const r of rows) { if (r.source === 'meta') meta++; else app++ }
   return { app, meta }
 }
+
+const NAME_STOP = new Set(['de', 'da', 'do', 'das', 'dos', 'e'])
+const nameTokens = (n: string) => n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/[^a-z0-9]+/).filter(t => t && !NAME_STOP.has(t))
+
+/**
+ * Acha, entre os autores do histórico da Meta, o usuário que é este gestor pelo nome: todas as palavras do nome do gestor
+ * precisam estar no nome da Meta ("William de Castro" acha "William Castro Fagundes"). Só vale se houver um único candidato.
+ * Nome de uma palavra só ("Will") exige nome igual, para não juntar pessoas diferentes.
+ */
+export function matchActor(name: string, actors: Array<{ id: string; name: string }>): { id: string; name: string } | null {
+  const want = nameTokens(name)
+  if (!want.length) return null
+  const hits = actors.filter(a => {
+    const have = nameTokens(a.name)
+    return want.length === 1 ? have.length === 1 && have[0] === want[0] : want.every(t => have.includes(t))
+  })
+  return hits.length === 1 ? hits[0] : null
+}

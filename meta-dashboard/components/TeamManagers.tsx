@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Activity, ArrowRight, Building2, Clock, FileBarChart, Image as ImageIcon, KeyRound, Layers, Loader2, Moon, Pencil, Plus, RefreshCw, Settings2, Sun, Target, ToggleRight, Trash2, UserCheck, Users, Wallet, X } from 'lucide-react'
+import { Activity, ArrowLeft, ArrowRight, Building2, Clock, FileBarChart, Image as ImageIcon, KeyRound, Layers, Loader2, Moon, Pencil, Plus, RefreshCw, Settings2, Sun, Target, ToggleRight, Trash2, UserCheck, Users, Wallet, X } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import { fmtDuration } from '@/lib/usage'
 import { fileToLogoDataUrl } from '@/lib/resizeLogo'
@@ -108,6 +108,7 @@ export function TeamManagers() {
     <StaffShell>
       <main className="page page-ready">
         <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+          {current && <button type="button" className="btn btn-outline btn-sm" onClick={() => open(null)} aria-label="Voltar para a lista de gestores"><ArrowLeft size={16} strokeWidth={1.75} /> Voltar</button>}
           <div style={{ flex: 1, minWidth: 220, display: 'flex', alignItems: 'center', gap: 16 }}>
             {current && <Thumb name={current.name} src={current.avatarUrl} size={64} />}
             <div style={{ minWidth: 0 }}>
@@ -115,7 +116,6 @@ export function TeamManagers() {
               <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>{current ? `Gestor de tráfego · ${plural(current.clients.length, 'cliente', 'clientes')}${current.email ? ` · ${current.email}` : ''}` : 'Gestores de tráfego e o que cada um faz nas contas'}</p>
             </div>
           </div>
-          {current && <button type="button" className="btn btn-ghost btn-sm" onClick={() => open(null)}>Todos os gestores</button>}
           <PeriodPicker value={period} onChange={setPeriod} />
           <button type="button" className="btn btn-outline btn-icon btn-sm" onClick={syncNow} disabled={syncing} aria-label="Atualizar histórico da Meta" title="Atualizar o histórico de alterações da Meta agora">{syncing ? <Loader2 size={16} className="spin" /> : <RefreshCw size={16} strokeWidth={1.75} />}</button>
           {current
@@ -322,13 +322,11 @@ function ProfileView({ id, period, tick, onEdit }: { id: string; period: Period;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {(!data.hasActor || !data.hasEmail) && (
-        <div className="card" style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontSize: 13 }}>
-          <span style={{ flex: 1, minWidth: 240, color: 'var(--text-2)' }}>
-            {!data.hasActor && 'Ligue o usuário da Meta deste gestor para registrar o que ele faz no Gerenciador de Anúncios (pausas, orçamento, público, criativos). '}
-            {!data.hasEmail && 'Informe o e-mail de login dele para registrar o que faz no painel e medir o tempo em cada cliente.'}
-          </span>
-          <button type="button" className="btn btn-outline btn-sm" onClick={onEdit}>Completar cadastro</button>
-        </div>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--text-2)', lineHeight: 1.6 }}>
+          {!data.hasActor && 'Não achei o usuário da Meta deste gestor pelo nome. As ações nas contas dele já contam normalmente; ligar o usuário em Editar só acrescenta o que ele faz em contas de outros gestores. '}
+          {!data.hasEmail && 'Com o e-mail de login dele, o painel também mostra o tempo em cada cliente. '}
+          <button type="button" onClick={onEdit} style={{ background: 'none', border: 0, padding: 0, font: 'inherit', fontWeight: 600, color: 'var(--text-1)', textDecoration: 'underline', cursor: 'pointer' }}>Editar gestor</button>
+        </p>
       )}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <SubTabs value={tab} onChange={setTab} tabs={[{ key: 'geral', label: 'Visão geral' }, { key: 'timeline', label: 'Linha do tempo' }, { key: 'clientes', label: 'Clientes' }]} />

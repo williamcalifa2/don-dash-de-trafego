@@ -6,7 +6,7 @@ import { metaConfig } from './meta/config'
 import { loadRegistry, toManager, __resetManagersMemo, type ManagerRow } from './activityLog'
 import {
   cleanManagerInput, isHumanMetaEvent, managerId as slugFromName, metaToLog,
-  type LogInsert, type LogRow, type Manager, type ManagerInput, type MetaActivity,
+  matchActor, type LogInsert, type LogRow, type Manager, type ManagerInput, type MetaActivity,
 } from './managers'
 
 /** Cria ou atualiza o gestor e refaz a carteira dele. Cliente que já era de outro gestor passa para este. */
@@ -128,6 +128,7 @@ export async function syncMetaActivity(opts: { only?: string[]; budgetMs?: numbe
 
   let i = 0
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, todo.length) }, async () => { while (i < todo.length) await one(todo[i++]) }))
+  await autoLinkActors(true).catch(() => { })
   return out
 }
 
@@ -211,4 +212,33 @@ export async function maybeSyncActivity(): Promise<void> {
     if (last && Date.now() - Date.parse(last) < STALE_MS) return
     await syncMetaActivity({ budgetMs: 25_000, limit: AUTO_LIMIT })
   } catch { /* o histórico é secundário */ } finally { running = false }
+}
+
+// ─── Ligação automática gestor ↔ usuário da Meta ─────────────────────────────
+
+let lastAutoLink = 0
+
+/**
+ * Liga sozinho cada gestor sem usuário da Meta ao autor do histórico que tem o nome dele (ver `matchActor`).
+ * Sem isso a pessoa teria de escolher o usuário na mão. `force` ignora o intervalo de 2 min entre tentativas.
+ */
+export async function autoLinkActors(force = false): Promise<number> {
+  if (!force && Date.now() - lastAutoLink < 120_000) return 0
+  lastAutoLink = Date.now()
+  const db = getSupabaseServer()
+  const reg = await loadRegistry(true)
+  if (!db || !reg) return 0
+  const pending = reg.managers.filter(m => !m.metaActorId)
+  if (!pending.length) return 0
+  const taken = new Set(reg.managers.flatMap(m => (m.metaActorId ? [m.metaActorId] : [])))
+  const actors = (await metaActors()).filter(a => !taken.has(a.id))
+  let n = 0
+  for (const m of pending) {
+    const hit = matchActor(m.name, actors)
+    if (!hit) continue
+    const { error } = await db.from('traffic_managers').update({ meta_actor_id: hit.id, meta_actor_name: hit.name }).eq('id', m.id)
+    if (!error) { n++; actors.splice(actors.findIndex(a => a.id === hit.id), 1) }
+  }
+  if (n) __resetManagersMemo()
+  return n
 }

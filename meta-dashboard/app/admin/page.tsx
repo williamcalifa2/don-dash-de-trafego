@@ -1336,17 +1336,6 @@ export default function AdminPage() {
               <button key={k} className="pill-btn" aria-pressed={filter === k} onClick={() => setFilter(k)}>{l}</button>
             ))}
           </div>
-          {canOperate && (
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={() => setModal({ kind: 'clients', select: null, tab: 'integracoes' })}
-              title="Configurar Integrações e Webhooks"
-              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            >
-              <Webhook size={15} strokeWidth={1.75} />
-              <span>Integrações</span>
-            </button>
-          )}
         </div>
 
         {clients.length === 0 ? (
