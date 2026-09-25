@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireRole } from '@/lib/admin'
+import { requestRole, requireRole } from '@/lib/admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,8 +11,8 @@ const HOSTS = [/(^|\.)fbcdn\.net$/i, /(^|\.)cdninstagram\.com$/i, /(^|\.)faceboo
 const MAX_BYTES = 4_000_000
 
 export async function GET(req: NextRequest) {
-  const denied = await requireRole(req, 'member')
-  if (denied) return denied
+  // Equipe (membro ou acima) e o nível Social Media (que baixa o PowerPoint dos relatórios dos clientes dele).
+  if ((await requestRole(req)) !== 'organic') { const denied = await requireRole(req, 'member'); if (denied) return denied }
   let url: URL
   try { url = new URL(req.nextUrl.searchParams.get('u') ?? '') } catch { return new NextResponse('URL inválida', { status: 400 }) }
   if (url.protocol !== 'https:' || url.username || url.password || !HOSTS.some(h => h.test(url.hostname))) return new NextResponse('Domínio não permitido', { status: 400 })

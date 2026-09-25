@@ -13,7 +13,7 @@ const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // sem 0, O, 1, I, para não
 /** Nível de acesso de quem é da equipe. Sem nível gravado (convites antigos) vale "membro". O administrador principal (dono) é outro nível, acima destes. */
 export type MemberRole = 'admin' | 'member' | 'reader' | 'organic'
 export const MEMBER_ROLES: readonly MemberRole[] = ['admin', 'member', 'reader', 'organic']
-export const ROLE_LABEL: Record<MemberRole, string> = { admin: 'Administrador', member: 'Membro', reader: 'Leitor', organic: 'Orgânico' }
+export const ROLE_LABEL: Record<MemberRole, string> = { admin: 'Administrador', member: 'Membro', reader: 'Leitor', organic: 'Social Media' }
 export const isMemberRole = (v: unknown): v is MemberRole => typeof v === 'string' && (MEMBER_ROLES as readonly string[]).includes(v)
 
 export interface Member { email: string; hash: string; createdAt: string; lastLoginAt?: string | null; role?: MemberRole; /** só para o nível Orgânico: os clientes que a pessoa pode ver */ clients?: string[] }

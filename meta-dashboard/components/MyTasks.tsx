@@ -30,7 +30,7 @@ export function MyTasks() {
           <ProfileMenu />
         </header>
         {!me && <PulseLoader size={44} />}
-        {me && !me.managerId && <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)', lineHeight: 1.6 }}>O seu e-mail de login ainda não está ligado a um gestor. Peça a um administrador para informar o seu e-mail em Equipe, no cadastro do gestor.</div>}
+        {me && !me.managerId && <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)', lineHeight: 1.6 }}>O seu e-mail de login ainda não está ligado a um gestor. Peça a um administrador para informar o seu e-mail em Performance, no cadastro do gestor.</div>}
         {me?.managerId && <TaskPanel managerId={me.managerId} />}
       </main>
     </StaffShell>

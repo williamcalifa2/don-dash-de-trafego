@@ -78,14 +78,20 @@ async function defaultTenant(): Promise<Tenant | null> {
   }
 }
 
-/** O que o nível Orgânico pode chamar: os dados do próprio Orgânico e quem ele é. Todo o resto do painel do cliente fica barrado. */
-const ORGANIC_ALLOWED = ['/api/me', '/api/meta/organic', '/api/meta/refresh']
+/**
+ * O que o nível Social Media pode chamar: quem ele é, Orgânico, Público e os relatórios já salvos (só leitura).
+ * Todo o resto do painel do cliente (leads, campanhas, funil, e-commerce, números pagos) fica barrado.
+ */
+const ORGANIC_ALLOWED: Array<[string, readonly string[] | null]> = [
+  ['/api/me', null], ['/api/meta/organic', null], ['/api/meta/refresh', null], ['/api/meta/audience', null],
+  ['/api/report/saved', ['GET']], ['/api/report/img', ['GET']],
+]
 
 async function isOrganicBlocked(req: NextRequest): Promise<boolean> {
   const session = await readSession(req.cookies.get(SESSION_COOKIE)?.value)
   if (!session || session.s !== ADMIN_SLUG || !session.m) return false
   if ((await sessionRole(session)) !== 'organic') return false
-  return !ORGANIC_ALLOWED.includes(req.nextUrl.pathname)
+  return !ORGANIC_ALLOWED.some(([path, methods]) => req.nextUrl.pathname === path && (!methods || methods.includes(req.method)))
 }
 
 export async function getTenant(req: NextRequest): Promise<Tenant | null> {

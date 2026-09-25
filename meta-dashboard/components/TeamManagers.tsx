@@ -60,7 +60,7 @@ const shortDur = (sec: number) => { const h = Math.floor(sec / 3600), m = Math.r
 
 const sqlHint = <div className="card" style={{ padding: 24, fontSize: 14 }}>O banco ainda não tem as tabelas dos gestores. Rode o SQL <code>supabase/2026-09-gestores.sql</code> no Supabase e recarregue a página.</div>
 
-/** Página Equipe: gestores de tráfego, a carteira de clientes de cada um e tudo o que é feito nas contas deles. */
+/** Página Performance (gestores de tráfego): gestores de tráfego, a carteira de clientes de cada um e tudo o que é feito nas contas deles. */
 export function TeamManagers() {
   const { theme, toggle } = useTheme()
   const router = useRouter()
@@ -114,7 +114,7 @@ export function TeamManagers() {
           <div style={{ flex: 1, minWidth: 220, display: 'flex', alignItems: 'center', gap: 16 }}>
             {current && <Thumb name={current.name} src={current.avatarUrl} size={64} />}
             <div style={{ minWidth: 0 }}>
-              <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>{current ? current.name : 'Equipe'}</h1>
+              <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>{current ? current.name : 'Performance'}</h1>
               <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>{current ? `Gestor de tráfego · ${plural(current.clients.length, 'cliente', 'clientes')}${current.email ? ` · ${current.email}` : ''}` : 'Gestores de tráfego e o que cada um faz nas contas'}</p>
             </div>
           </div>

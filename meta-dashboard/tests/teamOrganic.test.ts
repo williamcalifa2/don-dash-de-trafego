@@ -6,7 +6,7 @@ describe('nível Orgânico', () => {
   it('existe como nível de equipe, com nome em português', () => {
     expect(isMemberRole('organic')).toBe(true)
     expect(MEMBER_ROLES).toContain('organic')
-    expect(ROLE_LABEL.organic).toBe('Orgânico')
+    expect(ROLE_LABEL.organic).toBe('Social Media')
   })
   it('não alcança nenhum nível de administração (nem leitor)', () => {
     for (const min of ['reader', 'member', 'admin', 'owner'] as const) expect(roleAtLeast('organic', min)).toBe(false)

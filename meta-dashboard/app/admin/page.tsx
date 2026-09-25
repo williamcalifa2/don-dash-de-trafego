@@ -163,7 +163,7 @@ const ROLE_INFO: Record<TeamRole, { label: string; text: string }> = {
   admin: { label: 'Administrador', text: 'Faz tudo: cria e edita clientes, gera tokens e gerencia a equipe.' },
   member: { label: 'Membro', text: 'Opera o dia a dia: atualiza números, trata leads e personaliza os cards. Não cria nem edita clientes.' },
   reader: { label: 'Leitor', text: 'Só olha: vê os painéis e os números, sem alterar nada.' },
-  organic: { label: 'Orgânico', text: 'Só vê a aba Orgânico (Instagram e Facebook) dos clientes que você escolher. Não vê leads, campanhas nem relatórios.' },
+  organic: { label: 'Social Media', text: 'Vê só Orgânico, Público e Report Studio dos clientes que você escolher. Não vê leads, campanhas nem números pagos.' },
 }
 const fmtShort = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 
@@ -183,8 +183,8 @@ function OrganicClientsModal({ email, initial, onClose, onSave }: { email: strin
   const shown = (all ?? []).filter(c => !q.trim() || norm(c.name).includes(norm(q.trim())))
   const flip = (slug: string) => setPicked(p => { const n = new Set(p); if (n.has(slug)) n.delete(slug); else n.add(slug); return n })
   return (
-    <ModalShell title="Clientes do acesso Orgânico" onClose={onClose} maxWidth={620}>
-      <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}><strong style={{ color: 'var(--text-1)' }}>{email}</strong> vai ver só a aba Orgânico destes clientes ({picked.size} escolhido{picked.size === 1 ? '' : 's'}).</p>
+    <ModalShell title="Clientes do Social Media" onClose={onClose} maxWidth={620}>
+      <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}><strong style={{ color: 'var(--text-1)' }}>{email}</strong> vai ver só Orgânico, Público e Report Studio destes clientes ({picked.size} escolhido{picked.size === 1 ? '' : 's'}).</p>
       <label className="search" style={{ height: 36 }}>
         <Search size={16} color="var(--text-2)" strokeWidth={1.75} aria-hidden="true" />
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente" autoFocus />
@@ -257,7 +257,7 @@ function TeamModal({ onClose, onToken }: { onClose: () => void; onToken: (email:
   }
 
   return (
-    <ModalShell title="Acessos da equipe" onClose={onClose} maxWidth={780}>
+    <ModalShell title="Equipe" onClose={onClose} maxWidth={780}>
       <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
         Cada pessoa entra só com o e-mail cadastrado aqui e o token que você gerar, que funciona como senha. Escolha o nível de acesso dela.
       </p>
@@ -967,7 +967,7 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
               <option value="">Selecione…</option>
               {managers.list.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
-            : <p style={{ fontSize: 12, color: 'var(--text-2)', margin: 0 }}>Nenhum gestor cadastrado ainda. Cadastre em Equipe para escolher o responsável.</p>}
+            : <p style={{ fontSize: 12, color: 'var(--text-2)', margin: 0 }}>Nenhum gestor cadastrado ainda. Cadastre em Performance para escolher o responsável.</p>}
         </div>
       )}
 
@@ -1545,7 +1545,7 @@ export default function AdminPage() {
         {clients.length === 0 ? (
           <div style={{ padding: '48px 16px', border: '1px dashed var(--border-input)', borderRadius: 'var(--radius-lg)', textAlign: 'center', color: 'var(--text-2)' }}>
             <Users size={32} strokeWidth={1.5} style={{ opacity: .5, margin: '0 auto 8px', display: 'block' }} aria-hidden="true" />
-            {scopeInfo && (scopeInfo.mode === 'mine' || scopeInfo.restricted) ? 'Você ainda não tem clientes na sua carteira. Peça a um administrador para atribuir clientes a você em Equipe.' : 'Nenhum cliente ainda. Crie o primeiro em “Novo cliente”.'}
+            {scopeInfo && (scopeInfo.mode === 'mine' || scopeInfo.restricted) ? 'Você ainda não tem clientes na sua carteira. Peça a um administrador para atribuir clientes a você em Performance.' : 'Nenhum cliente ainda. Crie o primeiro em “Novo cliente”.'}
           </div>
         ) : visible.length === 0 ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>Nenhum cliente encontrado.</div>
