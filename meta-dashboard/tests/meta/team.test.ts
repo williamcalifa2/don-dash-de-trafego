@@ -90,7 +90,7 @@ describe('equipe da agência', () => {
   it('a lista pública não traz o hash do token', async () => {
     await addMember('a@b.com', OWNER)
     const l = await listMembers()
-    expect(l?.[0]).toEqual({ email: 'a@b.com', createdAt: expect.any(String), lastLoginAt: null, role: 'member' })
+    expect(l?.[0]).toEqual({ email: 'a@b.com', createdAt: expect.any(String), lastLoginAt: null, role: 'member', clients: [] })
   })
 })
 

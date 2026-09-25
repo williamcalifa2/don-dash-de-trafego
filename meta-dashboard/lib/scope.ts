@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requestIdentity } from './admin'
 import { loadRegistry } from './activityLog'
+import { getMember } from './team'
 
 export const SCOPE_COOKIE = 'dash_scope'
 
@@ -27,6 +28,11 @@ const ALL: Scope = { slugs: null, manager: null, restricted: false, canToggle: f
 export async function scopeFor(req: NextRequest): Promise<Scope> {
   const who = await requestIdentity(req)
   if (!who) return ALL // sessão de cliente ou sem sessão de administração: não se aplica
+  // Nível Orgânico: só os clientes que foram atribuídos à pessoa (lista vazia = nenhum).
+  if (who.role === 'organic') {
+    const m = await getMember(who.email).catch(() => null)
+    return { slugs: new Set(m?.clients ?? []), manager: null, restricted: true, canToggle: false, mode: 'mine' }
+  }
   const reg = await loadRegistry().catch(() => null)
   const mine = reg?.managers.find(m => m.email && m.email === who.email) ?? null
   if (!reg || !mine) return ALL

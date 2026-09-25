@@ -157,18 +157,56 @@ function ModalShell({ title, onClose, children, maxWidth = 512 }: { title: strin
 }
 
 
-type TeamRole = 'admin' | 'member' | 'reader'
-interface TeamMember { email: string; createdAt: string; lastLoginAt: string | null; role: TeamRole }
+type TeamRole = 'admin' | 'member' | 'reader' | 'organic'
+interface TeamMember { email: string; createdAt: string; lastLoginAt: string | null; role: TeamRole; clients?: string[] }
 const ROLE_INFO: Record<TeamRole, { label: string; text: string }> = {
   admin: { label: 'Administrador', text: 'Faz tudo: cria e edita clientes, gera tokens e gerencia a equipe.' },
   member: { label: 'Membro', text: 'Opera o dia a dia: atualiza números, trata leads e personaliza os cards. Não cria nem edita clientes.' },
   reader: { label: 'Leitor', text: 'Só olha: vê os painéis e os números, sem alterar nada.' },
+  organic: { label: 'Orgânico', text: 'Só vê a aba Orgânico (Instagram e Facebook) dos clientes que você escolher. Não vê leads, campanhas nem relatórios.' },
 }
 const fmtShort = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 
 /** Mensagem pronta para mandar ao colega por WhatsApp: link, e-mail e token. */
 function inviteMessage(email: string, token: string, role: TeamRole): string {
   return `Oi! Segue o seu acesso ao Painel de controle do Grupo Don:\n\nLink: ${window.location.origin}/admin\nE-mail: ${email}\nNível de acesso: ${ROLE_INFO[role].label}\nToken de acesso (é a sua senha): ${token}\n\nÉ só entrar com esse e-mail e colar o token no campo "Senha".`
+}
+
+/** Escolha dos clientes que uma pessoa do nível Orgânico pode ver. */
+function OrganicClientsModal({ email, initial, onClose, onSave }: { email: string; initial: string[]; onClose: () => void; onSave: (slugs: string[]) => void | Promise<void> }) {
+  const [all, setAll] = useState<Array<{ slug: string; name: string }> | null>(null)
+  const [picked, setPicked] = useState<Set<string>>(new Set(initial))
+  const [q, setQ] = useState('')
+  const [busy, setBusy] = useState(false)
+  useEffect(() => { api<{ clients: Array<{ slug: string; name: string }> }>('/api/admin/clients/names').then(r => setAll(r.ok ? r.data.clients : [])) }, [])
+  const norm = (t: string) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const shown = (all ?? []).filter(c => !q.trim() || norm(c.name).includes(norm(q.trim())))
+  const flip = (slug: string) => setPicked(p => { const n = new Set(p); if (n.has(slug)) n.delete(slug); else n.add(slug); return n })
+  return (
+    <ModalShell title="Clientes do acesso Orgânico" onClose={onClose} maxWidth={620}>
+      <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}><strong style={{ color: 'var(--text-1)' }}>{email}</strong> vai ver só a aba Orgânico destes clientes ({picked.size} escolhido{picked.size === 1 ? '' : 's'}).</p>
+      <label className="search" style={{ height: 36 }}>
+        <Search size={16} color="var(--text-2)" strokeWidth={1.75} aria-hidden="true" />
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente" autoFocus />
+      </label>
+      <div className="acc-grid">
+        {all === null && <PulseLoader size={28} inline />}
+        {shown.map(c => {
+          const on = picked.has(c.slug)
+          return (
+            <button key={c.slug} type="button" role="checkbox" aria-checked={on} onClick={() => flip(c.slug)} style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', padding: '10px 12px', borderRadius: 12, border: `1px solid ${on ? 'var(--accent)' : 'var(--border-soft)'}`, background: on ? 'var(--accent-soft)' : 'transparent', color: 'inherit', font: 'inherit', cursor: 'pointer', minWidth: 0 }}>
+              <span aria-hidden="true" style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-input)'}`, background: on ? 'var(--accent)' : 'transparent', display: 'grid', placeItems: 'center', flexShrink: 0 }}>{on && <Check size={12} strokeWidth={3} color="#fff" />}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+            </button>
+          )
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button className="btn btn-outline" onClick={onClose}>Cancelar</button>
+        <button className="btn btn-primary" disabled={busy} onClick={async () => { setBusy(true); await onSave([...picked]); setBusy(false) }}>Salvar clientes</button>
+      </div>
+    </ModalShell>
+  )
 }
 
 function TeamModal({ onClose, onToken }: { onClose: () => void; onToken: (email: string, token: string, role: TeamRole) => void }) {
@@ -179,6 +217,8 @@ function TeamModal({ onClose, onToken }: { onClose: () => void; onToken: (email:
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<string | null>(null)
+  const [addClients, setAddClients] = useState<string[]>([])
+  const [picking, setPicking] = useState<null | { email: string; clients: string[]; forNew?: boolean }>(null)
 
   const load = useCallback(async () => {
     const r = await api<{ members: TeamMember[]; canManageAdmins?: boolean }>('/api/admin/team')
@@ -189,7 +229,7 @@ function TeamModal({ onClose, onToken }: { onClose: () => void; onToken: (email:
   async function add(e: React.FormEvent) {
     e.preventDefault(); if (busy) return
     setBusy(true); setErr(null)
-    const r = await api<{ email: string; token: string; role: TeamRole }>('/api/admin/team', 'POST', { email, role })
+    const r = await api<{ email: string; token: string; role: TeamRole }>('/api/admin/team', 'POST', { email, role, ...(role === 'organic' ? { clients: addClients } : {}) })
     setBusy(false)
     if (!r.ok) return setErr(r.data.error ?? 'Não foi possível adicionar.')
     onToken(r.data.email, r.data.token, r.data.role)
@@ -247,7 +287,8 @@ function TeamModal({ onClose, onToken }: { onClose: () => void; onToken: (email:
             </option>
           ))}
         </select>
-        <button className="btn btn-primary" disabled={busy || !email.trim()}>Adicionar</button>
+        {role === 'organic' && <button type="button" className="btn btn-outline" onClick={() => setPicking({ email: email || 'Novo acesso', clients: addClients, forNew: true })}>Clientes ({addClients.length})</button>}
+        <button className="btn btn-primary" disabled={busy || !email.trim() || (role === 'organic' && addClients.length === 0)}>Adicionar</button>
       </form>
       <p style={{ fontSize: 12, color: 'var(--text-2)', marginTop: -6 }}>{ROLE_INFO[role].text}</p>
       {err && <p role="alert" style={{ fontSize: 12, color: 'var(--red)' }}>{err}</p>}
@@ -289,6 +330,9 @@ function TeamModal({ onClose, onToken }: { onClose: () => void; onToken: (email:
                   <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
                     {m.lastLoginAt ? `Último acesso em ${fmtShort(m.lastLoginAt)}` : 'Ainda não entrou'} · Criado em {fmtShort(m.createdAt)}
                   </div>
+                  {m.role === 'organic' && (
+                    <button type="button" className="btn btn-outline btn-sm" style={{ marginTop: 8, height: 28, fontSize: 12 }} onClick={() => setPicking({ email: m.email, clients: m.clients ?? [] })}>{(m.clients?.length ?? 0) === 0 ? 'Escolher clientes' : `${m.clients!.length} cliente${m.clients!.length === 1 ? '' : 's'} · alterar`}</button>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 'auto', paddingTop: 8, borderTop: '1px solid var(--border-soft)' }}>
@@ -346,6 +390,15 @@ function TeamModal({ onClose, onToken }: { onClose: () => void; onToken: (email:
           </div>
         )}
       </div>
+      {picking && (
+        <OrganicClientsModal email={picking.email} initial={picking.clients} onClose={() => setPicking(null)}
+          onSave={async slugs => {
+            if (picking.forNew) { setAddClients(slugs); setPicking(null); return }
+            const r = await api('/api/admin/team', 'PATCH', { email: picking.email, clients: slugs })
+            if (!r.ok) { setErr(r.data.error ?? 'Não foi possível salvar os clientes.'); return }
+            setPicking(null); await load()
+          }} />
+      )}
     </ModalShell>
   )
 }
@@ -1107,6 +1160,7 @@ export default function AdminPage() {
     const r = await api<{ scope?: { mode: 'mine' | 'all'; canToggle: boolean; restricted: boolean; manager: { id: string; name: string } | null }; clients: AdminClient[]; recent: RecentLead[]; keyStatus?: string; baseDomain?: string | null; brandLogoUrl?: string | null; cardMetrics?: Record<string, unknown> }>(`/api/admin/clients?period=${period}`)
     if (r.status === 404) return setPhase('off')
     if (r.status === 401) return setPhase('login')
+    if (r.status === 403) { window.location.replace('/admin/organico'); return } // nível Orgânico: não tem painel de clientes, vai para a lista dele
     const elapsed = Date.now() - start
     const wait = Math.max(0, 750 - elapsed)
     if (wait > 0) await new Promise(res => setTimeout(res, wait))

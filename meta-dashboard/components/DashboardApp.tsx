@@ -29,6 +29,7 @@ import type { PlatformKey } from '@/lib/platforms'
 import type { ReportMode } from '@/lib/report'
 import { PlatformBadges } from '@/components/PlatformBadges'
 import { OrganicTab } from '@/components/OrganicTab'
+import { OrganicOnly } from '@/components/OrganicOnly'
 import { EcommerceTab } from '@/components/EcommerceTab'
 import { ClientIntegrationsTab } from '@/components/ClientIntegrationsTab'
 import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
@@ -315,11 +316,14 @@ function Dashboard() {
 
   const hasEnvError = data?.error?.includes('META_ACCESS_TOKEN')
 
-  const isInitialReady = safetyReady || (minTimeReady && meLoaded && (!isLoading || data != null || error != null))
+  const organicOnly = me?.role === 'organic' // acesso só do Orgânico: nada do que é pago é carregado nem mostrado
+  const isInitialReady = safetyReady || (minTimeReady && meLoaded && (organicOnly || !isLoading || data != null || error != null))
 
   if (!isInitialReady) {
     return <PulseLoader fullscreen size={72} caption={me?.name ? `Carregando o painel de ${me.name}` : 'Carregando o painel'} />
   }
+
+  if (organicOnly && me) return <OrganicOnly name={me.name} logoUrl={me.logoUrl} slug={me.slug} />
 
   return (
     <StaffShell>

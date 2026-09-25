@@ -6,7 +6,7 @@ import { stores } from '@/lib/meta/pipeline'
 import { requestRefresh } from '@/lib/meta/refresh'
 import { invalidateLegacyCache } from '@/lib/meta/legacy'
 import { allow } from '@/lib/rateLimit'
-import { isAdmin } from '@/lib/admin'
+import { requestRole, isAdmin } from '@/lib/admin'
 import { snapshotMode } from '@/lib/meta/mode'
 import { refreshNow, refreshOrganicNow } from '@/lib/meta/refreshNow'
 import { denyReader } from '@/lib/admin'
@@ -30,6 +30,8 @@ export async function POST(req: NextRequest) {
   if (await isAdmin(req)) {
     invalidateLegacyCache(tenant.clientId)
     const body0 = await req.clone().json().catch(() => ({})) as { organic?: boolean }
+    // Nível Orgânico só atualiza o orgânico, nunca os números pagos.
+    if (!body0.organic && (await requestRole(req)) === 'organic') return NextResponse.json({ error: 'Seu acesso é só do Orgânico.' }, { status: 403 })
     if (body0.organic) {
       if (!allow(`org:${tenant.slug}`, 1, 30_000)) return NextResponse.json({ queued: false, reason: 'cooldown', retryInSec: 30 })
       if (!tenant.adAccountId) return NextResponse.json({ queued: false, reason: 'not_available' })

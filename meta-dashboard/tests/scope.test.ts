@@ -3,7 +3,9 @@ import { NextRequest } from 'next/server'
 
 const identity = vi.fn()
 const registry = vi.fn()
+const member = vi.fn()
 vi.mock('@/lib/admin', () => ({ requestIdentity: (...a: unknown[]) => identity(...a) }))
+vi.mock('@/lib/team', () => ({ getMember: (...a: unknown[]) => member(...a) }))
 vi.mock('@/lib/activityLog', () => ({ loadRegistry: (...a: unknown[]) => registry(...a) }))
 
 import { canSee, requireClientScope, scopeFor } from '@/lib/scope'
@@ -17,7 +19,7 @@ const REG = {
   byClient: new Map([['magtag', 'ana'], ['becker', 'ana'], ['klein', 'will']]),
 }
 
-beforeEach(() => { identity.mockReset(); registry.mockReset(); registry.mockResolvedValue(REG) })
+beforeEach(() => { identity.mockReset(); registry.mockReset(); member.mockReset(); registry.mockResolvedValue(REG) })
 
 describe('scopeFor', () => {
   it('gestor (membro) com e-mail ligado vê só a carteira e não alterna', async () => {
@@ -60,6 +62,24 @@ describe('scopeFor', () => {
     registry.mockResolvedValue(null)
     identity.mockResolvedValue({ role: 'member', email: 'ana@x.com' })
     expect((await scopeFor(req())).slugs).toBeNull()
+  })
+})
+
+describe('nível Orgânico', () => {
+  it('vê só os clientes atribuídos a ele, sem alternar, mesmo que seja também um e-mail de gestor', async () => {
+    identity.mockResolvedValue({ role: 'organic', email: 'social@x.com' })
+    member.mockResolvedValue({ email: 'social@x.com', role: 'organic', clients: ['magtag', 'klein'] })
+    const s = await scopeFor(req())
+    expect([...s.slugs!].sort()).toEqual(['klein', 'magtag'])
+    expect(s).toMatchObject({ restricted: true, canToggle: false, manager: null })
+    expect(canSee(s, 'becker')).toBe(false)
+  })
+  it('sem clientes atribuídos não vê nenhum (nunca todos)', async () => {
+    identity.mockResolvedValue({ role: 'organic', email: 'social@x.com' })
+    member.mockResolvedValue({ email: 'social@x.com', role: 'organic', clients: [] })
+    expect((await scopeFor(req())).slugs?.size).toBe(0)
+    member.mockResolvedValue(null)
+    expect((await scopeFor(req())).slugs?.size).toBe(0)
   })
 })
 

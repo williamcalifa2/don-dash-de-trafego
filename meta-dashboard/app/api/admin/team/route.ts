@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ownerEmail, requestRole, requireRole, type Role } from '@/lib/admin'
-import { addMember, getMember, isMemberRole, listMembers, regenerateToken, removeMember, setMemberRole } from '@/lib/team'
+import { addMember, cleanSlugs, getMember, isMemberRole, listMembers, regenerateToken, removeMember, setMemberClients, setMemberRole } from '@/lib/team'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,12 +23,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const denied = await requireRole(req, 'admin')
   if (denied) return denied
-  const b = await req.json().catch(() => ({})) as { email?: unknown; role?: unknown }
+  const b = await req.json().catch(() => ({})) as { email?: unknown; role?: unknown; clients?: unknown }
   if (typeof b.email !== 'string') return NextResponse.json({ error: 'Informe o e-mail.' }, { status: 400 })
   const role = b.role === undefined ? 'member' : b.role
   if (!isMemberRole(role)) return NextResponse.json({ error: 'Nível de acesso inválido.' }, { status: 400 })
   if (role === 'admin' && !isOwner(await requestRole(req))) return NextResponse.json({ error: ADMIN_ONLY }, { status: 403 })
-  const r = await addMember(b.email, ownerEmail(), role)
+  const r = await addMember(b.email, ownerEmail(), role, cleanSlugs(b.clients))
   return 'error' in r ? NextResponse.json({ error: r.error }, { status: 400 }) : NextResponse.json({ ok: true, email: r.member.email, role: r.member.role, token: r.token })
 }
 
@@ -45,12 +45,20 @@ export async function PUT(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const denied = await requireRole(req, 'admin')
   if (denied) return denied
-  const b = await req.json().catch(() => ({})) as { email?: unknown; role?: unknown }
-  if (typeof b.email !== 'string' || !isMemberRole(b.role)) return NextResponse.json({ error: 'Informe o e-mail e o nível.' }, { status: 400 })
+  const b = await req.json().catch(() => ({})) as { email?: unknown; role?: unknown; clients?: unknown }
+  if (typeof b.email !== 'string') return NextResponse.json({ error: 'Informe o e-mail.' }, { status: 400 })
+  // Só a lista de clientes (nível Orgânico): { email, clients }.
+  if (b.role === undefined && b.clients !== undefined) {
+    const e = await setMemberClients(b.email, cleanSlugs(b.clients))
+    return e ? NextResponse.json({ error: e }, { status: 400 }) : NextResponse.json({ ok: true })
+  }
+  if (!isMemberRole(b.role)) return NextResponse.json({ error: 'Informe o e-mail e o nível.' }, { status: 400 })
   // Promover a administrador ou mexer em um administrador: só o principal.
   if ((b.role === 'admin' || await targetIsAdmin(b.email)) && !isOwner(await requestRole(req))) return NextResponse.json({ error: ADMIN_ONLY }, { status: 403 })
   const err = await setMemberRole(b.email, b.role)
-  return err ? NextResponse.json({ error: err }, { status: 400 }) : NextResponse.json({ ok: true })
+  if (err) return NextResponse.json({ error: err }, { status: 400 })
+  if (b.role === 'organic' && b.clients !== undefined) await setMemberClients(b.email, cleanSlugs(b.clients))
+  return NextResponse.json({ ok: true })
 }
 
 export async function DELETE(req: NextRequest) {

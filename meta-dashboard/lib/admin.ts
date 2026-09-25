@@ -45,7 +45,8 @@ export async function isAdmin(req: NextRequest): Promise<boolean> {
 
 /** owner = administrador principal (login por ADMIN_EMAIL). Depois, os níveis da equipe. */
 export type Role = 'owner' | MemberRole
-const RANK: Record<Role, number> = { reader: 1, member: 2, admin: 3, owner: 4 }
+/** Orgânico (0) não alcança nenhuma rota de administração: só abre a aba Orgânico dos clientes atribuídos. */
+const RANK: Record<Role, number> = { organic: 0, reader: 1, member: 2, admin: 3, owner: 4 }
 export const roleAtLeast = (role: Role | null, min: Role) => !!role && RANK[role] >= RANK[min]
 
 /** Nível de quem está logado na administração; null se não há sessão válida de administração. */

@@ -11,13 +11,13 @@ const TTL = 15_000
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // sem 0, O, 1, I, para não confundir ao digitar
 
 /** Nível de acesso de quem é da equipe. Sem nível gravado (convites antigos) vale "membro". O administrador principal (dono) é outro nível, acima destes. */
-export type MemberRole = 'admin' | 'member' | 'reader'
-export const MEMBER_ROLES: readonly MemberRole[] = ['admin', 'member', 'reader']
-export const ROLE_LABEL: Record<MemberRole, string> = { admin: 'Administrador', member: 'Membro', reader: 'Leitor' }
+export type MemberRole = 'admin' | 'member' | 'reader' | 'organic'
+export const MEMBER_ROLES: readonly MemberRole[] = ['admin', 'member', 'reader', 'organic']
+export const ROLE_LABEL: Record<MemberRole, string> = { admin: 'Administrador', member: 'Membro', reader: 'Leitor', organic: 'Orgânico' }
 export const isMemberRole = (v: unknown): v is MemberRole => typeof v === 'string' && (MEMBER_ROLES as readonly string[]).includes(v)
 
-export interface Member { email: string; hash: string; createdAt: string; lastLoginAt?: string | null; role?: MemberRole }
-export type PublicMember = Omit<Member, 'hash' | 'role'> & { role: MemberRole }
+export interface Member { email: string; hash: string; createdAt: string; lastLoginAt?: string | null; role?: MemberRole; /** só para o nível Orgânico: os clientes que a pessoa pode ver */ clients?: string[] }
+export type PublicMember = Omit<Member, 'hash' | 'role' | 'clients'> & { role: MemberRole; clients: string[] }
 
 let memo: { at: number; list: Member[] } | null = null
 export const __resetTeamMemo = () => { memo = null }
@@ -64,14 +64,17 @@ async function write(list: Member[]): Promise<string | null> {
 }
 
 const roleOf = (m: Member): MemberRole => (isMemberRole(m.role) ? m.role : 'member')
-const pub = (m: Member): PublicMember => ({ email: m.email, createdAt: m.createdAt, lastLoginAt: m.lastLoginAt ?? null, role: roleOf(m) })
+const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/
+/** Só endereços de cliente válidos, sem repetir. */
+export const cleanSlugs = (v: unknown): string[] => [...new Set((Array.isArray(v) ? v : []).filter((x): x is string => typeof x === 'string' && x.length <= 40 && SLUG.test(x)))].slice(0, 200)
+const pub = (m: Member): PublicMember => ({ email: m.email, createdAt: m.createdAt, lastLoginAt: m.lastLoginAt ?? null, role: roleOf(m), clients: roleOf(m) === 'organic' ? cleanSlugs(m.clients) : [] })
 
 export async function listMembers(): Promise<PublicMember[] | null> {
   const l = await read(true)
   return l ? l.map(pub).sort((a, b) => a.email.localeCompare(b.email)) : null
 }
 
-export async function addMember(rawEmail: string, ownerEmail: string, role: MemberRole = 'member'): Promise<{ token: string; member: PublicMember } | { error: string }> {
+export async function addMember(rawEmail: string, ownerEmail: string, role: MemberRole = 'member', clients: string[] = []): Promise<{ token: string; member: PublicMember } | { error: string }> {
   const email = normalizeEmail(rawEmail)
   if (!validEmail(email)) return { error: 'E-mail inválido.' }
   if (email === ownerEmail) return { error: 'Esse e-mail já é o do administrador principal.' }
@@ -80,7 +83,7 @@ export async function addMember(rawEmail: string, ownerEmail: string, role: Memb
   if (list.some(m => m.email === email)) return { error: 'Esse e-mail já está na equipe. Use “Gerar novo token” se ele perdeu o acesso.' }
   if (list.length >= MAX_MEMBERS) return { error: `A equipe pode ter até ${MAX_MEMBERS} pessoas.` }
   const token = generateMemberToken()
-  const m: Member = { email, hash: memberHash(email, token), createdAt: new Date().toISOString(), lastLoginAt: null, role }
+  const m: Member = { email, hash: memberHash(email, token), createdAt: new Date().toISOString(), lastLoginAt: null, role, ...(role === 'organic' ? { clients: cleanSlugs(clients) } : {}) }
   const err = await write([...list, m])
   return err ? { error: err } : { token, member: pub(m) }
 }
@@ -118,12 +121,23 @@ export async function getMember(rawEmail: string): Promise<PublicMember | null> 
   return m ? pub(m) : null
 }
 
+/** Define quais clientes uma pessoa do nível Orgânico pode ver. */
+export async function setMemberClients(rawEmail: string, clients: string[]): Promise<string | null> {
+  const email = normalizeEmail(rawEmail)
+  const list = await read(true)
+  if (!list) return 'Não consegui acessar o banco.'
+  const m = list.find(x => x.email === email)
+  if (!m) return 'Pessoa não encontrada.'
+  if (roleOf(m) !== 'organic') return 'Só o nível Orgânico tem lista de clientes.'
+  return write(list.map(x => x.email === email ? { ...x, clients: cleanSlugs(clients) } : x))
+}
+
 export async function setMemberRole(rawEmail: string, role: MemberRole): Promise<string | null> {
   const email = normalizeEmail(rawEmail)
   const list = await read(true)
   if (!list) return 'Não consegui acessar o banco.'
   if (!list.some(m => m.email === email)) return 'Pessoa não encontrada.'
-  return write(list.map(m => m.email === email ? { ...m, role } : m))
+  return write(list.map(m => m.email === email ? { ...m, role, ...(role === 'organic' ? {} : { clients: undefined }) } : m))
 }
 
 /** Nível da pessoa se a sessão dela ainda vale (mesmo token, ainda na equipe); null se não vale. */

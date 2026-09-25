@@ -8,6 +8,7 @@ import { legacyGet } from './meta/legacy'
 import { liveOrigin } from './meta/mode'
 import { accessSessionValid, hasEmails, verifyAccess } from './clientAccess'
 import { canSee, scopeFor } from './scope'
+import { sessionRole } from './admin'
 
 export interface Tenant {
   slug: string
@@ -77,10 +78,21 @@ async function defaultTenant(): Promise<Tenant | null> {
   }
 }
 
+/** O que o nível Orgânico pode chamar: os dados do próprio Orgânico e quem ele é. Todo o resto do painel do cliente fica barrado. */
+const ORGANIC_ALLOWED = ['/api/me', '/api/meta/organic', '/api/meta/refresh']
+
+async function isOrganicBlocked(req: NextRequest): Promise<boolean> {
+  const session = await readSession(req.cookies.get(SESSION_COOKIE)?.value)
+  if (!session || session.s !== ADMIN_SLUG || !session.m) return false
+  if ((await sessionRole(session)) !== 'organic') return false
+  return !ORGANIC_ALLOWED.includes(req.nextUrl.pathname)
+}
+
 export async function getTenant(req: NextRequest): Promise<Tenant | null> {
   if (!authEnabled()) return defaultTenant()
   const session = await readSession(req.cookies.get(SESSION_COOKIE)?.value)
   if (!session) return null
+  if (await isOrganicBlocked(req)) return null
   if (session.s === ADMIN_SLUG) {
     // Administrador vendo o painel de um cliente escolhido.
     const view = req.cookies.get(VIEW_COOKIE)?.value
@@ -103,6 +115,7 @@ export function clearClientCache() { cache.clear() }
 
 /** Use nas rotas: devolve o cliente da sessão ou uma resposta 401. */
 export async function requireTenant(req: NextRequest): Promise<Tenant | NextResponse> {
+  if (await isOrganicBlocked(req)) return NextResponse.json({ error: 'Seu acesso é só do Orgânico.' }, { status: 403 })
   const tenant = await getTenant(req)
   return tenant ?? NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 }
