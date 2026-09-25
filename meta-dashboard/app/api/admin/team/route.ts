@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const denied = await requireRole(req, 'admin')
   if (denied) return denied
   const members = await listMembers()
-  return NextResponse.json({ members: members ?? [], canManageAdmins: isOwner(await requestRole(req)), error: members ? undefined : 'Não consegui acessar o banco.' })
+  return NextResponse.json({ members: members ?? [], owner: ownerEmail() || null, canManageAdmins: isOwner(await requestRole(req)), error: members ? undefined : 'Não consegui acessar o banco.' })
 }
 
 export async function POST(req: NextRequest) {

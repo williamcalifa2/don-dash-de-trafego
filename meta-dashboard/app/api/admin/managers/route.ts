@@ -4,6 +4,7 @@ import { usageSince } from '@/lib/usage'
 import { OPTIMIZATION_KINDS, cleanManagerInput, countByKind, dailyCounts, isAnswered } from '@/lib/managers'
 import { autoLinkActors, clientNames, lastSyncAt, loadRegistry, loadTasks, readLog, saveManager, syncMetaActivity, tablesMissing, timeByEmail } from '@/lib/managersStore'
 import { getSupabaseServer } from '@/lib/supabase'
+import { listMembers } from '@/lib/team'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -43,13 +44,16 @@ export async function GET(req: NextRequest) {
     }
   })
   const clients = [...names.entries()].map(([slug, name]) => ({ slug, name, managerId: bySlug.get(slug) ?? null })).sort((a, b) => a.name.localeCompare(b.name))
+  // Pessoas da equipe (Membro/Leitor) que entram no painel mas não estão ligadas a nenhum gestor: enquanto isso, veem todos os clientes.
+  const linkedEmails = new Set(reg.managers.flatMap(m => (m.email ? [m.email] : [])))
+  const unlinkedMembers = ((await listMembers().catch(() => null)) ?? []).filter(m => (m.role === 'member' || m.role === 'reader') && !linkedEmails.has(m.email)).map(m => m.email)
   const nameOfManager = new Map(reg.managers.map(m => [m.id, m.name]))
   const avatarOfManager = new Map(reg.managers.map(m => [m.id, m.avatarUrl]))
   const recent = (rows ?? []).filter(r => r.manager_id).slice(0, 30).map(r => ({ at: r.at, source: r.source, kind: r.kind, summary: r.summary, clientName: names.get(r.client_slug) ?? r.client_slug, managerId: r.manager_id, managerName: nameOfManager.get(r.manager_id!) ?? r.manager_id, managerAvatar: avatarOfManager.get(r.manager_id!) ?? null, actorName: r.actor_name, objectName: r.object_name }))
   const stale = !sync || Date.now() - Date.parse(sync) > 8 * 60_000
   if (stale) after(() => { void syncMetaActivity({ budgetMs: 45_000, limit: 6 }).catch(() => { }) }) // abrir a página mantém o histórico da Meta em dia
   return NextResponse.json({
-    setup: 'ready', period, managers, recent, clients, unassigned: clients.filter(c => !c.managerId), lastSync: sync,
+    setup: 'ready', period, managers, recent, unlinkedMembers, clients, unassigned: clients.filter(c => !c.managerId), lastSync: sync,
     totals: { pending: openTasks.filter(t => t.ownerId).length, actions: (rows ?? []).filter(r => r.manager_id).length, optimizations: (rows ?? []).filter(r => r.manager_id && (OPTIMIZATION_KINDS as readonly string[]).includes(r.kind)).length },
   })
 }

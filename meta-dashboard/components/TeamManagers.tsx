@@ -26,7 +26,7 @@ const KIND_ICON: Record<ActivityKind, React.ReactNode> = {
 interface ListManager { pending: number; id: string; name: string; email: string | null; avatarUrl: string | null; metaActorId: string | null; metaActorName: string | null; clients: Array<{ slug: string; name: string }>; actions: number; optimizations: number; activeSec: number | null; lastAt: string | null; byKind: Array<{ kind: ActivityKind; n: number }>; daily: number[] }
 interface RecentRow { managerAvatar: string | null; at: string; source: string; kind: ActivityKind; summary: string; clientName: string; managerId: string; managerName: string; actorName: string | null; objectName: string | null }
 interface ClientOpt { slug: string; name: string; managerId: string | null }
-interface ListData { setup: 'ready' | 'tables' | 'error'; managers: ListManager[]; recent: RecentRow[]; clients: ClientOpt[]; unassigned: ClientOpt[]; lastSync: string | null; totals: { pending: number; actions: number; optimizations: number } }
+interface ListData { setup: 'ready' | 'tables' | 'error'; managers: ListManager[]; recent: RecentRow[]; unlinkedMembers: string[]; clients: ClientOpt[]; unassigned: ClientOpt[]; lastSync: string | null; totals: { pending: number; actions: number; optimizations: number } }
 interface TimelineRow { at: string; source: string; client_slug: string; clientName: string; actor_key: string | null; actor_name: string | null; kind: ActivityKind; summary: string; object_name: string | null; detail: { from?: string | null; to?: string | null; level?: string } | null }
 interface Profile {
   setup: 'ready' | 'tables'; manager: { id: string; name: string; email: string | null; avatarUrl: string | null; metaActorId: string | null; metaActorName: string | null }; hasEmail: boolean; hasActor: boolean
@@ -70,6 +70,7 @@ export function TeamManagers() {
   const [list, setList] = useState<ListData | null>(null)
   const [failed, setFailed] = useState(false)
   const [editing, setEditing] = useState<null | 'new' | { id: string }>(null)
+  const [prefill, setPrefill] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [tick, setTick] = useState(0)
   const [notice, setNotice] = useState<string | null>(null)
@@ -121,7 +122,7 @@ export function TeamManagers() {
           <button type="button" className="btn btn-outline btn-icon btn-sm" onClick={syncNow} disabled={syncing} aria-label="Atualizar histórico da Meta" title="Atualizar o histórico de alterações da Meta agora">{syncing ? <Loader2 size={16} className="spin" /> : <RefreshCw size={16} strokeWidth={1.75} />}</button>
           {current
             ? <button type="button" className="btn btn-outline btn-sm" onClick={() => setEditing({ id: current.id })}><Pencil size={14} strokeWidth={1.75} /> Editar</button>
-            : <button type="button" className="btn btn-primary btn-sm" onClick={() => setEditing('new')}><Plus size={14} strokeWidth={1.75} /> Novo gestor</button>}
+            : <button type="button" className="btn btn-primary btn-sm" onClick={() => { setPrefill(''); setEditing('new') }}><Plus size={14} strokeWidth={1.75} /> Novo gestor</button>}
           <button type="button" className="btn btn-outline btn-icon btn-sm" onClick={toggle} aria-label="Alternar tema" title="Alternar tema">{theme === 'dark' ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}</button>
           <ProfileMenu />
         </header>
@@ -131,13 +132,13 @@ export function TeamManagers() {
         {!list && !failed && <PulseLoader size={44} />}
         {list?.setup === 'tables' && sqlHint}
 
-        {list?.setup === 'ready' && !current && !sel && <Overview list={list} onOpen={open} onEdit={id => setEditing({ id })} onNew={() => setEditing('new')} onAssigned={load} />}
+        {list?.setup === 'ready' && !current && !sel && <Overview list={list} onOpen={open} onEdit={id => setEditing({ id })} onNew={() => { setPrefill(''); setEditing('new') }} onLink={email => { setPrefill(email); setEditing('new') }} onAssigned={load} />}
         {list?.setup === 'ready' && sel && !current && <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>Gestor não encontrado.</div>}
         {list?.setup === 'ready' && current && <ProfileView key={current.id} id={current.id} period={period} tick={tick} pending={current.pending} initialTab={sp.get('tab')} onEdit={() => setEditing({ id: current.id })} />}
       </main>
 
       {editing && list?.setup === 'ready' && (
-        <ManagerForm manager={editing === 'new' ? null : list.managers.find(m => m.id === editing.id) ?? null} clients={list.clients} managers={list.managers}
+        <ManagerForm manager={editing === 'new' ? null : list.managers.find(m => m.id === editing.id) ?? null} clients={list.clients} managers={list.managers} prefillEmail={prefill}
           onClose={() => setEditing(null)}
           onSaved={async id => { setEditing(null); await load(); if (editing === 'new') open(id) }}
           onDeleted={async () => { setEditing(null); await load(); open(null) }} />
@@ -146,7 +147,7 @@ export function TeamManagers() {
   )
 }
 
-function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData; onOpen: (id: string, tab?: string) => void; onEdit: (id: string) => void; onNew: () => void; onAssigned: () => void }) {
+function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: ListData; onOpen: (id: string, tab?: string) => void; onEdit: (id: string) => void; onNew: () => void; onLink: (email: string) => void; onAssigned: () => void }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [today] = useState(() => Date.now())
   async function assign(slug: string, managerId: string) {
@@ -179,6 +180,23 @@ function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData;
         <MetricTile label="Otimizações a justificar" value={String(list.totals.pending)} />
       </div>
 
+      {list.unlinkedMembers.length > 0 && (
+        <section className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div>
+            <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>Acessos sem gestor ({list.unlinkedMembers.length})</h3>
+            <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '2px 0 0' }}>Essas pessoas entram no painel mas não estão ligadas a nenhum gestor. Enquanto isso, elas veem todos os clientes e não recebem otimizações para justificar.</p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {list.unlinkedMembers.map(email => (
+              <span key={email} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 4px 4px 12px', border: '1px solid var(--border)', borderRadius: 9999, fontSize: 13 }}>
+                {email}
+                <button type="button" className="btn btn-outline btn-sm" style={{ borderRadius: 9999, height: 28 }} onClick={() => onLink(email)}>Ligar a um gestor</button>
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+
       {list.managers.length === 0 ? (
         <div className="card" style={{ padding: 40, textAlign: 'center', border: '1px dashed var(--border)', boxShadow: 'none' }}>
           <Users size={28} strokeWidth={1.5} color="var(--text-3)" />
@@ -205,7 +223,7 @@ function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData;
                     </span>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <h3 title={m.name} style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</h3>
-                      <div style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{plural(m.clients.length, 'cliente', 'clientes')}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{plural(m.clients.length, 'cliente', 'clientes')}{!m.email && <span title="Sem e-mail de login: esse gestor não entra no painel e não recebe otimizações" style={{ color: 'var(--amber)', fontWeight: 600 }}> · sem login</span>}</div>
                     </div>
                     <span className="badge" style={{ background: active ? 'var(--green-soft)' : 'rgba(245, 158, 11, 0.15)', color: 'var(--text-1)', flexShrink: 0 }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: active ? 'var(--green)' : 'var(--amber)' }} />{active ? 'Ativo' : 'Sem ações'}
@@ -415,12 +433,13 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
   )
 }
 
-function ManagerForm({ manager, clients, managers, onClose, onSaved, onDeleted }: {
-  manager: ListManager | null; clients: ClientOpt[]; managers: ListManager[]
+function ManagerForm({ manager, clients, managers, prefillEmail, onClose, onSaved, onDeleted }: {
+  manager: ListManager | null; clients: ClientOpt[]; managers: ListManager[]; prefillEmail?: string
   onClose: () => void; onSaved: (id: string) => void | Promise<void>; onDeleted: () => void | Promise<void>
 }) {
   const [name, setName] = useState(manager?.name ?? '')
-  const [email, setEmail] = useState(manager?.email ?? '')
+  // '' = ainda não escolheu (novo gestor), 'none' = sem acesso ao painel de propósito, senão o e-mail do acesso.
+  const [email, setEmail] = useState(manager ? manager.email ?? 'none' : prefillEmail ?? '')
   const [actorId, setActorId] = useState(manager?.metaActorId ?? '')
   const [actorName, setActorName] = useState(manager?.metaActorName ?? '')
   const [picked, setPicked] = useState<Set<string>>(new Set(manager?.clients.map(c => c.slug) ?? []))
@@ -442,7 +461,7 @@ function ManagerForm({ manager, clients, managers, onClose, onSaved, onDeleted }
 
   useEffect(() => {
     apiFetch('/api/admin/managers/actors', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((j: { actors?: Actor[] } | null) => setActors(j?.actors ?? [])).catch(() => { })
-    apiFetch('/api/admin/team', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((j: { members?: Array<{ email: string }> } | null) => setTeam((j?.members ?? []).map(m => m.email))).catch(() => { })
+    apiFetch('/api/admin/team', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((j: { members?: Array<{ email: string }>; owner?: string | null } | null) => setTeam([...(j?.owner ? [j.owner] : []), ...(j?.members ?? []).map(m => m.email)])).catch(() => { })
   }, [])
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
 
@@ -453,7 +472,7 @@ function ManagerForm({ manager, clients, managers, onClose, onSaved, onDeleted }
   async function save(e: React.FormEvent) {
     e.preventDefault(); if (busy) return
     setBusy(true); setErr(null)
-    const r = await apiFetch(manager ? `/api/admin/managers/${manager.id}` : '/api/admin/managers', { method: manager ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, metaActorId: actorId, metaActorName: actorName, clients: [...picked], ...(avatarChanged ? { avatar } : {}) }) }).catch(() => null)
+    const r = await apiFetch(manager ? `/api/admin/managers/${manager.id}` : '/api/admin/managers', { method: manager ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email: email === 'none' ? '' : email, metaActorId: actorId, metaActorName: actorName, clients: [...picked], ...(avatarChanged ? { avatar } : {}) }) }).catch(() => null)
     const j = r ? await r.json().catch(() => ({})) as { error?: string; manager?: { id: string } } : {}
     setBusy(false)
     if (!r?.ok) return setErr(j.error ?? 'Não foi possível salvar.')
@@ -487,10 +506,17 @@ function ManagerForm({ manager, clients, managers, onClose, onSaved, onDeleted }
         </div>
 
         <label style={label}>Nome<input id="mg-name" className="field" value={name} onChange={e => setName(e.target.value)} placeholder="Nome do gestor" maxLength={60} autoFocus={!manager} /></label>
-        <label style={label}>E-mail de login no painel (opcional)
-          <input id="mg-email" className="field" type="email" list="mg-team" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@empresa.com" autoComplete="off" />
-          <datalist id="mg-team">{team.map(t => <option key={t} value={t} />)}</datalist>
-          <span style={{ fontWeight: 400 }}>O que ele faz no painel entra no perfil dele, junto com o tempo em cada cliente.</span>
+        <label style={label}>Acesso ao painel
+          <select id="mg-email" className="field" value={email} onChange={e => setEmail(e.target.value)} required>
+            <option value="" disabled>Selecione o acesso deste gestor…</option>
+            {team.map(t => {
+              const takenBy = managers.find(g => g.email === t && g.id !== manager?.id)
+              return <option key={t} value={t} disabled={!!takenBy}>{t}{takenBy ? ` (já é de ${takenBy.name})` : ''}</option>
+            })}
+            {manager?.email && !team.includes(manager.email) && <option value={manager.email}>{manager.email}</option>}
+            <option value="none">Sem acesso ao painel</option>
+          </select>
+          <span style={{ fontWeight: 400 }}>É o login (em Acessos) que esta pessoa usa. Com ele, o gestor vê só a própria carteira, recebe as otimizações para justificar e tem o tempo por cliente medido. Sem acesso, ele só aparece como responsável.</span>
         </label>
         <label style={label}>Usuário na Meta (opcional)
           <select id="mg-actor" className="field" value={actorId} onChange={e => { const a = actors.find(x => x.id === e.target.value); setActorId(e.target.value); setActorName(a?.name ?? '') }}>
@@ -523,7 +549,7 @@ function ManagerForm({ manager, clients, managers, onClose, onSaved, onDeleted }
             : <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirm(true)} style={{ color: 'var(--red)' }}><Trash2 size={14} strokeWidth={1.75} /> Remover</button>)}
           <span style={{ flex: 1 }} />
           <button type="button" className="btn btn-outline" onClick={onClose}>Cancelar</button>
-          <button className="btn btn-primary" disabled={busy || name.trim().length < 2}>{busy ? 'Salvando…' : 'Salvar'}</button>
+          <button className="btn btn-primary" disabled={busy || name.trim().length < 2 || !email}>{busy ? 'Salvando…' : 'Salvar'}</button>
         </div>
         {manager && confirm && <p style={{ fontSize: 12, color: 'var(--text-2)', margin: 0 }}>O histórico já registrado é mantido, mas os clientes ficam sem gestor.</p>}
       </form>
