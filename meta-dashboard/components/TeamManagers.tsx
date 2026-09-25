@@ -12,6 +12,7 @@ import { ProfileMenu } from './ProfileMenu'
 import { PulseLoader } from './PulseLoader'
 import { StaffShell } from './StaffShell'
 import { BarChart, ListCard, PagedRows, PeriodPicker, RankRow, SubTabs, Thumb, plural, type Period } from './UsageUi'
+import { DonutChart, KIND_COLOR, MiniBars, paletteAt, topSlices, type Slice } from './Donut'
 
 const KIND_ICON: Record<ActivityKind, React.ReactNode> = {
   status: <ToggleRight size={18} strokeWidth={1.75} />, budget: <Wallet size={18} strokeWidth={1.75} />, audience: <Users size={18} strokeWidth={1.75} />, creative: <ImageIcon size={18} strokeWidth={1.75} />,
@@ -19,14 +20,15 @@ const KIND_ICON: Record<ActivityKind, React.ReactNode> = {
   config: <Settings2 size={18} strokeWidth={1.75} />, access: <KeyRound size={18} strokeWidth={1.75} />, sync: <RefreshCw size={18} strokeWidth={1.75} />, client: <Building2 size={18} strokeWidth={1.75} />, other: <Activity size={18} strokeWidth={1.75} />,
 }
 
-interface ListManager { id: string; name: string; email: string | null; metaActorId: string | null; metaActorName: string | null; clients: Array<{ slug: string; name: string }>; actions: number; optimizations: number; activeSec: number | null; lastAt: string | null }
+interface ListManager { id: string; name: string; email: string | null; metaActorId: string | null; metaActorName: string | null; clients: Array<{ slug: string; name: string }>; actions: number; optimizations: number; activeSec: number | null; lastAt: string | null; byKind: Array<{ kind: ActivityKind; n: number }>; daily: number[] }
+interface RecentRow { at: string; source: string; kind: ActivityKind; summary: string; clientName: string; managerId: string; managerName: string; actorName: string | null; objectName: string | null }
 interface ClientOpt { slug: string; name: string; managerId: string | null }
-interface ListData { setup: 'ready' | 'tables' | 'error'; managers: ListManager[]; clients: ClientOpt[]; unassigned: ClientOpt[]; lastSync: string | null; totals: { actions: number; optimizations: number } }
+interface ListData { setup: 'ready' | 'tables' | 'error'; managers: ListManager[]; recent: RecentRow[]; clients: ClientOpt[]; unassigned: ClientOpt[]; lastSync: string | null; totals: { actions: number; optimizations: number } }
 interface TimelineRow { at: string; source: string; client_slug: string; clientName: string; actor_key: string | null; actor_name: string | null; kind: ActivityKind; summary: string; object_name: string | null; detail: { from?: string | null; to?: string | null; level?: string } | null }
 interface Profile {
   setup: 'ready' | 'tables'; manager: { id: string; name: string; email: string | null; metaActorId: string | null; metaActorName: string | null }; hasEmail: boolean; hasActor: boolean
   totals: { actions: number; optimizations: number; byMe: number; activeSec: number | null; idle: number }
-  byKind: Array<{ kind: ActivityKind; n: number }>; daily: Array<{ day: string; n: number }>
+  byKind: Array<{ kind: ActivityKind; n: number }>; daily: Array<{ day: string; n: number }>; hours: number[]; bySource: { app: number; meta: number }
   clients: Array<{ slug: string; name: string; actions: number; optimizations: number; lastAt: string | null; timeSec: number; daysIdle: number }>
   idle: Array<{ slug: string; name: string; lastAt: string | null; daysIdle: number | null }>
   otherTime: Array<{ slug: string; name: string; sec: number }>
@@ -44,6 +46,15 @@ const dayLabel = (iso: string) => {
 }
 const ago = (iso: string) => { const s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000)); return s < 3600 ? `há ${Math.max(1, Math.floor(s / 60))} min` : s < 86400 ? `há ${Math.floor(s / 3600)} h` : `há ${Math.floor(s / 86400)} d` }
 const none = (t: string) => <p style={{ margin: 0, padding: '4px 12px', fontSize: 13, color: 'var(--text-2)' }}>{t}</p>
+/** Ícone do tipo de ação, na cor do tipo (a mesma do donut). */
+function KindChip({ kind, size = 40 }: { kind: ActivityKind; size?: number }) {
+  const c = KIND_COLOR[kind] ?? KIND_COLOR.other
+  return <span aria-hidden="true" style={{ width: size, height: size, borderRadius: 12, flexShrink: 0, display: 'grid', placeItems: 'center', background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}>{KIND_ICON[kind] ?? KIND_ICON.other}</span>
+}
+/** Tempo curto para o centro do donut: 3h50 ou 25 min. */
+const shortDur = (sec: number) => { const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return h ? `${h}h${String(m).padStart(2, '0')}` : `${Math.max(1, m)} min` }
+const grid3: React.CSSProperties = { display: 'grid', gap: 24, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))' }
+
 const sqlHint = <div className="card" style={{ padding: 24, fontSize: 14 }}>O banco ainda não tem as tabelas dos gestores. Rode o SQL <code>supabase/2026-09-gestores.sql</code> no Supabase e recarregue a página.</div>
 
 /** Página Equipe: gestores de tráfego, a carteira de clientes de cada um e tudo o que é feito nas contas deles. */
@@ -139,6 +150,11 @@ function Overview({ list, onOpen, onNew, onAssigned }: { list: ListData; onOpen:
     setBusy(null); onAssigned()
   }
   const withManager = list.clients.length - list.unassigned.length
+  const perManager: Slice[] = list.managers.map((m, i) => ({ key: m.id, label: m.name, value: m.actions, color: paletteAt(i) }))
+  const clientsSlices: Slice[] = [...list.managers.map((m, i) => ({ key: m.id, label: m.name, value: m.clients.length, color: paletteAt(i) })), { key: '_sem', label: 'Sem gestor', value: list.unassigned.length, color: 'hsl(220 9% 72%)' }]
+  const kindTotals = new Map<ActivityKind, number>()
+  for (const m of list.managers) for (const k of m.byKind) kindTotals.set(k.kind, (kindTotals.get(k.kind) ?? 0) + k.n)
+  const kindSlices: Slice[] = [...kindTotals.entries()].map(([kind, n]) => ({ key: kind, label: KIND_LABEL[kind], value: n, color: KIND_COLOR[kind] }))
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div className="tile-grid stagger">
@@ -156,34 +172,69 @@ function Overview({ list, onOpen, onNew, onAssigned }: { list: ListData; onOpen:
           <button type="button" className="btn btn-primary btn-sm" onClick={onNew}><Plus size={14} strokeWidth={1.75} /> Novo gestor</button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
-          {list.managers.map(m => (
-            <button key={m.id} type="button" className="card" onClick={() => onOpen(m.id)} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <Thumb name={m.name} />
-                <span style={{ minWidth: 0, flex: 1 }}>
-                  <span style={{ display: 'block', fontSize: 15, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
-                  <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>{plural(m.clients.length, 'cliente', 'clientes')}{m.lastAt ? ` · última ação ${ago(m.lastAt)}` : ' · sem ações no período'}</span>
-                </span>
-              </span>
-              <span style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                {([['Ações', String(m.actions)], ['Otimizações', String(m.optimizations)], ['No painel', m.activeSec == null ? '—' : fmtDuration(m.activeSec)]] as const).map(([l, v]) => (
-                  <span key={l} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)' }}>{l}</span>
-                    <span style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+        <>
+          <div style={grid3}>
+            <ListCard icon={<Activity size={18} strokeWidth={1.75} />} title="Ações por gestor" hint="Quem mais mexeu nas contas no período">
+              <DonutChart slices={perManager} center={String(list.totals.actions)} sub="ações" onPick={id => onOpen(id)} />
+            </ListCard>
+            <ListCard icon={<Layers size={18} strokeWidth={1.75} />} title="O que a equipe faz" hint="Ações por tipo, de todos os gestores">
+              <DonutChart slices={topSlices(kindSlices, 7)} center={String(list.totals.actions)} sub="ações" />
+            </ListCard>
+            <ListCard icon={<Building2 size={18} strokeWidth={1.75} />} title="Clientes por gestor" hint="Como a carteira está dividida">
+              <DonutChart slices={clientsSlices} center={String(list.clients.length)} sub="clientes" />
+            </ListCard>
+          </div>
+
+          <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))' }}>
+            {list.managers.map((m, i) => (
+              <button key={m.id} type="button" className="card" onClick={() => onOpen(m.id)} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ position: 'relative', display: 'inline-flex' }}>
+                    <Thumb name={m.name} />
+                    <i aria-hidden="true" style={{ position: 'absolute', right: -1, bottom: -1, width: 12, height: 12, borderRadius: '50%', background: paletteAt(i), border: '2px solid var(--bg-card)' }} />
                   </span>
-                ))}
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.clients.length ? m.clients.slice(0, 4).map(c => c.name).join(', ') + (m.clients.length > 4 ? ` +${m.clients.length - 4}` : '') : 'Nenhum cliente na carteira'}</span>
-            </button>
-          ))}
-        </div>
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ display: 'block', fontSize: 15, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>{plural(m.clients.length, 'cliente', 'clientes')}{m.lastAt ? ` · última ação ${ago(m.lastAt)}` : ' · sem ações no período'}</span>
+                  </span>
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <DonutChart size={92} thickness={20} legend={false} slices={m.byKind.map(k => ({ key: k.kind, label: KIND_LABEL[k.kind], value: k.n, color: KIND_COLOR[k.kind] }))} center={String(m.actions)} />
+                  <span style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 12px' }}>
+                    {([['Ações', String(m.actions)], ['Otimizações', String(m.optimizations)], ['No painel', m.activeSec == null ? '—' : fmtDuration(m.activeSec)], ['Clientes', String(m.clients.length)]] as const).map(([l, v]) => (
+                      <span key={l} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)' }}>{l}</span>
+                        <span style={{ fontSize: 17, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+                      </span>
+                    ))}
+                  </span>
+                </span>
+                {m.daily.length > 1 && (
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)' }}>Ações por dia</span>
+                    <MiniBars values={m.daily} color={paletteAt(i)} title={(d, v) => `${plural(v, 'ação', 'ações')} · ${m.daily.length - d - 1 === 0 ? 'hoje' : `há ${m.daily.length - d - 1} d`}`} />
+                  </span>
+                )}
+                <span style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.clients.length ? m.clients.slice(0, 4).map(c => c.name).join(', ') + (m.clients.length > 4 ? ` +${m.clients.length - 4}` : '') : 'Nenhum cliente na carteira'}</span>
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
-      {list.unassigned.length > 0 && list.managers.length > 0 && (
-        <div className="usage-grid">
+      <div className="usage-grid">
+        {list.managers.length > 0 && (
+          <ListCard icon={<Clock size={18} strokeWidth={1.75} />} tone="green" title="Acontecendo agora" hint="As últimas ações nas contas dos gestores">
+            <PagedRows size={5} empty={none('Nenhuma ação registrada ainda.')} rows={list.recent.map((r, i) => (
+              <RankRow key={`${r.at}-${i}`} wrap lead={<KindChip kind={r.kind} />} title={r.summary}
+                sub={<>{r.clientName}{r.objectName ? ` · ${r.objectName}` : ''}<br />{r.managerName} · {dayLabel(r.at)} às {hm(r.at)}{r.actorName && r.actorName !== r.managerName ? ` · por ${r.actorName}` : ''}</>}
+                value={<span className="badge" style={{ background: 'var(--bg-card2)', color: 'var(--text-2)', fontSize: 11 }}>{r.source === 'meta' ? 'Meta' : 'Painel'}</span>} valueTone="plain" onClick={() => onOpen(r.managerId)} />
+            ))} />
+          </ListCard>
+        )}
+        {list.unassigned.length > 0 && list.managers.length > 0 && (
           <ListCard icon={<Building2 size={18} strokeWidth={1.75} />} title="Clientes sem gestor" hint="Nada feito nessas contas entra no perfil de ninguém. Escolha o gestor de cada uma">
-            <PagedRows empty={none('Todos os clientes têm gestor.')} rows={list.unassigned.map(c => (
+            <PagedRows size={5} empty={none('Todos os clientes têm gestor.')} rows={list.unassigned.map(c => (
               <RankRow key={c.slug} lead={<Thumb name={c.name} />} title={c.name} valueTone="plain"
                 value={<select className="field" aria-label={`Gestor de ${c.name}`} disabled={busy === c.slug} value="" onChange={e => assign(c.slug, e.target.value)} style={{ height: 32, width: 'auto', fontSize: 12 }}>
                   <option value="">Escolher gestor…</option>
@@ -191,8 +242,8 @@ function Overview({ list, onOpen, onNew, onAssigned }: { list: ListData; onOpen:
                 </select>} />
             ))} />
           </ListCard>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
@@ -223,12 +274,17 @@ function ProfileView({ id, period, tick, onEdit }: { id: string; period: Period;
   const withTime = [...data.clients.filter(c => c.timeSec > 0).map(c => ({ slug: c.slug, name: c.name, sec: c.timeSec, sub: plural(c.actions, 'ação', 'ações') })), ...data.otherTime.map(o => ({ slug: o.slug, name: o.name, sec: o.sec, sub: 'fora da carteira' }))].sort((a, b) => b.sec - a.sec)
   const maxTime = Math.max(1, ...withTime.map(t => t.sec))
   const goClient = (slug: string) => { setClient(slug); setScope('accounts'); setTab('timeline') }
+  const kindSlices: Slice[] = data.byKind.map(k => ({ key: k.kind, label: KIND_LABEL[k.kind], value: k.n, color: KIND_COLOR[k.kind] }))
+  const clientSlices = topSlices(data.clients.map((c, i) => ({ key: c.slug, label: c.name, value: c.actions, color: paletteAt(i) })), 7)
+  const timeSlices = topSlices(withTime.map((t, i) => ({ key: t.slug, label: t.name, value: t.sec, color: paletteAt(i) })), 7)
+  const sourceSlices: Slice[] = [{ key: 'meta', label: 'Gerenciador (Meta)', value: data.bySource.meta, color: 'var(--accent)' }, { key: 'app', label: 'Painel do app', value: data.bySource.app, color: 'var(--green)' }]
+  const hourBars = data.hours.map((n, h) => ({ label: `${h}h`, value: n, title: `${h}h: ${plural(n, 'ação', 'ações')}` }))
 
   const timelineRows = data.timeline.map((r, i) => {
     const change = r.detail && (r.detail.from != null || r.detail.to != null) ? `${r.detail.from ?? '—'} → ${r.detail.to ?? '—'}` : null
     const by = r.actor_name && r.actor_name !== data.manager.name ? ` · por ${r.actor_name}` : ''
     return (
-      <RankRow key={`${r.at}-${i}`} wrap lead={<Thumb icon={KIND_ICON[r.kind] ?? KIND_ICON.other} />} title={r.summary}
+      <RankRow key={`${r.at}-${i}`} wrap lead={<KindChip kind={r.kind} />} title={r.summary}
         sub={<>{r.clientName}{r.object_name ? ` · ${r.detail?.level ? `${r.detail.level} ` : ''}${r.object_name}` : ''}{change ? <><br />{change}</> : null}<br />{dayLabel(r.at)} às {hm(r.at)}{by}</>}
         value={<span className="badge" style={{ background: 'var(--bg-card2)', color: 'var(--text-2)', fontSize: 11 }}>{r.source === 'meta' ? 'Meta' : 'Painel'}</span>} valueTone="plain" />
     )
@@ -258,25 +314,37 @@ function ProfileView({ id, period, tick, onEdit }: { id: string; period: Period;
             <MetricTile label="Feito por ele" value={String(data.totals.byMe)} />
             <MetricTile label="Tempo no painel" value={data.totals.activeSec == null ? '—' : fmtDuration(data.totals.activeSec)} />
           </div>
-          <div className="usage-grid">
-            <ListCard icon={<Activity size={18} strokeWidth={1.75} />} title="Ações por dia" hint="Tudo que foi feito nas contas dele, pelo painel e pela Meta">
-              <BarChart bars={dayBars} labelEvery={dayBars.length > 10 ? Math.ceil(dayBars.length / 6) : 1} summary="Ações por dia" />
+          <div style={grid3}>
+            <ListCard icon={<Layers size={18} strokeWidth={1.75} />} title="O que foi feito" hint="Ações por tipo. Clique num tipo para ver na linha do tempo">
+              <DonutChart slices={kindSlices} center={String(data.totals.actions)} sub="ações" onPick={k => { setKind(k); setScope('accounts'); setTab('timeline') }} />
             </ListCard>
-            <ListCard icon={<Layers size={18} strokeWidth={1.75} />} title="O que foi feito" hint="Ações por tipo. Clique para ver na linha do tempo">
-              <PagedRows empty={none('Nenhuma ação neste período.')} rows={data.byKind.map(k => (
-                <RankRow key={k.kind} lead={<Thumb icon={KIND_ICON[k.kind]} />} title={KIND_LABEL[k.kind]} value={k.n} valueTone="accent" bar={(k.n / maxKind) * 100} onClick={() => { setKind(k.kind); setScope('accounts'); setTab('timeline') }} chevron />
-              ))} />
+            <ListCard icon={<Building2 size={18} strokeWidth={1.75} />} title="Onde foi feito" hint="Ações por cliente da carteira. Clique para ver o que foi feito">
+              <DonutChart slices={clientSlices} center={String(data.clients.length)} sub="clientes" onPick={goClient} />
             </ListCard>
             <ListCard icon={<Clock size={18} strokeWidth={1.75} />} title="Tempo por cliente" hint={data.hasEmail ? 'Tempo ativo dele em cada painel de cliente' : 'Precisa do e-mail de login do gestor'}>
               {!data.hasEmail ? none('Informe o e-mail de login dele para medir o tempo em cada cliente.')
-                : <PagedRows empty={none('Ele ainda não abriu painéis de clientes neste período.')} rows={withTime.map(t => (
-                  <RankRow key={t.slug} lead={<Thumb name={t.name} />} title={t.name} sub={t.sub} value={fmtDuration(t.sec)} bar={(t.sec / maxTime) * 100} onClick={() => goClient(t.slug)} chevron />
-                ))} />}
+                : <DonutChart slices={timeSlices} center={shortDur(withTime.reduce((n, t) => n + t.sec, 0))} sub="no painel" unit={fmtDuration} onPick={goClient} />}
             </ListCard>
+          </div>
+          <div style={grid3}>
+            <ListCard icon={<Activity size={18} strokeWidth={1.75} />} title="Ações por dia" hint="Tudo que foi feito nas contas dele, pelo painel e pela Meta">
+              <BarChart bars={dayBars} labelEvery={dayBars.length > 10 ? Math.ceil(dayBars.length / 6) : 1} summary="Ações por dia" />
+            </ListCard>
+            <ListCard icon={<Clock size={18} strokeWidth={1.75} />} title="Horários de trabalho" hint="Ações por hora do dia (horário de Brasília)">
+              <BarChart bars={hourBars} labelEvery={4} summary="Ações por hora do dia" />
+            </ListCard>
+            <ListCard icon={<RefreshCw size={18} strokeWidth={1.75} />} title="Onde as ações acontecem" hint="Gerenciador de Anúncios (Meta) ou painel do app">
+              <DonutChart slices={sourceSlices} center={String(data.bySource.app + data.bySource.meta)} sub="ações" />
+            </ListCard>
+          </div>
+          <div className="usage-grid">
             <ListCard icon={<Building2 size={18} strokeWidth={1.75} />} title="Clientes sem movimentação" hint="Sem nenhuma ação há 7 dias ou mais">
               <PagedRows empty={none('Todos os clientes da carteira tiveram movimentação recente.')} rows={data.idle.map(c => (
                 <RankRow key={c.slug} lead={<Thumb name={c.name} />} title={c.name} sub={c.daysIdle == null ? 'Nenhuma ação registrada' : `Última ação ${ago(c.lastAt!)}`} value={c.daysIdle == null ? '—' : `${c.daysIdle} d`} valueTone="plain" onClick={() => goClient(c.slug)} chevron />
               ))} />
+            </ListCard>
+            <ListCard icon={<Activity size={18} strokeWidth={1.75} />} title="Últimas ações" hint="As mais recentes nas contas dele">
+              <PagedRows size={4} empty={none('Nenhuma ação neste período.')} rows={timelineRows.slice(0, 12)} />
             </ListCard>
           </div>
         </>

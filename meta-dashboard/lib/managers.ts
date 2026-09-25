@@ -153,3 +153,16 @@ export function idleSlugs(lastActionBySlug: Map<string, string | null>, slugs: s
     return idle == null || idle >= days ? [{ slug, lastAt: last, daysIdle: idle }] : []
   }).sort((a, b) => (b.daysIdle ?? 1e9) - (a.daysIdle ?? 1e9))
 }
+
+/** Ações por hora do dia (horário de Brasília): mostra quando o gestor trabalha. */
+export function hourCounts(rows: Array<{ at: string }>): number[] {
+  const h = new Array<number>(24).fill(0)
+  for (const r of rows) h[new Date(Date.parse(r.at) - BR_MS).getUTCHours()]++
+  return h
+}
+
+export function countBySource(rows: Array<{ source: string }>): { app: number; meta: number } {
+  let app = 0, meta = 0
+  for (const r of rows) { if (r.source === 'meta') meta++; else app++ }
+  return { app, meta }
+}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/admin'
 import { usageSince } from '@/lib/usage'
-import { OPTIMIZATION_KINDS, activityByClient, cleanManagerInput, countByKind, dailyCounts, idleSlugs, isKind } from '@/lib/managers'
+import { OPTIMIZATION_KINDS, activityByClient, cleanManagerInput, countByKind, countBySource, dailyCounts, hourCounts, idleSlugs, isKind } from '@/lib/managers'
 import { clientNames, deleteManager, loadRegistry, readLog, saveManager, timeByEmail } from '@/lib/managersStore'
 
 export const dynamic = 'force-dynamic'
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       actions: accountsRows.length, optimizations: accountsRows.filter(r => (OPTIMIZATION_KINDS as readonly string[]).includes(r.kind)).length,
       byMe: (byMe ?? []).length, activeSec: mineTime?.total ?? null, idle: idle.length,
     },
-    byKind: countByKind(accountsRows), daily: dailyCounts(accountsRows, sinceMs, now),
+    byKind: countByKind(accountsRows), daily: dailyCounts(accountsRows, sinceMs, now), hours: hourCounts(accountsRows), bySource: countBySource(accountsRows),
     clients: stats.map(s => ({ ...s, name: names.get(s.slug) ?? s.slug, timeSec: mineTime?.byClient.get(s.slug) ?? 0, daysIdle: idle.find(i => i.slug === s.slug)?.daysIdle ?? 0 })),
     idle: idle.map(i => ({ ...i, name: names.get(i.slug) ?? i.slug })),
     otherTime: mineTime ? [...mineTime.byClient.entries()].filter(([s]) => !slugs.includes(s)).map(([slug, sec]) => ({ slug, name: names.get(slug) ?? slug, sec })).sort((a, b) => b.sec - a.sec).slice(0, 10) : [],
