@@ -48,6 +48,8 @@ const FIELD_NAMES = new Set([
   'fan_count', 'picture', 'link', 'instagram_business_account', 'url', 'reactions', 'comments',
   'preview_shareable_link',
   // Histórico de alterações da conta (quem mudou o quê): só leitura
+  // Faturamento da conta: situação, saldo e forma de pagamento (somente leitura)
+  'disable_reason', 'balance', 'amount_spent', 'spend_cap', 'is_prepay_account', 'funding_source_details',
   'event_time', 'event_type', 'actor_name', 'actor_id', 'object_name', 'object_id', 'extra_data', 'translated_event_type',
 ])
 /** Só a leitura do token da página (necessário para ler leads) pode pedir esse campo, e só no objeto direto. */

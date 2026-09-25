@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Building2, FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, ClipboardCheck, Gauge, PanelLeftClose, Puzzle, PanelLeftOpen, Users, X } from 'lucide-react'
+import { Building2, FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, ClipboardCheck, Gauge, Receipt, PanelLeftClose, Puzzle, PanelLeftOpen, Users, X } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import type { Me } from '@/components/ProfileMenu'
 import { PulseLoader } from '@/components/PulseLoader'
@@ -109,6 +109,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
           {tasks.managerId && <Item collapsed={collapsed} icon={<ClipboardCheck size={18} strokeWidth={1.75} />} label="Otimizações" badge={tasks.pending} active={pathname.startsWith('/admin/tarefas')} onClick={() => { setDrawer(false); go('/admin/tarefas') }} />}
           <div className="staff-group">Administração</div>
           {canOperate && <Item collapsed={collapsed} icon={<Building2 size={18} strokeWidth={1.75} />} label="Clientes" onClick={() => open('clients')} />}
+          {canOperate && <Item collapsed={collapsed} icon={<Receipt size={18} strokeWidth={1.75} />} label="Faturamento" active={pathname.startsWith('/admin/faturamento')} onClick={() => { setDrawer(false); go('/admin/faturamento') }} />}
           {canManage && <Item collapsed={collapsed} icon={<Gauge size={18} strokeWidth={1.75} />} label="Performance" active={onTeam} onClick={() => { setDrawer(false); go('/admin/equipe') }} />}
           {canManage && <Item collapsed={collapsed} icon={<Users size={18} strokeWidth={1.75} />} label="Equipe" onClick={() => open('team')} />}
           {canOperate && <>

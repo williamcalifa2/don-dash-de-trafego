@@ -7,7 +7,7 @@ export const MAX_DELTA_SEC = 30
 export const VIEW_LABELS: Record<string, string> = {
   metrics: 'Geral', campaigns: 'Campanhas', organic: 'Orgânico', audience: 'Público', funnel: 'Funil', leads: 'Leads',
   ecommerce: 'E-commerce', 'ecommerce/live': 'E-commerce › Live View', 'ecommerce/carrinhos': 'E-commerce › Carrinhos', reports: 'Report Studio', integracoes: 'Integrações',
-  admin: 'Painel', 'admin/reports': 'Report Studio (equipe)', 'admin/apresentar': 'Apresentação', 'admin/heatmap': 'Heatmap', 'admin/uso': 'Uso do app', 'admin/equipe': 'Performance', dashboard: 'Painel do cliente',
+  admin: 'Painel', 'admin/reports': 'Report Studio (equipe)', 'admin/apresentar': 'Apresentação', 'admin/heatmap': 'Heatmap', 'admin/uso': 'Uso do app', 'admin/equipe': 'Performance', 'admin/faturamento': 'Faturamento', dashboard: 'Painel do cliente',
 }
 const SUB_LABELS: Record<string, string> = { live: 'Live View', carrinhos: 'Carrinhos', janela: 'Janela' }
 const humanize = (t: string) => { const w = t.replace(/-/g, ' ').trim(); return w ? w[0].toUpperCase() + w.slice(1) : t }
