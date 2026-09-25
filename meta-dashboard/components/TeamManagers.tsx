@@ -176,7 +176,7 @@ function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData;
         <MetricTile label="Clientes com gestor" value={String(withManager)} />
         <MetricTile label="Clientes sem gestor" value={String(list.unassigned.length)} />
         <MetricTile label="Ações nas contas" value={String(list.totals.actions)} />
-        <MetricTile label="Justificativas pendentes" value={String(list.totals.pending)} />
+        <MetricTile label="Otimizações a justificar" value={String(list.totals.pending)} />
       </div>
 
       {list.managers.length === 0 ? (
@@ -222,13 +222,13 @@ function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData;
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 32 }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-2)', minWidth: 0 }}>{m.lastAt ? `Última ação ${ago(m.lastAt)}` : 'Sem ações no período'}{m.pending > 0 && <><br /><span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{plural(m.pending, 'justificativa pendente', 'justificativas pendentes')}</span></>}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-2)', minWidth: 0 }}>{m.lastAt ? `Última ação ${ago(m.lastAt)}` : 'Sem ações no período'}{m.pending > 0 && <><br /><span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{plural(m.pending, 'otimização a justificar', 'otimizações a justificar')}</span></>}</span>
                     <Sparkline data={m.daily} width={112} height={32} color={paletteAt(i)} />
                   </div>
 
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <button type="button" className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => onOpen(m.id, m.pending > 0 ? 'justificativas' : undefined)}>
-                      <ArrowRight size={16} strokeWidth={1.75} /> {m.pending > 0 ? 'Ver justificativas' : 'Ver perfil'}
+                      <ArrowRight size={16} strokeWidth={1.75} /> {m.pending > 0 ? 'Ver otimizações' : 'Ver perfil'}
                     </button>
                     <button type="button" className="btn btn-outline btn-icon btn-sm" onClick={() => onEdit(m.id)} aria-label={`Editar ${m.name}`} title="Editar gestor"><Pencil size={16} strokeWidth={1.75} /></button>
                   </div>
@@ -331,7 +331,7 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
         </p>
       )}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <SubTabs value={tab} onChange={setTab} tabs={[{ key: 'geral', label: 'Visão geral' }, { key: 'justificativas', label: pending > 0 ? `Justificativas (${pending})` : 'Justificativas' }, { key: 'timeline', label: 'Linha do tempo' }, { key: 'clientes', label: 'Clientes' }]} />
+        <SubTabs value={tab} onChange={setTab} tabs={[{ key: 'geral', label: 'Visão geral' }, { key: 'justificativas', label: pending > 0 ? `Otimizações (${pending})` : 'Otimizações' }, { key: 'timeline', label: 'Linha do tempo' }, { key: 'clientes', label: 'Clientes' }]} />
         {client && <button type="button" className="badge" onClick={() => setClient('')} title="Tirar este filtro" style={{ cursor: 'pointer', background: 'var(--accent-soft)', color: 'var(--text-1)', fontSize: 12, gap: 6, marginLeft: 'auto' }}>Cliente: {data.clients.find(c => c.slug === client)?.name ?? client} <X size={12} /></button>}
       </div>
 

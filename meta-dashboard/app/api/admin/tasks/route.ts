@@ -14,7 +14,7 @@ async function actor(req: NextRequest, wanted: string | null) {
   const mine = reg.managers.find(m => m.email === who.email) ?? null
   const admin = who.role === 'owner' || who.role === 'admin'
   const managerId = admin ? wanted : mine?.id ?? null
-  if (!admin && (!mine || (wanted && wanted !== mine.id))) return { error: NextResponse.json({ error: 'Você só vê as suas próprias justificativas.' }, { status: 403 }) }
+  if (!admin && (!mine || (wanted && wanted !== mine.id))) return { error: NextResponse.json({ error: 'Você só vê as suas próprias otimizações.' }, { status: 403 }) }
   return { who, reg, admin, managerId, mine }
 }
 

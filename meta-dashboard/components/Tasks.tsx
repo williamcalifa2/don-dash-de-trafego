@@ -22,7 +22,7 @@ const when = (iso: string) => {
   const day = d.toDateString() === t.toDateString() ? 'hoje' : new Date(t.getTime() - 86_400_000).toDateString() === d.toDateString() ? 'ontem' : `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`
   return `${day} às ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
-const sqlHint = <div className="card" style={{ padding: 24, fontSize: 14 }}>Falta liberar as justificativas no banco. Rode o SQL <code>supabase/2026-09-gestores-3.sql</code> no Supabase e recarregue a página.</div>
+const sqlHint = <div className="card" style={{ padding: 24, fontSize: 14 }}>Falta liberar as otimizações no banco. Rode o SQL <code>supabase/2026-09-gestores-3.sql</code> no Supabase e recarregue a página.</div>
 
 /** Uma alteração (ou várias seguidas do mesmo tipo no mesmo cliente) esperando o "porquê". */
 function TaskCard({ t, onSaved, editing }: { t: TaskView; onSaved: () => void; editing?: boolean }) {
@@ -95,7 +95,7 @@ export function TaskPanel({ managerId, onCount }: { managerId: string | null; on
   }, [managerId, onCount])
   useEffect(() => { void load() }, [load])
 
-  if (failed) return <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>Não foi possível carregar as justificativas agora.</div>
+  if (failed) return <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>Não foi possível carregar as otimizações agora.</div>
   if (!data) return <PulseLoader size={44} />
   if (data.setup === 'columns' || data.setup === 'tables') return sqlHint
 
@@ -103,7 +103,7 @@ export function TaskPanel({ managerId, onCount }: { managerId: string | null; on
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div className="usage-grid">
-        <ChartCard title="Justificativas em dia" hint="Quantas alterações já têm o motivo explicado (últimos 30 dias)">
+        <ChartCard title="Otimizações justificadas" hint="Quantas alterações já têm o motivo explicado (últimos 30 dias)">
           <DonutChart slices={[{ key: 'ok', label: 'Justificadas', value: data.counts.answered, color: 'var(--green)' }, { key: 'pend', label: 'Pendentes', value: data.counts.pending, color: 'var(--amber)' }]} center={data.counts.rate == null ? '—' : `${data.counts.rate}%`} sub="em dia" />
         </ChartCard>
         <section className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'center' }}>

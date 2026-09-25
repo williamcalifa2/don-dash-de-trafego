@@ -64,7 +64,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
     return () => { alive = false }
   }, [])
 
-  // Justificativas pendentes de quem está logado (pelo e-mail de login do gestor): aparece como aviso no menu.
+  // Otimizações a justificar de quem está logado (pelo e-mail de login do gestor): aparece como aviso no menu.
   useEffect(() => {
     if (!known || !me) return
     let alive = true
@@ -106,7 +106,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
 
         <nav aria-label="Menu da agência" className="staff-nav">
           <Item collapsed={collapsed} icon={<LayoutGrid size={18} strokeWidth={1.75} />} label="Painel" active={onPanel} onClick={() => { setDrawer(false); if (!onPanel) go('/admin'); else window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
-          {tasks.managerId && <Item collapsed={collapsed} icon={<ClipboardCheck size={18} strokeWidth={1.75} />} label="Justificativas" badge={tasks.pending} active={pathname.startsWith('/admin/tarefas')} onClick={() => { setDrawer(false); go('/admin/tarefas') }} />}
+          {tasks.managerId && <Item collapsed={collapsed} icon={<ClipboardCheck size={18} strokeWidth={1.75} />} label="Otimizações" badge={tasks.pending} active={pathname.startsWith('/admin/tarefas')} onClick={() => { setDrawer(false); go('/admin/tarefas') }} />}
           <div className="staff-group">Administração</div>
           {canOperate && <Item collapsed={collapsed} icon={<Building2 size={18} strokeWidth={1.75} />} label="Clientes" onClick={() => open('clients')} />}
           {canManage && <Item collapsed={collapsed} icon={<Users size={18} strokeWidth={1.75} />} label="Equipe" active={onTeam} onClick={() => { setDrawer(false); go('/admin/equipe') }} />}
