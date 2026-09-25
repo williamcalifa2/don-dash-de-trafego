@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Copy, Download, ExternalLink, FileBarChart, Loader2, Pencil, Play, Plus, Presentation, Trash2, X } from 'lucide-react'
+import { Copy, Download, ExternalLink, FileBarChart, Loader2, Pencil, Play, Plus, Trash2, X } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import type { ReportMode, ReportPreset, SavedReport } from '@/lib/report'
 import type { TeamClient, TeamReport } from '@/lib/reportsLibrary'
@@ -40,7 +40,7 @@ export function TeamReports() {
   const [newClient, setNewClient] = useState('')
   const [newPreset, setNewPreset] = useState<ReportPreset>('last_month')
   const [newMode, setNewMode] = useState<ReportMode>('standard')
-  const [studio, setStudio] = useState<null | { saved: SavedReport | null; preset: ReportPreset; mode: ReportMode }>(null)
+  const [studio, setStudio] = useState<null | { saved: SavedReport | null; preset: ReportPreset; mode: ReportMode; slug: string }>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -71,7 +71,7 @@ export function TeamReports() {
     try {
       const [ok, full] = await Promise.all([viewClient(rep.client.slug), apiFetch(`/api/admin/reports/${rep.client.slug}/${rep.id}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() as Promise<SavedReport> : null)).catch(() => null)])
       if (!ok || !full) return flash('Não foi possível abrir este relatório.')
-      setStudio({ saved: full, preset: full.preset, mode: full.mode })
+      setStudio({ saved: full, preset: full.preset, mode: full.mode, slug: rep.client.slug })
     } finally { setBusy(null) }
   }
 
@@ -80,7 +80,7 @@ export function TeamReports() {
     setBusy('new')
     if (!(await viewClient(newClient))) { setBusy(null); return flash('Não foi possível abrir este cliente.') }
     setBusy(null); setNewOpen(false)
-    setStudio({ saved: null, preset: newPreset, mode: newMode })
+    setStudio({ saved: null, preset: newPreset, mode: newMode, slug: newClient })
   }
 
   async function pptx(rep: TeamReport) {
@@ -117,7 +117,6 @@ export function TeamReports() {
       {leaving && <PulseLoader fullscreen size={72} caption="Abrindo a apresentação" />}
       <main className="page">
         <header style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-          <span aria-hidden="true" style={{ width: 52, height: 52, borderRadius: 16, background: 'var(--accent-soft)', display: 'grid', placeItems: 'center', color: 'var(--accent)' }}><Presentation size={26} strokeWidth={1.75} /></span>
           <div style={{ flex: 1, minWidth: 220 }}>
             <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>Report Studio</h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>Relatórios e apresentações de todos os clientes, num lugar só</p>
@@ -198,7 +197,7 @@ export function TeamReports() {
         </div>
       )}
 
-      {studio && <ReportStudio onClose={() => { setStudio(null); void load() }} initialPreset={studio.preset} initialMode={studio.mode} savedReport={studio.saved} onSaveSuccess={() => void load()} readOnly={!canWrite} />}
+      {studio && <ReportStudio onClose={() => { setStudio(null); void load() }} initialPreset={studio.preset} initialMode={studio.mode} savedReport={studio.saved} clientSlug={studio.slug} onSaveSuccess={() => void load()} readOnly={!canWrite} />}
     </StaffShell>
   )
 }

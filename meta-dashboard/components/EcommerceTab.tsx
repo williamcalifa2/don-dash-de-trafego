@@ -3,22 +3,16 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import {
   ShoppingBag,
-  DollarSign,
   TrendingUp,
-  Percent,
   ShoppingCart,
-  Users,
   Search,
   ExternalLink,
   CheckCircle2,
   Clock,
   XCircle,
   Package,
-  Layers,
   ArrowRight,
   Filter,
-  RefreshCw,
-  Sparkles,
   X,
   Tag,
   Globe,
@@ -28,12 +22,19 @@ import {
 import type { MetricsSummary } from '@/lib/meta'
 import { PulseLoader } from './PulseLoader'
 import { EcommerceLiveView } from './EcommerceLiveView'
+import { EcommerceCarts } from './EcommerceCarts'
+import { EcommerceFunnel } from './EcommerceFunnel'
+import { MetricTile } from './MetricTile'
+import { conversionRate, type FunnelInput } from '@/lib/ecomFunnel'
+import { matchProduct, type CatalogProduct } from '@/lib/shopifyCatalog'
 
 interface EcommerceTabProps {
   clientSlug?: string
   currency?: string
   summary?: MetricsSummary
   presetLabel?: string
+  /** período escolhido no painel (today, last_7d, last_14d, last_30d, this_month): faturamento, funil e pedidos usam o mesmo dos anúncios */
+  preset?: string
 }
 
 interface OrderItem {
@@ -102,12 +103,14 @@ function getProductImage(name: string): string {
   return 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?w=400&auto=format&fit=crop&q=80'
 }
 
-export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: EcommerceTabProps) {
+export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabel, preset = 'last_30d' }: EcommerceTabProps) {
   const [loading, setLoading] = useState(true)
   const [orders, setOrders] = useState<Order[]>([])
   const [isMock, setIsMock] = useState(false)
   const [baseTopProducts, setBaseTopProducts] = useState<TopProduct[]>([])
-  const [subTab, setSubTab] = useState<'overview' | 'live'>('overview')
+  const [catalog, setCatalog] = useState<CatalogProduct[]>([])
+  const [funnel, setFunnel] = useState<FunnelInput & { pixel: boolean }>({ pixel: false, sessions: 0, carts: 0, checkouts: 0, orders: 0, paid: 0 })
+  const [subTab, setSubTab] = useState<'overview' | 'live' | 'carts'>('overview')
 
   // Filtros interativos
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending' | 'cancelled'>('all')
@@ -130,19 +133,33 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
   const productMenuRef = useRef<HTMLDivElement>(null)
   const channelMenuRef = useRef<HTMLDivElement>(null)
 
+
+  /** Foto e link reais da Shopify. Sem catálogo, só os pedidos de demonstração usam foto de exemplo. */
+  const productInfo = (name: string): { image: string | null; url: string | null } => {
+    const p = matchProduct(catalog, name)
+    if (p) return { image: p.image, url: p.url }
+    return { image: isMock ? getProductImage(name) : null, url: null }
+  }
+
   // Metas e gasto vindo dos anúncios (Meta Ads)
   const spend = summary?.spend ?? 0
-  const linkClicks = summary?.clicks ?? 0
 
-  async function loadData() {
-    setLoading(true)
+  async function loadData(opts: { quiet?: boolean; attempt?: number } = {}) {
+    if (!opts.quiet) setLoading(true)
     try {
-      const res = await fetch('/api/ecommerce/orders')
+      const [res, cat] = await Promise.all([
+        fetch(`/api/ecommerce/orders?preset=${encodeURIComponent(preset)}`),
+        fetch('/api/ecommerce/products').then(r => (r.ok ? r.json() : null)).catch(() => null),
+      ])
+      if (cat?.products) setCatalog(cat.products as CatalogProduct[])
       const json = await res.json()
       if (json.ok) {
         setOrders(json.orders || [])
+        if (json.funnel) setFunnel(json.funnel)
         setBaseTopProducts(json.topProducts || [])
         setIsMock(Boolean(json.is_mock))
+        // Importando o histórico da loja em segundo plano: relê algumas vezes até os pedidos chegarem.
+        if (json.importing && (opts.attempt ?? 0) < 4) setTimeout(() => { loadData({ quiet: true, attempt: (opts.attempt ?? 0) + 1 }) }, 9000)
       }
     } catch (e) {
       console.error('Falha ao carregar dados de e-commerce:', e)
@@ -151,9 +168,22 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
     }
   }
 
+  // A sub-aba entra no nome da tela da análise de uso ("ecommerce/live"), e o visualizador do Heatmap abre nela com ?sub=.
+  useEffect(() => {
+    const sub = new URLSearchParams(window.location.search).get('sub')
+    if (sub === 'live' || sub === 'carrinhos') setSubTab(sub === 'live' ? 'live' : 'carts')
+  }, [])
+  useEffect(() => {
+    if (subTab === 'overview') delete document.body.dataset.subview
+    else document.body.dataset.subview = subTab === 'live' ? 'live' : 'carrinhos'
+    return () => { delete document.body.dataset.subview }
+  }, [subTab])
+
+  // Recarrega quando o período do painel muda
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     loadData()
-  }, [])
+  }, [preset])
 
   // Fechar menus suspensos ao clicar fora
   useEffect(() => {
@@ -385,26 +415,10 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
     return topLabel
   }, [productSummary, productSummaryOrders])
 
-  // Métricas do Funil de E-commerce
-  const baseSessions = Math.max(linkClicks > 0 ? linkClicks : 1850, orders.length * 18)
-  const sessions = hasActiveFilters
-    ? Math.max(Math.round(baseSessions * (Math.max(totals.totalOrders, 1) / Math.max(orders.length, 1))), totals.totalOrders * 12)
-    : baseSessions
-
-  const addCart = Math.max(Math.round(sessions * 0.092), totals.totalOrders * 2)
-  const checkouts = Math.max(Math.round(sessions * 0.045), Math.round(totals.totalOrders * 1.3))
-  const ordersCount = totals.totalOrders > 0 ? totals.totalOrders : Math.round(checkouts * 0.65)
-  const paidCount = totals.paidCount > 0 ? totals.paidCount : Math.round(ordersCount * 0.84)
-
+  // Funil real: visitas, carrinho e checkout do pixel; pedidos e pagos da loja (últimos 30 dias).
   const roasReal = spend > 0 && totals.totalRevenue > 0 ? totals.totalRevenue / spend : null
-  const cpaReal = paidCount > 0 && spend > 0 ? spend / paidCount : null
-
-  // Taxas de conversão
-  const rateCart = sessions > 0 ? (addCart / sessions) * 100 : 0
-  const rateCheckout = addCart > 0 ? (checkouts / addCart) * 100 : 0
-  const rateOrder = checkouts > 0 ? (ordersCount / checkouts) * 100 : 0
-  const ratePaid = ordersCount > 0 ? (paidCount / ordersCount) * 100 : 0
-  const overallConv = sessions > 0 ? (paidCount / sessions) * 100 : 0
+  const cpaReal = totals.paidCount > 0 && spend > 0 ? spend / totals.paidCount : null
+  const overallConv = conversionRate(funnel.paid, funnel.sessions)
 
   if (loading) {
     return <PulseLoader size={60} caption="Carregando métricas de E-commerce..." />
@@ -423,13 +437,15 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
           padding: '2px 0 6px 0',
         }}
       >
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', maxWidth: '100%', overflowX: 'auto', paddingBottom: 2 }}>
           <button
             type="button"
             onClick={() => setSubTab('overview')}
             style={{
               height: 38,
               padding: '0 20px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
               borderRadius: 9999,
               border: '1.5px solid',
               borderColor: subTab === 'overview' ? 'var(--accent)' : 'var(--border)',
@@ -455,6 +471,8 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
             style={{
               height: 38,
               padding: '0 20px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
               borderRadius: 9999,
               border: '1.5px solid',
               borderColor: subTab === 'live' ? 'var(--accent)' : 'var(--border)',
@@ -472,6 +490,33 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
           >
             <Globe size={15} color={subTab === 'live' ? 'var(--accent)' : 'var(--text-2)'} />
             <span>Live View</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSubTab('carts')}
+            style={{
+              height: 38,
+              padding: '0 20px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              borderRadius: 9999,
+              border: '1.5px solid',
+              borderColor: subTab === 'carts' ? 'var(--accent)' : 'var(--border)',
+              background: subTab === 'carts' ? 'var(--accent-soft)' : 'var(--bg-card)',
+              color: subTab === 'carts' ? 'var(--text-1)' : 'var(--text-2)',
+              fontWeight: subTab === 'carts' ? 700 : 500,
+              fontSize: 13,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: subTab === 'carts' ? '0 2px 8px rgba(99, 102, 241, 0.15)' : 'var(--shadow-soft)',
+            }}
+          >
+            <ShoppingCart size={15} color={subTab === 'carts' ? 'var(--accent)' : 'var(--text-2)'} />
+            <span>Carrinhos</span>
           </button>
         </div>
 
@@ -497,251 +542,25 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
         )}
       </div>
 
-      {subTab === 'live' ? (
+      {subTab === 'carts' ? (
+        <EcommerceCarts currency={currency} />
+      ) : subTab === 'live' ? (
         <EcommerceLiveView
-          initialRevenue={totals.totalRevenue > 0 ? totals.totalRevenue : 4890.0}
-          initialOrdersCount={totals.paidCount > 0 ? totals.paidCount : 31}
           currency={currency}
           clientSlug={clientSlug}
         />
       ) : (
         <>
 
-          {/* Topo: KPIs de E-commerce (Preenche 100% da linha sem sobrar espaço) */}
-          <div className="kpi-grid-5">
-            <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-2)' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>
-                  Faturamento Aprovado
-                </span>
-                <DollarSign size={18} color="var(--green)" />
-              </div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--green)', lineHeight: 1.2 }}>
-                {fmtMoney(totals.totalRevenue, currency)}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                {totals.paidCount} pedido(s) faturado(s)
-              </div>
-            </div>
-
-            <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-2)' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>
-                  ROAS Real da Loja
-                </span>
-                <TrendingUp size={18} color="var(--accent)" />
-              </div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--accent)', lineHeight: 1.2 }}>
-                {roasReal ? `${roasReal.toFixed(2)}x` : '—'}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                Receita real ÷ Gasto de anúncios
-              </div>
-            </div>
-
-            <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-2)' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>
-                  Ticket Médio (AOV)
-                </span>
-                <ShoppingBag size={18} color="var(--text-1)" />
-              </div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1.2 }}>
-                {fmtMoney(totals.averageTicket, currency)}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                Média por pedido pago
-              </div>
-            </div>
-
-            <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-2)' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>
-                  CPA Real (Custo/Venda)
-                </span>
-                <Percent size={18} color="var(--text-1)" />
-              </div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1.2 }}>
-                {cpaReal ? fmtMoney(cpaReal, currency) : '—'}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                Gasto Ads ÷ Pedidos Pagos
-              </div>
-            </div>
-
-            <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-2)' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>
-                  Taxa de Conversão
-                </span>
-                <CheckCircle2 size={18} color="var(--green)" />
-              </div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1.2 }}>
-                {overallConv.toFixed(2)}%
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                Visitantes da loja que compraram
-              </div>
-            </div>
+          {/* KPIs no mesmo padrão das outras abas */}
+          <div className="tile-grid stagger">
+            <MetricTile label="Faturamento aprovado" value={fmtMoney(totals.totalRevenue, currency)} note={`${totals.paidCount} pedido(s) pago(s)`} />
+            <MetricTile label="ROAS" value={roasReal ? `${roasReal.toFixed(2).replace('.', ',')}x` : '—'} note="receita ÷ gasto em anúncios" />
+            <MetricTile label="Ticket médio" value={fmtMoney(totals.averageTicket, currency)} note="média por pedido pago" />
+            <MetricTile label="CPA" value={cpaReal ? fmtMoney(cpaReal, currency) : '—'} note="gasto em anúncios ÷ pedidos pagos" />
           </div>
 
-          {/* FUNIL DE E-COMMERCE (5 Etapas ocupando 100% da linha, sem badge de dias no canto) */}
-          <div className="card" style={{ padding: 24, position: 'relative', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Layers size={20} color="var(--accent)" />
-                  <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Funil de Conversão do E-commerce</h3>
-                </div>
-                <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '4px 0 0' }}>
-                  Jornada completa da loja: do primeiro clique ao pagamento aprovado.
-                </p>
-              </div>
-            </div>
-
-            {/* 5 Etapas do Funil Visual */}
-            <div className="funnel-grid-5" style={{ position: 'relative', zIndex: 2 }}>
-              {/* Etapa 1: Visitas */}
-              <div
-                className="card"
-                style={{
-                  padding: 16,
-                  background: 'linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card2) 100%)',
-                  border: '1px solid var(--border)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', marginBottom: 4 }}>
-                    1. Visitas
-                  </div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-1)' }}>
-                    {sessions.toLocaleString('pt-BR')}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
-                    Sessões na loja
-                  </div>
-                </div>
-                <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  → {rateCart.toFixed(1)}% carrinho
-                </div>
-              </div>
-
-              {/* Etapa 2: Carrinho */}
-              <div
-                className="card"
-                style={{
-                  padding: 16,
-                  background: 'linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card2) 100%)',
-                  border: '1px solid var(--border)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', marginBottom: 4 }}>
-                    2. Carrinho
-                  </div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-1)' }}>
-                    {addCart.toLocaleString('pt-BR')}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
-                    Adições ao carrinho
-                  </div>
-                </div>
-                <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  → {rateCheckout.toFixed(1)}% checkout
-                </div>
-              </div>
-
-              {/* Etapa 3: Checkouts */}
-              <div
-                className="card"
-                style={{
-                  padding: 16,
-                  background: 'linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card2) 100%)',
-                  border: '1px solid var(--border)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', marginBottom: 4 }}>
-                    3. Checkout
-                  </div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-1)' }}>
-                    {checkouts.toLocaleString('pt-BR')}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
-                    Iniciados
-                  </div>
-                </div>
-                <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  → {rateOrder.toFixed(1)}% geraram pedido
-                </div>
-              </div>
-
-              {/* Etapa 4: Pedidos Realizados */}
-              <div
-                className="card"
-                style={{
-                  padding: 16,
-                  background: 'linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card2) 100%)',
-                  border: '1px solid var(--border)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', marginBottom: 4 }}>
-                    4. Pedidos
-                  </div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-1)' }}>
-                    {ordersCount.toLocaleString('pt-BR')}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
-                    Criados na loja
-                  </div>
-                </div>
-                <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--green)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  → {ratePaid.toFixed(1)}% foram pagos
-                </div>
-              </div>
-
-              {/* Etapa 5: Vendas Aprovadas */}
-              <div
-                className="card"
-                style={{
-                  padding: 16,
-                  background: 'linear-gradient(180deg, var(--green-soft) 0%, var(--bg-card) 100%)',
-                  border: '1px solid var(--green)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--green)', marginBottom: 4 }}>
-                    5. Pagos
-                  </div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--green)' }}>
-                    {paidCount.toLocaleString('pt-BR')}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
-                    {fmtMoney(totals.totalRevenue, currency)}
-                  </div>
-                </div>
-                <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-soft)', fontSize: 11, color: 'var(--green)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  Conversão: {overallConv.toFixed(1)}%
-                </div>
-              </div>
-            </div>
-          </div>
+          <EcommerceFunnel funnel={funnel} pixel={funnel.pixel} conversion={overallConv} periodLabel={presetLabel || '30 dias'} />
 
           {/* Meio: Produtos Mais Vendidos & Canais de Tráfego */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
@@ -750,7 +569,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Package size={18} color="var(--accent)" />
-                  <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Produtos Mais Vendidos</h4>
+                  <h4 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Produtos Mais Vendidos</h4>
                 </div>
 
                 {/* Ícone de Filtro de Produtos */}
@@ -862,7 +681,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
                 {topProducts.map((p, idx) => {
                   const maxRev = topProducts[0]?.revenue || 1
                   const pct = Math.round((p.revenue / maxRev) * 100)
-                  const imgUrl = getProductImage(p.name)
+                  const imgUrl = productInfo(p.name).image
 
                   return (
                     <div
@@ -889,18 +708,25 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
                       }}
                     >
                       {/* Thumbnail do Produto */}
-                      <img
-                        src={imgUrl}
-                        alt={p.name}
-                        style={{
-                          width: 42,
-                          height: 42,
-                          borderRadius: 8,
-                          objectFit: 'cover',
-                          border: '1px solid var(--border-soft)',
-                          flexShrink: 0,
-                        }}
-                      />
+                      {imgUrl ? (
+                        <img
+                          src={imgUrl}
+                          alt={p.name}
+                          referrerPolicy="no-referrer"
+                          style={{
+                            width: 42,
+                            height: 42,
+                            borderRadius: 8,
+                            objectFit: 'cover',
+                            border: '1px solid var(--border-soft)',
+                            flexShrink: 0,
+                          }}
+                        />
+                      ) : (
+                        <div style={{ width: 42, height: 42, borderRadius: 8, border: '1px solid var(--border-soft)', background: 'var(--bg-card2)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                          <ShoppingBag size={18} color="var(--text-3)" />
+                        </div>
+                      )}
 
                       {/* Informações */}
                       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -940,7 +766,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <TrendingUp size={18} color="var(--green)" />
-                  <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Canais de Origem dos Pedidos</h4>
+                  <h4 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Canais de Origem dos Pedidos</h4>
                 </div>
 
                 {/* Ícone de Filtro de Canais */}
@@ -1058,9 +884,9 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '12px 14px',
-                    borderRadius: 8,
-                    border: selectedChannel === 'meta' ? '1px solid var(--accent)' : '1px solid var(--border)',
-                    background: selectedChannel === 'meta' ? 'var(--accent-soft)' : 'var(--bg-card2)',
+                    borderRadius: 12,
+                    border: selectedChannel === 'meta' ? '1px solid var(--accent)' : '1px solid transparent',
+                    background: selectedChannel === 'meta' ? 'var(--accent-soft)' : 'transparent',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1082,9 +908,9 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '12px 14px',
-                    borderRadius: 8,
-                    border: selectedChannel === 'google' ? '1px solid var(--green)' : '1px solid var(--border)',
-                    background: selectedChannel === 'google' ? 'var(--green-soft)' : 'var(--bg-card2)',
+                    borderRadius: 12,
+                    border: selectedChannel === 'google' ? '1px solid var(--green)' : '1px solid transparent',
+                    background: selectedChannel === 'google' ? 'var(--green-soft)' : 'transparent',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1106,9 +932,9 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '12px 14px',
-                    borderRadius: 8,
-                    border: selectedChannel === 'whatsapp' ? '1px solid var(--amber)' : '1px solid var(--border)',
-                    background: selectedChannel === 'whatsapp' ? 'var(--amber-soft)' : 'var(--bg-card2)',
+                    borderRadius: 12,
+                    border: selectedChannel === 'whatsapp' ? '1px solid var(--amber)' : '1px solid transparent',
+                    background: selectedChannel === 'whatsapp' ? 'var(--amber-soft)' : 'transparent',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1558,6 +1384,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
           {/* Modal de Detalhes do Pedido */}
           {selectedOrder && (
             <div
+              data-hm-layer="pedido"
               onClick={() => setSelectedOrder(null)}
               style={{
                 position: 'fixed',
@@ -1634,6 +1461,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
           {/* Modal de Resumo do Produto (com Imagem, Origem Principal e Link para a Loja) */}
           {productSummary && (
             <div
+              data-hm-layer="produto"
               onClick={() => setProductSummary(null)}
               style={{
                 position: 'fixed',
@@ -1662,8 +1490,9 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
                       {productSummary.name}
                     </h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                      {productInfo(productSummary.name).url && (
                       <a
-                        href={`https://${clientSlug || 'loja'}.com.br/produtos/${encodeURIComponent(productSummary.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}`}
+                        href={productInfo(productSummary.name).url as string}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{
@@ -1680,6 +1509,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
                         <span>Ver produto na loja</span>
                         <ExternalLink size={12} />
                       </a>
+                      )}
                     </div>
                   </div>
 
@@ -1690,18 +1520,25 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
 
                 {/* Destaque com Imagem e Métricas Chave */}
                 <div style={{ display: 'flex', gap: 16, alignItems: 'center', background: 'var(--bg-card2)', padding: 14, borderRadius: 12 }}>
-                  <img
-                    src={getProductImage(productSummary.name)}
-                    alt={productSummary.name}
-                    style={{
-                      width: 90,
-                      height: 90,
-                      borderRadius: 10,
-                      objectFit: 'cover',
-                      border: '1px solid var(--border)',
-                      flexShrink: 0,
-                    }}
-                  />
+                  {productInfo(productSummary.name).image ? (
+                    <img
+                      src={productInfo(productSummary.name).image as string}
+                      alt={productSummary.name}
+                      referrerPolicy="no-referrer"
+                      style={{
+                        width: 90,
+                        height: 90,
+                        borderRadius: 10,
+                        objectFit: 'cover',
+                        border: '1px solid var(--border)',
+                        flexShrink: 0,
+                      }}
+                    />
+                  ) : (
+                    <div style={{ width: 90, height: 90, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                      <ShoppingBag size={28} color="var(--text-3)" />
+                    </div>
+                  )}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, flex: 1 }}>
                     <div>
                       <div style={{ fontSize: 11, color: 'var(--text-2)', textTransform: 'uppercase', fontWeight: 600 }}>
@@ -1798,8 +1635,9 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
 
                 {/* Rodapé com Ações */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                  {productInfo(productSummary.name).url && (
                   <a
-                    href={`https://${clientSlug || 'loja'}.com.br/produtos/${encodeURIComponent(productSummary.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}`}
+                    href={productInfo(productSummary.name).url as string}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn btn-outline btn-sm"
@@ -1815,6 +1653,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary }: Ecommerc
                     <ExternalLink size={13} />
                     <span>Ver na loja</span>
                   </a>
+                  )}
 
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <button

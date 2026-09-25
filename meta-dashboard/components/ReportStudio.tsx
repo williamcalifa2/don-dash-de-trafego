@@ -708,6 +708,7 @@ export function ReportStudio({
   savedReport = null,
   onSaveSuccess,
   readOnly = false,
+  clientSlug,
 }: {
   onClose: () => void
   initialPreset?: ReportPreset
@@ -715,6 +716,8 @@ export function ReportStudio({
   savedReport?: SavedReport | null
   onSaveSuccess?: () => void
   readOnly?: boolean
+  /** Cliente do relatório. Com ele (e sem readOnly), "Apresentar" abre a tela do apresentador nova, em vez do modo antigo dentro do editor. */
+  clientSlug?: string
 }) {
   const [preset, setPreset] = useState<ReportPreset>(savedReport?.preset ?? initialPreset)
   const [mode, setMode] = useState<ReportMode>(savedReport?.mode ?? initialMode)
@@ -797,9 +800,9 @@ export function ReportStudio({
   useEffect(() => {
     if (!presenterMode) return
     const el = document.getElementById(`presenter-thumb-${current}`)
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-    }
+    const box = el?.parentElement
+    // centraliza só dentro do carrossel (scrollIntoView rolava a página inteira para baixo)
+    if (el && box) box.scrollTo({ left: el.offsetLeft - box.clientWidth / 2 + el.clientWidth / 2, behavior: 'smooth' })
   }, [current, presenterMode])
 
   // Cronômetro da Apresentação
@@ -1150,7 +1153,7 @@ export function ReportStudio({
       }
       if (e.key === 'p' || e.key === 'P') {
         e.preventDefault()
-        setPresenterMode(v => !v)
+        if (readOnly || !clientSlug) setPresenterMode(v => !v) // com o apresentador novo, a apresentação abre pelo botão (precisa salvar antes)
         return
       }
       if (e.key === 't' || e.key === 'T') {
@@ -1169,7 +1172,7 @@ export function ReportStudio({
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [slides.length, onClose, handleUndo, presenterMode])
+  }, [slides.length, onClose, handleUndo, presenterMode, readOnly, clientSlug])
 
   // Fecha dropdown de formatos ao clicar fora
   useEffect(() => {
@@ -1263,6 +1266,31 @@ export function ReportStudio({
     } finally {
       setSavingLibrary(false)
     }
+  }
+
+  const [presenting, setPresenting] = useState(false)
+  const [presentError, setPresentError] = useState(false)
+  const newPresenter = !readOnly && !!clientSlug
+
+  /** Salva o relatório no Studio (a tela do apresentador lê o que está salvo) e abre a apresentação no formato novo. */
+  const presentNew = async () => {
+    if (!data || !notes || !clientSlug || presenting) return
+    setPresenting(true); setPresentError(false)
+    try {
+      const res = await apiFetch('/api/report/saved', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: savedReport?.id,
+          title: (savedReport?.title || `Relatório · ${data.month.label}`).trim(),
+          preset, periodKey: data.month.key, periodLabel: data.month.label, mode, theme: reportTheme, slidesCount: included.length, snapshot: { data, notes },
+        }),
+      })
+      const j = await res.json().catch(() => ({})) as { report?: { id?: string } }
+      if (!res.ok || !j.report?.id) throw new Error('save')
+      onSaveSuccess?.()
+      window.location.assign(`/admin/reports/${clientSlug}/${j.report.id}/present`)
+    } catch { setPresentError(true); setPresenting(false) }
   }
 
   const fileName = data
@@ -1475,11 +1503,12 @@ export function ReportStudio({
               gap: 6,
               fontWeight: 600,
             }}
-            onClick={() => setPresenterMode(v => !v)}
-            title="Iniciar apresentação em tela cheia com próximo slide e anotações (P)"
+            onClick={() => { if (newPresenter) void presentNew(); else setPresenterMode(v => !v) }}
+            disabled={presenting}
+            title={newPresenter ? 'Abrir a tela do apresentador (salva o relatório no Studio)' : 'Iniciar apresentação em tela cheia com próximo slide e anotações (P)'}
           >
-            <Play size={14} strokeWidth={2} fill={presenterMode ? 'currentColor' : 'none'} />
-            <span>{presenterMode ? 'Apresentando' : 'Apresentar'}</span>
+            {presenting ? <Loader2 size={14} className="spin" /> : <Play size={14} strokeWidth={2} fill={presenterMode ? 'currentColor' : 'none'} />}
+            <span>{presenting ? 'Abrindo…' : presentError ? 'Tentar de novo' : presenterMode && !newPresenter ? 'Apresentando' : 'Apresentar'}</span>
           </button>
         )}
 
@@ -2342,6 +2371,7 @@ export function ReportStudio({
                       scrollbarWidth: 'none',
                       scrollBehavior: 'smooth',
                       flex: 1,
+                      position: 'relative',
                     }}
                   >
                     {slides.map((s, idx) => {

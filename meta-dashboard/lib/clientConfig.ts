@@ -3,12 +3,27 @@ import { getSupabaseServer } from './supabase'
 export interface ClientIntegrationsConfig {
   webhookToken?: string
   shopifySecret?: string
+  /** Leitura do catálogo (fotos e links reais). Ver lib/shopifyCatalog.ts */
+  /** endereço público da loja, para ler fotos e links de /products.json */
+  shopifyStoreUrl?: string
+  shopifyDomain?: string
+  shopifyToken?: string
+  shopifyClientId?: string
+  shopifyClientSecret?: string
+  /** preenchidos pela instalação do app (não editar à mão) */
+  shopifyScopes?: string
+  shopifyConnectedAt?: string
+  /** quando o histórico da loja foi importado (uma vez, sozinho) */
+  shopifyBackfilledAt?: string
+  shopifyWebhooks?: string[]
   nuvemshopSecret?: string
   slaTargetMinutes?: number // ex: 15 min
   businessHoursOnly?: boolean
 }
 
 export interface ClientConfig {
+  /** o cliente vende em loja virtual: libera a aba E-commerce e mostra a logo da plataforma */
+  ecommerce?: boolean
   active: boolean // true = ativo (sincronizando), false = pausado (sem chamadas à API)
   strategicObjective?: string
   goalsPeriod?: string
@@ -118,3 +133,19 @@ export async function getAllClientsConfig(slugs: string[]): Promise<Record<strin
   return out
 }
 
+
+/** Acha o cliente cuja loja Shopify tem este endereço (xxx.myshopify.com). Usado quando a instalação começa na Shopify, sem estado nosso. */
+export async function findSlugByShop(shop: string): Promise<string | null> {
+  const db = getSupabaseServer()
+  if (!db) return null
+  const { data } = await db.from('meta_settings').select('key').like('key', `${CONFIG_PREFIX}%`).filter('value->integrations->>shopifyDomain', 'eq', shop).limit(2)
+  const rows = (data ?? []) as Array<{ key: string }>
+  return rows.length === 1 ? rows[0].key.slice(CONFIG_PREFIX.length) : null
+}
+
+/** Cliente com e-commerce: vale o que foi marcado no cadastro; sem marcação (clientes antigos), vale se já há loja configurada. */
+export function hasEcommerce(cfg: Pick<ClientConfig, 'ecommerce' | 'integrations'>): boolean {
+  if (typeof cfg.ecommerce === 'boolean') return cfg.ecommerce
+  const i = cfg.integrations ?? {}
+  return Boolean(i.shopifyConnectedAt || i.shopifyDomain || i.shopifyStoreUrl || i.shopifySecret)
+}

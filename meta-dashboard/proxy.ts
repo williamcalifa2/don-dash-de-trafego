@@ -10,6 +10,8 @@ const PUBLIC_PREFIXES = [
   '/api/auth/',
   '/api/admin/',
   '/api/webhooks/',
+  '/api/track/',
+  '/api/shopify/',
   '/api/present/',
   '/apresentacao',
   '/api/cron/',

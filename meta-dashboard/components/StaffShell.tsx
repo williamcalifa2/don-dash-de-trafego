@@ -1,13 +1,23 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Building2, FileBarChart, LayoutGrid, Menu, PanelLeftClose, PanelLeftOpen, Users, Webhook, X } from 'lucide-react'
+import { Building2, FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, PanelLeftClose, PanelLeftOpen, Users, X } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import type { Me } from '@/components/ProfileMenu'
 import { PulseLoader } from '@/components/PulseLoader'
 
 /** Ações que a sidebar pede para a tela em que a pessoa está (a tela escuta o evento e abre o que for dela). */
+/** Duas peças de quebra-cabeça encaixadas: integrações conectam o app a outras ferramentas. Mesmo traço dos ícones do lucide. */
+function PuzzleConnected({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2.5 5h8.5v3.4a2.6 2.6 0 1 1 0 5.2V19H2.5z" />
+      <path d="M13 5h8.5v14H13v-5.4a2.6 2.6 0 1 0 0-5.2z" />
+    </svg>
+  )
+}
+
 export type StaffAction = 'clients' | 'new' | 'team' | 'sync' | 'reports' | 'access' | 'integracoes'
 export const STAFF_EVENT = 'staff-open'
 const ROLE_KEY = 'staff_role'
@@ -21,6 +31,11 @@ function Item({ icon, label, onClick, active, collapsed }: { icon: React.ReactNo
   )
 }
 
+let hydrated = false
+function cachedRole(): string | null {
+  try { return sessionStorage.getItem(ROLE_KEY) } catch { return null }
+}
+
 /**
  * Moldura da equipe da agência: sidebar com o que é da agência (administração e ferramentas). O portal do cliente não ganha nada disso:
  * para quem não é da equipe, devolve só o conteúdo, sem barra.
@@ -28,19 +43,18 @@ function Item({ icon, label, onClick, active, collapsed }: { icon: React.ReactNo
 export function StaffShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
+  // O primeiro desenho tem de ser igual ao do servidor (que não conhece o sessionStorage), senão o React descarta o HTML e refaz a tela (erro #418).
+  // Depois da hidratação, as próximas telas já nascem com a barra, lendo o papel salvo.
   const [me, setMe] = useState<Me | null>(() => {
-    if (typeof window === 'undefined') return null
-    try {
-      const role = sessionStorage.getItem(ROLE_KEY)
-      return role ? { role, name: '', email: '', avatar: null } : null
-    } catch { return null }
+    const role = hydrated ? cachedRole() : null
+    return role ? { role, name: '', email: '', avatar: null } : null
   })
-  const [known, setKnown] = useState(() => {
-    if (typeof window === 'undefined') return false
-    try {
-      return Boolean(sessionStorage.getItem(ROLE_KEY))
-    } catch { return false }
-  })
+  const [known, setKnown] = useState(() => hydrated && cachedRole() !== null)
+  useLayoutEffect(() => {
+    hydrated = true
+    const role = cachedRole()
+    if (role) { setMe(cur => cur ?? { role, name: '', email: '', avatar: null }); setKnown(true) }
+  }, [])
   const [collapsed, setCollapsed] = useState(false)
   const [drawer, setDrawer] = useState(false)
   const [navigating, setNavigating] = useState(false)
@@ -72,6 +86,8 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
   const canOperate = canManage || me.role === 'member'
   const onPanel = pathname === '/admin'
   const onReports = pathname.startsWith('/admin/reports')
+  const onHeatmap = pathname.startsWith('/admin/heatmap')
+  const onUsage = pathname.startsWith('/admin/uso')
 
   return (
     <div className={`staff-shell${collapsed ? ' is-collapsed' : ''}`}>
@@ -91,11 +107,16 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
           <Item collapsed={collapsed} icon={<LayoutGrid size={18} strokeWidth={1.75} />} label="Painel de clientes" active={onPanel} onClick={() => { setDrawer(false); if (!onPanel) go('/admin'); else window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
           <div className="staff-group">Administração</div>
           {canOperate && <Item collapsed={collapsed} icon={<Building2 size={18} strokeWidth={1.75} />} label="Clientes" onClick={() => open('clients')} />}
-          {canOperate && <Item collapsed={collapsed} icon={<Webhook size={18} strokeWidth={1.75} />} label="Integrações" onClick={() => open('integracoes')} />}
           {canManage && <Item collapsed={collapsed} icon={<Users size={18} strokeWidth={1.75} />} label="Equipe" onClick={() => open('team')} />}
           {canOperate && <>
             <div className="staff-group">Ferramentas</div>
             <Item collapsed={collapsed} icon={<FileBarChart size={18} strokeWidth={1.75} />} label="Report Studio" active={onReports} onClick={() => open('reports')} />
+            <Item collapsed={collapsed} icon={<PuzzleConnected size={18} />} label="Integrações" onClick={() => open('integracoes')} />
+          </>}
+          {canManage && <>
+            <div className="staff-group">Análise</div>
+            <Item collapsed={collapsed} icon={<Activity size={18} strokeWidth={1.75} />} label="Uso do app" active={onUsage} onClick={() => { setDrawer(false); go('/admin/uso') }} />
+            <Item collapsed={collapsed} icon={<MousePointerClick size={18} strokeWidth={1.75} />} label="Heatmap" active={onHeatmap} onClick={() => { setDrawer(false); go('/admin/heatmap') }} />
           </>}
         </nav>
 

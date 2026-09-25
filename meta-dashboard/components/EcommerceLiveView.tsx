@@ -63,8 +63,6 @@ interface LiveEvent {
 }
 
 interface EcommerceLiveViewProps {
-  initialRevenue?: number
-  initialOrdersCount?: number
   currency?: string
   clientSlug?: string
 }
@@ -73,24 +71,35 @@ function fmtMoney(v: number, cur = 'BRL') {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: cur }).format(v)
 }
 
-// Cidades ativas pré-configuradas (foco Brasil + hubs internacionais)
-const INITIAL_CITIES: CityLocation[] = [
-  { name: 'São Paulo, SP', city: 'São Paulo', state: 'SP', lat: -23.5505, lng: -46.6333, visitors: 7, ordersToday: 14, channel: 'Instagram Ads', recentOrder: { product: 'Sérum Facial Vitamina C', total: 189.90, time: 'há 10s' } },
-  { name: 'Rio de Janeiro, RJ', city: 'Rio de Janeiro', state: 'RJ', lat: -22.9068, lng: -43.1729, visitors: 3, ordersToday: 6, channel: 'Meta Ads', recentOrder: { product: 'Combo Pele Radiante', total: 297.00, time: 'há 35s' } },
-  { name: 'Belo Horizonte, MG', city: 'Belo Horizonte', state: 'MG', lat: -19.9167, lng: -43.9345, visitors: 2, ordersToday: 4, channel: 'Instagram Stories' },
-  { name: 'Curitiba, PR', city: 'Curitiba', state: 'PR', lat: -25.4290, lng: -49.2671, visitors: 2, ordersToday: 3, channel: 'Google Ads', recentOrder: { product: 'Espuma de Limpeza', total: 98.50, time: 'há 2m' } },
-  { name: 'Porto Alegre, RS', city: 'Porto Alegre', state: 'RS', lat: -30.0346, lng: -51.2177, visitors: 1, ordersToday: 2, channel: 'Meta Ads' },
-  { name: 'Florianópolis, SC', city: 'Florianópolis', state: 'SC', lat: -27.5954, lng: -48.5480, visitors: 1, ordersToday: 1, channel: 'Instagram Reels' },
-  { name: 'Salvador, BA', city: 'Salvador', state: 'BA', lat: -12.9777, lng: -38.5016, visitors: 1, ordersToday: 1, channel: 'WhatsApp Direto' },
-  { name: 'Brasília, DF', city: 'Brasília', state: 'DF', lat: -15.7975, lng: -47.8919, visitors: 1, ordersToday: 1, channel: 'Google Search' },
-  { name: 'Fortaleza, CE', city: 'Fortaleza', state: 'CE', lat: -3.7172, lng: -38.5434, visitors: 1, ordersToday: 1, channel: 'Instagram Ads' },
-  { name: 'Goiânia, GO', city: 'Goiânia', state: 'GO', lat: -16.6869, lng: -49.2648, visitors: 1, ordersToday: 0, channel: 'Meta Ads' },
-  { name: 'Recife, PE', city: 'Recife', state: 'PE', lat: -8.0476, lng: -34.8770, visitors: 1, ordersToday: 0, channel: 'Instagram Ads' },
-  { name: 'Campinas, SP', city: 'Campinas', state: 'SP', lat: -22.9056, lng: -47.0608, visitors: 1, ordersToday: 1, channel: 'Google Ads' },
-  { name: 'Vitória, ES', city: 'Vitória', state: 'ES', lat: -20.3155, lng: -40.3128, visitors: 1, ordersToday: 0, channel: 'Instagram Stories' },
-  { name: 'Lisboa, Portugal', city: 'Lisboa', state: 'PT', lat: 38.7223, lng: -9.1393, visitors: 1, ordersToday: 0, channel: 'Direto' },
-  { name: 'Miami, EUA', city: 'Miami', state: 'EUA', lat: 25.7617, lng: -80.1918, visitors: 1, ordersToday: 0, channel: 'Direto' },
-]
+interface StateStat { uf: string; name: string; live: number; orders: number; sessions: number; percent: number }
+interface TrendingItem { name: string; viewing: number; inCart: number; salesToday: number; image?: string | null }
+
+interface LiveResponse {
+  setup: 'tables' | 'waiting' | 'ready'
+  salesPrev?: number
+  sessionsPrev?: number
+  states?: StateStat[]
+  trending?: TrendingItem[]
+  online: number
+  sessionsToday: number
+  ordersToday: number
+  salesToday: number
+  funnel: { visiting: number; cart: number; checkout: number; purchased: number }
+  cities: CityLocation[]
+  events: Array<Omit<LiveEvent, 'timeAgo'> & { lat: number | null; lng: number | null }>
+}
+
+// Destino dos arcos de compra (sede da loja)
+const STORE_LAT = -23.5505
+const STORE_LNG = -46.6333
+
+function agoLabel(ts: number) {
+  const s = Math.max(0, Math.round((Date.now() - ts) / 1000))
+  if (s < 10) return 'agora'
+  if (s < 60) return `há ${s}s`
+  if (s < 3600) return `há ${Math.floor(s / 60)}m`
+  return `há ${Math.floor(s / 3600)}h`
+}
 
 // Polígonos de contorno natural das massas terrestres mundiais (sem cortes a facão / quadrados)
 function inPolygon(x: number, y: number, vs: number[][]): boolean {
@@ -195,8 +204,6 @@ const CONTINENT_DOTS: { lat: number; lng: number; phi: number; lam: number }[] =
 })()
 
 export function EcommerceLiveView({
-  initialRevenue = 4890.0,
-  initialOrdersCount = 31,
   currency = 'BRL',
 }: EcommerceLiveViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -206,19 +213,24 @@ export function EcommerceLiveView({
   const [liveTime, setLiveTime] = useState('')
 
   // Métricas em tempo real
-  const [visitorsOnline, setVisitorsOnline] = useState(18)
-  const [totalSalesToday, setTotalSalesToday] = useState(initialRevenue)
-  const [totalOrdersToday, setTotalOrdersToday] = useState(initialOrdersCount)
-  const [totalSessionsToday, setTotalSessionsToday] = useState(2418)
+  const [visitorsOnline, setVisitorsOnline] = useState(0)
+  const [totalSalesToday, setTotalSalesToday] = useState(0)
+  const [totalOrdersToday, setTotalOrdersToday] = useState(0)
+  const [totalSessionsToday, setTotalSessionsToday] = useState(0)
+  const [setup, setSetup] = useState<'loading' | 'tables' | 'waiting' | 'ready'>('loading')
+  const [sessionsPrev, setSessionsPrev] = useState(0)
+  const [salesPrev, setSalesPrev] = useState(0)
+  const [states, setStates] = useState<StateStat[]>([])
+  const [trending, setTrending] = useState<TrendingItem[]>([])
 
   // Funil de 10 min
-  const [behaviorVisiting, setBehaviorVisiting] = useState(18)
-  const [behaviorCart, setBehaviorCart] = useState(6)
-  const [behaviorCheckout, setBehaviorCheckout] = useState(3)
-  const [behaviorPurchased, setBehaviorPurchased] = useState(4)
+  const [behaviorVisiting, setBehaviorVisiting] = useState(0)
+  const [behaviorCart, setBehaviorCart] = useState(0)
+  const [behaviorCheckout, setBehaviorCheckout] = useState(0)
+  const [behaviorPurchased, setBehaviorPurchased] = useState(0)
 
   // Cidades e eventos
-  const [cities] = useState<CityLocation[]>(INITIAL_CITIES)
+  const [cities, setCities] = useState<CityLocation[]>([])
   const [selectedStateFilter, setSelectedStateFilter] = useState<string | null>(null)
   const [showFilterPopover, setShowFilterPopover] = useState(false)
   const [filterSearch, setFilterSearch] = useState('')
@@ -227,99 +239,11 @@ export function EcommerceLiveView({
   const [hoveredCity, setHoveredCity] = useState<CityLocation | null>(null)
 
   // Arcos de transação animados
-  const flightArcsRef = useRef<FlightArc[]>([
-    {
-      id: 'arc-1',
-      fromCity: 'Curitiba',
-      toCity: 'São Paulo',
-      fromLat: -25.4290,
-      fromLng: -49.2671,
-      toLat: -23.5505,
-      toLng: -46.6333,
-      progress: 0.35,
-      speed: 0.007,
-      product: 'Sérum Facial Vitamina C',
-      value: 189.90,
-      color: '#7e89d1',
-    },
-    {
-      id: 'arc-2',
-      fromCity: 'Rio de Janeiro',
-      toCity: 'São Paulo',
-      fromLat: -22.9068,
-      fromLng: -43.1729,
-      toLat: -23.5505,
-      toLng: -46.6333,
-      progress: 0.8,
-      speed: 0.009,
-      product: 'Combo Pele Radiante',
-      value: 297.00,
-      color: '#0284c7',
-    },
-  ])
+  const flightArcsRef = useRef<FlightArc[]>([])
+  const seenOrdersRef = useRef<Set<string>>(new Set())
 
   // Feed limpo sem emojis de IA
-  const [events, setEvents] = useState<LiveEvent[]>([
-    {
-      id: 'ev-1',
-      type: 'order',
-      title: 'Pedido Aprovado',
-      description: 'Sérum Facial Vitamina C (R$ 189,90) via Pix',
-      city: 'São Paulo',
-      state: 'SP',
-      value: 189.90,
-      channel: 'Instagram Ads',
-      timeAgo: 'há 10s',
-      timestamp: Date.now() - 10000,
-    },
-    {
-      id: 'ev-2',
-      type: 'checkout',
-      title: 'Iniciou Checkout',
-      description: 'Combo Pele Radiante Glow (R$ 297,00)',
-      city: 'Rio de Janeiro',
-      state: 'RJ',
-      value: 297.00,
-      channel: 'Meta Ads',
-      timeAgo: 'há 38s',
-      timestamp: Date.now() - 38000,
-    },
-    {
-      id: 'ev-3',
-      type: 'cart',
-      title: 'Adicionou ao Carrinho',
-      description: 'Espuma de Limpeza Profunda Facial',
-      city: 'Belo Horizonte',
-      state: 'MG',
-      value: 98.50,
-      channel: 'Instagram Stories',
-      timeAgo: 'há 1m',
-      timestamp: Date.now() - 70000,
-    },
-    {
-      id: 'ev-4',
-      type: 'order',
-      title: 'Pedido Aprovado',
-      description: 'Hidratante Noturno Reparador (R$ 149,00)',
-      city: 'Curitiba',
-      state: 'PR',
-      value: 149.00,
-      channel: 'Google Ads',
-      timeAgo: 'há 2m',
-      timestamp: Date.now() - 110000,
-    },
-    {
-      id: 'ev-5',
-      type: 'visit',
-      title: 'Novo Visitante',
-      description: 'Navegando pela Coleção Anti-Idade',
-      city: 'Porto Alegre',
-      state: 'RS',
-      channel: 'Meta Ads',
-      timeAgo: 'há 2m',
-      timestamp: Date.now() - 140000,
-    },
-  ])
+  const [events, setEvents] = useState<LiveEvent[]>([])
 
   // Busca rápida de localização
   const [searchQuery, setSearchQuery] = useState('')
@@ -371,96 +295,48 @@ export function EcommerceLiveView({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Atualização em tempo real de contadores e eventos
+  // Dados reais da loja (pixel -> /api/track), atualizados a cada 5 s enquanto a aba está aberta
   useEffect(() => {
-    const interval = setInterval(() => {
-      setVisitorsOnline(prev => {
-        const delta = Math.floor(Math.random() * 3) - 1
-        const next = Math.max(14, Math.min(26, prev + delta))
-        setBehaviorVisiting(next)
-        return next
-      })
-
-      setTotalSessionsToday(prev => prev + (Math.random() > 0.4 ? 1 : 0))
-      setBehaviorCart(prev => Math.max(4, Math.min(10, prev + (Math.random() > 0.5 ? 1 : -1))))
-      setBehaviorCheckout(prev => Math.max(2, Math.min(6, prev + (Math.random() > 0.6 ? 1 : -1))))
-
-      const roll = Math.random()
-      const availableCities = INITIAL_CITIES.filter(c => c.state !== 'PT' && c.state !== 'EUA')
-      const targetCity = availableCities[Math.floor(Math.random() * availableCities.length)]
-
-      if (roll < 0.28) {
-        const products = [
-          { name: 'Sérum Facial Vitamina C 15%', price: 189.90 },
-          { name: 'Combo Pele Radiante Glow', price: 297.00 },
-          { name: 'Espuma Facial Purificante', price: 98.50 },
-          { name: 'Hidratante Noturno Reparador', price: 149.00 },
-        ]
-        const prod = products[Math.floor(Math.random() * products.length)]
-
-        setTotalOrdersToday(prev => prev + 1)
-        setTotalSalesToday(prev => prev + prod.price)
-        setBehaviorPurchased(prev => prev + 1)
-
-        flightArcsRef.current.push({
-          id: `arc-${Date.now()}`,
-          fromCity: targetCity.city,
-          toCity: 'São Paulo',
-          fromLat: targetCity.lat,
-          fromLng: targetCity.lng,
-          toLat: -23.5505,
-          toLng: -46.6333,
-          progress: 0,
-          speed: 0.008 + Math.random() * 0.004,
-          product: prod.name,
-          value: prod.price,
-          color: '#7e89d1',
-        })
-
-        const newEv: LiveEvent = {
-          id: `ev-${Date.now()}`,
-          type: 'order',
-          title: 'Pedido Aprovado',
-          description: `${prod.name} (${fmtMoney(prod.price, currency)})`,
-          city: targetCity.city,
-          state: targetCity.state,
-          value: prod.price,
-          channel: targetCity.channel,
-          timeAgo: 'agora',
-          timestamp: Date.now(),
+    let alive = true
+    const load = async () => {
+      if (document.hidden) return
+      try {
+        const res = await fetch('/api/ecommerce/live', { cache: 'no-store' })
+        if (!res.ok || !alive) return
+        const j = await res.json() as LiveResponse
+        if (!alive) return
+        setSetup(j.setup)
+        setVisitorsOnline(j.online)
+        setTotalSessionsToday(j.sessionsToday)
+        setTotalOrdersToday(j.ordersToday)
+        setTotalSalesToday(j.salesToday)
+        setSalesPrev(j.salesPrev ?? 0)
+        setSessionsPrev(j.sessionsPrev ?? 0)
+        setStates(j.states ?? [])
+        setTrending(j.trending ?? [])
+        setBehaviorVisiting(j.funnel.visiting)
+        setBehaviorCart(j.funnel.cart)
+        setBehaviorCheckout(j.funnel.checkout)
+        setBehaviorPurchased(j.funnel.purchased)
+        setCities(j.cities.map(c => ({ ...c })))
+        setEvents(j.events.map(e => ({ ...e, timeAgo: '' })))
+        // Cada compra nova vira um arco até a loja (a primeira leitura só marca as que já existiam)
+        const first = seenOrdersRef.current.size === 0
+        for (const e of j.events) {
+          if (e.type !== 'order' || seenOrdersRef.current.has(e.id)) continue
+          seenOrdersRef.current.add(e.id)
+          if (first || e.lat == null || e.lng == null || Date.now() - e.timestamp > 60_000) continue
+          flightArcsRef.current.push({
+            id: `arc-${e.id}`, fromCity: e.city, toCity: 'Loja', fromLat: e.lat, fromLng: e.lng, toLat: STORE_LAT, toLng: STORE_LNG,
+            progress: 0, speed: 0.008 + Math.random() * 0.004, product: e.description, value: e.value ?? 0, color: '#7e89d1',
+          })
         }
-        setEvents(prev => [newEv, ...prev.slice(0, 14)])
-      } else if (roll < 0.58) {
-        const newEv: LiveEvent = {
-          id: `ev-${Date.now()}`,
-          type: 'checkout',
-          title: 'Iniciou Checkout',
-          description: 'Avançou para tela de pagamento',
-          city: targetCity.city,
-          state: targetCity.state,
-          channel: targetCity.channel,
-          timeAgo: 'agora',
-          timestamp: Date.now(),
-        }
-        setEvents(prev => [newEv, ...prev.slice(0, 14)])
-      } else if (roll < 0.85) {
-        const newEv: LiveEvent = {
-          id: `ev-${Date.now()}`,
-          type: 'cart',
-          title: 'Adicionou ao Carrinho',
-          description: 'Produto inserido na sacola de compras',
-          city: targetCity.city,
-          state: targetCity.state,
-          channel: targetCity.channel,
-          timeAgo: 'agora',
-          timestamp: Date.now(),
-        }
-        setEvents(prev => [newEv, ...prev.slice(0, 14)])
-      }
-    }, 4200)
-
-    return () => clearInterval(interval)
-  }, [currency])
+      } catch { /* sem rede: mantém o último estado */ }
+    }
+    load()
+    const t = setInterval(load, 5000)
+    return () => { alive = false; clearInterval(t) }
+  }, [])
 
   // Rotação suave da câmera
   const focusOnCoordinates = useCallback((lat: number, lng: number) => {
@@ -858,23 +734,8 @@ export function EcommerceLiveView({
     isDraggingRef.current = false
   }
 
-  // Lista de estados para o Popover de Filtro (somente ícone)
-  const stateList = useMemo(() => {
-    return [
-      { uf: 'SP', name: 'São Paulo', live: 7, orders: 14, percent: 44, sessions: 1063 },
-      { uf: 'RJ', name: 'Rio de Janeiro', live: 3, orders: 6, percent: 19, sessions: 459 },
-      { uf: 'MG', name: 'Minas Gerais', live: 2, orders: 4, percent: 13, sessions: 314 },
-      { uf: 'PR', name: 'Paraná', live: 2, orders: 3, percent: 9, sessions: 217 },
-      { uf: 'RS', name: 'Rio Grande do Sul', live: 1, orders: 2, percent: 7, sessions: 169 },
-      { uf: 'SC', name: 'Santa Catarina', live: 1, orders: 1, percent: 5, sessions: 121 },
-      { uf: 'BA', name: 'Bahia', live: 1, orders: 1, percent: 4, sessions: 98 },
-      { uf: 'DF', name: 'Distrito Federal', live: 1, orders: 1, percent: 3, sessions: 85 },
-      { uf: 'CE', name: 'Ceará', live: 1, orders: 1, percent: 3, sessions: 76 },
-      { uf: 'GO', name: 'Goiás', live: 1, orders: 0, percent: 2, sessions: 54 },
-      { uf: 'PE', name: 'Pernambuco', live: 1, orders: 0, percent: 2, sessions: 49 },
-      { uf: 'ES', name: 'Espírito Santo', live: 1, orders: 0, percent: 2, sessions: 42 },
-    ]
-  }, [])
+  // Estados com acesso hoje (vem da API); alimenta o card e o filtro
+  const stateList = states
 
   const filteredStates = useMemo(() => {
     if (!filterSearch.trim()) return stateList
@@ -882,32 +743,11 @@ export function EcommerceLiveView({
     return stateList.filter(s => s.name.toLowerCase().includes(q) || s.uf.toLowerCase().includes(q))
   }, [stateList, filterSearch])
 
-  // Produtos em alta formatados sem emojis de IA
-  const trendingProducts = useMemo(() => {
-    return [
-      {
-        name: 'Sérum Facial Vitamina C 15%',
-        price: 189.90,
-        activeShoppers: 6,
-        salesToday: 14,
-        image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=200&auto=format&fit=crop&q=80',
-      },
-      {
-        name: 'Combo Pele Radiante Glow Premium',
-        price: 297.00,
-        activeShoppers: 3,
-        salesToday: 9,
-        image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=200&auto=format&fit=crop&q=80',
-      },
-      {
-        name: 'Espuma de Limpeza Profunda Facial',
-        price: 98.50,
-        activeShoppers: 4,
-        salesToday: 8,
-        image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=200&auto=format&fit=crop&q=80',
-      },
-    ]
-  }, [])
+  // Variação contra o mesmo horário de ontem; sem base de comparação, não mostra nada.
+  const delta = (now: number, prev: number) => (prev > 0 ? ((now - prev) / prev) * 100 : null)
+  const fmtDelta = (d: number | null) => (d == null ? null : `${d >= 0 ? '+' : ''}${d.toFixed(1).replace('.', ',')}% vs ontem`)
+  const sessionsDelta = delta(totalSessionsToday, sessionsPrev)
+  const salesDelta = delta(totalSalesToday, salesPrev)
 
   return (
     <div
@@ -921,6 +761,15 @@ export function EcommerceLiveView({
         minHeight: isFullscreen ? '100vh' : 'auto',
       }}
     >
+      {(setup === 'tables' || setup === 'waiting') && (
+        <div className="card" style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-2)', borderRadius: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Eye size={16} color="var(--accent)" />
+          {setup === 'tables'
+            ? 'O banco ainda não tem as tabelas do live view. Rode o SQL supabase/2026-09-store-live.sql no Supabase.'
+            : 'Aguardando o pixel da loja. Assim que alguém abrir a loja com o pixel instalado, os visitantes aparecem aqui em tempo real.'}
+        </div>
+      )}
+
       {/* 1. Header do Live View seguindo o Guia de Design Grupo Don */}
       <div
         className="card"
@@ -1043,26 +892,6 @@ export function EcommerceLiveView({
                 pessoas ativas no site
               </span>
             </div>
-            <div
-              style={{
-                height: 4,
-                width: '100%',
-                background: 'var(--bg-card2)',
-                borderRadius: 9999,
-                overflow: 'hidden',
-                marginTop: 4,
-              }}
-            >
-              <div
-                style={{
-                  height: '100%',
-                  width: `${Math.min(100, (visitorsOnline / 30) * 100)}%`,
-                  background: 'var(--accent-dim)',
-                  borderRadius: 9999,
-                  transition: 'width 0.6s ease',
-                }}
-              />
-            </div>
           </div>
 
           {/* Cards em Dupla: Vendas Hoje & Pedidos Hoje */}
@@ -1085,11 +914,8 @@ export function EcommerceLiveView({
               <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--green)', lineHeight: 1.2 }}>
                 {fmtMoney(totalSalesToday, currency)}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>
-                Meta: 82% atingida
-              </div>
-              <div style={{ height: 3, width: '100%', background: 'var(--bg-card2)', borderRadius: 9999, marginTop: 6 }}>
-                <div style={{ height: '100%', width: '82%', background: 'var(--green)', borderRadius: 9999 }} />
+              <div style={{ fontSize: 11, marginTop: 4, color: salesDelta == null ? 'var(--text-2)' : salesDelta >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                {fmtDelta(salesDelta) ?? 'aprovados hoje'}
               </div>
             </div>
 
@@ -1114,9 +940,7 @@ export function EcommerceLiveView({
               <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>
                 Ticket: {fmtMoney(totalOrdersToday > 0 ? totalSalesToday / totalOrdersToday : 0, currency)}
               </div>
-              <div style={{ height: 3, width: '100%', background: 'var(--bg-card2)', borderRadius: 9999, marginTop: 6 }}>
-                <div style={{ height: '100%', width: '75%', background: 'var(--accent-dim)', borderRadius: 9999 }} />
-              </div>
+
             </div>
           </div>
 
@@ -1140,9 +964,11 @@ export function EcommerceLiveView({
               <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-1)' }}>
                 {totalSessionsToday.toLocaleString('pt-BR')}
               </span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--green)' }}>
-                +14.2% vs ontem
-              </span>
+              {fmtDelta(sessionsDelta) && (
+                <span style={{ fontSize: 12, fontWeight: 600, color: (sessionsDelta ?? 0) >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                  {fmtDelta(sessionsDelta)}
+                </span>
+              )}
             </div>
           </div>
 
@@ -1733,6 +1559,9 @@ export function EcommerceLiveView({
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {stateList.length === 0 && (
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-2)', padding: '12px 0' }}>Sem acessos hoje ainda. Os estados aparecem conforme os visitantes chegam.</p>
+            )}
             {stateList.slice(0, 6).map((st, idx) => (
               <div
                 key={st.uf}
@@ -1843,7 +1672,10 @@ export function EcommerceLiveView({
               paddingRight: 4,
             }}
           >
-            {events.map(ev => {
+            {events.length === 0 && (
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-2)', padding: '12px 0' }}>Nenhuma atividade hoje ainda. Visitas, carrinhos e compras aparecem aqui assim que acontecem.</p>
+            )}
+            {events.map((ev, idx) => {
               const isOrder = ev.type === 'order'
               const isCheckout = ev.type === 'checkout'
               const isCart = ev.type === 'cart'
@@ -1855,10 +1687,8 @@ export function EcommerceLiveView({
                     display: 'flex',
                     alignItems: 'flex-start',
                     gap: 10,
-                    padding: '8px 10px',
-                    borderRadius: 10,
-                    background: 'var(--bg-card2)',
-                    border: '1px solid var(--border-soft)',
+                    padding: '10px 0',
+                    borderTop: idx === 0 ? 'none' : '1px solid var(--border)',
                   }}
                 >
                   <div
@@ -1871,12 +1701,12 @@ export function EcommerceLiveView({
                       justifyContent: 'center',
                       flexShrink: 0,
                       background: isOrder
-                        ? 'var(--accent-soft)'
+                        ? 'var(--green-soft)'
                         : isCheckout
                           ? 'rgba(56, 189, 248, 0.12)'
                           : 'var(--amber-soft)',
                       color: isOrder
-                        ? 'var(--secondary)'
+                        ? 'var(--green)'
                         : isCheckout
                           ? '#0284c7'
                           : 'var(--amber)',
@@ -1899,12 +1729,12 @@ export function EcommerceLiveView({
                         style={{
                           fontSize: 12,
                           fontWeight: 700,
-                          color: isOrder ? 'var(--secondary)' : 'var(--text-1)',
+                          color: isOrder ? 'var(--green)' : 'var(--text-1)',
                         }}
                       >
                         {ev.title}
                       </span>
-                      <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{ev.timeAgo}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{agoLabel(ev.timestamp)}</span>
                     </div>
                     <div
                       style={{
@@ -1960,61 +1790,42 @@ export function EcommerceLiveView({
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {trendingProducts.map(p => (
+            {trending.length === 0 && (
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-2)', padding: '12px 0' }}>
+                Nenhum produto com movimento agora. Aparecem aqui quando alguém vê, coloca no carrinho ou compra.
+              </p>
+            )}
+            {trending.map((p, i) => (
               <div
                 key={p.name}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 12,
-                  padding: '8px 10px',
-                  borderRadius: 10,
-                  background: 'var(--bg-card2)',
-                  border: '1px solid var(--border-soft)',
+                  padding: '10px 0',
+                  borderTop: i === 0 ? 'none' : '1px solid var(--border)',
                 }}
               >
-                <img
-                  src={p.image}
-                  alt={p.name}
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 8,
-                    objectFit: 'cover',
-                    border: '1px solid var(--border-soft)',
-                  }}
-                />
+                {p.image ? (
+                  <img
+                    src={p.image}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border-soft)', flexShrink: 0 }}
+                  />
+                ) : (
+                  <div style={{ width: 44, height: 44, borderRadius: 8, border: '1px solid var(--border-soft)', background: 'var(--bg-card2)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                    <ShoppingBag size={18} color="var(--text-3)" />
+                  </div>
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: 'var(--text-1)',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
+                  <div title={p.name} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {p.name}
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--green)', marginTop: 2 }}>
-                    {fmtMoney(p.price, currency)}
-                  </div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      fontSize: 11,
-                      color: 'var(--text-2)',
-                      marginTop: 3,
-                    }}
-                  >
-                    <span style={{ color: 'var(--accent-dim)', fontWeight: 600 }}>
-                      {p.activeShoppers} no carrinho
-                    </span>
-                    <span>•</span>
-                    <span>{p.salesToday} vendas hoje</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 8px', fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
+                    <span>{p.viewing} vendo</span>
+                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{p.inCart} no carrinho</span>
+                    <span>{p.salesToday} {p.salesToday === 1 ? 'venda' : 'vendas'} hoje</span>
                   </div>
                 </div>
               </div>

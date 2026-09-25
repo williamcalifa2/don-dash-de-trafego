@@ -7,6 +7,7 @@ import { DailyChart } from '@/components/DailyChart'
 import { FunnelTab } from '@/components/FunnelTab'
 import { LeadsTab } from '@/components/LeadsTab'
 import { MetricPicker, useSelectedMetrics } from '@/components/MetricPicker'
+import type { MetricKey } from '@/lib/metricDefs'
 import { TvMode } from '@/components/TvMode'
 import { ReportTab } from '@/components/ReportTab'
 import { ReportStudioTab } from '@/components/ReportStudioTab'
@@ -55,6 +56,7 @@ function getDashboardPresets(): { value: DatePreset; label: string }[] {
 }
 
 const PRESETS = getDashboardPresets()
+const TAB_KEYS = ['metrics', 'campaigns', 'organic', 'audience', 'funnel', 'leads', 'ecommerce', 'reports', 'integracoes'] as const
 
 function fmt(v: number | null | undefined, currency: string) {
   if (v == null) return '—'
@@ -135,12 +137,14 @@ function Dashboard() {
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [tv, setTv] = useState(false)
-  const [me, setMe] = useState<{ slug: string; name: string; logoUrl: string | null; platforms?: PlatformKey[]; authEnabled: boolean; admin?: boolean; role?: string | null } | null>(null)
+  const [me, setMe] = useState<{ slug: string; name: string; logoUrl: string | null; platforms?: PlatformKey[]; ecommerce?: boolean; authEnabled: boolean; admin?: boolean; role?: string | null } | null>(null)
   const [openLeadId, setOpenLeadId] = useState<string | null>(null)
   const leadsApi = useLeadsData()
   const alerts = useLeadAlerts(leadsApi.leads, !leadsApi.loading && !leadsApi.error)
   const staleCount = useMemo(() => leadsApi.leads.filter(l => isStale(l)).length, [leadsApi.leads])
   const [selectedMetrics, setSelectedMetrics] = useSelectedMetrics()
+  // Publica a aba atual para a análise de uso e o mapa de calor saberem em que tela a pessoa está.
+  useEffect(() => { document.body.dataset.view = tab; return () => { delete document.body.dataset.view } }, [tab])
   // A sidebar da agência abre o Report Studio; o link de outra tela traz ?tab=reports.
   useEffect(() => {
     const onEvent = (e: Event) => {
@@ -149,8 +153,14 @@ function Dashboard() {
       if (act === 'integracoes') setTab('integracoes')
     }
     window.addEventListener(STAFF_EVENT, onEvent)
-    const q = new URLSearchParams(window.location.search).get('tab')
-    if (q === 'reports' || q === 'integracoes') { setTab(q); window.history.replaceState(null, '', window.location.pathname) }
+    const params = new URLSearchParams(window.location.search)
+    const q = params.get('tab')
+    if (q && (TAB_KEYS as readonly string[]).includes(q)) {
+      setTab(q as (typeof TAB_KEYS)[number])
+      params.delete('tab') // tira só a aba do endereço; o resto (ex.: mapa de calor) continua
+      const rest = params.toString()
+      window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : ''))
+    }
     return () => window.removeEventListener(STAFF_EVENT, onEvent)
   }, [])
 
@@ -286,13 +296,21 @@ function Dashboard() {
 
   const tiles = useMemo(() => {
     if (!s) return []
-    return selectedMetrics
+    // Os indicadores principais da conta vêm sempre primeiro (investimento, resultado e custo por resultado); o resto segue a escolha da pessoa, sem repetir nada.
+    const main: MetricKey[] = kind === 'sales' ? ['spend', 'leads', 'cpl', 'roas', 'purchase_value'] : ['spend', 'leads', 'cpl']
+    const keys = [...new Set<MetricKey>([...main, ...selectedMetrics])]
+    const seen = new Set<string>()
+    return keys
       .map(key => {
         const t = buildTile(key, s, p, d, currency, kind)
         if (t && !t.spark) t.spark = d?.metrics?.[kind !== 'form' && key === 'leads' ? 'results' : key]
-        return t
+        return t ? { ...t, id: key } : null
       })
-      .filter(Boolean) as NonNullable<ReturnType<typeof buildTile>>[]
+      .filter((t): t is NonNullable<typeof t> => {
+        if (!t || seen.has(t.label)) return false // dois indicadores com o mesmo nome (ex.: "CPA" e "Custo por compra") viram um só
+        seen.add(t.label)
+        return true
+      })
   }, [s, selectedMetrics, p, d, currency, kind])
 
   const hasEnvError = data?.error?.includes('META_ACCESS_TOKEN')
@@ -500,7 +518,7 @@ function Dashboard() {
               ['ecommerce', 'Ecommerce'],
               ['reports', 'Report Studio'],
               ['integracoes', 'Integrações'],
-            ] as const).map(([key, label]) => (
+            ] as const).filter(([key]) => (key !== 'integracoes' || !me?.authEnabled || !!me?.admin) && (key !== 'ecommerce' || me?.ecommerce === true)).map(([key, label]) => (
               <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
                 {label}
                 {key === 'leads' && staleCount > 0 && (
@@ -543,6 +561,7 @@ function Dashboard() {
             clientSlug={me?.slug}
             currency={currency}
             summary={s}
+            preset={preset}
             presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''}
           />
         )}
@@ -550,7 +569,7 @@ function Dashboard() {
         {tab === 'organic' && <OrganicTab preset="this_month" presetLabel="Este mês" isStaff={!me?.authEnabled || !!me?.admin} canLink={me?.role === 'owner' || me?.role === 'admin'} slug={me?.slug} />}
         {tab === 'leads' && <LeadsTab openId={openLeadId} onOpenConsumed={() => setOpenLeadId(null)} readOnly={me?.role === 'reader'} />}
         {tab === 'integracoes' && (
-          <div className="card" style={{ padding: 24, maxWidth: 860, margin: '0 auto' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <ClientIntegrationsTab
               slug={me?.slug || 'default'}
               clientName={me?.name || 'Cliente'}
@@ -592,7 +611,7 @@ function Dashboard() {
             <div className="tile-grid" style={{ marginBottom: 4, opacity: isLoading ? 0.7 : 1, transition: 'opacity 0.2s' }}>
               {tiles.map((t) => (
                 <MetricTile
-                  key={t.label}
+                  key={t.id}
                   label={t.label}
                   value={t.value}
                   sparkData={t.spark}
@@ -611,7 +630,7 @@ function Dashboard() {
         {/* Daily chart */}
         {!isLoading && d && tab === 'metrics' && (
           <div className="card" style={{ padding: 24, marginBottom: 24 }}>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Evolução diária</div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Evolução diária{preset === 'today' ? <span style={{ fontWeight: 400, color: 'var(--text-2)', fontSize: 13 }}> · últimos 7 dias</span> : null}</div>
             <DailyChart daily={d} currency={currency} kind={kind} />
           </div>
         )}

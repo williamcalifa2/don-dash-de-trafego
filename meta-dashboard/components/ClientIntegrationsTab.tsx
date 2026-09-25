@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Copy, Check, RefreshCw, Send, ShieldCheck, ShoppingBag, Zap, ChevronDown, ChevronUp, BookOpen } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Check, ChevronRight, Copy, Download, Plug, RefreshCw, Send, Webhook, X } from 'lucide-react'
 import type { ClientConfig, ClientIntegrationsConfig } from '@/lib/clientConfig'
 import { PulseLoader } from './PulseLoader'
+import { pixelSnippet } from '@/lib/pixelSnippet'
 
 interface ClientIntegrationsTabProps {
   slug: string
@@ -12,43 +13,106 @@ interface ClientIntegrationsTabProps {
   onNotice: (t: string) => void
 }
 
-function CopyBtn({ text }: { text: string }) {
+type Which = 'shopify' | 'nuvemshop' | 'webhook'
+type ShopTab = 'conexao' | 'live' | 'produtos' | 'avancado'
+type Feedback = { kind: 'ok' | 'err' | 'info'; text: string } | null
+
+const generateRandomToken = () => Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('')
+const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+
+function CopyBtn({ text, label = 'Copiar' }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false)
   return (
     <button
       type="button"
       className="btn btn-outline btn-sm btn-icon"
-      title={copied ? 'Copiado!' : 'Copiar'}
+      aria-label={copied ? 'Copiado' : label}
+      title={copied ? 'Copiado!' : label}
+      disabled={!text}
       onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text)
-          setCopied(true)
-          setTimeout(() => setCopied(false), 1600)
-        } catch { }
+        try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1600) } catch { /* sem permissão da área de transferência */ }
       }}
     >
-      {copied ? <Check size={14} color="var(--green)" /> : <Copy size={14} />}
+      {copied ? <Check size={16} color="var(--green)" /> : <Copy size={16} />}
     </button>
   )
 }
 
+/** Campo de leitura com botão de copiar ao lado. */
+function CopyField({ id, label, value, hint }: { id: string; label: string; value: string; hint?: string }) {
+  return (
+    <div className="int-field">
+      <label htmlFor={id}>{label}</label>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input id={id} className="int-input" readOnly value={value} />
+        <CopyBtn text={value} />
+      </div>
+      {hint && <p className="hint">{hint}</p>}
+    </div>
+  )
+}
+
+function Field({ id, label, value, onChange, placeholder, type = 'text', hint }: { id: string; label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; hint?: string }) {
+  return (
+    <div className="int-field">
+      <label htmlFor={id}>{label}</label>
+      <input id={id} className="int-input" type={type} autoComplete="off" value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+      {hint && <p className="hint">{hint}</p>}
+    </div>
+  )
+}
+
+function Status({ fb }: { fb: Feedback }) {
+  if (!fb) return null
+  const color = fb.kind === 'ok' ? 'var(--green)' : fb.kind === 'err' ? 'var(--red)' : 'var(--text-2)'
+  const bg = fb.kind === 'ok' ? 'var(--green-soft)' : fb.kind === 'err' ? 'var(--red-soft)' : 'var(--bg-card2)'
+  return <div role="status" style={{ padding: '10px 14px', borderRadius: 12, fontSize: 13, color, background: bg }}>{fb.text}</div>
+}
+
+function Badge({ tone, children }: { tone: 'ok' | 'idle'; children: React.ReactNode }) {
+  return (
+    <span className="badge" style={{ background: tone === 'ok' ? 'var(--green-soft)' : 'var(--bg-card2)', color: tone === 'ok' ? 'var(--green)' : 'var(--text-2)', fontSize: 11, fontWeight: 600, padding: '3px 10px' }}>
+      {tone === 'ok' && <Check size={11} style={{ marginRight: 4 }} />}{children}
+    </span>
+  )
+}
+
+function Logo({ which, size = 48 }: { which: Which; size?: number }) {
+  return (
+    <span className="int-logo" style={{ width: size, height: size }}>
+      {which === 'shopify' && <img src="/integrations/shopify.svg" alt="" />}
+      {which === 'nuvemshop' && <img src="/integrations/nuvemshop.png" alt="" />}
+      {which === 'webhook' && <Webhook size={Math.round(size * 0.5)} color="var(--accent)" strokeWidth={1.75} />}
+    </span>
+  )
+}
+
+const TITLES: Record<Which, string> = { shopify: 'Shopify', nuvemshop: 'Nuvemshop', webhook: 'Webhook e CRMs' }
+
 export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }: ClientIntegrationsTabProps) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [open, setOpen] = useState<Which | null>(null)
+  const [shopTab, setShopTab] = useState<ShopTab>('conexao')
+  const [fb, setFb] = useState<Feedback>(null)
 
   const [webhookToken, setWebhookToken] = useState('')
   const [shopifySecret, setShopifySecret] = useState('')
+  const [shopStoreUrl, setShopStoreUrl] = useState('')
+  const [shopDomain, setShopDomain] = useState('')
+  const [shopToken, setShopToken] = useState('')
+  const [shopClientId, setShopClientId] = useState('')
+  const [shopClientSecret, setShopClientSecret] = useState('')
   const [nuvemshopSecret, setNuvemshopSecret] = useState('')
+  const [connectedAt, setConnectedAt] = useState('')
+  const [hookCount, setHookCount] = useState(0)
+  const [trackKey, setTrackKey] = useState('')
+  const [installLink, setInstallLink] = useState('')
 
-  // Guias de instalação expandidos
-  const [openGuide, setOpenGuide] = useState<'shopify' | 'nuvemshop' | 'crm' | null>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
-  const origin = typeof window !== 'undefined'
-    ? window.location.origin
-    : (baseDomain ? `https://${baseDomain}` : 'https://dashboard.dondigital.com.br')
-
+  const origin = typeof window !== 'undefined' ? window.location.origin : (baseDomain ? `https://${baseDomain}` : 'https://dashboard.dondigital.com.br')
   const shopifyUrl = `${origin}/api/webhooks/shopify/${slug}`
   const nuvemshopUrl = `${origin}/api/webhooks/nuvemshop/${slug}${webhookToken ? `?token=${webhookToken}` : ''}`
   const inboundUrl = `${origin}/api/webhooks/inbound/${slug}`
@@ -58,396 +122,293 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
     setLoading(true)
     fetch(`/api/admin/clients/${slug}/config`)
       .then(r => (r.ok ? r.json() : null))
-      .then((cfg: ClientConfig | null) => {
+      .then((cfg: (ClientConfig & { trackKey?: string }) | null) => {
         if (!alive || !cfg) return
-        const integ = cfg.integrations || {}
-        setWebhookToken(integ.webhookToken || generateRandomToken())
-        setShopifySecret(integ.shopifySecret || '')
-        setNuvemshopSecret(integ.nuvemshopSecret || '')
+        const i = cfg.integrations || {}
+        setTrackKey(cfg.trackKey || '')
+        setWebhookToken(i.webhookToken || generateRandomToken())
+        setShopifySecret(i.shopifySecret || '')
+        setShopStoreUrl(i.shopifyStoreUrl || '')
+        setConnectedAt(i.shopifyConnectedAt || '')
+        setHookCount(i.shopifyWebhooks?.length || 0)
+        setShopDomain(i.shopifyDomain || '')
+        setShopToken(i.shopifyToken || '')
+        setShopClientId(i.shopifyClientId || '')
+        setShopClientSecret(i.shopifyClientSecret || '')
+        setNuvemshopSecret(i.nuvemshopSecret || '')
       })
       .catch(() => { })
-      .finally(() => {
-        if (alive) setLoading(false)
-      })
-    return () => {
-      alive = false
-    }
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
   }, [slug])
 
-  function generateRandomToken() {
-    return Array.from(crypto.getRandomValues(new Uint8Array(16)))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('')
+  const close = useCallback(() => { setOpen(null); setFb(null); setInstallLink('') }, [])
+
+  // Esc fecha; a página de trás não rola enquanto o popup está aberto; o foco vai para dentro do popup.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    document.addEventListener('keydown', onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    dialogRef.current?.focus()
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+  }, [open, close])
+
+  const currentIntegrations = (): ClientIntegrationsConfig => ({
+    webhookToken: webhookToken.trim(),
+    shopifySecret: shopifySecret.trim() || undefined,
+    shopifyStoreUrl: shopStoreUrl.trim() || undefined,
+    shopifyDomain: shopDomain.trim() || undefined,
+    shopifyToken: shopToken.trim() || undefined,
+    shopifyClientId: shopClientId.trim() || undefined,
+    shopifyClientSecret: shopClientSecret.trim() || undefined,
+    nuvemshopSecret: nuvemshopSecret.trim() || undefined,
+  })
+
+  async function persist(): Promise<boolean> {
+    const res = await fetch(`/api/admin/clients/${slug}/config`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ integrations: currentIntegrations() }) })
+    return res.ok
   }
 
   async function handleSave() {
     setSaving(true)
-    setTestResult(null)
+    setFb(null)
     try {
-      const integrations: ClientIntegrationsConfig = {
-        webhookToken: webhookToken.trim(),
-        shopifySecret: shopifySecret.trim() || undefined,
-        nuvemshopSecret: nuvemshopSecret.trim() || undefined,
-      }
-
-      const res = await fetch(`/api/admin/clients/${slug}/config`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ integrations }),
-      })
-
-      if (!res.ok) throw new Error('Falha ao salvar integrações')
+      if (!(await persist())) throw new Error('save')
+      setFb({ kind: 'ok', text: 'Configurações salvas.' })
       onNotice('Integrações salvas com sucesso!')
-    } catch (e) {
-      onNotice('Erro ao salvar integrações.')
+    } catch {
+      setFb({ kind: 'err', text: 'Não foi possível salvar. Tente de novo.' })
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleTestWebhook() {
-    setTesting(true)
-    setTestResult(null)
+  /** Salva os campos e chama uma rota de ação da equipe; mostra a mensagem que ela devolver. */
+  async function run(key: string, path: string, body?: unknown, after?: (j: Record<string, unknown>) => void) {
+    setBusy(key)
+    setFb({ kind: 'info', text: 'Aguarde…' })
     try {
-      const res = await fetch(`/api/webhooks/inbound/${slug}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${webhookToken}`,
-        },
-        body: JSON.stringify({ tipo: 'ping' }),
-      })
-      const json = await res.json().catch(() => ({}))
-      if (res.ok && json.ok) {
-        setTestResult({
-          ok: true,
-          message: `Webhook respondendo perfeitamente! (${json.message || '200 OK'})`,
-        })
-      } else {
-        setTestResult({
-          ok: false,
-          message: `Erro na resposta: ${json.error || res.statusText}`,
-        })
-      }
-    } catch (e) {
-      setTestResult({ ok: false, message: 'Não foi possível conectar ao endpoint.' })
+      if (!(await persist())) throw new Error('save')
+      const res = await fetch(`/api/admin/clients/${slug}/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}) })
+      const j = await res.json().catch(() => ({})) as Record<string, unknown>
+      after?.(j)
+      setFb({ kind: j.ok ? 'ok' : 'err', text: String(j.message ?? (j.ok ? 'Pronto.' : 'Não foi possível concluir.')) })
+    } catch {
+      setFb({ kind: 'err', text: 'Não foi possível concluir agora. Tente de novo.' })
     } finally {
-      setTesting(false)
+      setBusy(null)
     }
   }
 
-  const toggleGuide = (which: 'shopify' | 'nuvemshop' | 'crm') => {
-    setOpenGuide(cur => (cur === which ? null : which))
+  const testPixelCatalog = () => run('catalog', 'shopify-test')
+  const refreshWebhooks = () => run('hooks', 'shopify-webhooks', {}, j => { if (typeof j.count === 'number') setHookCount(j.count) })
+  const importHistory = () => run('history', 'shopify-backfill', { days: 30 })
+  const makeInstallLink = () => run('install', 'shopify-install', { shop: shopDomain.trim() }, j => setInstallLink(typeof j.url === 'string' ? j.url : ''))
+
+  async function pingWebhook() {
+    setBusy('ping')
+    setFb({ kind: 'info', text: 'Testando…' })
+    try {
+      const res = await fetch(`/api/webhooks/inbound/${slug}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${webhookToken}` }, body: JSON.stringify({ tipo: 'ping' }) })
+      const j = await res.json().catch(() => ({})) as { ok?: boolean; message?: string; error?: string }
+      setFb(res.ok && j.ok ? { kind: 'ok', text: `Webhook respondendo (${j.message || '200 OK'}).` } : { kind: 'err', text: `Erro na resposta: ${j.error || res.statusText}` })
+    } catch {
+      setFb({ kind: 'err', text: 'Não foi possível conectar ao endereço.' })
+    } finally {
+      setBusy(null)
+    }
   }
 
-  if (loading) {
-    return <PulseLoader size={40} caption="Carregando integrações..." />
-  }
+  if (loading) return <PulseLoader size={40} />
+
+  const shopifyStatus = connectedAt ? { tone: 'ok' as const, text: 'Conectado pelo app' } : shopifySecret ? { tone: 'ok' as const, text: 'Webhook manual' } : { tone: 'idle' as const, text: 'Não conectado' }
+
+  const cards: Array<{ which: Which; desc: string; status: { tone: 'ok' | 'idle'; text: string } | null }> = [
+    { which: 'shopify', desc: 'Pedidos, faturamento, carrinhos abandonados, fotos dos produtos e o Live View da loja.', status: shopifyStatus },
+    { which: 'nuvemshop', desc: 'Pedidos pagos da loja Nuvemshop para o faturamento e o ticket médio.', status: null },
+    { which: 'webhook', desc: 'Envie leads e vendas de qualquer ferramenta: RD Station, Kommo, Typebot, n8n, Make.', status: null },
+  ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Header */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <Zap size={20} color="var(--accent)" strokeWidth={2} />
-          <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Integrações</h3>
-        </div>
-        <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
-          Conecte sua loja (Shopify, Nuvemshop) e CRMs para sincronizar vendas, pedidos e leads em tempo real para <strong>{clientName}</strong>.
-        </p>
-      </div>
-
-      {/* Token Geral */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>Token Secreto de Webhook deste Cliente</label>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            style={{ fontSize: 11 }}
-            onClick={() => setWebhookToken(generateRandomToken())}
-          >
-            <RefreshCw size={12} /> Gerar novo token
-          </button>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input
-            type="text"
-            readOnly
-            value={webhookToken}
-            style={{
-              flex: 1,
-              fontFamily: 'monospace',
-              fontSize: 12,
-              padding: '8px 12px',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              background: 'var(--bg-card2)',
-              color: 'var(--text-1)',
-            }}
-          />
-          <CopyBtn text={webhookToken} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <span style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--accent-soft)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <Plug size={28} color="var(--accent)" strokeWidth={1.75} />
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Integrações</h2>
+          <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '2px 0 0' }}>Conecte a loja, o CRM e outras ferramentas de {clientName}.</p>
         </div>
       </div>
 
-      {/* Integração 1: Shopify */}
-      <div className="card" style={{ padding: 18, border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-            <ShoppingBag size={18} color="#95bf47" strokeWidth={2} style={{ flexShrink: 0 }} />
-            <h4 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Shopify</h4>
-          </div>
-
-          <button
-            type="button"
-            className="btn btn-outline btn-xs"
-            onClick={() => toggleGuide('shopify')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
-          >
-            <BookOpen size={12} />
-            <span>{openGuide === 'shopify' ? 'Ocultar guia' : 'Como instalar'}</span>
-            {openGuide === 'shopify' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+      <div className="int-grid stagger">
+        {cards.map(c => (
+          <button key={c.which} type="button" className="int-card" onClick={() => { setOpen(c.which); setShopTab('conexao'); setFb(null) }} aria-label={`Configurar ${TITLES[c.which]}`}>
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <Logo which={c.which} />
+              <ChevronRight size={18} color="var(--text-3)" aria-hidden="true" />
+            </span>
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 16, fontWeight: 600 }}>{TITLES[c.which]}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.5 }}>{c.desc}</span>
+            </span>
+            <span style={{ marginTop: 'auto' }}>
+              {c.status ? <Badge tone={c.status.tone}>{c.status.text}</Badge> : <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)' }}>Configurar</span>}
+            </span>
           </button>
-        </div>
+        ))}
+      </div>
 
-        <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 12 }}>
-          Receba pedidos pagos, faturamento e cálculo de ROAS Real e CPA em tempo real.
-        </p>
+      {open && (
+        <div className="int-overlay" onMouseDown={e => { if (e.target === e.currentTarget) close() }}>
+          <div className="int-dialog" role="dialog" aria-modal="true" aria-label={`Configurar ${TITLES[open]}`} tabIndex={-1} ref={dialogRef}>
+            <div className="int-dialog-head">
+              <Logo which={open} size={44} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>{TITLES[open]}</h3>
+                <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '2px 0 0' }}>{clientName}</p>
+              </div>
+              <button type="button" className="btn btn-ghost btn-icon" onClick={close} aria-label="Fechar" title="Fechar"><X size={18} /></button>
+            </div>
 
-        {/* Guia Passo a Passo Shopify */}
-        {openGuide === 'shopify' && (
-          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-soft)', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 12, lineHeight: 1.6, color: 'var(--text-1)' }}>
-            <strong style={{ display: 'block', marginBottom: 6, color: 'var(--accent)' }}>Passo a passo de instalação na Shopify:</strong>
-            <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <li>No painel administrativo da sua Shopify, acesse <strong>Configurações</strong> (ícone de engrenagem no canto inferior esquerdo).</li>
-              <li>No menu lateral, clique em <strong>Notificações</strong> e role até o final da página na seção <strong>Webhooks</strong>.</li>
-              <li>Clique no botão <strong>Criar webhook</strong>.</li>
-              <li>No campo <strong>Evento</strong>, selecione <code>Criação de pedido (Order creation)</code> ou <code>Pagamento do pedido (Order payment)</code>.</li>
-              <li>Em <strong>Formato</strong>, selecione <code>JSON</code>.</li>
-              <li>No campo <strong>URL</strong>, cole a URL de Webhook abaixo.</li>
-              <li>Clique em <strong>Salvar</strong>.</li>
-              <li><em>(Opcional)</em> Copie o segredo de assinatura exibido no rodapé da seção de Webhooks da Shopify e cole no campo de Chave Secreta abaixo.</li>
-            </ol>
-          </div>
-        )}
+            {open === 'shopify' && (
+              <div className="int-tabs" role="tablist" aria-label="Seções da Shopify">
+                {([['conexao', 'Conexão'], ['live', 'Live View'], ['produtos', 'Produtos'], ['avancado', 'Avançado']] as const).map(([k, l]) => (
+                  <button key={k} type="button" role="tab" className="int-tab" aria-selected={shopTab === k} onClick={() => { setShopTab(k); setFb(null) }}>{l}</button>
+                ))}
+              </div>
+            )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
-              URL do Webhook na Shopify (Tópicos: Criação de pedido / Pedido pago)
-            </label>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input
-                type="text"
-                readOnly
-                value={shopifyUrl}
-                style={{
-                  flex: 1,
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-card2)',
-                  color: 'var(--text-1)',
-                }}
-              />
-              <CopyBtn text={shopifyUrl} />
+            <div className="int-dialog-body">
+              {open === 'shopify' && shopTab === 'conexao' && (
+                <>
+                  {connectedAt ? (
+                    <div className="int-note" style={{ color: 'var(--text-1)' }}>
+                      <strong style={{ color: 'var(--green)' }}>Conectado</strong> a {shopDomain || 'a loja'} desde {fmtDate(connectedAt)}. {hookCount} webhooks ativos: pedidos, cancelamentos, reembolsos, exclusões e carrinhos chegam sozinhos.
+                    </div>
+                  ) : (
+                    <div className="int-note">Instale o app do Grupo Don na loja. O app cadastra os webhooks sozinho e passa a ler pedidos e produtos, sem copiar chave nenhuma.</div>
+                  )}
+
+                  <Field id="shop-domain" label="Endereço da loja na Shopify" value={shopDomain} onChange={setShopDomain} placeholder="nomedaloja.myshopify.com" hint="É o endereço do admin da Shopify, não o site da loja." />
+
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button type="button" className="btn btn-primary btn-sm" onClick={makeInstallLink} disabled={busy !== null || !shopDomain.trim()}>
+                      {busy === 'install' ? 'Gerando…' : connectedAt ? 'Link para reinstalar' : 'Gerar link de instalação'}
+                    </button>
+                    {connectedAt && (
+                      <>
+                        <button type="button" className="btn btn-outline btn-sm" onClick={importHistory} disabled={busy !== null}><Download size={14} /> {busy === 'history' ? 'Importando…' : 'Importar últimos 30 dias'}</button>
+                        <button type="button" className="btn btn-outline btn-sm" onClick={refreshWebhooks} disabled={busy !== null}><RefreshCw size={14} /> {busy === 'hooks' ? 'Atualizando…' : 'Atualizar webhooks'}</button>
+                      </>
+                    )}
+                  </div>
+
+                  {installLink && (
+                    <>
+                      <CopyField id="shop-install" label="Link de instalação" value={installLink} />
+                      <ol className="int-steps">
+                        <li>Na tela <strong>Distribuição</strong> do Partners, gere o link da loja e abra com o usuário que tem acesso a ela.</li>
+                        <li>Aprove as permissões. Você volta para esta tela com o selo <strong>Conectado</strong>.</li>
+                      </ol>
+                    </>
+                  )}
+                  <Status fb={fb} />
+                </>
+              )}
+
+              {open === 'shopify' && shopTab === 'live' && (
+                <>
+                  <div className="int-note">Mostra visitantes online, carrinhos, checkouts e compras ao vivo. A Shopify não entrega isso por API, então um pixel na loja envia os eventos. Só conta quem aceitou o rastreio e só a partir da instalação.</div>
+                  <ol className="int-steps">
+                    <li>No admin da loja, abra <strong>Configurações → Eventos do cliente</strong>.</li>
+                    <li>Clique em <strong>Adicionar pixel personalizado</strong>, dê o nome <code>Grupo Don Live View</code>.</li>
+                    <li>Apague o conteúdo do editor e cole o código abaixo. Depois <strong>Salvar</strong> e <strong>Conectar</strong>.</li>
+                    <li>Em <strong>Permissão</strong>, marque <strong>Análise</strong>. Em <strong>Venda de dados</strong>, marque que não vende.</li>
+                    <li>Abra a loja em outra aba: em até 20 segundos o visitante aparece no Live View.</li>
+                  </ol>
+                  <div className="int-field">
+                    <label htmlFor="pixel-code">Código do pixel</label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                      <textarea id="pixel-code" className="int-input" readOnly rows={7} style={{ height: 'auto', padding: 12, resize: 'vertical' }} value={trackKey ? pixelSnippet(origin, slug, trackKey) : 'Carregando…'} />
+                      <CopyBtn text={trackKey ? pixelSnippet(origin, slug, trackKey) : ''} label="Copiar código" />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {open === 'shopify' && shopTab === 'produtos' && (
+                <>
+                  <div className="int-note">Para mostrar a foto e o link reais dos produtos, basta o endereço público da loja: o app lê o catálogo aberto que a Shopify já publica. Sem senha e sem app. Se a loja estiver conectada pelo app, ele usa a conexão.</div>
+                  <Field id="shop-public" label="Endereço público da loja" value={shopStoreUrl} onChange={setShopStoreUrl} placeholder="meumagtag.com.br" />
+                  <div><button type="button" className="btn btn-outline btn-sm" onClick={testPixelCatalog} disabled={busy !== null}>{busy === 'catalog' ? 'Testando…' : 'Salvar e testar conexão'}</button></div>
+                  <Status fb={fb} />
+                </>
+              )}
+
+              {open === 'shopify' && shopTab === 'avancado' && (
+                <>
+                  <div className="int-note"><strong>Webhook manual.</strong> Só use se a loja não puder instalar o app. Crie os webhooks em Configurações → Notificações → Webhooks, com formato JSON e este endereço, e cole a chave de assinatura que a Shopify mostra no fim da página. Eventos: criação, pagamento e cancelamento de pedido, criação e atualização de checkout.</div>
+                  <CopyField id="shop-webhook" label="Endereço do webhook" value={shopifyUrl} />
+                  <Field id="shop-secret" label="Chave de assinatura da Shopify" value={shopifySecret} onChange={setShopifySecret} placeholder="Cole a chave exibida na Shopify" hint="Obrigatória para este modo: sem ela, os pedidos são recusados." />
+                  <div className="int-note"><strong>App próprio da nossa organização.</strong> Só para lojas que estão na mesma organização do app no Dev Dashboard. As outras lojas usam o link de instalação da aba Conexão.</div>
+                  <Field id="shop-token" label="Token de acesso da Admin API" value={shopToken} onChange={setShopToken} type="password" placeholder="shpat_…" />
+                  <Field id="shop-cid" label="ID do cliente do app" value={shopClientId} onChange={setShopClientId} />
+                  <Field id="shop-csec" label="Segredo do cliente do app" value={shopClientSecret} onChange={setShopClientSecret} type="password" />
+                  <Status fb={fb} />
+                </>
+              )}
+
+              {open === 'nuvemshop' && (
+                <>
+                  <div className="int-note">Recebe pedidos pagos da Nuvemshop para o faturamento e o ticket médio do painel.</div>
+                  <ol className="int-steps">
+                    <li>No painel da Nuvemshop, abra <strong>Configurações → Canais de venda / Aplicativos</strong> (ou o Portal de Parceiros).</li>
+                    <li>Cadastre um webhook para os eventos <code>order/created</code> e <code>order/paid</code>.</li>
+                    <li>Cole o endereço abaixo. Ele já leva o seu token de segurança.</li>
+                    <li>Salve. Os pedidos pagos passam a entrar no painel em tempo real.</li>
+                  </ol>
+                  <CopyField id="nuvem-url" label="Endereço do webhook" value={nuvemshopUrl} hint="Eventos: order/created e order/paid" />
+                </>
+              )}
+
+              {open === 'webhook' && (
+                <>
+                  <div className="int-note">Envie leads ou vendas de qualquer ferramenta com uma requisição <code>POST</code> em JSON para o endereço abaixo, autenticada pelo token.</div>
+                  <CopyField id="in-url" label="Endereço (POST)" value={inboundUrl} />
+                  <div className="int-field">
+                    <label htmlFor="in-token">Token do cliente</label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input id="in-token" className="int-input" readOnly value={webhookToken} />
+                      <CopyBtn text={webhookToken} />
+                      <button type="button" className="btn btn-outline btn-sm" onClick={() => setWebhookToken(generateRandomToken())}>Gerar novo</button>
+                    </div>
+                    <p className="hint">Ao gerar um novo token, clique em Salvar. O antigo deixa de valer.</p>
+                  </div>
+                  <ol className="int-steps">
+                    <li>No seu fluxo (n8n, Make, Typebot, CRM), crie uma requisição HTTP <code>POST</code>.</li>
+                    <li>Cole o endereço acima e envie o cabeçalho <code>Authorization: Bearer {'{token}'}</code> (ou <code>x-webhook-token</code>).</li>
+                    <li>Envie o corpo em JSON, como nos exemplos abaixo.</li>
+                  </ol>
+                  <div className="int-note">
+                    <strong>Lead:</strong> <code>{'{ "nome": "Maria Silva", "telefone": "(11) 99999-9999", "email": "maria@email.com", "origem": "RD Station" }'}</code><br />
+                    <strong>Venda:</strong> <code>{'{ "tipo": "venda", "valor": 197.00, "status": "paid", "customer_name": "Maria Silva" }'}</code>
+                  </div>
+                  <div><button type="button" className="btn btn-outline btn-sm" onClick={pingWebhook} disabled={busy !== null}><Send size={14} /> {busy === 'ping' ? 'Testando…' : 'Enviar teste'}</button></div>
+                  <Status fb={fb} />
+                </>
+              )}
+
+              {(open === 'nuvemshop' || (open === 'shopify' && shopTab === 'live')) && <Status fb={fb} />}
+            </div>
+
+            <div className="int-dialog-foot">
+              <button type="button" className="btn btn-outline" onClick={close}>Fechar</button>
+              <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving || busy !== null}>{saving ? 'Salvando…' : 'Salvar'}</button>
             </div>
           </div>
-
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
-              Chave Secreta da Shopify (Webhook HMAC Secret — Opcional)
-            </label>
-            <input
-              type="text"
-              placeholder="Cole o segredo exibido na Shopify ao cadastrar o webhook"
-              value={shopifySecret}
-              onChange={e => setShopifySecret(e.target.value)}
-              style={{
-                width: '100%',
-                fontSize: 12,
-                padding: '8px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--border)',
-                background: 'var(--bg)',
-                color: 'var(--text-1)',
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Integração 2: Nuvemshop */}
-      <div className="card" style={{ padding: 18, border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-            <ShoppingBag size={18} color="#2d3277" strokeWidth={2} style={{ flexShrink: 0 }} />
-            <h4 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Nuvemshop</h4>
-          </div>
-
-          <button
-            type="button"
-            className="btn btn-outline btn-xs"
-            onClick={() => toggleGuide('nuvemshop')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
-          >
-            <BookOpen size={12} />
-            <span>{openGuide === 'nuvemshop' ? 'Ocultar guia' : 'Como instalar'}</span>
-            {openGuide === 'nuvemshop' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-          </button>
-        </div>
-
-        <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 12 }}>
-          Sincronização de vendas e pedidos para cálculo automático de faturamento e ticket médio.
-        </p>
-
-        {/* Guia Passo a Passo Nuvemshop */}
-        {openGuide === 'nuvemshop' && (
-          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-soft)', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 12, lineHeight: 1.6, color: 'var(--text-1)' }}>
-            <strong style={{ display: 'block', marginBottom: 6, color: 'var(--accent)' }}>Passo a passo de instalação na Nuvemshop:</strong>
-            <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <li>No painel da sua Nuvemshop, acesse a área de <strong>Configurações</strong> &gt; <strong>Canais de Venda / Aplicativos</strong> (ou pelo Portal de Parceiros da Nuvemshop).</li>
-              <li>Cadastre uma nova notificação de Webhook para os eventos <code>order/created</code> (criação de pedido) e <code>order/paid</code> (pedido pago).</li>
-              <li>Cole a URL abaixo no campo correspondente (ela já contém seu token de autenticação seguro embutido).</li>
-              <li>Salve as configurações para que todos os pedidos pagos entrem no painel em tempo real.</li>
-            </ol>
-          </div>
-        )}
-
-        <div>
-          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
-            URL do Webhook na Nuvemshop (Eventos: order/created, order/paid)
-          </label>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input
-              type="text"
-              readOnly
-              value={nuvemshopUrl}
-              style={{
-                flex: 1,
-                fontFamily: 'monospace',
-                fontSize: 12,
-                padding: '8px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--border)',
-                background: 'var(--bg-card2)',
-                color: 'var(--text-1)',
-              }}
-            />
-            <CopyBtn text={nuvemshopUrl} />
-          </div>
-        </div>
-      </div>
-
-      {/* Integração 3: Webhook Genérico (CRM, n8n, Typebot, WhatsApp) */}
-      <div className="card" style={{ padding: 18, border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-            <Zap size={18} color="var(--accent)" strokeWidth={2} style={{ flexShrink: 0 }} />
-            <h4 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Webhook Genérico (CRM, n8n, Typebot, WhatsApp)</h4>
-          </div>
-
-          <button
-            type="button"
-            className="btn btn-outline btn-xs"
-            onClick={() => toggleGuide('crm')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
-          >
-            <BookOpen size={12} />
-            <span>{openGuide === 'crm' ? 'Ocultar guia' : 'Como instalar'}</span>
-            {openGuide === 'crm' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-          </button>
-        </div>
-
-        <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 12 }}>
-          Envie leads ou vendas externas de qualquer ferramenta (RD Station, Kommo, Typebot, n8n, Make).
-        </p>
-
-        {/* Guia Passo a Passo CRM / n8n */}
-        {openGuide === 'crm' && (
-          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-soft)', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 12, lineHeight: 1.6, color: 'var(--text-1)' }}>
-            <strong style={{ display: 'block', marginBottom: 6, color: 'var(--accent)' }}>Passo a passo para n8n, Make, Typebot e CRMs:</strong>
-            <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <li>No seu fluxo de automação, crie um nó de requisição HTTP com o método <code>POST</code>.</li>
-              <li>Cole a <strong>URL Inbound</strong> abaixo.</li>
-              <li>No cabeçalho (Headers), inclua: <code>Authorization: Bearer {webhookToken}</code> (ou use o header <code>x-webhook-token</code>).</li>
-              <li>Envie o corpo da requisição em formato JSON com os campos correspondentes (veja os exemplos abaixo).</li>
-            </ol>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
-              URL Inbound (POST)
-            </label>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input
-                type="text"
-                readOnly
-                value={inboundUrl}
-                style={{
-                  flex: 1,
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-card2)',
-                  color: 'var(--text-1)',
-                }}
-              />
-              <CopyBtn text={inboundUrl} />
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--bg-card2)', padding: 12, borderRadius: 8, fontSize: 11, color: 'var(--text-2)' }}>
-            <strong>Header de Autenticação:</strong> <code>Authorization: Bearer {webhookToken}</code><br />
-            <strong>Exemplo de Payload de Lead:</strong> <code>&#123; "nome": "Maria Silva", "telefone": "(11) 99999-9999", "email": "maria@email.com", "origem": "RD Station" &#125;</code><br />
-            <strong>Exemplo de Registro de Venda:</strong> <code>&#123; "tipo": "venda", "valor": 197.00, "status": "paid", "customer_name": "Maria Silva" &#125;</code>
-          </div>
-        </div>
-      </div>
-
-      {/* Teste e Salvar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-        <button
-          type="button"
-          className="btn btn-outline btn-sm"
-          disabled={testing}
-          onClick={handleTestWebhook}
-        >
-          <Send size={14} /> {testing ? 'Testando conexão…' : 'Enviar Ping de Teste'}
-        </button>
-
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={saving}
-          onClick={handleSave}
-        >
-          <Check size={16} /> {saving ? 'Salvando…' : 'Salvar Configurações'}
-        </button>
-      </div>
-
-      {testResult && (
-        <div
-          style={{
-            padding: 12,
-            borderRadius: 8,
-            fontSize: 13,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            background: testResult.ok ? 'var(--green-soft)' : 'var(--red-soft)',
-            color: testResult.ok ? 'var(--green)' : 'var(--red)',
-            border: `1px solid ${testResult.ok ? 'var(--green)' : 'var(--red)'}`,
-          }}
-        >
-          {testResult.ok ? <ShieldCheck size={16} /> : null}
-          {testResult.message}
         </div>
       )}
     </div>

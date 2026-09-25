@@ -6,7 +6,7 @@ export function PlatformBadges({ platforms, height = 11 }: { platforms: Platform
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
       {platforms.map(p => (
-        <img key={p} src={PLATFORMS[p].logo} alt={PLATFORMS[p].label} title={`Anuncia no ${PLATFORMS[p].label}`} style={{ height, width: 'auto', display: 'block', opacity: 0.9 }} />
+        <img key={p} src={PLATFORMS[p].logo} alt={PLATFORMS[p].label} title={p === 'shopify' ? 'Loja na Shopify' : `Anuncia no ${PLATFORMS[p].label}`} style={{ height: Math.round(height * PLATFORMS[p].scale), width: 'auto', display: 'block', opacity: 0.9 }} />
       ))}
     </span>
   )

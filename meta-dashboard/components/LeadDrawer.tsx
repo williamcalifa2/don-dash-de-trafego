@@ -66,6 +66,7 @@ export function LeadDrawer({ lead, focus, onClose, onPatch }: Props) {
       <aside
         className="lead-drawer"
         role="dialog"
+        data-hm-layer="detalhe-do-lead"
         aria-label={`Lead ${lead.nome ?? ''}`}
         style={{
           position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 1500,

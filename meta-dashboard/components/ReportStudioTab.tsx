@@ -202,22 +202,6 @@ export function ReportStudioTab({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 18, minWidth: 260 }}>
-          <div
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 16,
-              background: 'linear-gradient(135deg, rgba(99,102,241,0.18) 0%, rgba(139,92,246,0.24) 100%)',
-              border: '1px solid rgba(99,102,241,0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--accent)',
-              flexShrink: 0,
-            }}
-          >
-            <Presentation size={28} strokeWidth={1.8} />
-          </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--text-1)' }}>

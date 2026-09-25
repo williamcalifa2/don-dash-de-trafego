@@ -31,6 +31,7 @@ interface AdminClient {
   pageId: string | null
   hasCode: boolean
   active?: boolean
+  ecommerce?: boolean
   locked: boolean
   leadCount: number
   lastLeadAt: string | null
@@ -678,15 +679,18 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
 
   // Status Ativo/Pausado da conta
   const [active, setActive] = useState<boolean>(initial?.active !== false)
+  // "Tem e-commerce?": libera a aba E-commerce e a integração com a loja para este cliente
+  const [ecommerce, setEcommerce] = useState<boolean>(initial?.ecommerce === true)
 
   useEffect(() => {
     if (!initial?.slug) return
     let alive = true
     fetch(`/api/admin/clients/${initial.slug}/config`)
       .then(r => r.ok ? r.json() : null)
-      .then((cfg: { active?: boolean } | null) => {
+      .then((cfg: { active?: boolean; ecommerce?: boolean; integrations?: Record<string, unknown> } | null) => {
         if (!alive || !cfg) return
         if (cfg.active !== undefined) setActive(cfg.active !== false)
+        if (typeof cfg.ecommerce === 'boolean') setEcommerce(cfg.ecommerce)
       })
       .catch(() => { })
     return () => { alive = false }
@@ -710,7 +714,7 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
     const savedSlug = initial?.slug ?? (r.data as { slug: string }).slug
 
     // Salva status do cliente
-    await api(`/api/admin/clients/${savedSlug}/config`, 'POST', { active }).catch(() => { })
+    await api(`/api/admin/clients/${savedSlug}/config`, 'POST', { active, ecommerce }).catch(() => { })
 
     setSaving(false)
     onDone({ slug: savedSlug, name, code: (r.data as { code?: string }).code, imported: (r.data as { imported?: number | null }).imported })
@@ -743,6 +747,27 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
         </div>
 
         <StatusToggle checked={active} onChange={setActive} />
+      </div>
+
+      <div
+        style={{
+          padding: '12px 16px',
+          borderRadius: 14,
+          background: 'var(--bg-card2)',
+          border: '1px solid var(--border-soft)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>Tem e-commerce?</div>
+          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+            {ecommerce ? 'Libera a aba E-commerce, o Live View e a integração com a loja para este cliente.' : 'Sem loja virtual: a aba E-commerce fica escondida.'}
+          </div>
+        </div>
+        <StatusToggle checked={ecommerce} onChange={setEcommerce} />
       </div>
 
       {/* Identidade */}
@@ -1366,7 +1391,7 @@ export default function AdminPage() {
                     <Avatar name={c.name} logoUrl={c.logoUrl} />
                     <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <h3 style={{ fontSize: 16, fontWeight: 600, overflowWrap: 'anywhere', lineHeight: 1.3 }}>{c.name}</h3>
-                      <PlatformBadges platforms={platformsFor(c)} height={10} />
+                      <PlatformBadges platforms={platformsFor({ adAccountId: c.adAccountId, ecommerce: c.ecommerce })} height={10} />
                     </div>
                     <span className="badge" style={{ background: badge.bg, color: 'var(--text-1)' }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: badge.dot }} />{badge.text}

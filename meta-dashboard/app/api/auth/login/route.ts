@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { authEnabled, SESSION_COOKIE, SESSION_MAX_AGE, safeNext } from '@/lib/auth'
+import { authEnabled, readSession, SESSION_COOKIE, SESSION_MAX_AGE, safeNext } from '@/lib/auth'
+import { recordLogin } from '@/lib/usageStore'
 import { hostSlug, SLUG_RE } from '@/lib/host'
 import { loginWithCode, loginWithEmail } from '@/lib/tenant'
 import { allow } from '@/lib/rateLimit'
@@ -30,11 +31,14 @@ export async function POST(req: NextRequest) {
   if (byEmail && !allow(`login-email:${slug}:${email.toLowerCase()}`, 12)) return NextResponse.json({ error: 'Muitas tentativas. Aguarde alguns minutos e tente de novo.' }, { status: 429 })
   const result = byEmail ? await loginWithEmail(slug, email, token) : await loginWithCode(slug, code)
   if (!result.ok) {
+    await recordLogin(req, { userKey: byEmail ? email : `cliente:${slug}`, role: 'client', clientSlug: slug, ok: false })
     return result.reason === 'locked'
       ? NextResponse.json({ error: `Acesso bloqueado por segurança. Tente de novo em ${result.minutes} minuto${result.minutes === 1 ? '' : 's'}.` }, { status: 429 })
       : NextResponse.json({ error: byEmail ? 'E-mail ou token incorreto.' : 'Código incorreto.' }, { status: 401 })
   }
 
+  const sess = await readSession(result.session)
+  await recordLogin(req, { userKey: sess?.m ?? `cliente:${slug}`, role: 'client', clientSlug: slug, ok: true })
   const res = NextResponse.json({ ok: true, next: safeNext(body.next) })
   res.cookies.set(SESSION_COOKIE, result.session, {
     httpOnly: true,

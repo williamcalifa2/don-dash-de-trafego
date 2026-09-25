@@ -45,3 +45,13 @@ export async function saveProfile(email: string, patch: { name?: unknown; avatar
   if (error) throw new Error(error.message)
   return next
 }
+
+export const AVATAR_URL = '/api/admin/profile/avatar'
+
+/** Endereço da foto para o navegador. O `v` muda quando a foto muda, então o cache longo nunca mostra foto velha. */
+export function avatarUrl(avatar: string | undefined | null): string | null {
+  if (!avatar) return null
+  let h = 5381
+  for (let i = 0; i < avatar.length; i += 7) h = ((h << 5) + h + avatar.charCodeAt(i)) | 0
+  return `${AVATAR_URL}?v=${(h >>> 0).toString(36)}${avatar.length.toString(36)}`
+}

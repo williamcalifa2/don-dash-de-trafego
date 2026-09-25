@@ -1,8 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { requireTenant } from '@/lib/tenant'
 import { getSupabaseServer } from '@/lib/supabase'
+import { distinct, presetRangeBr } from '@/lib/ecomFunnel'
+import { getClientConfig, setClientConfig } from '@/lib/clientConfig'
+import { backfillShopify } from '@/lib/shopifyOrders'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 interface TopProduct {
   name: string
@@ -19,6 +23,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const statusFilter = searchParams.get('status')
   const search = searchParams.get('q')?.toLowerCase()
+  const preset = searchParams.get('preset')
+  const { since, until } = presetRangeBr(preset)
 
   try {
     let orders: any[] = []
@@ -29,8 +35,10 @@ export async function GET(req: NextRequest) {
         .from('ecommerce_orders')
         .select('*')
         .eq('client_id', tenant.clientId)
+        .gte('created_at', since)
+        .lt('created_at', until ?? '9999-12-31')
         .order('created_at', { ascending: false })
-        .limit(100)
+        .limit(500)
 
       if (statusFilter && statusFilter !== 'all') {
         q = q.eq('status', statusFilter)
@@ -42,8 +50,13 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Se ainda não houver pedidos reais no banco, fornecemos dados de demonstração da loja
-    if (orders.length === 0) {
+    // Demonstração só para quem nunca recebeu um pedido real: período vazio de uma loja com pedidos mostra vazio, não pedido falso.
+    let hasAnyOrder = orders.length > 0
+    if (!hasAnyOrder && db) {
+      const any = await db.from('ecommerce_orders').select('id', { count: 'exact', head: true }).eq('client_id', tenant.clientId)
+      hasAnyOrder = (any.count ?? 0) > 0
+    }
+    if (orders.length === 0 && !hasAnyOrder) {
       isMock = true
       const now = Date.now()
       const dayMs = 86400000
@@ -189,9 +202,42 @@ export async function GET(req: NextRequest) {
     const averageTicket = paidCount > 0 ? totalRevenue / paidCount : 0
     const approvalRate = totalOrders > 0 ? (paidCount / totalOrders) * 100 : 0
 
+    // Funil real dos últimos 30 dias: visitas, carrinho e checkout vêm do pixel; pedidos e pagos, da loja.
+    const funnel = { pixel: false, sessions: 0, carts: 0, checkouts: 0, orders: 0, paid: 0 }
+    if (db) {
+      const [sess, carts, checks, ord, paidOrd] = await Promise.all([
+        db.from('store_sessions').select('sid', { count: 'exact', head: true }).eq('client_id', tenant.clientId).gte('first_seen', since).lt('first_seen', until ?? '9999-12-31'),
+        db.from('store_events').select('sid').eq('client_id', tenant.clientId).eq('type', 'cart').gte('created_at', since).lt('created_at', until ?? '9999-12-31').limit(20000),
+        db.from('store_events').select('sid').eq('client_id', tenant.clientId).eq('type', 'checkout').gte('created_at', since).lt('created_at', until ?? '9999-12-31').limit(20000),
+        db.from('ecommerce_orders').select('id', { count: 'exact', head: true }).eq('client_id', tenant.clientId).gte('created_at', since).lt('created_at', until ?? '9999-12-31'),
+        db.from('ecommerce_orders').select('id', { count: 'exact', head: true }).eq('client_id', tenant.clientId).eq('status', 'paid').gte('created_at', since).lt('created_at', until ?? '9999-12-31'),
+      ])
+      funnel.pixel = !sess.error && (sess.count ?? 0) > 0
+      funnel.sessions = sess.count ?? 0
+      funnel.carts = distinct(((carts.data ?? []) as Array<{ sid: string }>).map(r => r.sid))
+      funnel.checkouts = distinct(((checks.data ?? []) as Array<{ sid: string }>).map(r => r.sid))
+      funnel.orders = ord.count ?? 0
+      funnel.paid = paidOrd.count ?? 0
+    }
+
+    // Loja conectada pelo app que ainda não importou o histórico: importa sozinha, uma vez, em segundo plano.
+    let importing = false
+    try {
+      const i = (await getClientConfig(tenant.slug)).integrations ?? {}
+      if (db && i.shopifyToken && i.shopifyDomain && i.shopifyConnectedAt && !i.shopifyBackfilledAt) {
+        importing = true
+        await setClientConfig(tenant.slug, { integrations: { ...i, shopifyBackfilledAt: new Date().toISOString() } }) // marca antes, para outra aba aberta não repetir
+        const clientId = tenant.clientId, domain = i.shopifyDomain, token = i.shopifyToken
+        after(async () => { try { await backfillShopify(clientId, { domain, token }, 30) } catch (e) { console.error('[orders] histórico automático:', e instanceof Error ? e.message : e) } })
+      }
+    } catch { /* sem configuração: segue sem importar */ }
+
     return NextResponse.json({
       ok: true,
       is_mock: isMock,
+      importing,
+      period: { preset: preset ?? 'last_30d', since, until },
+      funnel,
       orders,
       totals: {
         totalOrders,

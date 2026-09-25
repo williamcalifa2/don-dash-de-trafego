@@ -33,7 +33,8 @@ describe('leitura do painel a partir do banco', () => {
       dailyRows: sliceDaily((await snaps.get<Array<Record<string, unknown>>>('c1', 'daily', 'last_30d'))!.payload, 'last_7d', new Date(NOW)),
       campaigns: [{ id: '11', name: 'Camp A', effective_status: 'ACTIVE', daily_budget: '5000', insight: { spend: '60', impressions: '600', actions: lead(3) } }, { id: '12', name: 'Camp B', effective_status: 'PAUSED' }],
     }, r.generated_at)
-    const { freshness, ...rest } = r
+    const { freshness, dailyMissing, ...rest } = r
+    expect(dailyMissing).toBe(false)
     expect(rest).toEqual(live)
     expect(freshness.stale).toBe(false)
     expect(r.summary.spend).toBe(100); expect(r.summary.leads).toBe(5); expect(r.summary_prev?.leads).toBe(4)
@@ -44,7 +45,13 @@ describe('leitura do painel a partir do banco', () => {
   it('série diária é fatiada pelo período (7 dias a partir dos 30)', async () => {
     const r7 = await readMetrics(snaps, 'c1', 'act_1234567', 'last_7d', cfg, null, NOW)
     expect(r7.daily?.dates).toHaveLength(7)
-    expect((await readMetrics(snaps, 'c1', 'act_1234567', 'today', cfg, null, NOW)).daily).toBeUndefined()
+    // "Hoje" é um ponto só: o gráfico mostra a semana até hoje
+    expect((await readMetrics(snaps, 'c1', 'act_1234567', 'today', cfg, null, NOW)).daily?.dates).toHaveLength(7)
+  })
+
+  it('sem a série diária guardada: avisa (dailyMissing) para o servidor buscar em segundo plano', async () => {
+    const r = await readMetrics(new MemorySnapshotStore(), 'c9', 'act_1234567', 'last_7d', cfg, null, NOW)
+    expect(r.dailyMissing).toBe(true)
   })
 
   it('sem dados ainda: resposta vazia com aviso claro (não quebra a tela)', async () => {

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { fetchMetrics, type DatePreset, type MetricsResponse } from '@/lib/meta'
 import { requireTenant } from '@/lib/tenant'
 import { snapshotMode, accountStateOrNull, snapshotGuard } from '@/lib/meta/mode'
@@ -7,6 +7,13 @@ import { metaConfig } from '@/lib/meta/config'
 import { stores } from '@/lib/meta/pipeline'
 import { writeThroughMetrics } from '@/lib/meta/writeThrough'
 import { friendlyLiveError, metricsFallback, remember } from '@/lib/meta/staleFallback'
+import { refreshNow } from '@/lib/meta/refreshNow'
+import { allow } from '@/lib/rateLimit'
+
+export const maxDuration = 60
+
+/** Períodos que o "atualizar na hora" sabe buscar. Os meses fechados vêm por outro caminho. */
+const AUTO_PRESETS: DatePreset[] = ['today', 'last_7d', 'last_14d', 'last_30d', 'this_month']
 
 function pastDates(n: number): string[] {
   return Array.from({ length: n }, (_, i) => {
@@ -166,7 +173,16 @@ export async function GET(req: NextRequest) {
   if (await snapshotMode()) {
     if (!accountId) return NextResponse.json({ error: 'A conta de anúncios deste cliente ainda não foi configurada.' }, { status: 409 })
     const st = await accountStateOrNull(tenant.clientId)
-    return snapshotGuard(async () => NextResponse.json(await readMetrics(stores.snaps, tenant.clientId, accountId, datePreset, metaConfig(), st), { headers: { 'Cache-Control': 'no-store' } }))
+    return snapshotGuard(async () => {
+      const resp = await readMetrics(stores.snaps, tenant.clientId, accountId, datePreset, metaConfig(), st)
+      // Ainda não existe cópia deste período (ou da série diária do gráfico): busca sozinho na Meta, em segundo plano, no máximo uma vez a cada 10 min por conta e período.
+      // O painel tenta de novo até os dados chegarem; os freios (pausa, bloqueio, tetos) continuam valendo dentro do refreshNow.
+      if ((resp.freshness.pending || resp.dailyMissing) && AUTO_PRESETS.includes(datePreset) && allow(`auto:${tenant.slug}:${datePreset}`, 1, 10 * 60_000)) {
+        const acc = { clientId: tenant.clientId, slug: tenant.slug, adAccountId: accountId, pageId: tenant.pageId }
+        after(async () => { try { await refreshNow(acc, datePreset) } catch (e) { console.error('[metrics] busca automática:', e instanceof Error ? e.message : e) } })
+      }
+      return NextResponse.json(resp, { headers: { 'Cache-Control': 'no-store' } })
+    })
   }
 
   if (token && !accountId) {

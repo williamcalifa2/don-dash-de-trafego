@@ -15,7 +15,7 @@ import { parseAdminPeriod } from '@/lib/periods'
 import { stores } from '@/lib/meta/stores'
 import { ensureRuntime } from '@/lib/meta/runtime'
 import { liveOrigin } from '@/lib/meta/mode'
-import { getAllClientsConfig } from '@/lib/clientConfig'
+import { getAllClientsConfig, hasEcommerce } from '@/lib/clientConfig'
 
 export const dynamic = 'force-dynamic'
 const COLUMNS = 'id, slug, display_name, logo_url, ad_account_id, page_id, access_code_hash, locked_until'
@@ -101,6 +101,7 @@ export async function GET(req: NextRequest) {
       pageId: c.page_id as string | null,
       hasCode: !!c.access_code_hash,
       active: allConfigs[c.slug as string]?.active !== false,
+      ecommerce: allConfigs[c.slug as string] ? hasEcommerce(allConfigs[c.slug as string]) : false,
       locked: !!c.locked_until && new Date(c.locked_until as string).getTime() > now,
       leadCount: count ?? 0,
       lastLeadAt: (last?.[0]?.created_at as string | undefined) ?? null,

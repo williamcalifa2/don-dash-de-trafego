@@ -43,7 +43,6 @@ const ymd = (d: Date) => d.toISOString().slice(0, 10)
 const PRESET_DAYS: Record<string, number> = { today: 1, last_7d: 7, last_14d: 14, last_30d: 30 }
 
 export function sliceDaily(rows: InsightRow[], preset: DatePreset, now: Date): InsightRow[] {
-  if (preset === 'today') return []
   if (preset === 'this_month') {
     const first = new Date(now.getTime() - 3 * 3600 * 1000).toISOString().slice(0, 8) + '01' // 1º dia do mês, hora do Brasil
     return rows.filter(r => String(r.date_start ?? '') >= first)
@@ -52,14 +51,15 @@ export function sliceDaily(rows: InsightRow[], preset: DatePreset, now: Date): I
   if (customRange) {
     return rows.filter(r => String(r.date_start ?? '') >= customRange.since && String(r.date_start ?? '') <= customRange.until)
   }
-  const days = PRESET_DAYS[preset] ?? 7
+  // "Hoje" é um ponto só: o gráfico mostra a semana até hoje, para ter o que comparar.
+  const days = preset === 'today' ? 7 : PRESET_DAYS[preset] ?? 7
   const cutoff = ymd(new Date(now.getTime() - (days + 1) * 86_400_000))
   return rows.filter(r => String(r.date_start ?? '') > cutoff)
 }
 
 interface StructRow { id: string; name?: string; effective_status?: string; daily_budget?: string | number | null; lifetime_budget?: string | number | null; campaign_id?: string; adset_id?: string; creative?: Record<string, unknown> }
 
-export async function readMetrics(snaps: SnapshotStore, clientId: string, adAccountId: string, preset: DatePreset, cfg: MetaConfig, st: AccountState | null, now = Date.now()): Promise<MetricsResponse & { freshness: Freshness }> {
+export async function readMetrics(snaps: SnapshotStore, clientId: string, adAccountId: string, preset: DatePreset, cfg: MetaConfig, st: AccountState | null, now = Date.now()): Promise<MetricsResponse & { freshness: Freshness; dailyMissing: boolean }> {
   const isPastMonth = preset === 'last_month' || preset === 'month_2' || preset === 'month_3'
   const [summary, dailySpecific, daily30d, account, camps, campIns, customs] = await Promise.all([
     snaps.get<{ row: InsightRow | null; prev: InsightRow | null }>(clientId, 'summary', preset),
@@ -81,7 +81,8 @@ export async function readMetrics(snaps: SnapshotStore, clientId: string, adAcco
     dailyRows: daily ? (dailySpecific ? dailySpecific.payload : sliceDaily(daily.payload, preset, new Date(now))) : undefined,
     campaigns: (camps?.payload ?? []).map(c => ({ id: c.id, name: c.name ?? c.id, effective_status: c.effective_status, daily_budget: c.daily_budget, insight: byCampaign.get(c.id) })),
   }, new Date(summary?.fetchedAt ?? now).toISOString())
-  return { ...resp, freshness: fresh, ...(fresh.pending ? { error: fresh.note ?? undefined } : {}) }
+  // dailyMissing: a série diária nunca foi coletada (o gráfico não tem de onde sair); a leitura pede a busca em segundo plano.
+  return { ...resp, freshness: fresh, dailyMissing: !daily, ...(fresh.pending ? { error: fresh.note ?? undefined } : {}) }
 }
 
 export interface AdPerfRow { ad_id: string; ad_name: string; adset_name: string; campaign_id: string; campaign_name: string; spend: number; impressions: number; clicks: number; meta_leads: number; results: number }
