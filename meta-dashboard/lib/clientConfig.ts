@@ -24,6 +24,8 @@ export interface ClientIntegrationsConfig {
 export interface ClientConfig {
   /** o cliente vende em loja virtual: libera a aba E-commerce e mostra a logo da plataforma */
   ecommerce?: boolean
+  /** conta do Google Ads do cliente (10 dígitos, sem traços). Libera a aba Google. */
+  googleAdsCustomerId?: string
   active: boolean // true = ativo (sincronizando), false = pausado (sem chamadas à API)
   strategicObjective?: string
   goalsPeriod?: string

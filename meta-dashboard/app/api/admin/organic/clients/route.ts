@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     role: who.role, email: who.email,
     clients: rows.map(c => {
       const cfg = cfgs[c.slug]
-      return { slug: c.slug, name: c.display_name ?? c.slug, logoUrl: logoPublicUrl(c.slug, c.logo_url), active: cfg?.active !== false, platforms: platformsFor({ adAccountId: c.ad_account_id, ecommerce: cfg ? hasEcommerce(cfg) : false }) }
+      return { slug: c.slug, name: c.display_name ?? c.slug, logoUrl: logoPublicUrl(c.slug, c.logo_url), active: cfg?.active !== false, platforms: platformsFor({ adAccountId: c.ad_account_id, ecommerce: cfg ? hasEcommerce(cfg) : false, google: Boolean(cfg?.googleAdsCustomerId) }) }
     }),
   }, { headers: { 'Cache-Control': 'no-store' } })
 }

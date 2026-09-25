@@ -33,6 +33,7 @@ interface AdminClient {
   hasCode: boolean
   active?: boolean
   ecommerce?: boolean
+  googleAdsCustomerId?: string
   locked: boolean
   leadCount: number
   lastLeadAt: string | null
@@ -850,16 +851,18 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
   const [active, setActive] = useState<boolean>(initial?.active !== false)
   // "Tem e-commerce?": libera a aba E-commerce e a integração com a loja para este cliente
   const [ecommerce, setEcommerce] = useState<boolean>(initial?.ecommerce === true)
+  const [googleId, setGoogleId] = useState(initial?.googleAdsCustomerId ?? '')
 
   useEffect(() => {
     if (!initial?.slug) return
     let alive = true
     fetch(`/api/admin/clients/${initial.slug}/config`)
       .then(r => r.ok ? r.json() : null)
-      .then((cfg: { active?: boolean; ecommerce?: boolean; integrations?: Record<string, unknown> } | null) => {
+      .then((cfg: { active?: boolean; ecommerce?: boolean; googleAdsCustomerId?: string; integrations?: Record<string, unknown> } | null) => {
         if (!alive || !cfg) return
         if (cfg.active !== undefined) setActive(cfg.active !== false)
         if (typeof cfg.ecommerce === 'boolean') setEcommerce(cfg.ecommerce)
+        if (typeof cfg.googleAdsCustomerId === 'string') setGoogleId(cfg.googleAdsCustomerId)
       })
       .catch(() => { })
     return () => { alive = false }
@@ -884,7 +887,8 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
     const savedSlug = initial?.slug ?? (r.data as { slug: string }).slug
 
     // Salva status do cliente
-    await api(`/api/admin/clients/${savedSlug}/config`, 'POST', { active, ecommerce }).catch(() => { })
+    const cr = await api(`/api/admin/clients/${savedSlug}/config`, 'POST', { active, ecommerce, googleAdsCustomerId: googleId }).catch(() => null)
+    if (cr && !cr.ok) { setSaving(false); setError(cr.data.error ?? 'Não foi possível salvar o Google Ads.'); return }
 
     setSaving(false)
     onDone({ slug: savedSlug, name, code: (r.data as { code?: string }).code, imported: (r.data as { imported?: number | null }).imported })
@@ -938,6 +942,12 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
           </div>
         </div>
         <StatusToggle checked={ecommerce} onChange={setEcommerce} />
+      </div>
+
+      <div>
+        <label htmlFor="c-google" style={labelStyle}>Conta do Google Ads (opcional)</label>
+        <input id="c-google" className="field" value={googleId} onChange={e => setGoogleId(e.target.value)} placeholder="123-456-7890" inputMode="numeric" autoComplete="off" />
+        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>ID de 10 dígitos da conta de anúncios (dentro da conta gerente). Libera a aba Google Ads.</div>
       </div>
 
       {/* Identidade */}
@@ -1574,7 +1584,7 @@ export default function AdminPage() {
                     <Avatar name={c.name} logoUrl={c.logoUrl} />
                     <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <h3 style={{ fontSize: 16, fontWeight: 600, overflowWrap: 'anywhere', lineHeight: 1.3 }}>{c.name}</h3>
-                      <PlatformBadges platforms={platformsFor({ adAccountId: c.adAccountId, ecommerce: c.ecommerce })} height={10} />
+                      <PlatformBadges platforms={platformsFor({ adAccountId: c.adAccountId, ecommerce: c.ecommerce, google: Boolean(c.googleAdsCustomerId) })} height={10} />
                     </div>
                     <span className="badge" style={{ background: badge.bg, color: 'var(--text-1)' }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: badge.dot }} />{badge.text}

@@ -17,6 +17,8 @@ export async function GET(req: NextRequest) {
     if (view && scope.slugs && !canSee(scope, view)) return NextResponse.json({ error: 'out_of_scope' }, { status: 403 })
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
-  const ecommerce = hasEcommerce(await getClientConfig(tenant.slug))
-  return NextResponse.json({ slug: tenant.slug, name: tenant.name, logoUrl: tenant.logoUrl, ecommerce, platforms: platformsFor({ ...tenant, ecommerce }), authEnabled: authEnabled(), admin: await isAdmin(req), role: await requestRole(req) })
+  const cfg = await getClientConfig(tenant.slug)
+  const ecommerce = hasEcommerce(cfg)
+  const google = Boolean(cfg.googleAdsCustomerId)
+  return NextResponse.json({ slug: tenant.slug, name: tenant.name, logoUrl: tenant.logoUrl, ecommerce, platforms: platformsFor({ ...tenant, ecommerce, google }), authEnabled: authEnabled(), admin: await isAdmin(req), role: await requestRole(req) })
 }

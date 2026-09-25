@@ -5,6 +5,7 @@ import { getClientConfig, setClientConfig, type ClientConfig } from '@/lib/clien
 import { trackKey } from '@/lib/storeTrack'
 import { logStaffActivity } from '@/lib/activityLog'
 import { requireClientScope } from '@/lib/scope'
+import { cleanCustomerId } from '@/lib/googleAds/gaql'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,6 +53,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   if ((isAdmin || isMember) && 'ecommerce' in body && typeof body.ecommerce === 'boolean') {
     patch.ecommerce = body.ecommerce
   }
+  if ((isAdmin || isMember) && 'googleAdsCustomerId' in body) {
+    const id = cleanCustomerId(body.googleAdsCustomerId)
+    if (String(body.googleAdsCustomerId ?? '').trim() && !id) return NextResponse.json({ error: 'O ID da conta Google Ads tem 10 dígitos (ex.: 123-456-7890).' }, { status: 400 })
+    patch.googleAdsCustomerId = id
+  }
   if ('strategicObjective' in body && typeof body.strategicObjective === 'string') {
     patch.strategicObjective = body.strategicObjective.slice(0, 2000)
   }
@@ -89,6 +95,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     const said: string[] = []
     if (patch.active !== undefined) said.push(patch.active ? 'Ativou o cliente' : 'Pausou o cliente')
     if (patch.integrations) said.push('Alterou as integrações')
+    if (patch.googleAdsCustomerId !== undefined) said.push(patch.googleAdsCustomerId ? 'Vinculou a conta do Google Ads' : 'Removeu a conta do Google Ads')
     if (patch.ecommerce !== undefined) said.push(patch.ecommerce ? 'Ligou o e-commerce' : 'Desligou o e-commerce')
     if (patch.strategicObjective !== undefined || patch.goalsPeriod !== undefined || patch.funnelGoals !== undefined || patch.targetBudget !== undefined) said.push('Alterou objetivos e metas')
     for (const summary of said) await logStaffActivity(req, slug, { kind: 'config', summary })

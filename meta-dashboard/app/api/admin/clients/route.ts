@@ -110,6 +110,7 @@ export async function GET(req: NextRequest) {
       hasCode: !!c.access_code_hash,
       active: allConfigs[c.slug as string]?.active !== false,
       ecommerce: allConfigs[c.slug as string] ? hasEcommerce(allConfigs[c.slug as string]) : false,
+      googleAdsCustomerId: allConfigs[c.slug as string]?.googleAdsCustomerId ?? '',
       locked: !!c.locked_until && new Date(c.locked_until as string).getTime() > now,
       leadCount: count ?? 0,
       lastLeadAt: (last?.[0]?.created_at as string | undefined) ?? null,

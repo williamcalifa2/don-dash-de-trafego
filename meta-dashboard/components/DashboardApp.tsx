@@ -29,6 +29,7 @@ import type { PlatformKey } from '@/lib/platforms'
 import type { ReportMode } from '@/lib/report'
 import { PlatformBadges } from '@/components/PlatformBadges'
 import { OrganicTab } from '@/components/OrganicTab'
+import { GoogleTab } from '@/components/GoogleTab'
 import { OrganicOnly } from '@/components/OrganicOnly'
 import { EcommerceTab } from '@/components/EcommerceTab'
 import { ClientIntegrationsTab } from '@/components/ClientIntegrationsTab'
@@ -57,7 +58,7 @@ function getDashboardPresets(): { value: DatePreset; label: string }[] {
 }
 
 const PRESETS = getDashboardPresets()
-const TAB_KEYS = ['metrics', 'campaigns', 'organic', 'audience', 'funnel', 'leads', 'ecommerce', 'reports', 'integracoes'] as const
+const TAB_KEYS = ['metrics', 'campaigns', 'google', 'organic', 'audience', 'funnel', 'leads', 'ecommerce', 'reports', 'integracoes'] as const
 
 function fmt(v: number | null | undefined, currency: string) {
   if (v == null) return '—'
@@ -133,7 +134,7 @@ function Dashboard() {
   const [preset, setPreset] = useState<DatePreset>('last_7d')
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [reportOpen, setReportOpen] = useState(false)
-  const [tab, setTab] = useState<'metrics' | 'campaigns' | 'organic' | 'audience' | 'funnel' | 'leads' | 'ecommerce' | 'reports' | 'integracoes'>('metrics')
+  const [tab, setTab] = useState<'metrics' | 'campaigns' | 'google' | 'organic' | 'audience' | 'funnel' | 'leads' | 'ecommerce' | 'reports' | 'integracoes'>('metrics')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -515,6 +516,7 @@ function Dashboard() {
             {([
               ['metrics', 'Geral'],
               ['campaigns', 'Campanhas'],
+              ['google', 'Google Ads'],
               ['organic', 'Orgânico'],
               ['audience', 'Público'],
               ['funnel', kind === 'form' ? 'Funil de Vendas' : 'Funil'],
@@ -522,7 +524,7 @@ function Dashboard() {
               ['ecommerce', 'Ecommerce'],
               ['reports', 'Report Studio'],
               ['integracoes', 'Integrações'],
-            ] as const).filter(([key]) => (key !== 'integracoes' || !me?.authEnabled || !!me?.admin) && (key !== 'ecommerce' || me?.ecommerce === true)).map(([key, label]) => (
+            ] as const).filter(([key]) => (key !== 'integracoes' || !me?.authEnabled || !!me?.admin) && (key !== 'ecommerce' || me?.ecommerce === true) && (key !== 'google' || !!me?.platforms?.includes('google'))).map(([key, label]) => (
               <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className="tab">
                 {label}
                 {key === 'leads' && staleCount > 0 && (
@@ -569,6 +571,7 @@ function Dashboard() {
             presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''}
           />
         )}
+        {tab === 'google' && <GoogleTab preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} />}
         {tab === 'audience' && <AudienceTab preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} kind={kind} />}
         {tab === 'organic' && <OrganicTab preset="this_month" presetLabel="Este mês" isStaff={!me?.authEnabled || !!me?.admin} canLink={me?.role === 'owner' || me?.role === 'admin'} slug={me?.slug} />}
         {tab === 'leads' && <LeadsTab openId={openLeadId} onOpenConsumed={() => setOpenLeadId(null)} readOnly={me?.role === 'reader'} />}
