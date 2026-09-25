@@ -6,7 +6,8 @@ export interface GoogleMetrics { currency: string; accountName: string | null; r
 /** live: credenciais completas · demo: GOOGLE_ADS_MOCK=1 (dados de exemplo, nunca em produção real) · off: falta configurar. */
 export function googleAdsMode(): 'live' | 'demo' | 'off' {
   const e = process.env
-  if (e.GOOGLE_ADS_DEVELOPER_TOKEN && e.GOOGLE_ADS_CLIENT_ID && e.GOOGLE_ADS_CLIENT_SECRET && e.GOOGLE_ADS_REFRESH_TOKEN) return 'live'
+  // O developer token é opcional: o Google avisou que deixou de ser exigido; se ainda for, a API responde e o app mostra o erro.
+  if (e.GOOGLE_ADS_CLIENT_ID && e.GOOGLE_ADS_CLIENT_SECRET && e.GOOGLE_ADS_REFRESH_TOKEN) return 'live'
   return e.GOOGLE_ADS_MOCK === '1' ? 'demo' : 'off'
 }
 
@@ -32,8 +33,9 @@ export class GoogleAdsError extends Error {
 /** Uma consulta GAQL (somente leitura). `login-customer-id` = conta gerente (MCC), quando as contas dos clientes são dela. */
 export async function gaql(customerId: string, query: string): Promise<GRow[]> {
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${await accessToken()}`, 'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!, 'Content-Type': 'application/json',
+    Authorization: `Bearer ${await accessToken()}`, 'Content-Type': 'application/json',
   }
+  if (process.env.GOOGLE_ADS_DEVELOPER_TOKEN) headers['developer-token'] = process.env.GOOGLE_ADS_DEVELOPER_TOKEN
   if (process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID) headers['login-customer-id'] = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID.replace(/\D/g, '')
   const res = await fetch(`${API}/customers/${customerId}/googleAds:search`, { method: 'POST', headers, body: JSON.stringify({ query, pageSize: 1000 }), cache: 'no-store' })
   const j = await res.json().catch(() => ({})) as { results?: GRow[]; error?: { message?: string; status?: string } }
