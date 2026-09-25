@@ -35,8 +35,8 @@ describe('situação financeira', () => {
     expect(d.severity).toBe('critical')
     expect(d.alerts.some(a => a.text.includes('risco de pagamento'))).toBe(true)
   })
-  it('limite de gastos quase no fim avisa; esgotado é crítico', () => {
-    expect(billingOf({ account_status: 1, spend_cap: '100000', amount_spent: '95000', funding_source_details: { type: 1 } }).severity).toBe('attention')
+  it('limite de gastos quase no fim não alerta; esgotado é crítico', () => {
+    expect(billingOf({ account_status: 1, spend_cap: '100000', amount_spent: '92000', funding_source_details: { type: 1 } }).severity).toBe('ok')
     expect(billingOf({ account_status: 1, spend_cap: '100000', amount_spent: '100000', funding_source_details: { type: 1 } }).severity).toBe('critical')
   })
   it('conta ativa sem forma de pagamento é crítica', () => {

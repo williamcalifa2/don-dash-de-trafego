@@ -99,7 +99,8 @@ export function billingOf(raw: RawAccount): Billing {
     if (available <= 0) alerts.push({ severity: 'critical', text: 'Saldo zerado: os anúncios param.' })
     else if (available < LOW_PREPAID) alerts.push({ severity: 'attention', text: 'Saldo baixo.' })
   }
-  if (capLeftPct != null && capLeftPct <= 10) alerts.push({ severity: capLeftPct === 0 ? 'critical' : 'attention', text: capLeftPct === 0 ? 'Limite de gastos da conta atingido.' : `Restam ${capLeftPct}% do limite de gastos.` })
+  // Só o limite esgotado alerta (a conta para de veicular); "restam X%" é só informação na coluna Limite.
+  if (capLeftPct === 0) alerts.push({ severity: 'critical', text: 'Limite de gastos da conta atingido.' })
 
   const severity: Severity = alerts.some(a => a.severity === 'critical') ? 'critical' : alerts.length ? 'attention' : 'ok'
   return { status: { code, ...st }, disableReason: dr > 0 ? DISABLE[dr] ?? null : null, currency, pay, available, owed, spent, spendCap: cap, capLeftPct, alerts, severity }
