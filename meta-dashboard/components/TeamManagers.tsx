@@ -15,6 +15,7 @@ import { ProfileMenu } from './ProfileMenu'
 import { PulseLoader } from './PulseLoader'
 import { StaffShell } from './StaffShell'
 import { StalledAccounts } from './StalledAccounts'
+import { ManagersAudit } from './ManagersAudit'
 import { BarChart, ListCard, PagedRows, PeriodPicker, RankRow, SubTabs, Thumb, plural, type Period } from './UsageUi'
 import { ChartCard, DonutChart, KIND_COLOR, paletteAt, topSlices, type Slice } from './Donut'
 
@@ -296,6 +297,7 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
           </ListCard>
         )}
         {list.managers.length > 0 && <StalledAccounts onOpenManager={id => onOpen(id)} />}
+        <ManagersAudit onFixed={onAssigned} />
       </div>
     </div>
   )

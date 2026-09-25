@@ -14,6 +14,7 @@ import { ADMIN_PERIODS, parseAdminPeriod, type AdminPeriod, type PeriodDays } fr
 import { type ResultKind } from '@/lib/resultKind'
 import { platformsFor } from '@/lib/platforms'
 import { PlatformBadges } from '@/components/PlatformBadges'
+import { FilterField, FilterPicker } from '@/components/UsageUi'
 import { useTheme } from '@/lib/useTheme'
 import { StatusToggle } from '@/components/StatusToggle'
 import { ClientConfigModal } from '@/components/ClientConfigModal'
@@ -1526,6 +1527,23 @@ export default function AdminPage() {
         <AdminOverview refreshKey={refreshKey} days={period} clients={clients.map(c => ({ slug: c.slug, name: c.name }))} actions={
           <>
             <PeriodMenu value={period} onChange={setPeriod} />
+            <FilterPicker active={(filter !== 'todos' ? 1 : 0) + (scopeInfo?.canToggle && scopeInfo.mode === 'all' ? 1 : 0)} onClear={() => { setFilter('todos'); if (scopeInfo?.canToggle && scopeInfo.mode === 'all') setScope('mine') }}>
+              {scopeInfo?.canToggle && (
+                <FilterField label="Clientes">
+                  <div role="group" aria-label="Quais clientes mostrar" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    <button type="button" className="pill-btn" aria-pressed={scopeInfo.mode === 'mine'} onClick={() => setScope('mine')} title="Só os clientes da sua carteira">Minhas contas</button>
+                    <button type="button" className="pill-btn" aria-pressed={scopeInfo.mode === 'all'} onClick={() => setScope('all')} title="Todos os clientes da agência">Todas</button>
+                  </div>
+                </FilterField>
+              )}
+              <FilterField label="Situação">
+                <div role="group" aria-label="Situação do cliente" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  {([['todos', 'Todos'], ['ativos', 'Ativos'], ['pausados', 'Pausados'], ['bloqueados', 'Bloqueados']] as const).map(([k, l]) => (
+                    <button key={k} type="button" className="pill-btn" aria-pressed={filter === k} onClick={() => setFilter(k)}>{l}</button>
+                  ))}
+                </div>
+              </FilterField>
+            </FilterPicker>
             {canOperate && <button className="btn btn-outline btn-icon btn-sm" onClick={refreshAll} disabled={refreshing} aria-label="Atualizar todos os cards agora" title={refreshing ? 'Atualizando…' : 'Atualizar tudo: busca agora na Meta os números de todos os clientes'}>
               <RefreshCw size={16} strokeWidth={1.75} className={refreshing ? 'spin' : undefined} />
             </button>}
@@ -1534,22 +1552,11 @@ export default function AdminPage() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
           <h2 style={{ fontSize: 16, fontWeight: 600, marginRight: 4 }}>Clientes</h2>
-          {scopeInfo?.canToggle && (
-            <div role="group" aria-label="Quais clientes mostrar" style={{ display: 'flex', gap: 4 }}>
-              <button className="pill-btn" aria-pressed={scopeInfo.mode === 'mine'} onClick={() => setScope('mine')} title="Só os clientes da sua carteira">Minhas contas</button>
-              <button className="pill-btn" aria-pressed={scopeInfo.mode === 'all'} onClick={() => setScope('all')} title="Todos os clientes da agência">Todas</button>
-            </div>
-          )}
           {scopeInfo?.restricted && <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--text-1)' }} title="Você vê os clientes da sua carteira">Carteira de {scopeInfo.manager?.name}</span>}
           <label className="search" style={{ flex: 1, minWidth: 200, maxWidth: 360, height: 36 }}>
             <Search size={16} color="var(--text-2)" strokeWidth={1.75} aria-hidden="true" />
             <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente" />
           </label>
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-            {([['todos', 'Todos'], ['ativos', 'Ativos'], ['pausados', 'Pausados'], ['bloqueados', 'Bloqueados']] as const).map(([k, l]) => (
-              <button key={k} className="pill-btn" aria-pressed={filter === k} onClick={() => setFilter(k)}>{l}</button>
-            ))}
-          </div>
         </div>
 
         {clients.length === 0 ? (

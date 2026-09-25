@@ -10,6 +10,17 @@ import {
   TASK_KINDS, groupTasks, matchActor, taskOwner, type LogInsert, type LogRow, type Manager, type Task, type TaskRow, type ManagerInput, type MetaActivity,
 } from './managers'
 
+/**
+ * Ações da conta que foram lidas antes de ela ter gestor ficam sem gestor no histórico. Ao entrar na carteira, passam a ser dele.
+ * Só mexe em linhas sem gestor: o que já era de outro gestor continua com ele (a troca de carteira não reescreve o passado).
+ */
+export async function backfillManager(slugs: string[], managerId: string): Promise<number> {
+  const db = getSupabaseServer()
+  if (!db || !slugs.length) return 0
+  const { data } = await db.from('activity_log').update({ manager_id: managerId }).in('client_slug', slugs).is('manager_id', null).select('id')
+  return data?.length ?? 0
+}
+
 /** Cria ou atualiza o gestor e refaz a carteira dele. Cliente que já era de outro gestor passa para este. */
 export async function saveManager(input: ManagerInput, existingId?: string): Promise<{ manager: Manager } | { error: string }> {
   const db = getSupabaseServer()
@@ -32,6 +43,7 @@ export async function saveManager(input: ManagerInput, existingId?: string): Pro
     if (r.error) return { error: r.error.message }
   }
   __resetManagersMemo()
+  await backfillManager(input.clients, id).catch(() => 0)
   return { manager: toManager(data as ManagerRow) }
 }
 
@@ -51,6 +63,7 @@ export async function assignClient(slug: string, managerId: string | null): Prom
     ? await db.from('manager_clients').upsert({ client_slug: slug, manager_id: managerId, assigned_at: new Date().toISOString() }, { onConflict: 'client_slug' })
     : await db.from('manager_clients').delete().eq('client_slug', slug)
   __resetManagersMemo()
+  if (!r.error && managerId) await backfillManager([slug], managerId).catch(() => 0)
   return r.error ? r.error.message : null
 }
 
@@ -59,12 +72,13 @@ export async function assignClient(slug: string, managerId: string | null): Prom
 const LOG_COLUMNS = 'at,source,client_slug,manager_id,actor_key,actor_name,kind,summary,object_name,detail'
 
 /** Histórico do gestor: o que aconteceu nas contas dele ("accounts") ou o que ele mesmo fez em qualquer conta ("actor"). */
-export async function readLog(o: { managerId?: string; actorKeys?: string[]; sinceIso: string; client?: string; kind?: string; limit?: number }): Promise<LogRow[] | null> {
+export async function readLog(o: { managerId?: string; actorKeys?: string[]; /** só estas contas (independe do gestor gravado na linha) */ clients?: string[]; sinceIso: string; client?: string; kind?: string; limit?: number }): Promise<LogRow[] | null> {
   const db = getSupabaseServer()
   if (!db) return null
   let q = db.from('activity_log').select(LOG_COLUMNS).gte('at', o.sinceIso).order('at', { ascending: false }).limit(o.limit ?? 5000)
   if (o.managerId) q = q.eq('manager_id', o.managerId)
   if (o.actorKeys) q = q.in('actor_key', o.actorKeys)
+  if (o.clients) q = q.in('client_slug', o.clients)
   if (o.client) q = q.eq('client_slug', o.client)
   if (o.kind) q = q.eq('kind', o.kind)
   const { data, error } = await q

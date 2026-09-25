@@ -32,7 +32,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const [inAccounts, byMe, recent, names, time] = await Promise.all([
     readLog({ managerId: id, sinceIso, limit: 10000 }),
     actorKeys.length ? readLog({ actorKeys, sinceIso, limit: 10000 }) : Promise.resolve([]),
-    readLog({ managerId: id, sinceIso: new Date(now - 90 * 86_400_000).toISOString(), limit: 10000 }),
+    readLog({ clients: slugs, sinceIso: new Date(now - 90 * 86_400_000).toISOString(), limit: 10000 }),
     clientNames(),
     timeByEmail(manager.email ? [manager.email] : [], sinceIso),
   ])
