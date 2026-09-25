@@ -22,6 +22,11 @@ describe('situação financeira', () => {
   it('saldo zerado é crítico', () => {
     expect(billingOf({ account_status: 1, is_prepay_account: true, funding_source_details: { type: 20, display_string: 'Saldo disponível (R$ 0,00)' } }).severity).toBe('critical')
   })
+  it('conta ativa sem saldo ou sem limite aparece como pausada', () => {
+    expect(billingOf({ account_status: 1, is_prepay_account: true, funding_source_details: { type: 20, display_string: 'Saldo disponível (R$ 0,00)' } }).status.label).toBe('Conta pausada')
+    expect(billingOf({ account_status: 1, spend_cap: '100000', amount_spent: '100000', funding_source_details: { type: 1 } }).status.label).toBe('Conta pausada')
+    expect(billingOf({ account_status: 1, is_prepay_account: true, funding_source_details: { type: 20, display_string: 'Saldo disponível (R$ 50,00)' } }).status.label).toBe('Ativa')
+  })
   it('cartão em dia e sem limite não gera alerta e mostra o valor a pagar', () => {
     const b = billingOf({ account_status: 1, currency: 'BRL', balance: '4500', amount_spent: '100000', spend_cap: '0', funding_source_details: { type: 1, display_string: 'MasterCard ···· 3087' } })
     expect(b.severity).toBe('ok')

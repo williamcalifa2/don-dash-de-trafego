@@ -102,8 +102,12 @@ export function billingOf(raw: RawAccount): Billing {
   // Só o limite esgotado alerta (a conta para de veicular); "restam X%" é só informação na coluna Limite.
   if (capLeftPct === 0) alerts.push({ severity: 'critical', text: 'Limite de gastos da conta atingido.' })
 
+  // Conta "ativa" no Meta mas sem como gastar (saldo zerado ou limite atingido): na prática não entrega, então o status diz isso.
+  const stalled = (code === 1 || code === 201) && ((pay.kind === 'prepaid' && available != null && available <= 0) || capLeftPct === 0)
+  const status: Billing['status'] = stalled ? { code, label: 'Conta pausada', severity: 'critical' } : { code, ...st }
+
   const severity: Severity = alerts.some(a => a.severity === 'critical') ? 'critical' : alerts.length ? 'attention' : 'ok'
-  return { status: { code, ...st }, disableReason: dr > 0 ? DISABLE[dr] ?? null : null, currency, pay, available, owed, spent, spendCap: cap, capLeftPct, alerts, severity }
+  return { status, disableReason: dr > 0 ? DISABLE[dr] ?? null : null, currency, pay, available, owed, spent, spendCap: cap, capLeftPct, alerts, severity }
 }
 
 const RANK: Record<Severity, number> = { critical: 0, attention: 1, ok: 2 }
