@@ -181,8 +181,6 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
         <MetricTile label="Otimizações a justificar" value={String(list.totals.pending)} />
       </div>
 
-      {list.managers.length > 0 && <StalledAccounts onOpenManager={id => onOpen(id)} />}
-
       {list.unlinkedMembers.length > 0 && (
         <section className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div>
@@ -297,6 +295,7 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
             ))} />
           </ListCard>
         )}
+        {list.managers.length > 0 && <StalledAccounts onOpenManager={id => onOpen(id)} />}
       </div>
     </div>
   )
