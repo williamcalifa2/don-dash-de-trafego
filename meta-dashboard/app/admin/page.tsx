@@ -35,6 +35,7 @@ interface AdminClient {
   active?: boolean
   ecommerce?: boolean
   googleAdsCustomerId?: string
+  managerId?: string | null
   locked: boolean
   leadCount: number
   lastLeadAt: string | null
@@ -1131,6 +1132,8 @@ export default function AdminPage() {
   const [phase, setPhase] = useState<'loading' | 'login' | 'off' | 'ready'>('loading')
   const [clients, setClients] = useState<AdminClient[]>([])
   const [recent, setRecent] = useState<RecentLead[]>([])
+  const [mgrFilter, setMgrFilter] = useState('')
+  const [managerList, setManagerList] = useState<Array<{ id: string; name: string }>>([])
   const [scopeInfo, setScopeInfo] = useState<{ mode: 'mine' | 'all'; canToggle: boolean; restricted: boolean; manager: { id: string; name: string } | null } | null>(null)
   async function setScope(mode: 'mine' | 'all') {
     const r = await api('/api/admin/scope', 'POST', { mode })
@@ -1168,7 +1171,7 @@ export default function AdminPage() {
 
   const load = useCallback(async () => {
     const start = Date.now()
-    const r = await api<{ scope?: { mode: 'mine' | 'all'; canToggle: boolean; restricted: boolean; manager: { id: string; name: string } | null }; clients: AdminClient[]; recent: RecentLead[]; keyStatus?: string; baseDomain?: string | null; brandLogoUrl?: string | null; cardMetrics?: Record<string, unknown> }>(`/api/admin/clients?period=${period}`)
+    const r = await api<{ scope?: { mode: 'mine' | 'all'; canToggle: boolean; restricted: boolean; manager: { id: string; name: string } | null }; clients: AdminClient[]; recent: RecentLead[]; managers?: Array<{ id: string; name: string }>; keyStatus?: string; baseDomain?: string | null; brandLogoUrl?: string | null; cardMetrics?: Record<string, unknown> }>(`/api/admin/clients?period=${period}`)
     if (r.status === 404) return setPhase('off')
     if (r.status === 401) return setPhase('login')
     if (r.status === 403) { window.location.replace('/admin/organico'); return } // nível Orgânico: não tem painel de clientes, vai para a lista dele
@@ -1176,7 +1179,7 @@ export default function AdminPage() {
     const wait = Math.max(0, 750 - elapsed)
     if (wait > 0) await new Promise(res => setTimeout(res, wait))
     if (r.ok) {
-      setScopeInfo(r.data.scope ?? null); setClients(r.data.clients); setBrandLogo(r.data.brandLogoUrl ?? null); setCardMetrics(r.data.cardMetrics ?? {}); setRecent(r.data.recent ?? []); setKeyStatus(r.data.keyStatus ?? 'service'); setBaseDomain(r.data.baseDomain ?? null); setPhase('ready')
+      setScopeInfo(r.data.scope ?? null); setManagerList(r.data.managers ?? []); setClients(r.data.clients); setBrandLogo(r.data.brandLogoUrl ?? null); setCardMetrics(r.data.cardMetrics ?? {}); setRecent(r.data.recent ?? []); setKeyStatus(r.data.keyStatus ?? 'service'); setBaseDomain(r.data.baseDomain ?? null); setPhase('ready')
     } else { setNotice(r.data.error ?? 'Erro ao carregar clientes'); setPhase('ready') }
   }, [period])
 
@@ -1262,11 +1265,12 @@ export default function AdminPage() {
     const q = query.trim().toLowerCase()
     return clients.filter(c =>
       (!q || c.name.toLowerCase().includes(q) || c.slug.includes(q)) &&
+      (!mgrFilter || (mgrFilter === '_none' ? !c.managerId : c.managerId === mgrFilter)) &&
       (filter === 'todos' ||
         (filter === 'ativos' && c.active !== false && !c.locked) ||
         (filter === 'pausados' && c.active === false && !c.locked) ||
         (filter === 'bloqueados' && c.locked)))
-  }, [clients, query, filter])
+  }, [clients, query, filter, mgrFilter])
 
   // A sidebar pede ações (novo cliente, equipe, sincronização, Report Studio); também vale o ?open= quando vem de outra tela.
   useEffect(() => {
@@ -1527,13 +1531,22 @@ export default function AdminPage() {
         <AdminOverview refreshKey={refreshKey} days={period} clients={clients.map(c => ({ slug: c.slug, name: c.name }))} actions={
           <>
             <PeriodMenu value={period} onChange={setPeriod} />
-            <FilterPicker active={(filter !== 'todos' ? 1 : 0) + (scopeInfo?.canToggle && scopeInfo.mode === 'all' ? 1 : 0)} onClear={() => { setFilter('todos'); if (scopeInfo?.canToggle && scopeInfo.mode === 'all') setScope('mine') }}>
+            <FilterPicker active={(filter !== 'todos' ? 1 : 0) + (mgrFilter ? 1 : 0) + (scopeInfo?.canToggle && scopeInfo.mode === 'all' ? 1 : 0)} onClear={() => { setFilter('todos'); setMgrFilter(''); if (scopeInfo?.canToggle && scopeInfo.mode === 'all') setScope('mine') }}>
               {scopeInfo?.canToggle && (
                 <FilterField label="Clientes">
                   <div role="group" aria-label="Quais clientes mostrar" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                     <button type="button" className="pill-btn" aria-pressed={scopeInfo.mode === 'mine'} onClick={() => setScope('mine')} title="Só os clientes da sua carteira">Minhas contas</button>
                     <button type="button" className="pill-btn" aria-pressed={scopeInfo.mode === 'all'} onClick={() => setScope('all')} title="Todos os clientes da agência">Todas</button>
                   </div>
+                </FilterField>
+              )}
+              {!scopeInfo?.restricted && managerList.length > 0 && (
+                <FilterField label="Gestor">
+                  <select className="field" aria-label="Filtrar por gestor" value={mgrFilter} onChange={e => setMgrFilter(e.target.value)}>
+                    <option value="">Todos os gestores</option>
+                    {managerList.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    <option value="_none">Sem gestor</option>
+                  </select>
                 </FilterField>
               )}
               <FilterField label="Situação">

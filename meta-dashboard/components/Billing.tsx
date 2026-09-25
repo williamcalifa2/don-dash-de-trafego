@@ -8,8 +8,8 @@ import { StaffShell } from './StaffShell'
 import { PulseLoader } from './PulseLoader'
 import { Thumb } from './UsageUi'
 
-interface Item { slug: string; name: string; logoUrl: string | null; active: boolean; accountId: string; billing: B | null; error: string | null; severity: Severity }
-interface Data { items: Item[]; totals: Record<Severity, number>; at: number }
+interface Item { managerId: string | null; slug: string; name: string; logoUrl: string | null; active: boolean; accountId: string; billing: B | null; error: string | null; severity: Severity }
+interface Data { managers: Array<{ id: string; name: string }>; items: Item[]; totals: Record<Severity, number>; at: number }
 
 const money = (v: number, cur: string) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: cur }).format(v)
 const SEV: Record<Severity, { color: string; soft: string; label: string; icon: React.ReactNode }> = {
@@ -31,6 +31,7 @@ export function Billing() {
   const [failed, setFailed] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [filter, setFilter] = useState<'all' | Severity>('all')
+  const [mgr, setMgr] = useState('')
 
   const load = useCallback(async () => {
     setBusy(true)
@@ -42,7 +43,7 @@ export function Billing() {
   }, [])
   useEffect(() => { void load() }, [load])
 
-  const items = useMemo(() => (data?.items ?? []).filter(i => filter === 'all' || i.severity === filter), [data, filter])
+  const items = useMemo(() => (data?.items ?? []).filter(i => (filter === 'all' || i.severity === filter) && (!mgr || (mgr === '_none' ? !i.managerId : i.managerId === mgr))), [data, filter, mgr])
 
   return (
     <StaffShell>
@@ -63,6 +64,13 @@ export function Billing() {
               {([['all', `Todas (${data.items.length})`], ['critical', `Precisa de ação (${data.totals.critical})`], ['attention', `Atenção (${data.totals.attention})`], ['ok', `Em dia (${data.totals.ok})`]] as const).map(([k, l]) => (
                 <button key={k} type="button" className="pill-btn" aria-pressed={filter === k} onClick={() => setFilter(k)}>{l}</button>
               ))}
+              {data.managers.length > 0 && (
+                <select className="field" aria-label="Filtrar por gestor" value={mgr} onChange={e => setMgr(e.target.value)} style={{ width: 'auto', height: 32, marginLeft: 'auto' }}>
+                  <option value="">Todos os gestores</option>
+                  {data.managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  <option value="_none">Sem gestor</option>
+                </select>
+              )}
             </div>
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
               {items.length === 0 ? <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>{data.items.length ? 'Nenhuma conta neste filtro.' : 'Nenhum cliente com conta de anúncios vinculada.'}</div> : (

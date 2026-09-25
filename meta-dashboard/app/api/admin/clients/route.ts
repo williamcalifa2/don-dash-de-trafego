@@ -65,6 +65,7 @@ export async function GET(req: NextRequest) {
   let summaries: SummaryMap = new Map()
   try { summaries = await loadSummaryMap(stores.snaps) } catch { /* sem as tabelas: os cards usam a série diária */ }
   const allConfigs = await getAllClientsConfig((data ?? []).map(c => c.slug as string))
+  const registry = await loadRegistry().catch(() => null)
   const clients = await Promise.all((data ?? []).map(async c => {
     // Leads dos últimos 30 dias deste cliente (para todos os períodos do card).
     const q = (cols: string) => db.from('leads').select(cols)
@@ -110,6 +111,7 @@ export async function GET(req: NextRequest) {
       hasCode: !!c.access_code_hash,
       active: allConfigs[c.slug as string]?.active !== false,
       ecommerce: allConfigs[c.slug as string] ? hasEcommerce(allConfigs[c.slug as string]) : false,
+      managerId: registry?.byClient.get(c.slug as string) ?? null,
       googleAdsCustomerId: allConfigs[c.slug as string]?.googleAdsCustomerId ?? '',
       locked: !!c.locked_until && new Date(c.locked_until as string).getTime() > now,
       leadCount: count ?? 0,
@@ -149,7 +151,7 @@ export async function GET(req: NextRequest) {
   } catch { /* tabela ainda não existe: sem logo */ }
 
   return NextResponse.json({
-    clients, recent, today, brandLogoUrl, cardMetrics,
+    clients, recent, today, brandLogoUrl, cardMetrics, managers: (registry?.managers ?? []).map(m => ({ id: m.id, name: m.name })),
     scope: { mode: scope.mode, canToggle: scope.canToggle, restricted: scope.restricted, manager: scope.manager },
     keyStatus: serviceKeyStatus(),
     baseDomain: (process.env.DASHBOARD_BASE_DOMAIN ?? '').trim().toLowerCase() || null,
