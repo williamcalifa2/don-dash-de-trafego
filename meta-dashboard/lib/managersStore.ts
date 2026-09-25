@@ -1,6 +1,7 @@
 /** Gestores de tráfego no banco: cadastro, carteira de clientes, histórico de ações e leitura das alterações feitas na Meta. */
 import { getSupabaseServer } from './supabase'
-import { pipelineGet } from './meta/pipeline'
+import { legacyGet } from './meta/legacy'
+import { liveOrigin } from './meta/mode'
 import { metaConfig } from './meta/config'
 import { loadRegistry, toManager, __resetManagersMemo, type ManagerRow } from './activityLog'
 import {
@@ -82,7 +83,6 @@ export async function syncMetaActivity(opts: { only?: string[]; budgetMs?: numbe
   const out: SyncResult = { clients: 0, events: 0, skipped: 0, errors: [], dryRun: false }
   const db = getSupabaseServer()
   if (!db) return out
-  if (metaConfig().dryRun) { out.dryRun = true; return out }
   const reg = await loadRegistry()
   const [cl, st] = await Promise.all([db.from('clients').select('id,slug,ad_account_id'), db.from('activity_sync').select('client_slug,synced_through')])
   if (cl.error) return out
@@ -95,6 +95,8 @@ export async function syncMetaActivity(opts: { only?: string[]; budgetMs?: numbe
     const managed = (slug: string) => (reg?.byClient.has(slug) ? 0 : 1)
     todo = [...todo].sort((a, b) => managed(a.slug) - managed(b.slug) || (through.get(a.slug) ?? '').localeCompare(through.get(b.slug) ?? '')).slice(0, opts.limit)
   }
+  // Mesma via das outras consultas sob demanda: o caminho antigo enquanto o corte não foi feito (o pipeline novo em teste, DRY_RUN, não chama a Meta) e a via central depois.
+  const origin = await liveOrigin()
   const deadline = Date.now() + (opts.budgetMs ?? 40_000)
 
   async function one(c: { id: string; slug: string; act: string }) {
@@ -105,7 +107,7 @@ export async function syncMetaActivity(opts: { only?: string[]; budgetMs?: numbe
     let failed: string | null = null
     for (let page = 0; page < MAX_PAGES; page++) {
       const path = `${c.act}/activities?fields=${FIELDS}&limit=${metaConfig().pageSize}&since=${since}${after ? `&after=${after}` : ''}`
-      const r = await pipelineGet<{ data?: MetaActivity[]; paging?: { cursors?: { after?: string }; next?: string } }>(path, { purpose: 'activity_log', accountId: c.act, clientId: c.id })
+      const r = await legacyGet<{ data?: MetaActivity[]; paging?: { cursors?: { after?: string }; next?: string } }>(path, { origin, purpose: 'activity_log', accountId: c.act, clientId: c.id })
       if (r.dryRun) { out.dryRun = true; return }
       if (!r.ok) { failed = r.blocked ?? r.error?.message ?? 'falha na Meta'; break }
       for (const e of r.data.data ?? []) if (isHumanMetaEvent(e)) rows.push(metaToLog(e, c.slug, reg?.byClient.get(c.slug) ?? null, c.act))

@@ -22,7 +22,7 @@ export const __resetLegacyCooldown = () => { cooldownUntil = 0; cache.clear(); i
 const cache = new Map<string, { at: number; clientId: string; value: MetaResult<unknown> }>()
 const inflight = new Map<string, Promise<MetaResult<unknown>>>()
 const CACHE_MAX = 600
-const cacheable = (opts: LegacyOpts) => !/^(leads|webhook)/.test(opts.purpose ?? '')
+const cacheable = (opts: LegacyOpts) => !/^(leads|webhook|activity)/.test(opts.purpose ?? '')
 const cacheKey = (kind: string, path: string, opts: LegacyOpts) => `${kind}|${opts.clientId ?? ''}|${opts.accountId ?? ''}|${opts.token ? `T${opts.token.slice(-8)}` : ''}|${path}`
 
 async function shared<T>(kind: string, path: string, opts: LegacyOpts, run: () => Promise<MetaResult<T>>): Promise<MetaResult<T>> {
