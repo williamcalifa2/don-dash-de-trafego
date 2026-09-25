@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/admin'
+import { requireClientScope } from '@/lib/scope'
 import { getReport } from '@/lib/reportsLibrary'
 import { ensureToken } from '@/lib/presentation'
 
@@ -10,6 +11,7 @@ export async function POST(req: NextRequest) {
   const denied = await requireRole(req, 'member')
   if (denied) return denied
   const { slug, id, rotate } = await req.json().catch(() => ({})) as { slug?: string; id?: string; rotate?: boolean }
+  if (typeof slug === 'string') { const out = await requireClientScope(req, slug); if (out) return out }
   if (typeof slug !== 'string' || typeof id !== 'string' || !(await getReport(slug, id))) return NextResponse.json({ error: 'Relatório não encontrado.' }, { status: 404 })
   return NextResponse.json({ token: await ensureToken(slug, id, !!rotate) })
 }

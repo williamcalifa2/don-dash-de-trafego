@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/admin'
 import { addAccess, listAccess, removeAccess } from '@/lib/clientAccess'
 import { tenantBySlug } from '@/lib/tenant'
 import { logStaffActivity } from '@/lib/activityLog'
+import { requireClientScope } from '@/lib/scope'
 
 export const dynamic = 'force-dynamic'
 type Ctx = { params: Promise<{ slug: string }> }
@@ -12,6 +13,8 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   const denied = await requireRole(req, 'member')
   if (denied) return denied
   const { slug } = await params
+  const outOfScope = await requireClientScope(req, slug)
+  if (outOfScope) return outOfScope
   return NextResponse.json({ emails: await listAccess(slug) }, { headers: { 'Cache-Control': 'no-store' } })
 }
 
@@ -20,6 +23,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   const denied = await requireRole(req, 'admin')
   if (denied) return denied
   const { slug } = await params
+  const outOfScope = await requireClientScope(req, slug)
+  if (outOfScope) return outOfScope
   const t = await tenantBySlug(slug)
   if (!t) return NextResponse.json({ error: 'Cliente não encontrado.' }, { status: 404 })
   const { email } = await req.json().catch(() => ({})) as { email?: unknown }
@@ -34,6 +39,8 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   const denied = await requireRole(req, 'admin')
   if (denied) return denied
   const { slug } = await params
+  const outOfScope = await requireClientScope(req, slug)
+  if (outOfScope) return outOfScope
   const email = req.nextUrl.searchParams.get('email') ?? ''
   const err = await removeAccess(slug, email)
   if (err) return NextResponse.json({ error: err }, { status: 404 })

@@ -3,6 +3,7 @@ import { requireAdmin, requireRole } from '@/lib/admin'
 import { getClientConfig, setClientConfig } from '@/lib/clientConfig'
 import { registerWebhooks } from '@/lib/shopifyApp'
 import { shopifyHost } from '@/lib/shopifyCatalog'
+import { requireClientScope } from '@/lib/scope'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -10,6 +11,8 @@ export const maxDuration = 60
 /** Cadastra de novo os webhooks do app (idempotente). Usado quando o app ganha um evento novo, sem precisar reinstalar. */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params
+  const outOfScope = await requireClientScope(req, slug)
+  if (outOfScope) return outOfScope
   const isStaff = !(await requireAdmin(req)) || !(await requireRole(req, 'member'))
   if (!isStaff) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 

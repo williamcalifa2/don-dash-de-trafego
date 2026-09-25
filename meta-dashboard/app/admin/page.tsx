@@ -1067,6 +1067,12 @@ export default function AdminPage() {
   const [phase, setPhase] = useState<'loading' | 'login' | 'off' | 'ready'>('loading')
   const [clients, setClients] = useState<AdminClient[]>([])
   const [recent, setRecent] = useState<RecentLead[]>([])
+  const [scopeInfo, setScopeInfo] = useState<{ mode: 'mine' | 'all'; canToggle: boolean; restricted: boolean; manager: { id: string; name: string } | null } | null>(null)
+  async function setScope(mode: 'mine' | 'all') {
+    const r = await api('/api/admin/scope', 'POST', { mode })
+    if (r.ok) await load()
+    else setNotice(r.data.error ?? 'Não foi possível trocar a visão.')
+  }
   const [baseDomain, setBaseDomain] = useState<string | null>(null)
   const [accounts, setAccounts] = useState<MetaOption[]>([])
   const [accountsError, setAccountsError] = useState<string | null>(null)
@@ -1098,14 +1104,14 @@ export default function AdminPage() {
 
   const load = useCallback(async () => {
     const start = Date.now()
-    const r = await api<{ clients: AdminClient[]; recent: RecentLead[]; keyStatus?: string; baseDomain?: string | null; brandLogoUrl?: string | null; cardMetrics?: Record<string, unknown> }>(`/api/admin/clients?period=${period}`)
+    const r = await api<{ scope?: { mode: 'mine' | 'all'; canToggle: boolean; restricted: boolean; manager: { id: string; name: string } | null }; clients: AdminClient[]; recent: RecentLead[]; keyStatus?: string; baseDomain?: string | null; brandLogoUrl?: string | null; cardMetrics?: Record<string, unknown> }>(`/api/admin/clients?period=${period}`)
     if (r.status === 404) return setPhase('off')
     if (r.status === 401) return setPhase('login')
     const elapsed = Date.now() - start
     const wait = Math.max(0, 750 - elapsed)
     if (wait > 0) await new Promise(res => setTimeout(res, wait))
     if (r.ok) {
-      setClients(r.data.clients); setBrandLogo(r.data.brandLogoUrl ?? null); setCardMetrics(r.data.cardMetrics ?? {}); setRecent(r.data.recent ?? []); setKeyStatus(r.data.keyStatus ?? 'service'); setBaseDomain(r.data.baseDomain ?? null); setPhase('ready')
+      setScopeInfo(r.data.scope ?? null); setClients(r.data.clients); setBrandLogo(r.data.brandLogoUrl ?? null); setCardMetrics(r.data.cardMetrics ?? {}); setRecent(r.data.recent ?? []); setKeyStatus(r.data.keyStatus ?? 'service'); setBaseDomain(r.data.baseDomain ?? null); setPhase('ready')
     } else { setNotice(r.data.error ?? 'Erro ao carregar clientes'); setPhase('ready') }
   }, [period])
 
@@ -1464,6 +1470,13 @@ export default function AdminPage() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
           <h2 style={{ fontSize: 16, fontWeight: 600, marginRight: 4 }}>Clientes</h2>
+          {scopeInfo?.canToggle && (
+            <div role="group" aria-label="Quais clientes mostrar" style={{ display: 'flex', gap: 4 }}>
+              <button className="pill-btn" aria-pressed={scopeInfo.mode === 'mine'} onClick={() => setScope('mine')} title="Só os clientes da sua carteira">Minhas contas</button>
+              <button className="pill-btn" aria-pressed={scopeInfo.mode === 'all'} onClick={() => setScope('all')} title="Todos os clientes da agência">Todas</button>
+            </div>
+          )}
+          {scopeInfo?.restricted && <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--text-1)' }} title="Você vê os clientes da sua carteira">Carteira de {scopeInfo.manager?.name}</span>}
           <label className="search" style={{ flex: 1, minWidth: 200, maxWidth: 360, height: 36 }}>
             <Search size={16} color="var(--text-2)" strokeWidth={1.75} aria-hidden="true" />
             <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente" />
@@ -1478,7 +1491,7 @@ export default function AdminPage() {
         {clients.length === 0 ? (
           <div style={{ padding: '48px 16px', border: '1px dashed var(--border-input)', borderRadius: 'var(--radius-lg)', textAlign: 'center', color: 'var(--text-2)' }}>
             <Users size={32} strokeWidth={1.5} style={{ opacity: .5, margin: '0 auto 8px', display: 'block' }} aria-hidden="true" />
-            Nenhum cliente ainda. Crie o primeiro em “Novo cliente”.
+            {scopeInfo && (scopeInfo.mode === 'mine' || scopeInfo.restricted) ? 'Você ainda não tem clientes na sua carteira. Peça a um administrador para atribuir clientes a você em Equipe.' : 'Nenhum cliente ainda. Crie o primeiro em “Novo cliente”.'}
           </div>
         ) : visible.length === 0 ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>Nenhum cliente encontrado.</div>

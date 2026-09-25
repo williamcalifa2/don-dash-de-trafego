@@ -3,12 +3,15 @@ import { requireAdmin, requireRole } from '@/lib/admin'
 import { appCredentials, installUrl } from '@/lib/shopifyApp'
 import { shopifyHost } from '@/lib/shopifyCatalog'
 import { getClientConfig, setClientConfig } from '@/lib/clientConfig'
+import { requireClientScope } from '@/lib/scope'
 
 export const dynamic = 'force-dynamic'
 
 /** Gera o link que o dono da loja abre para instalar o app. Só a equipe. */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params
+  const outOfScope = await requireClientScope(req, slug)
+  if (outOfScope) return outOfScope
   const isStaff = !(await requireAdmin(req)) || !(await requireRole(req, 'member'))
   if (!isStaff) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   if (!appCredentials()) return NextResponse.json({ ok: false, message: 'O app da Shopify ainda não está configurado no servidor (faltam SHOPIFY_APP_CLIENT_ID e SHOPIFY_APP_CLIENT_SECRET na Vercel).' })

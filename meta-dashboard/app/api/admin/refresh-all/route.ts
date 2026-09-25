@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/admin'
+import { canSee, scopeFor } from '@/lib/scope'
 import { allow } from '@/lib/rateLimit'
 import { ensureRuntime } from '@/lib/meta/runtime'
 import { collectDeps, listAccounts } from '@/lib/meta/pipeline'
@@ -16,7 +17,8 @@ export async function POST(req: NextRequest) {
   if (!allow('admin:refresh-all', 1, 60_000)) return NextResponse.json({ error: 'Já atualizei agora há pouco. Aguarde um minuto e tente de novo.' }, { status: 429 })
   await ensureRuntime()
   try {
-    const r = await refreshCards(collectDeps(), await listAccounts())
+    const scope = await scopeFor(req)
+    const r = await refreshCards(collectDeps(), (await listAccounts()).filter(a => canSee(scope, a.slug))) // só as contas da carteira
     return NextResponse.json(r)
   } catch (e) {
     if (e instanceof StoreNotMigrated) return NextResponse.json({ error: 'A sincronização ainda não foi preparada (falta rodar o SQL).' }, { status: 503 })

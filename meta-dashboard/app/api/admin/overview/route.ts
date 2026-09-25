@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { maybeSyncActivity } from '@/lib/managersStore'
 import { requireAdmin } from '@/lib/admin'
+import { scopeFor } from '@/lib/scope'
 import { getSupabaseServer } from '@/lib/supabase'
 import { dailyRowsFor } from '@/lib/adminData'
 import { aggregate } from '@/lib/adminOverview'
@@ -21,8 +22,10 @@ export async function GET(req: NextRequest) {
   const period = parseAdminPeriod(req.nextUrl.searchParams.get('period') ?? req.nextUrl.searchParams.get('days')) ?? 7
 
   const slug = (req.nextUrl.searchParams.get('client') ?? '').trim().toLowerCase()
-  let q = db.from('clients').select('id, ad_account_id').order('slug')
+  let q = db.from('clients').select('id, slug, ad_account_id').order('slug')
   if (slug) q = q.eq('slug', slug)
+  const scope = await scopeFor(req)
+  if (scope.slugs) q = q.in('slug', [...scope.slugs]) // só a carteira: a visão geral soma e consulta menos clientes
   const { data, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   await ensureRuntime()

@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin, requireRole } from '@/lib/admin'
 import { getClientConfig } from '@/lib/clientConfig'
 import { canLoadCatalog, loadCatalog } from '@/lib/shopifyCatalog'
+import { requireClientScope } from '@/lib/scope'
 
 export const dynamic = 'force-dynamic'
 
 /** Testa as credenciais salvas: lê o catálogo e diz quantos produtos (e quantos com foto) vieram. */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params
+  const outOfScope = await requireClientScope(req, slug)
+  if (outOfScope) return outOfScope
   const isStaff = !(await requireAdmin(req)) || !(await requireRole(req, 'member'))
   if (!isStaff) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 

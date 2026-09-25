@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { duplicateOf } from '@/lib/clientsDup'
+import { canSee, scopeFor } from '@/lib/scope'
 import { assignClient, loadRegistry } from '@/lib/managersStore'
 import { requireAdmin, requireRole, requireServiceKey } from '@/lib/admin'
 import { getSupabaseServer, serviceKeyStatus } from '@/lib/supabase'
@@ -42,11 +43,16 @@ export async function GET(req: NextRequest) {
   const db = getSupabaseServer()
   if (!db) return NextResponse.json({ error: 'Supabase não configurado' }, { status: 500 })
 
-  const { data, error } = await db.from('clients').select(COLUMNS).order('slug')
+  const { data: allRows, error } = await db.from('clients').select(COLUMNS).order('slug')
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // Gestor só vê a própria carteira (administrador/dono que também é gestor vê a dele até alternar para "todos").
+  const scope = await scopeFor(req)
+  const data = scope.slugs ? (allRows ?? []).filter(c => canSee(scope, (c as { slug: string }).slug)) : allRows
 
-  // Últimos leads (para o feed de atividade): só os 8 mais recentes, de todos os clientes.
-  const { data: feed } = await db.from('leads').select('client_id, nome, campanha, status, created_at').order('created_at', { ascending: false }).limit(8)
+  // Últimos leads (para o feed de atividade): só os 8 mais recentes, dos clientes visíveis.
+  let feedQuery = db.from('leads').select('client_id, nome, campanha, status, created_at').order('created_at', { ascending: false }).limit(8)
+  if (scope.slugs) feedQuery = feedQuery.in('client_id', (data ?? []).map(c => (c as { id: string }).id))
+  const { data: feed } = await feedQuery
 
   const days = Array.from({ length: DAYS }, (_, i) => dayKey(Date.now() - (DAYS - 1 - i) * 86_400_000))
   const today = days[DAYS - 1]
@@ -143,6 +149,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     clients, recent, today, brandLogoUrl, cardMetrics,
+    scope: { mode: scope.mode, canToggle: scope.canToggle, restricted: scope.restricted, manager: scope.manager },
     keyStatus: serviceKeyStatus(),
     baseDomain: (process.env.DASHBOARD_BASE_DOMAIN ?? '').trim().toLowerCase() || null,
   })

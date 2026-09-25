@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/admin'
 import { getSupabaseServer } from '@/lib/supabase'
 import { isMetricKey, isPeriod, MAX_CARD_METRICS } from '@/lib/adminCard'
 import { SLUG_RE } from '@/lib/host'
+import { requireClientScope } from '@/lib/scope'
 
 export const dynamic = 'force-dynamic'
 const KEY = 'admin_card_metrics'
@@ -15,6 +16,8 @@ export async function PUT(req: NextRequest) {
   if (!db) return NextResponse.json({ error: 'Supabase não configurado' }, { status: 500 })
   const b = await req.json().catch(() => ({})) as { slug?: unknown; metrics?: unknown; days?: unknown }
   if (typeof b.slug !== 'string' || !SLUG_RE.test(b.slug)) return NextResponse.json({ error: 'Cliente inválido' }, { status: 400 })
+  const outOfScope = await requireClientScope(req, b.slug)
+  if (outOfScope) return outOfScope
   if (!Array.isArray(b.metrics) || !b.metrics.every(isMetricKey) || new Set(b.metrics).size !== b.metrics.length || b.metrics.length > MAX_CARD_METRICS)
     return NextResponse.json({ error: `Escolha de 1 a ${MAX_CARD_METRICS} métricas.` }, { status: 400 })
 

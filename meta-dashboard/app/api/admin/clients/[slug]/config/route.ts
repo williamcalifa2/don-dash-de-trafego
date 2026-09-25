@@ -4,12 +4,15 @@ import { getTenant } from '@/lib/tenant'
 import { getClientConfig, setClientConfig, type ClientConfig } from '@/lib/clientConfig'
 import { trackKey } from '@/lib/storeTrack'
 import { logStaffActivity } from '@/lib/activityLog'
+import { requireClientScope } from '@/lib/scope'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params
 
+  const outOfScope = await requireClientScope(req, slug)
+  if (outOfScope) return outOfScope
   // Tenant can read their own config, or an admin can read any client's config
   const tenant = await getTenant(req)
   const isAdmin = !await requireAdmin(req)
@@ -29,6 +32,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params
+  const outOfScope = await requireClientScope(req, slug)
+  if (outOfScope) return outOfScope
   const tenant = await getTenant(req)
   const isAdmin = !await requireAdmin(req)
   const isMember = !await requireRole(req, 'member')

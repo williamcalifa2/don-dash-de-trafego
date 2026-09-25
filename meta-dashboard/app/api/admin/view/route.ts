@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin, VIEW_COOKIE } from '@/lib/admin'
 import { getSupabaseServer } from '@/lib/supabase'
+import { canSee, scopeFor } from '@/lib/scope'
 
 const cookieOpts = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' as const, path: '/' }
 
@@ -13,6 +14,7 @@ export async function POST(req: NextRequest) {
   if (typeof slug !== 'string' || !db) return NextResponse.json({ error: 'Cliente inválido' }, { status: 400 })
   const { data } = await db.from('clients').select('slug').eq('slug', slug).maybeSingle()
   if (!data) return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
+  if (!canSee(await scopeFor(req), slug)) return NextResponse.json({ error: 'Esse cliente não está na sua carteira.' }, { status: 403 })
   const res = NextResponse.json({ ok: true })
   res.cookies.set(VIEW_COOKIE, slug, cookieOpts)
   return res

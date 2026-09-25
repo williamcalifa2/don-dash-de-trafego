@@ -4,6 +4,7 @@ import { tenantBySlug } from '@/lib/tenant'
 import { liveOrigin } from '@/lib/meta/mode'
 import { findPage, friendlyMetaError, graph, pageToken, syncLeads } from '@/lib/metaLeads'
 import { getSupabaseServer } from '@/lib/supabase'
+import { requireClientScope } from '@/lib/scope'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -15,6 +16,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   const denied = await requireRole(req, 'member')
   if (denied) return denied
   const { slug } = await ctx.params
+  const outOfScope = await requireClientScope(req, slug)
+  if (outOfScope) return outOfScope
   const t = await tenantBySlug(slug)
   if (!t) return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
 
@@ -77,6 +80,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   const denied = await requireRole(req, 'member')
   if (denied) return denied
   const { slug } = await ctx.params
+  const outOfScope = await requireClientScope(req, slug)
+  if (outOfScope) return outOfScope
   const t = await tenantBySlug(slug)
   if (!t) return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
   const body = await req.json().catch(() => ({})) as { action?: string; days?: number }

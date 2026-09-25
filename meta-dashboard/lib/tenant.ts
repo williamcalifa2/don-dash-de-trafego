@@ -7,6 +7,7 @@ import { getSupabaseServer, DEFAULT_SLUG, resolveDefaultClientId } from './supab
 import { legacyGet } from './meta/legacy'
 import { liveOrigin } from './meta/mode'
 import { accessSessionValid, hasEmails, verifyAccess } from './clientAccess'
+import { canSee, scopeFor } from './scope'
 
 export interface Tenant {
   slug: string
@@ -84,6 +85,8 @@ export async function getTenant(req: NextRequest): Promise<Tenant | null> {
     // Administrador vendo o painel de um cliente escolhido.
     const view = req.cookies.get(VIEW_COOKIE)?.value
     if (!view || !(await isAdminSession(session))) return null
+    const scope = await scopeFor(req)
+    if (!canSee(scope, view)) return null // cliente fora da carteira de quem está vendo
     const viewed = await fetchClient('slug', view)
     return viewed ? toTenant(viewed) : null
   }

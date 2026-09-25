@@ -197,7 +197,7 @@ function Dashboard() {
   useEffect(() => {
     let alive = true
     apiFetch('/api/me')
-      .then(r => r.ok ? r.json() : null)
+      .then(r => { if (r.status === 403) { window.location.replace('/admin'); return null } return r.ok ? r.json() : null })
       .then(j => {
         if (!alive) return
         if (j) { setMe(j); document.title = `Dashboard Don - ${j.name}` }
