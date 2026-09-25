@@ -30,8 +30,17 @@ export async function GET(req: NextRequest) {
   const mine = r.tasks.filter(t => t.ownerId === a.managerId).map(t => ({ ...t, clientName: names.get(t.clientSlug) ?? t.clientSlug, clientLogo: logos.get(t.clientSlug) ?? null }))
   const pending = mine.filter(t => !isAnswered(t))
   const answered = mine.filter(isAnswered)
+  // Resumo por cliente para os cards: quantas pendentes e justificadas, e a última alteração.
+  const clients = new Map<string, { slug: string; name: string; logo: string | null; pending: number; answered: number; lastAt: string; headline: string }>()
+  for (const t of mine) {
+    const c = clients.get(t.clientSlug) ?? { slug: t.clientSlug, name: t.clientName, logo: t.clientLogo, pending: 0, answered: 0, lastAt: t.at, headline: t.headline }
+    if (isAnswered(t)) c.answered++; else c.pending++
+    if (t.at >= c.lastAt) { c.lastAt = t.at; if (!isAnswered(t)) c.headline = t.headline }
+    clients.set(t.clientSlug, c)
+  }
   return NextResponse.json({
-    setup: 'ready', manager: manager ? { id: manager.id, name: manager.name, avatarUrl: manager.avatarUrl } : null, pending, answered: answered.slice(0, 60),
+    setup: 'ready', manager: manager ? { id: manager.id, name: manager.name, avatarUrl: manager.avatarUrl } : null, pending, answered: answered.slice(0, 300),
+    clients: [...clients.values()].sort((a, b) => b.pending - a.pending || b.lastAt.localeCompare(a.lastAt)),
     counts: { pending: pending.length, answered: answered.length, rate: mine.length ? Math.round((answered.length / mine.length) * 100) : null },
   })
 }
