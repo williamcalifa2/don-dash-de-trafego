@@ -184,6 +184,27 @@ export async function timeByEmail(emails: string[], sinceIso: string): Promise<M
   return out
 }
 
+/** Última vez que cada gestor (pelo e-mail de login) abriu cada cliente no painel: a última atividade das sessões em que passou pelo cliente. */
+export async function lastAccessByEmail(emails: string[], sinceIso: string): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  const db = getSupabaseServer()
+  if (!db || !emails.length) return out
+  const { data: sess } = await db.from('usage_sessions').select('sid,user_key,last_seen').in('user_key', emails).gte('last_seen', sinceIso).limit(10000)
+  const info = new Map<string, { email: string; seen: string }>()
+  for (const s of (sess ?? []) as Array<{ sid: string; user_key: string; last_seen: string }>) info.set(s.sid, { email: s.user_key, seen: s.last_seen })
+  const sids = [...info.keys()]
+  for (let i = 0; i < sids.length; i += 200) {
+    const { data } = await db.from('usage_views').select('sid,client_slug,seconds').in('sid', sids.slice(i, i + 200)).gt('seconds', 0).limit(20000)
+    for (const v of (data ?? []) as Array<{ sid: string; client_slug: string }>) {
+      const s = info.get(v.sid)
+      if (!s || !v.client_slug) continue
+      const key = `${s.email}|${v.client_slug}`
+      if (!out.get(key) || s.seen > out.get(key)!) out.set(key, s.seen)
+    }
+  }
+  return out
+}
+
 export async function clientLogos(): Promise<Map<string, string | null>> {
   const db = getSupabaseServer()
   const { data } = db ? await db.from('clients').select('slug,logo_url') : { data: [] }

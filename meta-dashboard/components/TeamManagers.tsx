@@ -14,6 +14,7 @@ import { TaskPanel } from './Tasks'
 import { ProfileMenu } from './ProfileMenu'
 import { PulseLoader } from './PulseLoader'
 import { StaffShell } from './StaffShell'
+import { StalledAccounts } from './StalledAccounts'
 import { BarChart, ListCard, PagedRows, PeriodPicker, RankRow, SubTabs, Thumb, plural, type Period } from './UsageUi'
 import { ChartCard, DonutChart, KIND_COLOR, paletteAt, topSlices, type Slice } from './Donut'
 
@@ -179,6 +180,8 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
         <MetricTile label="Ações nas contas" value={String(list.totals.actions)} />
         <MetricTile label="Otimizações a justificar" value={String(list.totals.pending)} />
       </div>
+
+      {list.managers.length > 0 && <StalledAccounts onOpenManager={id => onOpen(id)} />}
 
       {list.unlinkedMembers.length > 0 && (
         <section className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
