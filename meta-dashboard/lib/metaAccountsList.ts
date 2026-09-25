@@ -1,4 +1,4 @@
-import { legacyGet } from './meta/legacy'
+import { legacyBatch, legacyGet } from './meta/legacy'
 import { getSupabaseServer } from './supabase'
 import type { Origin } from './meta/client'
 
@@ -7,7 +7,9 @@ const KEY = 'meta_accounts_cache'
 export const FRESH_MS = 10 * 60_000
 export const REFRESH_MS = 12 * 3_600_000
 
-export interface AccountOpt { id: string; name: string; currency?: string; status?: number }
+/** Página vinculada à conta de anúncios (a que aparece nos anúncios) e a foto dela. `page: null` = conferido e sem página; ausente = ainda não conferido. */
+export interface PageOpt { id: string; name: string; picture: string | null }
+export interface AccountOpt { id: string; name: string; currency?: string; status?: number; page?: PageOpt | null; /** quando a página foi conferida (a foto é um endereço que expira, então de tempos em tempos confere de novo) */ pageAt?: number }
 export interface AccountsCache { at: number; accounts: AccountOpt[]; pages: Array<{ id: string; name: string }> }
 
 export async function readAccountsCache(): Promise<AccountsCache | null> {
@@ -23,6 +25,35 @@ async function writeAccountsCache(c: AccountsCache) {
   if (db) await db.from('meta_settings').upsert({ key: KEY, value: c, updated_at: new Date().toISOString() }, { onConflict: 'key' })
 }
 
+const PAGE_TTL_MS = 5 * 86_400_000
+const ENRICH_MAX = 60 // contas conferidas por atualização; o resto entra nas próximas
+const ENRICH_CHUNK = 20
+
+/**
+ * Descobre a página (nome e foto) de cada conta de anúncios, para a lista de contas ficar reconhecível.
+ * Só confere as que ainda não foram conferidas (o resultado fica guardado junto da lista), então é um custo de uma vez só.
+ */
+export async function enrichPages(origin: Origin, accounts: AccountOpt[], previous?: AccountOpt[]): Promise<AccountOpt[]> {
+  const fresh = (a: AccountOpt) => a.page !== undefined && !!a.pageAt && Date.now() - a.pageAt < PAGE_TTL_MS
+  const known = new Map((previous ?? []).filter(fresh).map(a => [a.id, a]))
+  const out = accounts.map(a => (known.has(a.id) ? { ...a, page: known.get(a.id)!.page, pageAt: known.get(a.id)!.pageAt } : a))
+  const todo = out.filter(a => !fresh(a)).slice(0, ENRICH_MAX)
+  for (let i = 0; i < todo.length; i += ENRICH_CHUNK) {
+    const chunk = todo.slice(i, i + ENRICH_CHUNK)
+    const r = await legacyBatch<{ data?: Array<{ id: string; name: string; picture?: { data?: { url?: string } } }> }>(chunk.map(a => `${a.id}/promote_pages?fields=id,name,picture{url}&limit=1`), { purpose: 'admin:contas', origin })
+    if (!r.ok) break
+    chunk.forEach((a, k) => {
+      const part = r.data[k]
+      if (!part?.ok) return
+      const p = part.data.data?.[0]
+      const target = out.find(x => x.id === a.id)!
+      target.page = p ? { id: p.id, name: p.name, picture: p.picture?.data?.url ?? null } : null
+      target.pageAt = Date.now()
+    })
+  }
+  return out
+}
+
 /** Consulta a Meta e, se vier lista, guarda. Devolve o erro (texto) quando não veio. */
 export async function fetchAccounts(origin: Origin): Promise<{ cache: AccountsCache | null; error?: string }> {
   const get = async (path: string) => {
@@ -31,9 +62,11 @@ export async function fetchAccounts(origin: Origin): Promise<{ cache: AccountsCa
   }
   const [acc, pg] = await Promise.all([get('me/adaccounts?fields=account_id,name,currency,account_status'), get('me/accounts?fields=id,name')])
   if (acc.error || !acc.data.length) return { cache: null, error: acc.error ?? 'A Meta não devolveu contas.' }
+  const previous = await readAccountsCache().catch(() => null)
+  const accounts = acc.data.map(a => ({ id: `act_${a.account_id}`, name: a.name, currency: a.currency, status: Number(a.account_status) } as AccountOpt))
   const cache: AccountsCache = {
     at: Date.now(),
-    accounts: acc.data.map(a => ({ id: `act_${a.account_id}`, name: a.name, currency: a.currency, status: Number(a.account_status) })),
+    accounts: await enrichPages(origin, accounts, previous?.accounts).catch(() => accounts),
     pages: pg.data.map(p => ({ id: p.id, name: p.name })),
   }
   await writeAccountsCache(cache).catch(() => {})

@@ -51,7 +51,7 @@ interface AdminClient {
 /** Cliente cujo padrão é mostrar o resultado da Meta (site, conversas, personalizada, misto). */
 const isResultsView = (c: AdminClient) => !!c.resultKind && c.resultKind !== 'form'
 interface RecentLead { client: string; slug: string; nome: string | null; campanha: string | null; status: string; createdAt: string }
-interface MetaOption { id: string; name: string; currency?: string }
+interface MetaOption { id: string; name: string; currency?: string; page?: { id: string; name: string; picture: string | null } | null }
 
 type ManagerTab = 'cadastro' | 'acessos' | 'metas' | 'integracoes'
 type Modal =
@@ -60,6 +60,7 @@ type Modal =
   | { kind: 'config'; client: AdminClient }
   | { kind: 'code'; client: { slug: string; name: string }; code: string; created: boolean }
   | { kind: 'confirm'; action: 'rotate' | 'revoke'; client: AdminClient }
+  | { kind: 'delete'; client: AdminClient }
   | { kind: 'metrics'; client: AdminClient }
   | { kind: 'team' }
   | { kind: 'clients'; select: string | 'new' | null; tab?: ManagerTab }
@@ -89,6 +90,7 @@ function CopyIconButton({ value, label }: { value: string; label: string }) {
 }
 
 function ModalShell({ title, onClose, children, maxWidth = 512 }: { title: string; onClose?: () => void; children: React.ReactNode; maxWidth?: number }) {
+  useLockBodyScroll()
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
   useEffect(() => {
@@ -496,6 +498,8 @@ function ClientsManager({ clients, initial, initialTab, canManage, baseDomain, a
   const TABS: Array<[ManagerTab, string]> = [['cadastro', 'Cadastro'], ['acessos', 'Acessos'], ['metas', 'Metas e status'], ['integracoes', 'Integrações']]
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
+  useLockBodyScroll()
+  const [deleting, setDeleting] = useState<AdminClient | null>(null)
 
   const content = (
     <div role="dialog" aria-modal="true" aria-label="Clientes" className="no-print" style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
@@ -566,7 +570,7 @@ function ClientsManager({ clients, initial, initialTab, canManage, baseDomain, a
                 </div>
 
                 {tab === 'cadastro' && (canManage
-                  ? <div className="card" style={{ padding: 20 }}><ClientForm key={client.slug} initial={client} baseDomain={baseDomain} accounts={accounts} accountsError={accountsError} accountsSavedAt={accountsSavedAt} onCancel={() => setTab('acessos')} onDone={async r => { await onReload(); onNotice(r.imported ? `Cliente atualizado. ${r.imported} leads importados do Meta.` : 'Cliente atualizado.') }} /></div>
+                  ? <div className="card" style={{ padding: 20 }}><ClientForm key={client.slug} initial={client} baseDomain={baseDomain} accounts={accounts} accountsError={accountsError} accountsSavedAt={accountsSavedAt} onCancel={() => setTab('acessos')} onDelete={() => setDeleting(client)} onDone={async r => { await onReload(); onNotice(r.imported ? `Cliente atualizado. ${r.imported} leads importados do Meta.` : 'Cliente atualizado.') }} /></div>
                   : <p style={{ fontSize: 14, color: 'var(--text-2)' }}>Só administradores editam o cadastro.</p>)}
                 {tab === 'acessos' && <div className="card" style={{ padding: 20 }}><AccessPanel key={client.slug} client={client} canManage={canManage} urlFor={urlFor} /></div>}
                 {tab === 'metas' && <div className="card" style={{ padding: 20 }}><ClientConfigModal key={client.slug} embedded slug={client.slug} clientName={client.name} onClose={() => { }} onSaved={cfg => { onConfigSaved(client.slug, cfg.active); onNotice(`Configurações de ${client.name} salvas.`) }} /></div>}
@@ -578,6 +582,7 @@ function ClientsManager({ clients, initial, initialTab, canManage, baseDomain, a
           </div>
         </section>
       </div>
+      {deleting && <DeleteClientModal client={deleting} onClose={() => setDeleting(null)} onDeleted={async () => { const name = deleting.name; setDeleting(null); setSelected(clients.find(c => c.slug !== deleting.slug)?.slug ?? null); await onReload(); onNotice(`Cliente ${name} excluído.`) }} />}
     </div>
   )
 
@@ -646,7 +651,106 @@ function GearMenu({ label, items }: { label: string; items: MenuItem[] }) {
   )
 }
 
-function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSavedAt, onDone, onCancel }: {
+/** Trava a rolagem da página que está atrás de uma janela em tela cheia (senão aparece uma segunda barra de rolagem que não faz nada). */
+function useLockBodyScroll() {
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    const gap = window.innerWidth - document.documentElement.clientWidth
+    const padPrev = document.body.style.paddingRight
+    document.body.style.overflow = 'hidden'
+    if (gap > 0) document.body.style.paddingRight = `${gap}px` // a página não "pula" quando a barra some
+    return () => { document.body.style.overflow = prev; document.body.style.paddingRight = padPrev }
+  }, [])
+}
+
+/** Foto da página do Facebook ligada à conta; sem foto (ou se falhar carregar) mostra as iniciais. */
+function PageImage({ page, size = 40 }: { page: MetaOption['page']; size?: number }) {
+  const [broken, setBroken] = useState(false)
+  if (page?.picture && !broken) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={page.picture} alt="" title={page.name} onError={() => setBroken(true)} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, background: 'var(--bg-card2)' }} />
+  }
+  return <span aria-hidden="true" title={page?.name} style={{ width: size, height: size, borderRadius: '50%', background: 'var(--bg-card2)', color: 'var(--text-2)', display: 'grid', placeItems: 'center', fontSize: Math.round(size * 0.36), fontWeight: 700, flexShrink: 0 }}>{page?.name ? page.name.slice(0, 1).toUpperCase() : '—'}</span>
+}
+
+/** "Selecionar conta": abre uma janela com as contas de anúncios (nome, número embaixo e a foto da página ao lado). */
+function AccountPicker({ accounts, value, onPick }: { accounts: MetaOption[]; value: string; onPick: (a: MetaOption | null) => void }) {
+  const [open, setOpen] = useState(false)
+  const [q, setQ] = useState('')
+  const picked = accounts.find(a => a.id === value) ?? null
+  const norm = (t: string) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const shown = accounts.filter(a => !q.trim() || norm(`${a.name} ${a.id} ${a.page?.name ?? ''}`).includes(norm(q.trim())))
+  return (
+    <>
+      <button type="button" id="c-acc" className="btn btn-outline" onClick={() => { setQ(''); setOpen(true) }} aria-haspopup="dialog"
+        style={{ width: '100%', justifyContent: 'flex-start', gap: 12, height: picked ? 56 : 40, textAlign: 'left' }}>
+        {picked && <PageImage page={picked.page} size={32} />}
+        <span style={{ flex: 1, minWidth: 0 }}>
+          {picked
+            ? <><span style={{ display: 'block', fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{picked.name}</span><span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)', fontWeight: 400 }}>{picked.id}</span></>
+            : value ? <span style={{ fontSize: 14 }}>{value}</span> : <span style={{ color: 'var(--text-2)' }}>Selecionar conta</span>}
+        </span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', flexShrink: 0 }}>{picked || value ? 'Trocar' : ''}</span>
+      </button>
+      {open && (
+        <ModalShell title="Selecionar conta de anúncios" onClose={() => setOpen(false)} maxWidth={520}>
+          <label className="search" style={{ height: 36 }}>
+            <Search size={16} color="var(--text-2)" strokeWidth={1.75} aria-hidden="true" />
+            <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por nome, número ou página" aria-label="Buscar conta" />
+          </label>
+          <div role="listbox" aria-label="Contas de anúncios" style={{ display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', maxHeight: 'min(52vh, 420px)', margin: '0 -8px', padding: '0 8px' }}>
+            {shown.map(a => {
+              const on = a.id === value
+              return (
+                <button key={a.id} type="button" role="option" aria-selected={on} onClick={() => { onPick(a); setOpen(false) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '10px 12px', borderRadius: 12, border: `1px solid ${on ? 'var(--accent)' : 'transparent'}`, background: on ? 'var(--accent-soft)' : 'none', color: 'inherit', font: 'inherit', cursor: 'pointer' }}>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>{a.id}{a.currency ? ` · ${a.currency}` : ''}</span>
+                  </span>
+                  <PageImage page={a.page} size={40} />
+                </button>
+              )
+            })}
+            {shown.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-2)', padding: 12, margin: 0 }}>Nenhuma conta encontrada.</p>}
+          </div>
+          {value && <div style={{ display: 'flex', justifyContent: 'flex-end' }}><button type="button" className="btn btn-ghost btn-sm" onClick={() => { onPick(null); setOpen(false) }}>Limpar seleção</button></div>}
+        </ModalShell>
+      )}
+    </>
+  )
+}
+
+/** Exclusão de cliente: irreversível, então pede para digitar o nome. */
+function DeleteClientModal({ client, onClose, onDeleted }: { client: { slug: string; name: string }; onClose: () => void; onDeleted: () => void | Promise<void> }) {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const norm = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '')
+  const ok = norm(text) === norm(client.name)
+  async function go() {
+    setBusy(true); setErr(null)
+    const r = await api(`/api/admin/clients/${client.slug}`, 'DELETE', { confirm: text })
+    setBusy(false)
+    if (!r.ok) return setErr(r.data.error ?? 'Não foi possível excluir.')
+    await onDeleted()
+  }
+  return (
+    <ModalShell title="Excluir cliente" onClose={onClose}>
+      <p style={{ fontSize: 14, lineHeight: 1.6, margin: 0 }}>Você vai excluir <strong>{client.name}</strong> e tudo que é dele: leads, pedidos, dados da Meta, configurações, relatórios e acessos. <strong>Não tem como desfazer.</strong></p>
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 600 }}>Digite o nome do cliente para confirmar
+        <input className="field" value={text} onChange={e => setText(e.target.value)} placeholder={client.name} autoComplete="off" autoFocus />
+      </label>
+      {err && <p role="alert" style={{ fontSize: 13, color: 'var(--red)', margin: 0 }}>{err}</p>}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        <button className="btn btn-outline" onClick={onClose}>Cancelar</button>
+        <button className="btn" style={{ background: 'var(--red)', color: '#fff' }} disabled={!ok || busy} onClick={go}>{busy ? 'Excluindo…' : 'Excluir definitivamente'}</button>
+      </div>
+    </ModalShell>
+  )
+}
+
+function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSavedAt, onDone, onCancel, onDelete }: {
   initial?: AdminClient
   baseDomain: string | null
   accounts: MetaOption[]
@@ -654,12 +758,14 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
   accountsSavedAt?: number | null
   onDone: (r: { slug: string; name: string; code?: string; imported?: number | null }) => void
   onCancel: () => void
+  /** só na edição de quem pode excluir */
+  onDelete?: () => void
 }) {
   const [name, setName] = useState(initial?.name ?? '')
   const [slug, setSlug] = useState(initial?.slug ?? '')
   const [slugTouched, setSlugTouched] = useState(!!initial)
   const [adAccountId, setAdAccountId] = useState(initial?.adAccountId ?? '')
-  const pageId = initial?.pageId ?? ''
+  const [pageId, setPageId] = useState(initial?.pageId ?? '')
   const [logoUrl, setLogoUrl] = useState(initial?.logoUrl ?? '')
   const [logoError, setLogoError] = useState<string | null>(null)
   const logoInput = useRef<HTMLInputElement>(null)
@@ -781,11 +887,7 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
       <div>
         <label htmlFor="c-acc" style={labelStyle}>Conta de anúncios do Meta</label>
         {accounts.length > 0 ? (
-          <select id="c-acc" className="field" value={adAccountId} onChange={e => setAdAccountId(e.target.value)}>
-            <option value="">Selecione…</option>
-            {adAccountId && !accounts.some(a => a.id === adAccountId) && <option value={adAccountId}>{adAccountId}</option>}
-            {accounts.map(a => <option key={a.id} value={a.id}>{a.name} · {a.id}{a.currency ? ` · ${a.currency}` : ''}</option>)}
-          </select>
+          <AccountPicker accounts={accounts} value={adAccountId} onPick={a => { setAdAccountId(a?.id ?? ''); if (a?.page?.id) setPageId(a.page.id) }} />
         ) : (
           <input id="c-acc" className="field" placeholder="act_123456789" value={adAccountId} onChange={e => setAdAccountId(e.target.value)} />
         )}
@@ -810,7 +912,8 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
       </div>
 
       {error && <p role="alert" style={{ fontSize: 14, color: 'var(--red)' }}>{error}</p>}
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: 4 }}>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: 4, alignItems: 'center' }}>
+        {onDelete && <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--red)', marginRight: 'auto' }} onClick={onDelete}><Trash2 size={14} strokeWidth={1.75} /> Excluir cliente</button>}
         <button type="button" className="btn btn-outline" onClick={onCancel}>Cancelar</button>
         <button type="submit" className="btn btn-primary" disabled={saving || !name || (!initial && !slug)}>
           {saving ? 'Salvando…' : initial ? 'Salvar' : 'Criar e gerar código'}
@@ -1363,6 +1466,7 @@ export default function AdminPage() {
               ]
               if (canManage && c.locked) items.push({ icon: <LockOpen size={16} strokeWidth={1.75} />, text: 'Desbloquear acesso', onClick: () => runAction('unlock', c) })
               if (canManage && c.hasCode) items.push('sep', { icon: <Ban size={16} strokeWidth={1.75} />, text: 'Desativar acesso', danger: true, onClick: () => setModal({ kind: 'confirm', action: 'revoke', client: c }) })
+              if (canManage) items.push({ icon: <Trash2 size={16} strokeWidth={1.75} />, text: 'Excluir cliente', danger: true, onClick: () => setModal({ kind: 'delete', client: c }) })
               return (
                 <article key={c.slug} className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1486,6 +1590,7 @@ export default function AdminPage() {
             onSaved={choice => { setCardMetrics(m => { const n = { ...m }; if (choice) n[modal.client.slug] = choice; else delete n[modal.client.slug]; return n }); setModal(null) }}
           />
         )}
+        {modal?.kind === 'delete' && <DeleteClientModal client={modal.client} onClose={() => setModal(null)} onDeleted={async () => { const name = modal.client.name; setModal(null); await load(); setNotice(`Cliente ${name} excluído.`) }} />}
         {modal?.kind === 'confirm' && (
           <ModalShell title={modal.action === 'rotate' ? 'Revogar token?' : 'Desativar acesso?'} onClose={() => setModal(null)}>
             <p style={{ fontSize: 14, lineHeight: 1.6 }}>

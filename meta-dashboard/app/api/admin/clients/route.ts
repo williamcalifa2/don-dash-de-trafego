@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { duplicateOf } from '@/lib/clientsDup'
 import { requireAdmin, requireRole, requireServiceKey } from '@/lib/admin'
 import { getSupabaseServer, serviceKeyStatus } from '@/lib/supabase'
 import { clearClientCache, tenantBySlug } from '@/lib/tenant'
@@ -167,8 +168,9 @@ export async function POST(req: NextRequest) {
   if (pageId && !/^\d{5,25}$/.test(pageId)) return NextResponse.json({ error: 'ID da página inválido (só números).' }, { status: 400 })
   if (!logo.ok) return NextResponse.json({ error: logo.error }, { status: 400 })
 
-  const { data: existing } = await db.from('clients').select('id').eq('slug', slug).maybeSingle()
-  if (existing) return NextResponse.json({ error: 'Já existe um cliente com esse endereço.' }, { status: 409 })
+  const { data: all } = await db.from('clients').select('slug,display_name,ad_account_id')
+  const dup = duplicateOf(((all ?? []) as Array<{ slug: string; display_name: string | null; ad_account_id: string | null }>).map(c => ({ slug: c.slug, name: c.display_name ?? c.slug, adAccountId: c.ad_account_id })), { slug, name, adAccountId })
+  if (dup) return NextResponse.json({ error: dup }, { status: 409 })
 
   const code = generateCode()
   const row: Record<string, unknown> = {

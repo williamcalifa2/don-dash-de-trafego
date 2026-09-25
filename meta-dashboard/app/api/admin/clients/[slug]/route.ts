@@ -6,6 +6,7 @@ import { clearClientCache, tenantBySlug } from '@/lib/tenant'
 import { syncLeads } from '@/lib/metaLeads'
 import { liveOrigin } from '@/lib/meta/mode'
 import { logStaffActivity } from '@/lib/activityLog'
+import { duplicateOf, normName } from '@/lib/clientsDup'
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const denied = await requireRole(req, 'admin')
@@ -38,6 +39,14 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ slug: str
   }
   if (!Object.keys(update).length) return NextResponse.json({ error: 'Nada para atualizar.' }, { status: 400 })
 
+  // Não deixa dois clientes com o mesmo nome ou a mesma conta de anúncios.
+  if ('display_name' in update || 'ad_account_id' in update) {
+    const { data: all } = await db.from('clients').select('slug,display_name,ad_account_id')
+    const dup = duplicateOf(((all ?? []) as Array<{ slug: string; display_name: string | null; ad_account_id: string | null }>).map(c => ({ slug: c.slug, name: c.display_name ?? c.slug, adAccountId: c.ad_account_id })),
+      { name: 'display_name' in update ? String(update.display_name) : null, adAccountId: 'ad_account_id' in update ? (update.ad_account_id as string | null) : null }, slug)
+    if (dup) return NextResponse.json({ error: dup }, { status: 409 })
+  }
+
   const { error } = await db.from('clients').update(update).eq('slug', slug)
   clearClientCache()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -53,4 +62,38 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ slug: str
   const LABEL: Record<string, string> = { display_name: 'o nome', ad_account_id: 'a conta de anúncios', page_id: 'a página', logo_url: 'a logo' }
   await logStaffActivity(req, slug, { kind: 'client', summary: `Alterou ${Object.keys(update).map(k => LABEL[k] ?? k).join(', ')} do cliente` })
   return NextResponse.json({ ok: true, imported })
+}
+
+
+/** Exclui o cliente e tudo que é dele: leads, pedidos, coleta da Meta (apagados em cascata pelo banco), configurações, relatórios, links de apresentação e a carteira do gestor. Não tem volta. */
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
+  const denied = await requireRole(req, 'admin')
+  if (denied) return denied
+  const badKey = requireServiceKey()
+  if (badKey) return badKey
+  const db = getSupabaseServer()
+  if (!db) return NextResponse.json({ error: 'Supabase não configurado' }, { status: 500 })
+  const { slug } = await ctx.params
+  const { data: row } = await db.from('clients').select('id,display_name').eq('slug', slug).maybeSingle()
+  if (!row) return NextResponse.json({ error: 'Cliente não encontrado.' }, { status: 404 })
+  const name = (row as { display_name: string | null }).display_name ?? slug
+
+  // Confirmação: quem chama precisa mandar o nome do cliente (a tela pede para digitar).
+  const b = await req.json().catch(() => ({})) as { confirm?: unknown }
+  if (typeof b.confirm !== 'string' || normName(b.confirm) !== normName(name)) return NextResponse.json({ error: 'Digite o nome do cliente para confirmar a exclusão.' }, { status: 400 })
+
+  const { error } = await db.from('clients').delete().eq('slug', slug)
+  if (error) return NextResponse.json({ error: `Não foi possível excluir: ${error.message}` }, { status: 409 })
+
+  // O que não está preso ao cliente por chave do banco: configurações guardadas por endereço e o vínculo com gestor.
+  await Promise.allSettled([
+    db.from('meta_settings').delete().like('key', `%:${slug}`),
+    db.from('meta_settings').delete().like('key', `%:${slug}:%`),
+    db.from('manager_clients').delete().eq('client_slug', slug),
+    db.from('activity_log').delete().eq('client_slug', slug),
+    db.from('activity_sync').delete().eq('client_slug', slug),
+  ])
+  clearClientCache()
+  await logStaffActivity(req, slug, { kind: 'client', summary: `Excluiu o cliente ${name}` })
+  return NextResponse.json({ ok: true })
 }
