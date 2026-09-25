@@ -2,22 +2,12 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Building2, FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, KeyRound, PanelLeftClose, PanelLeftOpen, Users, X } from 'lucide-react'
+import { Building2, FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, KeyRound, PanelLeftClose, Puzzle, PanelLeftOpen, Users, X } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import type { Me } from '@/components/ProfileMenu'
 import { PulseLoader } from '@/components/PulseLoader'
 
 /** Ações que a sidebar pede para a tela em que a pessoa está (a tela escuta o evento e abre o que for dela). */
-/** Duas peças de quebra-cabeça encaixadas: integrações conectam o app a outras ferramentas. Mesmo traço dos ícones do lucide. */
-function PuzzleConnected({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M2.5 5h8.5v3.4a2.6 2.6 0 1 1 0 5.2V19H2.5z" />
-      <path d="M13 5h8.5v14H13v-5.4a2.6 2.6 0 1 0 0-5.2z" />
-    </svg>
-  )
-}
-
 export type StaffAction = 'clients' | 'new' | 'team' | 'sync' | 'reports' | 'access' | 'integracoes'
 export const STAFF_EVENT = 'staff-open'
 const ROLE_KEY = 'staff_role'
@@ -105,7 +95,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav aria-label="Menu da agência" className="staff-nav">
-          <Item collapsed={collapsed} icon={<LayoutGrid size={18} strokeWidth={1.75} />} label="Painel de clientes" active={onPanel} onClick={() => { setDrawer(false); if (!onPanel) go('/admin'); else window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
+          <Item collapsed={collapsed} icon={<LayoutGrid size={18} strokeWidth={1.75} />} label="Painel" active={onPanel} onClick={() => { setDrawer(false); if (!onPanel) go('/admin'); else window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
           <div className="staff-group">Administração</div>
           {canOperate && <Item collapsed={collapsed} icon={<Building2 size={18} strokeWidth={1.75} />} label="Clientes" onClick={() => open('clients')} />}
           {canManage && <Item collapsed={collapsed} icon={<Users size={18} strokeWidth={1.75} />} label="Equipe" active={onTeam} onClick={() => { setDrawer(false); go('/admin/equipe') }} />}
@@ -113,7 +103,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
           {canOperate && <>
             <div className="staff-group">Ferramentas</div>
             <Item collapsed={collapsed} icon={<FileBarChart size={18} strokeWidth={1.75} />} label="Report Studio" active={onReports} onClick={() => open('reports')} />
-            <Item collapsed={collapsed} icon={<PuzzleConnected size={18} />} label="Integrações" onClick={() => open('integracoes')} />
+            <Item collapsed={collapsed} icon={<Puzzle size={18} strokeWidth={1.75} />} label="Integrações" onClick={() => open('integracoes')} />
           </>}
           {canManage && <>
             <div className="staff-group">Análise</div>

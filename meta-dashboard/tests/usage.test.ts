@@ -146,7 +146,7 @@ describe('cliques com tela, cliente e rótulo', () => {
     expect(viewLabel('ecommerce/live')).toBe('E-commerce › Live View')
     expect(viewLabel('leads/detalhe-do-lead')).toBe('Leads › Detalhe do lead')
     expect(viewLabel('admin/reports/novo-relatorio')).toBe('Report Studio (equipe) › Novo relatorio')
-    expect(viewLabel('admin/clientes')).toBe('Painel de clientes › Clientes')
+    expect(viewLabel('admin/clientes')).toBe('Painel › Clientes')
     expect(viewLabel('admin/reports')).toBe('Report Studio (equipe)')
   })
   it('elementos mais clicados, com o nome do botão', () => {

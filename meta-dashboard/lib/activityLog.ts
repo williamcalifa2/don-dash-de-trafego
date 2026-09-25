@@ -3,12 +3,12 @@ import type { NextRequest } from 'next/server'
 import { getSupabaseServer } from './supabase'
 import { requestIdentity } from './admin'
 import { getProfile, nameFromEmail } from './adminProfile'
-import type { ActivityKind, LogInsert, Manager } from './managers'
+import { managerAvatarUrl, type ActivityKind, type LogInsert, type Manager } from './managers'
 
 export const tablesMissing = (m: string) => /relation|schema cache|does not exist/i.test(m)
 
-export interface ManagerRow { id: string; name: string; email: string | null; meta_actor_id: string | null; meta_actor_name: string | null; created_at: string }
-export const toManager = (r: ManagerRow): Manager => ({ id: r.id, name: r.name, email: r.email, metaActorId: r.meta_actor_id, metaActorName: r.meta_actor_name, createdAt: r.created_at })
+export interface ManagerRow { id: string; name: string; email: string | null; meta_actor_id: string | null; meta_actor_name: string | null; created_at: string; avatar?: string | null }
+export const toManager = (r: ManagerRow): Manager => ({ id: r.id, name: r.name, email: r.email, metaActorId: r.meta_actor_id, metaActorName: r.meta_actor_name, createdAt: r.created_at, avatarUrl: managerAvatarUrl(r.id, r.avatar) })
 
 let memo: { at: number; managers: Manager[]; byClient: Map<string, string> } | null = null
 export const __resetManagersMemo = () => { memo = null }

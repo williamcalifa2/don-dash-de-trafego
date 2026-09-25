@@ -40,7 +40,8 @@ export async function GET(req: NextRequest) {
   })
   const clients = [...names.entries()].map(([slug, name]) => ({ slug, name, managerId: bySlug.get(slug) ?? null })).sort((a, b) => a.name.localeCompare(b.name))
   const nameOfManager = new Map(reg.managers.map(m => [m.id, m.name]))
-  const recent = (rows ?? []).filter(r => r.manager_id).slice(0, 30).map(r => ({ at: r.at, source: r.source, kind: r.kind, summary: r.summary, clientName: names.get(r.client_slug) ?? r.client_slug, managerId: r.manager_id, managerName: nameOfManager.get(r.manager_id!) ?? r.manager_id, actorName: r.actor_name, objectName: r.object_name }))
+  const avatarOfManager = new Map(reg.managers.map(m => [m.id, m.avatarUrl]))
+  const recent = (rows ?? []).filter(r => r.manager_id).slice(0, 30).map(r => ({ at: r.at, source: r.source, kind: r.kind, summary: r.summary, clientName: names.get(r.client_slug) ?? r.client_slug, managerId: r.manager_id, managerName: nameOfManager.get(r.manager_id!) ?? r.manager_id, managerAvatar: avatarOfManager.get(r.manager_id!) ?? null, actorName: r.actor_name, objectName: r.object_name }))
   const stale = !sync || Date.now() - Date.parse(sync) > 4 * 60_000
   if (stale) after(() => { void syncMetaActivity({ budgetMs: 45_000, limit: 8 }).catch(() => { }) }) // abrir a página mantém o histórico da Meta em dia
   return NextResponse.json({

@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Activity, Building2, Clock, FileBarChart, Image as ImageIcon, KeyRound, Layers, Loader2, Moon, Pencil, Plus, RefreshCw, Settings2, Sun, Target, ToggleRight, Trash2, UserCheck, Users, Wallet, X } from 'lucide-react'
+import { Activity, ArrowRight, Building2, Clock, FileBarChart, Image as ImageIcon, KeyRound, Layers, Loader2, Moon, Pencil, Plus, RefreshCw, Settings2, Sun, Target, ToggleRight, Trash2, UserCheck, Users, Wallet, X } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import { fmtDuration } from '@/lib/usage'
+import { fileToLogoDataUrl } from '@/lib/resizeLogo'
 import { KIND_LABEL, KINDS, type ActivityKind } from '@/lib/managers'
 import { useTheme } from '@/lib/useTheme'
 import { MetricTile } from './MetricTile'
@@ -20,13 +21,13 @@ const KIND_ICON: Record<ActivityKind, React.ReactNode> = {
   config: <Settings2 size={18} strokeWidth={1.75} />, access: <KeyRound size={18} strokeWidth={1.75} />, sync: <RefreshCw size={18} strokeWidth={1.75} />, client: <Building2 size={18} strokeWidth={1.75} />, other: <Activity size={18} strokeWidth={1.75} />,
 }
 
-interface ListManager { id: string; name: string; email: string | null; metaActorId: string | null; metaActorName: string | null; clients: Array<{ slug: string; name: string }>; actions: number; optimizations: number; activeSec: number | null; lastAt: string | null; byKind: Array<{ kind: ActivityKind; n: number }>; daily: number[] }
-interface RecentRow { at: string; source: string; kind: ActivityKind; summary: string; clientName: string; managerId: string; managerName: string; actorName: string | null; objectName: string | null }
+interface ListManager { id: string; name: string; email: string | null; avatarUrl: string | null; metaActorId: string | null; metaActorName: string | null; clients: Array<{ slug: string; name: string }>; actions: number; optimizations: number; activeSec: number | null; lastAt: string | null; byKind: Array<{ kind: ActivityKind; n: number }>; daily: number[] }
+interface RecentRow { managerAvatar: string | null; at: string; source: string; kind: ActivityKind; summary: string; clientName: string; managerId: string; managerName: string; actorName: string | null; objectName: string | null }
 interface ClientOpt { slug: string; name: string; managerId: string | null }
 interface ListData { setup: 'ready' | 'tables' | 'error'; managers: ListManager[]; recent: RecentRow[]; clients: ClientOpt[]; unassigned: ClientOpt[]; lastSync: string | null; totals: { actions: number; optimizations: number } }
 interface TimelineRow { at: string; source: string; client_slug: string; clientName: string; actor_key: string | null; actor_name: string | null; kind: ActivityKind; summary: string; object_name: string | null; detail: { from?: string | null; to?: string | null; level?: string } | null }
 interface Profile {
-  setup: 'ready' | 'tables'; manager: { id: string; name: string; email: string | null; metaActorId: string | null; metaActorName: string | null }; hasEmail: boolean; hasActor: boolean
+  setup: 'ready' | 'tables'; manager: { id: string; name: string; email: string | null; avatarUrl: string | null; metaActorId: string | null; metaActorName: string | null }; hasEmail: boolean; hasActor: boolean
   totals: { actions: number; optimizations: number; byMe: number; activeSec: number | null; idle: number }
   byKind: Array<{ kind: ActivityKind; n: number }>; daily: Array<{ day: string; n: number }>; hours: number[]; bySource: { app: number; meta: number }
   clients: Array<{ slug: string; name: string; actions: number; optimizations: number; lastAt: string | null; timeSec: number; daysIdle: number }>
@@ -105,9 +106,12 @@ export function TeamManagers() {
     <StaffShell>
       <main className="page page-ready">
         <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>{current ? current.name : 'Equipe'}</h1>
-            <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>{current ? `Gestor de tráfego · ${plural(current.clients.length, 'cliente', 'clientes')}` : 'Gestores de tráfego e o que cada um faz nas contas'}</p>
+          <div style={{ flex: 1, minWidth: 220, display: 'flex', alignItems: 'center', gap: 16 }}>
+            {current && <Thumb name={current.name} src={current.avatarUrl} size={64} />}
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>{current ? current.name : 'Equipe'}</h1>
+              <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>{current ? `Gestor de tráfego · ${plural(current.clients.length, 'cliente', 'clientes')}${current.email ? ` · ${current.email}` : ''}` : 'Gestores de tráfego e o que cada um faz nas contas'}</p>
+            </div>
           </div>
           {current && <button type="button" className="btn btn-ghost btn-sm" onClick={() => open(null)}>Todos os gestores</button>}
           <PeriodPicker value={period} onChange={setPeriod} />
@@ -180,6 +184,47 @@ function Overview({ list, onOpen, onNew, onAssigned }: { list: ListData; onOpen:
         </div>
       ) : (
         <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Gestores</h2>
+              <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '2px 0 0' }}>Clique em um gestor para abrir o perfil, com o que ele fez em cada cliente</p>
+            </div>
+          <div className="usage-grid">
+            {list.managers.map((m, i) => (
+              <button key={m.id} type="button" className="card" onClick={() => onOpen(m.id)} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ position: 'relative', display: 'inline-flex' }}>
+                    <Thumb name={m.name} src={m.avatarUrl} size={48} />
+                    <i aria-hidden="true" style={{ position: 'absolute', right: -1, bottom: -1, width: 12, height: 12, borderRadius: '50%', background: paletteAt(i), border: '2px solid var(--bg-card)' }} />
+                  </span>
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ display: 'block', fontSize: 15, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>{plural(m.clients.length, 'cliente', 'clientes')}{m.lastAt ? ` · última ação ${ago(m.lastAt)}` : ' · sem ações no período'}</span>
+                  </span>
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <DonutChart size={92} thickness={20} legend={false} slices={m.byKind.map(k => ({ key: k.kind, label: KIND_LABEL[k.kind], value: k.n, color: KIND_COLOR[k.kind] }))} center={String(m.actions)} />
+                  <span style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 12px' }}>
+                    {([['Ações', String(m.actions)], ['Otimizações', String(m.optimizations)], ['No painel', m.activeSec == null ? '—' : shortDur(m.activeSec)], ['Clientes', String(m.clients.length)]] as const).map(([l, v]) => (
+                      <span key={l} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)' }}>{l}</span>
+                        <span style={{ fontSize: 17, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+                      </span>
+                    ))}
+                  </span>
+                </span>
+                {m.daily.length > 1 && (
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)' }}>Ações por dia</span>
+                    <MiniBars values={m.daily} color={paletteAt(i)} title={(d, v) => `${plural(v, 'ação', 'ações')} · ${m.daily.length - d - 1 === 0 ? 'hoje' : `há ${m.daily.length - d - 1} d`}`} />
+                  </span>
+                )}
+                <span style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.clients.length ? m.clients.slice(0, 4).map(c => c.name).join(', ') + (m.clients.length > 4 ? ` +${m.clients.length - 4}` : '') : 'Nenhum cliente na carteira'}</span>
+                <span className="btn btn-outline btn-sm" style={{ justifyContent: 'center', gap: 8, pointerEvents: 'none' }}>Ver perfil <ArrowRight size={14} strokeWidth={1.75} /></span>
+              </button>
+            ))}
+          </div>
+          </div>
           <div className="usage-grid">
             <ChartCard title="Ações por gestor" hint="Quem mais mexeu nas contas no período. Clique para abrir o perfil">
               <DonutChart slices={perManager} center={String(list.totals.actions)} sub="ações" onPick={id => onOpen(id)} />
@@ -195,40 +240,6 @@ function Overview({ list, onOpen, onNew, onAssigned }: { list: ListData; onOpen:
             </ChartCard>
           </div>
 
-          <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))' }}>
-            {list.managers.map((m, i) => (
-              <button key={m.id} type="button" className="card" onClick={() => onOpen(m.id)} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ position: 'relative', display: 'inline-flex' }}>
-                    <Thumb name={m.name} />
-                    <i aria-hidden="true" style={{ position: 'absolute', right: -1, bottom: -1, width: 12, height: 12, borderRadius: '50%', background: paletteAt(i), border: '2px solid var(--bg-card)' }} />
-                  </span>
-                  <span style={{ minWidth: 0, flex: 1 }}>
-                    <span style={{ display: 'block', fontSize: 15, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
-                    <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>{plural(m.clients.length, 'cliente', 'clientes')}{m.lastAt ? ` · última ação ${ago(m.lastAt)}` : ' · sem ações no período'}</span>
-                  </span>
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <DonutChart size={92} thickness={20} legend={false} slices={m.byKind.map(k => ({ key: k.kind, label: KIND_LABEL[k.kind], value: k.n, color: KIND_COLOR[k.kind] }))} center={String(m.actions)} />
-                  <span style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 12px' }}>
-                    {([['Ações', String(m.actions)], ['Otimizações', String(m.optimizations)], ['No painel', m.activeSec == null ? '—' : fmtDuration(m.activeSec)], ['Clientes', String(m.clients.length)]] as const).map(([l, v]) => (
-                      <span key={l} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)' }}>{l}</span>
-                        <span style={{ fontSize: 17, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
-                      </span>
-                    ))}
-                  </span>
-                </span>
-                {m.daily.length > 1 && (
-                  <span style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)' }}>Ações por dia</span>
-                    <MiniBars values={m.daily} color={paletteAt(i)} title={(d, v) => `${plural(v, 'ação', 'ações')} · ${m.daily.length - d - 1 === 0 ? 'hoje' : `há ${m.daily.length - d - 1} d`}`} />
-                  </span>
-                )}
-                <span style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.clients.length ? m.clients.slice(0, 4).map(c => c.name).join(', ') + (m.clients.length > 4 ? ` +${m.clients.length - 4}` : '') : 'Nenhum cliente na carteira'}</span>
-              </button>
-            ))}
-          </div>
         </>
       )}
 
@@ -407,6 +418,15 @@ function ManagerForm({ manager, clients, managers, onClose, onSaved, onDeleted }
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [confirm, setConfirm] = useState(false)
+  const [avatar, setAvatar] = useState<string | null>(manager?.avatarUrl ?? null)
+  const [avatarChanged, setAvatarChanged] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function pickPhoto(f: File | undefined) {
+    if (!f) return
+    setErr(null)
+    try { setAvatar(await fileToLogoDataUrl(f)); setAvatarChanged(true) } catch (e) { setErr(e instanceof Error ? e.message : 'Não consegui usar essa foto.') }
+  }
 
   useEffect(() => {
     apiFetch('/api/admin/managers/actors', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((j: { actors?: Actor[] } | null) => setActors(j?.actors ?? [])).catch(() => { })
@@ -421,7 +441,7 @@ function ManagerForm({ manager, clients, managers, onClose, onSaved, onDeleted }
   async function save(e: React.FormEvent) {
     e.preventDefault(); if (busy) return
     setBusy(true); setErr(null)
-    const r = await apiFetch(manager ? `/api/admin/managers/${manager.id}` : '/api/admin/managers', { method: manager ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, metaActorId: actorId, metaActorName: actorName, clients: [...picked] }) }).catch(() => null)
+    const r = await apiFetch(manager ? `/api/admin/managers/${manager.id}` : '/api/admin/managers', { method: manager ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, metaActorId: actorId, metaActorName: actorName, clients: [...picked], ...(avatarChanged ? { avatar } : {}) }) }).catch(() => null)
     const j = r ? await r.json().catch(() => ({})) as { error?: string; manager?: { id: string } } : {}
     setBusy(false)
     if (!r?.ok) return setErr(j.error ?? 'Não foi possível salvar.')
@@ -441,6 +461,18 @@ function ManagerForm({ manager, clients, managers, onClose, onSaved, onDeleted }
     <div role="dialog" aria-modal="true" aria-label={manager ? 'Editar gestor' : 'Novo gestor'} style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,.4)', display: 'grid', placeItems: 'center', padding: 16 }} onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
       <form onSubmit={save} className="card" style={{ width: '100%', maxWidth: 560, maxHeight: '92vh', overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center' }}><h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, flex: 1 }}>{manager ? 'Editar gestor' : 'Novo gestor'}</h2><button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={onClose} aria-label="Fechar"><X size={16} strokeWidth={1.75} /></button></div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <Thumb name={name || '?'} src={avatar} size={72} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => fileRef.current?.click()}>{avatar ? 'Trocar foto' : 'Escolher foto'}</button>
+              {avatar && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAvatar(null); setAvatarChanged(true) }}>Remover foto</button>}
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--text-2)' }}>PNG, JPG ou WebP. Aparece no perfil e nos cards do gestor.</span>
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={e => { void pickPhoto(e.target.files?.[0]); e.target.value = '' }} />
+          </div>
+        </div>
 
         <label style={label}>Nome<input id="mg-name" className="field" value={name} onChange={e => setName(e.target.value)} placeholder="Nome do gestor" maxLength={60} autoFocus={!manager} /></label>
         <label style={label}>E-mail de login no painel (opcional)

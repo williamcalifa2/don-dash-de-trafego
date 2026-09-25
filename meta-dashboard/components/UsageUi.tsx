@@ -128,10 +128,14 @@ export function RankRow({ lead, title, sub, value, valueTone = 'green', bar, ext
 
 const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase()).join('') || '?'
 
-/** Miniatura redonda com as iniciais (pessoa) ou quadrada com ícone (tela). */
-export function Thumb({ name, icon, size = 40 }: { name?: string; icon?: React.ReactNode; size?: number }) {
+/** Miniatura redonda com a foto ou as iniciais (pessoa), ou quadrada com ícone (tela). */
+export function Thumb({ name, icon, src, size = 40 }: { name?: string; icon?: React.ReactNode; src?: string | null; size?: number }) {
+  if (src) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt="" aria-hidden="true" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, background: 'var(--accent-soft)' }} />
+  }
   return (
-    <span aria-hidden="true" style={{ width: size, height: size, borderRadius: icon ? 12 : '50%', background: 'var(--accent-soft)', color: icon ? 'var(--accent)' : 'var(--text-1)', display: 'grid', placeItems: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{icon ?? initials(name ?? '')}</span>
+    <span aria-hidden="true" style={{ width: size, height: size, borderRadius: icon ? 12 : '50%', background: 'var(--accent-soft)', color: icon ? 'var(--accent)' : 'var(--text-1)', display: 'grid', placeItems: 'center', fontSize: Math.max(11, Math.round(size * 0.33)), fontWeight: 700, flexShrink: 0 }}>{icon ?? initials(name ?? '')}</span>
   )
 }
 

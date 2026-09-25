@@ -11,8 +11,20 @@ export const KINDS = Object.keys(KIND_LABEL) as ActivityKind[]
 export const OPTIMIZATION_KINDS: readonly ActivityKind[] = ['status', 'budget', 'audience', 'creative', 'bid', 'structure']
 export const isKind = (v: unknown): v is ActivityKind => typeof v === 'string' && (KINDS as readonly string[]).includes(v)
 
-export interface Manager { id: string; name: string; email: string | null; metaActorId: string | null; metaActorName: string | null; createdAt: string }
-export interface ManagerInput { name: string; email: string | null; metaActorId: string | null; metaActorName: string | null; clients: string[] }
+export interface Manager { id: string; name: string; email: string | null; metaActorId: string | null; metaActorName: string | null; createdAt: string; /** endereço da foto (imagem à parte, com cache); nulo = sem foto */ avatarUrl: string | null }
+/** `avatar`: imagem nova (data URL), `null` remove a foto, ausente mantém a que já está. */
+export interface ManagerInput { name: string; email: string | null; metaActorId: string | null; metaActorName: string | null; clients: string[]; avatar?: string | null }
+
+const AVATAR = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/
+export const MAX_AVATAR = 200_000
+
+/** Endereço da foto do gestor. O `v` muda quando a foto muda, então o cache longo nunca mostra foto velha. */
+export function managerAvatarUrl(id: string, avatar: string | null | undefined): string | null {
+  if (!avatar) return null
+  let h = 5381
+  for (let i = 0; i < avatar.length; i += 7) h = ((h << 5) + h + avatar.charCodeAt(i)) | 0
+  return `/api/admin/managers/${id}/avatar?v=${(h >>> 0).toString(36)}${avatar.length.toString(36)}`
+}
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -31,7 +43,14 @@ export function cleanManagerInput(body: unknown): ManagerInput | { error: string
   const actorId = typeof o.metaActorId === 'string' && /^\d{5,25}$/.test(o.metaActorId.trim()) ? o.metaActorId.trim() : null
   const actorName = typeof o.metaActorName === 'string' && o.metaActorName.trim() ? o.metaActorName.replace(/\s+/g, ' ').trim().slice(0, 80) : null
   const clients = [...new Set((Array.isArray(o.clients) ? o.clients : []).filter((c): c is string => typeof c === 'string' && c.length <= 40 && SLUG.test(c)))].slice(0, 200)
-  return { name, email, metaActorId: actorId, metaActorName: actorName, clients }
+  const out: ManagerInput = { name, email, metaActorId: actorId, metaActorName: actorName, clients }
+  if (o.avatar === null) out.avatar = null
+  else if (typeof o.avatar === 'string' && o.avatar.startsWith('/api/admin/managers/')) { /* devolveu o endereço da foto atual: mantém */ }
+  else if (typeof o.avatar === 'string') {
+    if (o.avatar.length > MAX_AVATAR || !AVATAR.test(o.avatar)) return { error: 'Foto inválida ou grande demais. Use PNG, JPG ou WebP pequenos.' }
+    out.avatar = o.avatar
+  }
+  return out
 }
 
 // ─── Eventos da Meta ─────────────────────────────────────────────────────────

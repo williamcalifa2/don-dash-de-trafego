@@ -19,8 +19,10 @@ export async function saveManager(input: ManagerInput, existingId?: string): Pro
   if (!reg) return { error: 'Rode o SQL supabase/2026-09-gestores.sql no Supabase antes.' }
   if (!existingId && reg.managers.some(m => m.id === id)) return { error: 'Já existe um gestor com esse nome.' }
   if (input.email && reg.managers.some(m => m.id !== id && m.email === input.email)) return { error: 'Esse e-mail já está em outro gestor.' }
-  const { data, error } = await db.from('traffic_managers').upsert({ id, name: input.name, email: input.email, meta_actor_id: input.metaActorId, meta_actor_name: input.metaActorName }, { onConflict: 'id' }).select('*').single()
-  if (error) return { error: error.message }
+  const row: Record<string, unknown> = { id, name: input.name, email: input.email, meta_actor_id: input.metaActorId, meta_actor_name: input.metaActorName }
+  if (input.avatar !== undefined) row.avatar = input.avatar
+  const { data, error } = await db.from('traffic_managers').upsert(row, { onConflict: 'id' }).select('*').single()
+  if (error) return { error: /avatar/i.test(error.message) ? 'Rode o SQL supabase/2026-09-gestores-2.sql no Supabase para liberar a foto do gestor.' : error.message }
   const keep = new Set(input.clients)
   const drop = [...reg.byClient.entries()].filter(([slug, mid]) => mid === id && !keep.has(slug)).map(([slug]) => slug)
   if (drop.length) { const r = await db.from('manager_clients').delete().in('client_slug', drop); if (r.error) return { error: r.error.message } }
