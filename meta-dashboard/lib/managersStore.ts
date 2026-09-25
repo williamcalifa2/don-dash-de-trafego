@@ -260,7 +260,7 @@ async function tasksStart(): Promise<string> {
   return now
 }
 
-const TASK_COLUMNS = 'id,at,source,client_slug,manager_id,actor_key,actor_name,kind,summary,object_name,detail,reason,reason_kind,reasoned_at'
+const TASK_COLUMNS = 'id,at,source,client_slug,manager_id,actor_key,actor_name,kind,event_type,object_type,summary,object_name,detail,reason,reason_kind,reasoned_at'
 
 export type TasksResult = { error: 'tables' | 'columns' } | { tasks: Array<Task & { ownerId: string | null }> }
 

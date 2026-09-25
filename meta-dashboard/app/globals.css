@@ -1373,3 +1373,5 @@ input:focus-visible {
 /* Uso do app: blocos lado a lado, como os do E-commerce; um por linha no celular. */
 .usage-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
 @media (max-width: 960px) { .usage-grid { grid-template-columns: 1fr; } }
+
+@media (max-width: 720px) { .task-row { grid-template-columns: 1fr !important; gap: 6px !important; } }

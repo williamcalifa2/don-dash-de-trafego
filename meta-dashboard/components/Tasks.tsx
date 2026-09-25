@@ -1,10 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle2, Clock, Loader2 } from 'lucide-react'
+import { CheckCircle2, Clock, Image as ImageIcon, Layers, Loader2, Target, ToggleRight, Users, Wallet } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
-import { KIND_LABEL, REASONS, REASON_LABEL, type ActivityKind, type Task } from '@/lib/managers'
-import { ChartCard, DonutChart, KIND_COLOR } from './Donut'
+import { REASONS, REASON_LABEL, type Task } from '@/lib/managers'
+import { DonutChart, KIND_COLOR } from './Donut'
 import { PulseLoader } from './PulseLoader'
 import { plural } from './UsageUi'
 
@@ -22,12 +22,14 @@ const when = (iso: string) => {
   const day = d.toDateString() === t.toDateString() ? 'hoje' : new Date(t.getTime() - 86_400_000).toDateString() === d.toDateString() ? 'ontem' : `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`
   return `${day} às ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
+const KIND_ICON_SMALL: Record<string, React.ReactNode> = { status: <ToggleRight size={16} strokeWidth={1.75} />, budget: <Wallet size={16} strokeWidth={1.75} />, audience: <Users size={16} strokeWidth={1.75} />, creative: <ImageIcon size={16} strokeWidth={1.75} />, bid: <Target size={16} strokeWidth={1.75} />, structure: <Layers size={16} strokeWidth={1.75} /> }
 const sqlHint = <div className="card" style={{ padding: 24, fontSize: 14 }}>Falta liberar as otimizações no banco. Rode o SQL <code>supabase/2026-09-gestores-3.sql</code> no Supabase e recarregue a página.</div>
 
-/** Uma alteração (ou várias seguidas do mesmo tipo no mesmo cliente) esperando o "porquê". */
+/** Uma tarefa: o que foi feito numa frase, com os detalhes recolhidos, e o campo do motivo numa linha só. */
 function TaskCard({ t, onSaved, editing }: { t: TaskView; onSaved: () => void; editing?: boolean }) {
   const [kind, setKind] = useState<string | null>(t.reasonKind)
   const [text, setText] = useState(t.reason ?? '')
+  const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const c = KIND_COLOR[t.kind] ?? KIND_COLOR.other
@@ -42,39 +44,36 @@ function TaskCard({ t, onSaved, editing }: { t: TaskView; onSaved: () => void; e
   }
 
   return (
-    <article className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <span aria-hidden="true" style={{ width: 40, height: 40, borderRadius: 12, flexShrink: 0, background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c, display: 'grid', placeItems: 'center', fontSize: 13, fontWeight: 700 }}>{t.count}×</span>
+    <article className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c, display: 'grid', placeItems: 'center' }}>{KIND_ICON_SMALL[t.kind] ?? <Layers size={16} strokeWidth={1.75} />}</span>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: 15, fontWeight: 600, overflowWrap: 'anywhere' }}>{KIND_LABEL[t.kind as ActivityKind] ?? t.kind} · {t.clientName}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{when(t.at)}{t.actorName ? ` · por ${t.actorName}` : ''}{t.count > 1 ? ` · ${plural(t.count, 'alteração', 'alterações')}` : ''}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.clientName}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{when(t.at)}{t.actorName ? ` · ${t.actorName}` : ''}</div>
         </div>
         {!editing && <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: 'var(--text-1)', flexShrink: 0 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--amber)' }} />Pendente</span>}
       </div>
 
-      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, color: 'var(--text-2)' }}>
-        {t.items.map((it, i) => (
-          <li key={i} style={{ overflowWrap: 'anywhere' }}>
-            <span style={{ color: 'var(--text-1)' }}>{it.summary}</span>{it.objectName ? ` · ${it.level ? `${it.level} ` : ''}${it.objectName}` : ''}{it.change ? <strong style={{ color: 'var(--text-1)', fontWeight: 600 }}> · {it.change}</strong> : null}
-          </li>
-        ))}
-        {t.count > t.items.length && <li>e mais {t.count - t.items.length}</li>}
-      </ul>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <span style={{ fontSize: 12, fontWeight: 600 }}>Por que você fez isso?</span>
-        <div role="group" aria-label="Motivo" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {REASONS.map(([k, l]) => <button key={k} type="button" className="pill-btn" aria-pressed={kind === k} onClick={() => setKind(cur => (cur === k ? null : k))}>{l}</button>)}
-        </div>
-        <textarea className="field" aria-label="Explique em uma frase" placeholder="Explique em uma frase (opcional se escolher um motivo)" value={text} onChange={e => setText(e.target.value)} maxLength={500}
-          style={{ height: 72, padding: 10, resize: 'vertical', fontSize: 13, lineHeight: 1.5 }} />
-        {err && <p role="alert" style={{ margin: 0, fontSize: 12, color: 'var(--red)' }}>{err}</p>}
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={busy || (!kind && text.trim().length < 3)}>
-            {busy ? <><Loader2 size={14} className="spin" /> Salvando…</> : <><CheckCircle2 size={14} strokeWidth={1.75} /> {editing ? 'Atualizar justificativa' : 'Salvar justificativa'}</>}
-          </button>
-        </div>
+      <div style={{ fontSize: 14, lineHeight: 1.5, overflowWrap: 'anywhere' }}>
+        {t.headline}
+        {t.items.length > 0 && <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} style={{ marginLeft: 8, background: 'none', border: 0, padding: 0, font: 'inherit', fontSize: 12, color: 'var(--text-2)', textDecoration: 'underline', cursor: 'pointer' }}>{open ? 'ocultar detalhes' : 'ver detalhes'}</button>}
       </div>
+      {open && (
+        <ul style={{ margin: 0, padding: '10px 12px', listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--text-2)', background: 'var(--bg-card2)', borderRadius: 10 }}>
+          {t.items.map((it, i) => <li key={i} style={{ overflowWrap: 'anywhere' }}><span style={{ color: 'var(--text-1)' }}>{it.objectName ?? it.text}</span>{it.change ? ` · ${it.change}` : ''}{!it.objectName ? '' : ` · ${it.text}`}</li>)}
+        </ul>
+      )}
+
+      <div role="group" aria-label="Motivo" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        {REASONS.map(([k, l]) => <button key={k} type="button" className="pill-btn" aria-pressed={kind === k} onClick={() => setKind(cur => (cur === k ? null : k))}>{l}</button>)}
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input className="field" aria-label="Explique em uma frase" placeholder="Explique em uma frase (opcional)" value={text} onChange={e => setText(e.target.value)} maxLength={500} style={{ height: 34, fontSize: 13, flex: 1, minWidth: 0 }} />
+        <button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={busy || (!kind && text.trim().length < 3)} style={{ flexShrink: 0 }}>
+          {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle2 size={14} strokeWidth={1.75} />} {editing ? 'Atualizar' : 'Salvar'}
+        </button>
+      </div>
+      {err && <p role="alert" style={{ margin: 0, fontSize: 12, color: 'var(--red)' }}>{err}</p>}
     </article>
   )
 }
@@ -101,49 +100,52 @@ export function TaskPanel({ managerId, onCount }: { managerId: string | null; on
 
   const total = data.counts.pending + data.counts.answered
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div className="usage-grid">
-        <ChartCard title="Otimizações justificadas" hint="Quantas alterações já têm o motivo explicado (últimos 30 dias)">
-          <DonutChart slices={[{ key: 'ok', label: 'Justificadas', value: data.counts.answered, color: 'var(--green)' }, { key: 'pend', label: 'Pendentes', value: data.counts.pending, color: 'var(--amber)' }]} center={data.counts.rate == null ? '—' : `${data.counts.rate}%`} sub="em dia" />
-        </ChartCard>
-        <section className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'center' }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>Como funciona</h3>
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6 }}>Cada alteração de otimização feita numa conta (pausar, mudar orçamento, público, criativo, lance) gera uma tarefa aqui, para quem fez. Alterações seguidas do mesmo tipo no mesmo cliente entram juntas. Escolha o motivo e, se quiser, escreva uma frase.</p>
-        </section>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <section className="card" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+        <DonutChart legend={false} size={84} thickness={18} slices={[{ key: 'ok', label: 'Justificadas', value: data.counts.answered, color: 'var(--green)' }, { key: 'pend', label: 'Pendentes', value: data.counts.pending, color: 'var(--amber)' }]} center={data.counts.rate == null ? '—' : `${data.counts.rate}%`} />
+        <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+          {([['A justificar', data.counts.pending, 'var(--amber)'], ['Justificadas', data.counts.answered, 'var(--green)']] as const).map(([l, v, col]) => (
+            <div key={l}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)' }}>{l}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, color: col }}>{v}</div>
+            </div>
+          ))}
+        </div>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6, flex: '1 1 260px', maxWidth: 520 }}>Tudo que foi feito numa conta em uma sessão vira uma tarefa. Escolha o motivo e, se quiser, escreva uma frase. Últimos 30 dias.</p>
+      </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Clock size={18} strokeWidth={1.75} color="var(--amber)" aria-hidden="true" />
-          <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Para justificar ({data.counts.pending})</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>A justificar ({data.counts.pending})</h2>
         </div>
         {data.pending.length === 0
-          ? <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)', fontSize: 14 }}>{total === 0 ? 'Nenhuma alteração registrada ainda. Elas aparecem aqui quando alguém mexer nas contas.' : 'Tudo justificado. Nada pendente.'}</div>
-          : <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 420px), 1fr))' }}>{data.pending.map(t => <TaskCard key={t.key} t={t} onSaved={load} />)}</div>}
+          ? <div className="card" style={{ padding: 28, textAlign: 'center', color: 'var(--text-2)', fontSize: 14 }}>{total === 0 ? 'Nenhuma alteração registrada ainda. Elas aparecem aqui quando alguém mexer nas contas.' : 'Tudo justificado. Nada pendente.'}</div>
+          : <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 360px), 1fr))' }}>{data.pending.map(t => <TaskCard key={t.key} t={t} onSaved={load} />)}</div>}
       </section>
 
       {data.answered.length > 0 && (
         <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <CheckCircle2 size={18} strokeWidth={1.75} color="var(--green)" aria-hidden="true" />
-            <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Já justificadas ({data.counts.answered})</h2>
+            <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Justificadas ({data.counts.answered})</h2>
           </div>
-          <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 420px), 1fr))' }}>
-            {data.answered.map(t => editing === t.key
-              ? <TaskCard key={t.key} t={t} editing onSaved={() => { setEditing(null); void load() }} />
+          <div className="card" style={{ padding: 4, display: 'flex', flexDirection: 'column' }}>
+            {data.answered.map((t, i) => editing === t.key
+              ? <div key={t.key} style={{ padding: 8 }}><TaskCard t={t} editing onSaved={() => { setEditing(null); void load() }} /></div>
               : (
-                <article key={t.key} className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-                  <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'baseline' }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, overflowWrap: 'anywhere' }}>{KIND_LABEL[t.kind as ActivityKind] ?? t.kind} · {t.clientName}</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-2)', flexShrink: 0 }}>{when(t.at)}</span>
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{t.items[0]?.summary}{t.count > 1 ? ` e mais ${t.count - 1}` : ''}{t.items[0]?.objectName ? ` · ${t.items[0].objectName}` : ''}</div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div key={t.key} style={{ display: 'grid', gridTemplateColumns: '92px minmax(0, 1fr) minmax(0, 1.1fr) auto', gap: 16, alignItems: 'center', padding: '12px 16px', borderTop: i ? '1px solid var(--border-soft)' : 'none', fontSize: 13 }} className="task-row">
+                  <span style={{ color: 'var(--text-2)', fontSize: 12 }}>{when(t.at)}</span>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: 'block', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.clientName}</span>
+                    <span style={{ display: 'block', color: 'var(--text-2)', overflowWrap: 'anywhere' }}>{t.headline}</span>
+                  </span>
+                  <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
                     {t.reasonKind && <span className="badge" style={{ background: 'var(--green-soft)', color: 'var(--text-1)' }}>{REASON_LABEL[t.reasonKind] ?? t.reasonKind}</span>}
-                    {t.reason && <span style={{ fontSize: 13, overflowWrap: 'anywhere' }}>{t.reason}</span>}
-                  </div>
-                  <button type="button" className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => setEditing(t.key)}>Editar justificativa</button>
-                </article>
+                    {t.reason && <span style={{ overflowWrap: 'anywhere' }}>{t.reason}</span>}
+                  </span>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(t.key)}>Editar</button>
+                </div>
               ))}
           </div>
         </section>

@@ -220,43 +220,108 @@ export const isReasonKind = (v: unknown): v is string => typeof v === 'string' &
 
 export interface TaskRow {
   id: number; at: string; source: string; client_slug: string; manager_id: string | null; actor_key: string | null; actor_name: string | null
-  kind: string; summary: string; object_name: string | null; detail: { from?: string | null; to?: string | null; level?: string } | null
+  kind: string; event_type?: string | null; object_type?: string | null; summary: string; object_name: string | null; detail: { from?: string | null; to?: string | null; level?: string } | null
   reason: string | null; reason_kind: string | null; reasoned_at: string | null
 }
-export interface TaskItem { summary: string; objectName: string | null; change: string | null; level: string | null }
+export interface TaskItem { action: string; text: string; objectName: string | null; change: string | null; level: string | null }
 export interface Task {
   key: string; ids: number[]; startedAt: string; at: string; clientSlug: string; managerId: string | null; actorKey: string | null; actorName: string | null
-  kind: ActivityKind; count: number; items: TaskItem[]; reason: string | null; reasonKind: string | null; reasonedAt: string | null
+  /** o que foi feito, em uma frase ("Pausou 3 conjuntos · Mudou o orçamento de 1 conjunto") */
+  headline: string
+  kind: ActivityKind; kinds: ActivityKind[]; count: number; items: TaskItem[]; reason: string | null; reasonKind: string | null; reasonedAt: string | null
 }
 
-/** Junta as alterações em tarefas. Uma tarefa está respondida quando alguma das alterações dela já tem justificativa. */
+type Action = 'pausou' | 'ativou' | 'criou' | 'orcamento' | 'publico' | 'lance' | 'criativo' | 'alterou'
+const LEVEL_OF: Record<string, 'campanha' | 'conjunto' | 'anúncio'> = { CAMPAIGN_GROUP: 'campanha', CAMPAIGN: 'conjunto', ADGROUP: 'anúncio' }
+const INTERNAL_STATE = /pendente|revis|an[aá]lise|process|reprov|erro|aprovad/i
+const INACTIVE = /inativ|pausad/i
+const ACTIVE = /^ativ/i
+
+/**
+ * O que uma alteração da Meta significa para o gestor, ou null quando é ruído: a Meta muda o estado sozinha
+ * (Processo pendente → Análise pendente → Ativo), liga a "programação de orçamento" sem ninguém pedir e mexe na biblioteca de imagens da conta.
+ */
+export function classifyChange(r: Pick<TaskRow, 'kind' | 'event_type' | 'object_type' | 'detail' | 'summary'>): { action: Action; level: 'campanha' | 'conjunto' | 'anúncio' | null } | null {
+  const t = (r.event_type ?? '').toLowerCase()
+  const level = r.object_type ? LEVEL_OF[r.object_type] ?? null : null
+  if (t.includes('budget_scheduling') || t === 'add_images' || t === 'edit_images') return null
+  if (t.includes('run_status')) {
+    const from = r.detail?.from ?? '', to = r.detail?.to ?? ''
+    if (INACTIVE.test(to)) return { action: 'pausou', level }
+    // "Inativo → (qualquer coisa que não seja inativo)" é o gestor ligando; o resto do caminho até Ativo é a Meta revisando.
+    if (INACTIVE.test(from) && (ACTIVE.test(to) || INTERNAL_STATE.test(to))) return { action: 'ativou', level }
+    return null
+  }
+  if (t.startsWith('create_')) return { action: 'criou', level: t === 'create_campaign_group' ? 'campanha' : t === 'create_ad_set' ? 'conjunto' : t === 'create_ad' ? 'anúncio' : level }
+  if (t.includes('target')) return { action: 'publico', level: 'conjunto' }
+  if (t.includes('bid') || t.includes('optimization')) return { action: 'lance', level: 'conjunto' }
+  if (t.includes('budget')) return { action: 'orcamento', level }
+  if (t.includes('creative')) return { action: 'criativo', level: 'anúncio' }
+  return { action: 'alterou', level }
+}
+
+const PLURAL: Record<string, [string, string]> = { campanha: ['campanha', 'campanhas'], conjunto: ['conjunto', 'conjuntos'], 'anúncio': ['anúncio', 'anúncios'] }
+const noun = (level: string | null, n: number) => (level ? PLURAL[level][n === 1 ? 0 : 1] : n === 1 ? 'item' : 'itens')
+const list = (parts: string[]) => (parts.length <= 1 ? parts.join('') : `${parts.slice(0, -1).join(', ')} e ${parts[parts.length - 1]}`)
+const VERB: Record<Action, string> = { pausou: 'Pausou', ativou: 'Ativou', criou: 'Criou', orcamento: 'Mudou o orçamento de', publico: 'Mudou o público de', lance: 'Mudou o lance ou a otimização de', criativo: 'Trocou o criativo de', alterou: 'Alterou' }
+const ORDER: Action[] = ['criou', 'pausou', 'ativou', 'orcamento', 'publico', 'lance', 'criativo', 'alterou']
+
+/** Uma frase com o que foi feito: conta objetos diferentes, não eventos ("Pausou 3 conjuntos", mesmo que o conjunto tenha mudado de estado 5 vezes). */
+export function headlineOf(items: Array<{ action: Action; level: string | null; object: string; change: string | null }>): string {
+  const by = new Map<Action, Map<string, Set<string>>>()
+  for (const i of items) {
+    const lv = by.get(i.action) ?? by.set(i.action, new Map()).get(i.action)!
+    const set = lv.get(i.level ?? '') ?? lv.set(i.level ?? '', new Set()).get(i.level ?? '')!
+    set.add(i.object)
+  }
+  const parts: string[] = []
+  for (const a of ORDER) {
+    const lv = by.get(a)
+    if (!lv) continue
+    const objs = ['campanha', 'conjunto', 'anúncio', ''].filter(l => lv.has(l)).map(l => `${lv.get(l)!.size} ${noun(l || null, lv.get(l)!.size)}`)
+    let text = `${VERB[a]} ${list(objs)}`
+    const only = items.filter(i => i.action === a)
+    if (a === 'orcamento' && only.length === 1 && only[0].change) text += ` (${only[0].change})`
+    parts.push(text)
+  }
+  return parts.join(' · ')
+}
+
+/** Junta o que uma pessoa fez num cliente numa mesma sessão (até 30 min entre uma alteração e a próxima) em uma tarefa só. */
 export function groupTasks(rows: TaskRow[], gapMs = TASK_GAP_MS): Task[] {
-  const eligible = rows.filter(r => (TASK_KINDS as readonly string[]).includes(r.kind))
+  const eligible = rows.filter(r => (TASK_KINDS as readonly string[]).includes(r.kind) && classifyChange(r))
   const by = new Map<string, TaskRow[]>()
-  for (const r of eligible) { const k = `${r.client_slug}|${r.actor_key ?? ''}|${r.kind}`; (by.get(k) ?? by.set(k, []).get(k)!).push(r) }
+  for (const r of eligible) { const k = `${r.client_slug}|${r.actor_key ?? ''}`; (by.get(k) ?? by.set(k, []).get(k)!).push(r) }
   const out: Task[] = []
-  for (const list of by.values()) {
-    list.sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+  for (const listRows of by.values()) {
+    listRows.sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
     let cur: TaskRow[] = []
     const flush = () => {
       if (!cur.length) return
       const first = cur[0], last = cur[cur.length - 1]
-      const seen = new Set<string>()
       const items: TaskItem[] = []
+      const forHeadline: Array<{ action: Action; level: string | null; object: string; change: string | null }> = []
+      const seen = new Set<string>()
+      const kindCount = new Map<ActivityKind, number>()
       for (const r of cur) {
+        const c = classifyChange(r)!
         const change = r.detail && (r.detail.from != null || r.detail.to != null) ? `${r.detail.from ?? '—'} → ${r.detail.to ?? '—'}` : null
-        const k = `${r.summary}|${r.object_name}|${change}`
-        if (seen.has(k) || items.length >= 5) continue
-        seen.add(k); items.push({ summary: r.summary, objectName: r.object_name, change, level: r.detail?.level ?? null })
+        forHeadline.push({ action: c.action, level: c.level, object: r.object_name ?? String(r.id), change })
+        kindCount.set(r.kind as ActivityKind, (kindCount.get(r.kind as ActivityKind) ?? 0) + 1)
+        const k = `${c.action}|${r.object_name}|${change}`
+        if (seen.has(k) || items.length >= 30) continue
+        seen.add(k); items.push({ action: c.action, text: r.summary, objectName: r.object_name, change: c.action === 'pausou' || c.action === 'ativou' ? null : change, level: c.level })
       }
+      const kinds = [...kindCount.entries()].sort((a, b) => b[1] - a[1]).map(([k]) => k)
       const answered = cur.find(r => r.reason || r.reason_kind)
       out.push({
         key: String(first.id), ids: cur.map(r => r.id), startedAt: first.at, at: last.at, clientSlug: first.client_slug, managerId: last.manager_id, actorKey: first.actor_key, actorName: first.actor_name,
-        kind: first.kind as ActivityKind, count: cur.length, items, reason: answered?.reason ?? null, reasonKind: answered?.reason_kind ?? null, reasonedAt: answered?.reasoned_at ?? null,
+        headline: headlineOf(forHeadline), kind: kinds.includes('structure') && forHeadline.some(f => f.action === 'criou') ? 'structure' : kinds[0], kinds, count: cur.length, items,
+        reason: answered?.reason ?? null, reasonKind: answered?.reason_kind ?? null, reasonedAt: answered?.reasoned_at ?? null,
       })
       cur = []
     }
-    for (const r of list) {
+    for (const r of listRows) {
       if (cur.length && Date.parse(r.at) - Date.parse(cur[cur.length - 1].at) > gapMs) flush()
       cur.push(r)
     }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activityByClient, cleanManagerInput, cleanReason, groupTasks, isAnswered, matchActor, taskOwner, type TaskRow, countByKind, dailyCounts, idleSlugs, isHumanMetaEvent, kindOfMetaEvent, managerId, metaDelta, metaToLog, objectLabel, type LogRow, type MetaActivity } from '@/lib/managers'
+import { activityByClient, classifyChange, cleanManagerInput, cleanReason, groupTasks, isAnswered, matchActor, taskOwner, type TaskRow, countByKind, dailyCounts, idleSlugs, isHumanMetaEvent, kindOfMetaEvent, managerId, metaDelta, metaToLog, objectLabel, type LogRow, type MetaActivity } from '@/lib/managers'
 
 const ev = (o: Partial<MetaActivity>): MetaActivity => ({ event_time: '2026-09-14T12:27:02+0000', event_type: 'update_campaign_run_status', actor_id: '122128246653277733', actor_name: 'William', object_id: '5252', object_name: 'Campanha X', object_type: 'CAMPAIGN_GROUP', translated_event_type: 'Status da campanha atualizado', ...o })
 const row = (o: Partial<LogRow>): LogRow => ({ at: '2026-09-24T12:00:00Z', source: 'app', client_slug: 'magtag', manager_id: 'ana', actor_key: 'a@x.com', actor_name: 'Ana', kind: 'status', summary: 's', object_name: null, detail: null, ...o })
@@ -102,21 +102,50 @@ describe('matchActor', () => {
 })
 
 describe('justificativas', () => {
-  const t = (id: number, min: number, o: Partial<TaskRow> = {}): TaskRow => ({ id, at: new Date(Date.parse('2026-09-25T12:00:00Z') + min * 60_000).toISOString(), source: 'meta', client_slug: 'magtag', manager_id: 'ana', actor_key: 'meta:1', actor_name: 'Ana', kind: 'status', summary: 'Status do anúncio atualizado', object_name: `AD ${id}`, detail: { from: 'Ativa', to: 'Inativa' }, reason: null, reason_kind: null, reasoned_at: null, ...o })
+  const t = (id: number, min: number, o: Partial<TaskRow> = {}): TaskRow => ({ id, at: new Date(Date.parse('2026-09-25T12:00:00Z') + min * 60_000).toISOString(), source: 'meta', client_slug: 'magtag', manager_id: 'ana', actor_key: 'meta:1', actor_name: 'Ana', kind: 'status', event_type: 'update_ad_run_status', object_type: 'ADGROUP', summary: 'Status do anúncio atualizado', object_name: `AD ${id}`, detail: { from: 'Ativo', to: 'Inativo' }, reason: null, reason_kind: null, reasoned_at: null, ...o })
 
-  it('alterações seguidas do mesmo tipo, cliente e autor viram uma tarefa; 30 min de intervalo separa', () => {
-    const tasks = groupTasks([t(1, 0), t(2, 10), t(3, 25), t(4, 90)])
-    expect(tasks).toHaveLength(2)
-    const first = tasks.find(x => x.ids.includes(1))!
-    expect(first).toMatchObject({ count: 3, ids: [1, 2, 3], clientSlug: 'magtag', kind: 'status' })
-    expect(first.items[0]).toMatchObject({ summary: 'Status do anúncio atualizado', change: 'Ativa → Inativa' })
-    expect(tasks[0].ids).toEqual([4]) // a mais recente primeiro
+  it('o que a Meta faz sozinha não é decisão do gestor: estados internos, programação de orçamento e biblioteca de imagens ficam de fora', () => {
+    expect(classifyChange(t(1, 0, { detail: { from: 'Processo pendente', to: 'Análise pendente' } }))).toBeNull()
+    expect(classifyChange(t(1, 0, { detail: { from: 'Ativo', to: 'Processo pendente' } }))).toBeNull()
+    expect(classifyChange(t(1, 0, { detail: { from: 'Processo pendente', to: 'Ativo' } }))).toBeNull()
+    expect(classifyChange(t(1, 0, { kind: 'budget', event_type: 'update_campaign_group_budget_scheduling_state' }))).toBeNull()
+    expect(classifyChange(t(1, 0, { kind: 'creative', event_type: 'add_images', object_type: 'ACCOUNT' }))).toBeNull()
   })
-  it('tipo, cliente ou autor diferente não juntam', () => {
-    expect(groupTasks([t(1, 0), t(2, 1, { kind: 'budget' }), t(3, 2, { client_slug: 'becker' }), t(4, 3, { actor_key: 'meta:9' })])).toHaveLength(4)
+  it('pausar e ativar contam; ligar é "Inativo → qualquer coisa", o caminho até Ativo é a Meta revisando', () => {
+    expect(classifyChange(t(1, 0))).toEqual({ action: 'pausou', level: 'anúncio' })
+    expect(classifyChange(t(1, 0, { detail: { from: 'Ativa', to: 'Inativa' }, object_type: 'CAMPAIGN_GROUP' }))).toEqual({ action: 'pausou', level: 'campanha' })
+    expect(classifyChange(t(1, 0, { detail: { from: 'Inativo', to: 'Processo pendente' }, object_type: 'CAMPAIGN' }))).toEqual({ action: 'ativou', level: 'conjunto' })
+    expect(classifyChange(t(1, 0, { detail: { from: 'Inativo', to: 'Ativo' } }))).toEqual({ action: 'ativou', level: 'anúncio' })
   })
-  it('só otimização vira tarefa (lead, relatório e "outros" não)', () => {
-    expect(groupTasks([t(1, 0, { kind: 'lead' }), t(2, 1, { kind: 'report' }), t(3, 2, { kind: 'other' }), t(4, 3, { kind: 'creative' })]).map(x => x.kind)).toEqual(['creative'])
+  it('tudo da mesma pessoa no mesmo cliente numa sessão vira uma tarefa, com uma frase; conta objetos, não eventos', () => {
+    const rows = [
+      t(1, 0, { kind: 'structure', event_type: 'create_campaign_group', object_type: 'CAMPAIGN_GROUP', object_name: 'Camp A', detail: null }),
+      t(2, 1, { kind: 'structure', event_type: 'create_ad_set', object_type: 'CAMPAIGN', object_name: 'Conj A', detail: null }),
+      t(3, 2, { kind: 'structure', event_type: 'create_ad_set', object_type: 'CAMPAIGN', object_name: 'Conj B', detail: null }),
+      t(4, 3, { kind: 'creative', event_type: 'create_ad', object_name: 'Ad A', detail: null }),
+      t(5, 4, { kind: 'bid', event_type: 'update_ad_set_bid_strategy', object_type: 'CAMPAIGN', object_name: 'Conj A', detail: { from: null, to: 'Menor custo' } }),
+      t(6, 5, { kind: 'bid', event_type: 'update_ad_set_bid_strategy', object_type: 'CAMPAIGN', object_name: 'Conj A', detail: { from: null, to: 'Menor custo' } }),
+      t(7, 6, { kind: 'budget', event_type: 'update_campaign_group_budget_scheduling_state', detail: { from: null, to: 'false' } }), // ruído
+    ]
+    const tasks = groupTasks(rows)
+    expect(tasks).toHaveLength(1)
+    expect(tasks[0].headline).toBe('Criou 1 campanha, 2 conjuntos e 1 anúncio · Mudou o lance ou a otimização de 1 conjunto')
+    expect(tasks[0].ids).toEqual([1, 2, 3, 4, 5, 6]) // o ruído não entra
+    expect(tasks[0].kind).toBe('structure')
+  })
+  it('pausas: "Pausou 3 conjuntos" mesmo que cada um tenha mudado de estado várias vezes', () => {
+    const c = (id: number, name: string, from: string, to: string) => t(id, id, { object_type: 'CAMPAIGN', object_name: name, detail: { from, to } })
+    const [task] = groupTasks([c(1, 'A', 'Ativo', 'Inativo'), c(2, 'B', 'Ativo', 'Inativo'), c(3, 'C', 'Ativo', 'Inativo'), c(4, 'C', 'Inativo', 'Processo pendente'), c(5, 'C', 'Processo pendente', 'Ativo')])
+    expect(task.headline).toBe('Pausou 3 conjuntos · Ativou 1 conjunto')
+  })
+  it('orçamento com um objeto só mostra o de → para', () => {
+    const [task] = groupTasks([t(1, 0, { kind: 'budget', event_type: 'update_ad_set_budget', object_type: 'CAMPAIGN', object_name: 'Conj', detail: { from: 'R$ 25,00', to: 'R$ 15,00' } })])
+    expect(task.headline).toBe('Mudou o orçamento de 1 conjunto (R$ 25,00 → R$ 15,00)')
+  })
+  it('pessoa ou cliente diferente não juntam; 30 min de intervalo separa; só ruído não vira tarefa', () => {
+    expect(groupTasks([t(1, 0), t(2, 1, { client_slug: 'becker' }), t(3, 2, { actor_key: 'meta:9' }), t(4, 90)])).toHaveLength(4)
+    expect(groupTasks([t(1, 0, { detail: { from: 'Processo pendente', to: 'Análise pendente' } })])).toHaveLength(0)
+    expect(groupTasks([t(1, 0, { kind: 'lead', event_type: null }), t(2, 1, { kind: 'report', event_type: null })])).toHaveLength(0)
   })
   it('respondida quando alguma alteração do grupo tem motivo ou texto', () => {
     const [a] = groupTasks([t(1, 0), t(2, 5, { reason_kind: 'cost', reason: 'CPL alto', reasoned_at: '2026-09-25T13:00:00Z' })])
