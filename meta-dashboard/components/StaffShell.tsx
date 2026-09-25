@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Building2, FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, PanelLeftClose, PanelLeftOpen, Users, X } from 'lucide-react'
+import { Building2, FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, KeyRound, PanelLeftClose, PanelLeftOpen, Users, X } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import type { Me } from '@/components/ProfileMenu'
 import { PulseLoader } from '@/components/PulseLoader'
@@ -88,6 +88,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
   const onReports = pathname.startsWith('/admin/reports')
   const onHeatmap = pathname.startsWith('/admin/heatmap')
   const onUsage = pathname.startsWith('/admin/uso')
+  const onTeam = pathname.startsWith('/admin/equipe')
 
   return (
     <div className={`staff-shell${collapsed ? ' is-collapsed' : ''}`}>
@@ -107,7 +108,8 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
           <Item collapsed={collapsed} icon={<LayoutGrid size={18} strokeWidth={1.75} />} label="Painel de clientes" active={onPanel} onClick={() => { setDrawer(false); if (!onPanel) go('/admin'); else window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
           <div className="staff-group">Administração</div>
           {canOperate && <Item collapsed={collapsed} icon={<Building2 size={18} strokeWidth={1.75} />} label="Clientes" onClick={() => open('clients')} />}
-          {canManage && <Item collapsed={collapsed} icon={<Users size={18} strokeWidth={1.75} />} label="Equipe" onClick={() => open('team')} />}
+          {canManage && <Item collapsed={collapsed} icon={<Users size={18} strokeWidth={1.75} />} label="Equipe" active={onTeam} onClick={() => { setDrawer(false); go('/admin/equipe') }} />}
+          {canManage && <Item collapsed={collapsed} icon={<KeyRound size={18} strokeWidth={1.75} />} label="Acessos" onClick={() => open('team')} />}
           {canOperate && <>
             <div className="staff-group">Ferramentas</div>
             <Item collapsed={collapsed} icon={<FileBarChart size={18} strokeWidth={1.75} />} label="Report Studio" active={onReports} onClick={() => open('reports')} />

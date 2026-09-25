@@ -29,7 +29,7 @@ interface Stats { total: number; users: number; missing: number }
 /** Como a tela abre dentro do visualizador. Devolve o endereço, ou o motivo de não abrir. */
 function target(view: string, renderClient: string): { path: string; sub?: string } | { reason: string } {
   const [base, sub, ...more] = view.split('/')
-  if (view === 'admin' || view === 'admin/reports' || view === 'admin/uso') return { path: `/${view}` }
+  if (view === 'admin' || view === 'admin/reports' || view === 'admin/uso' || view === 'admin/equipe') return { path: `/${view}` }
   if (DASHBOARD_TABS.includes(base)) {
     if (sub && !more.length && base === 'ecommerce' && (sub === 'live' || sub === 'carrinhos')) return renderClient ? { path: `/dashboard/${renderClient}`, sub } : { reason: 'client' }
     if (!sub) return renderClient ? { path: `/dashboard/${renderClient}` } : { reason: 'client' }

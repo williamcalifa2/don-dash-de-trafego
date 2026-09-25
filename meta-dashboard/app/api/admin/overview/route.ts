@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
+import { maybeSyncActivity } from '@/lib/managersStore'
 import { requireAdmin } from '@/lib/admin'
 import { getSupabaseServer } from '@/lib/supabase'
 import { dailyRowsFor } from '@/lib/adminData'
@@ -14,6 +15,7 @@ const MAX_LIVE = 12
 export async function GET(req: NextRequest) {
   const denied = await requireAdmin(req)
   if (denied) return denied
+  after(() => { void maybeSyncActivity() })
   const db = getSupabaseServer()
   if (!db) return NextResponse.json({ error: 'Supabase não configurado' }, { status: 500 })
   const period = parseAdminPeriod(req.nextUrl.searchParams.get('period') ?? req.nextUrl.searchParams.get('days')) ?? 7

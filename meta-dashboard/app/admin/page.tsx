@@ -214,7 +214,7 @@ function TeamModal({ onClose, onToken }: { onClose: () => void; onToken: (email:
   }
 
   return (
-    <ModalShell title="Equipe" onClose={onClose} maxWidth={780}>
+    <ModalShell title="Acessos da equipe" onClose={onClose} maxWidth={780}>
       <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
         Cada pessoa entra só com o e-mail cadastrado aqui e o token que você gerar, que funciona como senha. Escolha o nível de acesso dela.
       </p>

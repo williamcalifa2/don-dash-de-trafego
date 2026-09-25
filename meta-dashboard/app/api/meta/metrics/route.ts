@@ -8,6 +8,7 @@ import { stores } from '@/lib/meta/pipeline'
 import { writeThroughMetrics } from '@/lib/meta/writeThrough'
 import { friendlyLiveError, metricsFallback, remember } from '@/lib/meta/staleFallback'
 import { refreshNow } from '@/lib/meta/refreshNow'
+import { maybeSyncActivity } from '@/lib/managersStore'
 import { allow } from '@/lib/rateLimit'
 
 export const maxDuration = 60
@@ -157,6 +158,7 @@ const MOCK: MetricsResponse = {
 }
 
 export async function GET(req: NextRequest) {
+  after(() => { void maybeSyncActivity() }) // o histórico dos gestores acompanha o uso do app, como as métricas
   const tenant = await requireTenant(req)
   if (tenant instanceof NextResponse) return tenant
   const token = process.env.META_ACCESS_TOKEN

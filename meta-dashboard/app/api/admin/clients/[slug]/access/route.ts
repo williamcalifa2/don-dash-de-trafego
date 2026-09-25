@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/admin'
 import { addAccess, listAccess, removeAccess } from '@/lib/clientAccess'
 import { tenantBySlug } from '@/lib/tenant'
+import { logStaffActivity } from '@/lib/activityLog'
 
 export const dynamic = 'force-dynamic'
 type Ctx = { params: Promise<{ slug: string }> }
@@ -24,7 +25,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   const { email } = await req.json().catch(() => ({})) as { email?: unknown }
   if (typeof email !== 'string') return NextResponse.json({ error: 'Digite um e-mail válido.' }, { status: 400 })
   const r = await addAccess(slug, email)
-  return 'error' in r ? NextResponse.json({ error: r.error }, { status: 400 }) : NextResponse.json({ token: r.token, entry: r.entry, business: t.name })
+  if ('error' in r) return NextResponse.json({ error: r.error }, { status: 400 })
+  await logStaffActivity(req, slug, { kind: 'access', summary: 'Cadastrou um acesso para o cliente' })
+  return NextResponse.json({ token: r.token, entry: r.entry, business: t.name })
 }
 
 export async function DELETE(req: NextRequest, { params }: Ctx) {
@@ -33,5 +36,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   const { slug } = await params
   const email = req.nextUrl.searchParams.get('email') ?? ''
   const err = await removeAccess(slug, email)
-  return err ? NextResponse.json({ error: err }, { status: 404 }) : NextResponse.json({ ok: true })
+  if (err) return NextResponse.json({ error: err }, { status: 404 })
+  await logStaffActivity(req, slug, { kind: 'access', summary: 'Removeu um acesso do cliente' })
+  return NextResponse.json({ ok: true })
 }

@@ -10,6 +10,7 @@ import { isAdmin } from '@/lib/admin'
 import { snapshotMode } from '@/lib/meta/mode'
 import { refreshNow, refreshOrganicNow } from '@/lib/meta/refreshNow'
 import { denyReader } from '@/lib/admin'
+import { logStaffActivity } from '@/lib/activityLog'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
     const preset = (PRESETS as readonly string[]).includes(body.preset ?? '') ? body.preset as (typeof PRESETS)[number] : 'last_7d'
     try {
       const r = await refreshNow({ clientId: tenant.clientId, slug: tenant.slug, adAccountId: tenant.adAccountId, pageId: tenant.pageId }, preset)
+      if (r.done) await logStaffActivity(req, tenant.slug, { kind: 'sync', summary: 'Atualizou os dados da Meta na hora' })
       return NextResponse.json({ queued: false, refreshed: r.done, reason: r.done ? undefined : r.reason })
     } catch (e) {
       if (e instanceof StoreNotMigrated) return NextResponse.json({ queued: false, reason: 'not_available' })

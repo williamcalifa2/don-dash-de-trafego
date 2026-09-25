@@ -3,6 +3,7 @@ import { requireRole, requireServiceKey } from '@/lib/admin'
 import { getSupabaseServer } from '@/lib/supabase'
 import { clearClientCache } from '@/lib/tenant'
 import { generateCode, codeHash, recoverCode } from '@/lib/accessCode'
+import { logStaffActivity } from '@/lib/activityLog'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   clearClientCache()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data?.length) return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
+  await logStaffActivity(req, slug, { kind: 'access', summary: 'Gerou um novo código de acesso do cliente' })
   return NextResponse.json({ code })
 }
 

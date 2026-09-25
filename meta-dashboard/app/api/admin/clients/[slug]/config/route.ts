@@ -3,6 +3,7 @@ import { requireAdmin, requireRole } from '@/lib/admin'
 import { getTenant } from '@/lib/tenant'
 import { getClientConfig, setClientConfig, type ClientConfig } from '@/lib/clientConfig'
 import { trackKey } from '@/lib/storeTrack'
+import { logStaffActivity } from '@/lib/activityLog'
 
 export const dynamic = 'force-dynamic'
 
@@ -79,6 +80,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   }
 
   const updated = await setClientConfig(slug, patch)
+  if (isAdmin || isMember) {
+    const said: string[] = []
+    if (patch.active !== undefined) said.push(patch.active ? 'Ativou o cliente' : 'Pausou o cliente')
+    if (patch.integrations) said.push('Alterou as integrações')
+    if (patch.ecommerce !== undefined) said.push(patch.ecommerce ? 'Ligou o e-commerce' : 'Desligou o e-commerce')
+    if (patch.strategicObjective !== undefined || patch.goalsPeriod !== undefined || patch.funnelGoals !== undefined || patch.targetBudget !== undefined) said.push('Alterou objetivos e metas')
+    for (const summary of said) await logStaffActivity(req, slug, { kind: 'config', summary })
+  }
   return NextResponse.json({ ok: true, config: updated })
 }
 

@@ -13,6 +13,7 @@ import { runWebhookEvents } from '@/lib/meta/webhookRunner'
 import type { CycleReport } from '@/lib/meta/orchestrator'
 import { refreshAccountsIfStale } from '@/lib/metaAccountsList'
 import { liveOrigin } from '@/lib/meta/mode'
+import { lastSyncAt, syncMetaActivity } from '@/lib/managersStore'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -115,7 +116,11 @@ async function run(req: NextRequest) {
   if (!process.env.CRON_SECRET) return NextResponse.json({ error: 'not found' }, { status: 404 })
   if (!authorized(req)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   if (req.nextUrl.searchParams.get('wait') === '1') return NextResponse.json(await execute())
-  after(async () => { try { await execute() } catch (e) { console.error('[cron] falha no ciclo:', e instanceof Error ? e.message : e) } })
+  after(async () => {
+    try { await execute() } catch (e) { console.error('[cron] falha no ciclo:', e instanceof Error ? e.message : e) }
+    // Carona no mesmo agendador: mantém o histórico de alterações dos gestores em dia (leitura curta, só o que mudou desde a última).
+    try { const last = await lastSyncAt(); if (!last || Date.now() - Date.parse(last) > 4 * 60_000) await syncMetaActivity({ budgetMs: 20_000, limit: 8 }) } catch (e) { console.error('[cron] histórico dos gestores:', e instanceof Error ? e.message : e) }
+  })
   return NextResponse.json({ ok: true, accepted: true })
 }
 

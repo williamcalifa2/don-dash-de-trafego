@@ -5,6 +5,7 @@ import { getSupabaseServer } from '@/lib/supabase'
 import { clearClientCache, tenantBySlug } from '@/lib/tenant'
 import { syncLeads } from '@/lib/metaLeads'
 import { liveOrigin } from '@/lib/meta/mode'
+import { logStaffActivity } from '@/lib/activityLog'
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const denied = await requireRole(req, 'admin')
@@ -49,5 +50,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ slug: str
       if (t?.adAccountId) { const r = await syncLeads(t, 30, { repair: true, origin: await liveOrigin() }); imported = r.error ? null : r.imported }
     } catch {}
   }
+  const LABEL: Record<string, string> = { display_name: 'o nome', ad_account_id: 'a conta de anúncios', page_id: 'a página', logo_url: 'a logo' }
+  await logStaffActivity(req, slug, { kind: 'client', summary: `Alterou ${Object.keys(update).map(k => LABEL[k] ?? k).join(', ')} do cliente` })
   return NextResponse.json({ ok: true, imported })
 }

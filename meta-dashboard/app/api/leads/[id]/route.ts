@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireTenant } from '@/lib/tenant'
 import { updateLead, LOSS_REASONS, type LeadUpdate, type LeadStatus } from '@/lib/supabase'
 import { denyReader } from '@/lib/admin'
+import { logStaffActivity } from '@/lib/activityLog'
 
 const STATUSES: LeadStatus[] = ['Novo', 'Em andamento', 'Convertido', 'Perdido']
 
@@ -55,6 +56,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
   try {
     await updateLead(tenant.clientId, id, update)
+    await logStaffActivity(req, tenant.slug, { kind: 'lead', summary: 'status' in update && update.status ? `Mudou o status de um lead para ${update.status}` : 'Editou um lead' })
     return NextResponse.json({ ok: true })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro ao salvar'

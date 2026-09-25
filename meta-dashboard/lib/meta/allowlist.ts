@@ -26,7 +26,7 @@ const ROUTES: Array<[RegExp, EndpointKind]> = [
   [/^me\/adaccounts$/, 'me_adaccounts'],
   [/^me\/accounts$/, 'me_accounts'],
   [new RegExp(`^${ACT}$`), 'account'],
-  [new RegExp(`^${ACT}/(insights|campaigns|adsets|ads|promote_pages|customconversions)$`), 'account_edge'],
+  [new RegExp(`^${ACT}/(insights|campaigns|adsets|ads|promote_pages|customconversions|activities)$`), 'account_edge'],
   [new RegExp(`^${ID}$`), 'object'],
   [new RegExp(`^${ID}/(leadgen_forms|leads|adsets|ads|insights|previews|media|published_posts|stories)$`), 'object_edge'],
   // Insights de um post da Página (id no formato paginaID_postID) ou de uma mídia do Instagram (só números)
@@ -47,6 +47,8 @@ const FIELD_NAMES = new Set([
   'permalink', 'permalink_url', 'caption', 'message', 'timestamp', 'like_count', 'comments_count', 'full_picture', 'shares', 'status_type',
   'fan_count', 'picture', 'link', 'instagram_business_account', 'url', 'reactions', 'comments',
   'preview_shareable_link',
+  // Histórico de alterações da conta (quem mudou o quê): só leitura
+  'event_time', 'event_type', 'actor_name', 'actor_id', 'object_name', 'object_id', 'extra_data', 'translated_event_type',
 ])
 /** Só a leitura do token da página (necessário para ler leads) pode pedir esse campo, e só no objeto direto. */
 const TOKEN_FIELD_ONLY_ON: EndpointKind = 'object'
@@ -72,7 +74,7 @@ const QUERY_KEYS: Record<EndpointKind, string[]> = {
   me_adaccounts: ['fields', 'limit', 'after'],
   me_accounts: ['fields', 'limit', 'after'],
   account: ['fields'],
-  account_edge: ['fields', 'limit', 'after', 'date_preset', 'time_range', 'time_increment', 'level', 'filtering', 'effective_status', 'breakdowns'],
+  account_edge: ['fields', 'limit', 'after', 'date_preset', 'time_range', 'time_increment', 'level', 'filtering', 'effective_status', 'breakdowns', 'since', 'until'],
   object: ['fields'],
   object_edge: ['fields', 'limit', 'after', 'date_preset', 'time_range', 'time_increment', 'filtering', 'effective_status', 'ad_format', 'breakdowns', 'metric', 'period', 'since', 'until', 'metric_type', 'breakdown'],
 }

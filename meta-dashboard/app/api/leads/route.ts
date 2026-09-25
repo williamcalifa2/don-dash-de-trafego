@@ -4,6 +4,7 @@ import type { LeadStatus } from '@/lib/leadTypes'
 import { requireTenant } from '@/lib/tenant'
 import { normalizePhone } from '@/lib/leadUtils'
 import { denyReader } from '@/lib/admin'
+import { logStaffActivity } from '@/lib/activityLog'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
     valor_pedido: status === 'Convertido' ? valor : null, motivo_perda: status === 'Perdido' ? motivo : null, notas: notas ?? null, atendido_por: atendido ?? null, status: status as LeadStatus }
   try {
     const { lead, warning } = await createManualLead(tenant.clientId, input)
+    await logStaffActivity(req, tenant.slug, { kind: 'lead', summary: 'Cadastrou um lead manual' })
     return NextResponse.json({ lead, warning }, { status: 201 })
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Erro ao salvar o lead' }, { status: 500 })

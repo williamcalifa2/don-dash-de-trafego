@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getFechamentos, upsertFechamento } from '@/lib/supabase'
 import { requireTenant } from '@/lib/tenant'
 import { denyReader } from '@/lib/admin'
+import { logStaffActivity } from '@/lib/activityLog'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
   }
   try {
     await upsertFechamento(tenant.clientId, b.date, count, revenue)
+    await logStaffActivity(req, tenant.slug, { kind: 'lead', summary: `Registrou fechamentos de ${b.date.split('-').reverse().join('/')}` })
     return NextResponse.json({ ok: true })
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Erro ao salvar' }, { status: 500 })

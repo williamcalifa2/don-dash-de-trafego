@@ -12,6 +12,8 @@ import {
   type SavedReportSummary,
 } from '@/lib/report'
 
+import { logStaffActivity } from '@/lib/activityLog'
+
 export const dynamic = 'force-dynamic'
 
 const libraryKey = (slug: string) => `reports_library:${slug}`
@@ -116,6 +118,7 @@ export async function POST(req: NextRequest) {
     }
 
     await stores.limit.setSetting(key, updated)
+    await logStaffActivity(req, tenant.slug, { kind: 'report', summary: idx >= 0 ? 'Atualizou um relatório no Studio' : 'Salvou um relatório no Studio', objectName: title })
     return NextResponse.json({ ok: true, report: newReport })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro ao salvar relatório'
@@ -141,6 +144,7 @@ export async function DELETE(req: NextRequest) {
     const existing = (await stores.limit.getSetting<SavedReport[]>(key)) ?? []
     const updated = existing.filter(r => r.id !== id)
     await stores.limit.setSetting(key, updated)
+    await logStaffActivity(req, tenant.slug, { kind: 'report', summary: 'Excluiu um relatório do Studio' })
     return NextResponse.json({ ok: true, deleted: id })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro ao excluir relatório'
