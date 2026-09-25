@@ -22,6 +22,7 @@ import { StaffShell, STAFF_EVENT, type StaffAction } from '@/components/StaffShe
 import { ProfileMenu } from '@/components/ProfileMenu'
 import { PulseLoader } from '@/components/PulseLoader'
 import type { LeadStatus } from '@/lib/leadTypes'
+import { useAnchoredPopover } from '@/lib/useAnchoredPopover'
 
 interface AdminClient {
   slug: string
@@ -589,28 +590,22 @@ type MenuItem = { icon: React.ReactNode; text: string; onClick: () => void; dang
 
 /** Um botão só com o período escolhido; abre a lista. Evita uma fila de botões no topo. */
 function PeriodMenu({ value, onChange }: { value: AdminPeriod; onChange: (p: AdminPeriod) => void }) {
-  const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
-  useEffect(() => {
-    if (!pos) return
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setPos(null) }
-    window.addEventListener('keydown', k)
-    return () => window.removeEventListener('keydown', k)
-  }, [pos])
+  const { pos, close, toggle, menuRef } = useAnchoredPopover()
   const current = ADMIN_PERIODS.find(p => p.v === value) ?? ADMIN_PERIODS[1]
   return (
     <>
       <button className="btn btn-outline btn-sm" aria-haspopup="listbox" aria-expanded={!!pos} aria-label={`Período: ${current.label}`}
-        onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setPos(p => p ? null : { top: r.bottom + 4, right: window.innerWidth - r.right }) }}>
+        onClick={toggle}>
         <CalendarDays size={16} strokeWidth={1.75} /> {current.label} <ChevronDown size={14} strokeWidth={1.75} />
       </button>
       {pos && createPortal(
         <>
-          <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setPos(null)} />
-          <div className="popover" role="listbox" aria-label="Período" style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 1000, minWidth: 160 }}>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={close} />
+          <div ref={menuRef} className="popover" role="listbox" aria-label="Período" style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 1000, minWidth: 160 }}>
             {ADMIN_PERIODS.map(p => (
               <div key={String(p.v)} role="option" aria-selected={p.v === value} tabIndex={0} className="popover-item" style={p.v === value ? { background: 'var(--accent-soft)' } : undefined}
-                onClick={() => { setPos(null); onChange(p.v) }}
-                onKeyDown={e => { if (e.key === 'Enter') { setPos(null); onChange(p.v) } }}>
+                onClick={() => { close(); onChange(p.v) }}
+                onKeyDown={e => { if (e.key === 'Enter') { close(); onChange(p.v) } }}>
                 <span style={{ flex: 1 }}>{p.label}</span>{p.v === value && <Check size={14} strokeWidth={1.75} color="var(--accent)" />}
               </div>
             ))}
@@ -623,29 +618,23 @@ function PeriodMenu({ value, onChange }: { value: AdminPeriod; onChange: (p: Adm
 }
 
 function GearMenu({ label, items }: { label: string; items: MenuItem[] }) {
-  const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
-  useEffect(() => {
-    if (!pos) return
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setPos(null) }
-    window.addEventListener('keydown', k)
-    return () => window.removeEventListener('keydown', k)
-  }, [pos])
+  const { pos, close, toggle, menuRef } = useAnchoredPopover()
   return (
     <>
       <button className="btn btn-outline btn-icon btn-sm" aria-label={label} aria-haspopup="menu" aria-expanded={!!pos} title="Mais opções"
-        onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setPos(p => p ? null : { top: r.bottom + 4, right: window.innerWidth - r.right }) }}>
+        onClick={toggle}>
         <Settings2 size={16} strokeWidth={1.75} />
       </button>
       {pos && createPortal(
         <>
-          <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setPos(null)} />
-          <div className="popover" role="menu" style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 1000, minWidth: 224 }}>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={close} />
+          <div ref={menuRef} className="popover" role="menu" style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 1000, minWidth: 224 }}>
             {items.map((it, i) => it === 'sep' ? (
               <div key={i} style={{ height: 1, background: 'var(--border-soft)', margin: '4px 0' }} />
             ) : (
               <div key={i} role="menuitem" tabIndex={0} className="popover-item" style={{ color: it.danger ? 'var(--red)' : undefined }}
-                onClick={() => { setPos(null); it.onClick() }}
-                onKeyDown={e => { if (e.key === 'Enter') { setPos(null); it.onClick() } }}>
+                onClick={() => { close(); it.onClick() }}
+                onKeyDown={e => { if (e.key === 'Enter') { close(); it.onClick() } }}>
                 {it.icon}{it.text}
               </div>
             ))}

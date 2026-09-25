@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useAnchoredPopover } from '@/lib/useAnchoredPopover'
 import { CalendarDays, Check, ChevronDown, ChevronRight, Filter } from 'lucide-react'
 import { fmtDuration } from '@/lib/usage'
 
@@ -10,21 +11,11 @@ import { fmtDuration } from '@/lib/usage'
 export type Period = 'today' | '7' | '30'
 export const PERIODS: Array<[Period, string]> = [['today', 'Hoje'], ['7', '7 dias'], ['30', '30 dias']]
 
-function usePopover() {
-  const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
-  useEffect(() => {
-    if (!pos) return
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setPos(null) }
-    window.addEventListener('keydown', k)
-    return () => window.removeEventListener('keydown', k)
-  }, [pos])
-  const toggle = (e: React.MouseEvent<HTMLElement>) => { const r = e.currentTarget.getBoundingClientRect(); setPos(p => (p ? null : { top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) })) }
-  return { pos, close: () => setPos(null), toggle }
-}
+const usePopover = () => useAnchoredPopover(6)
 
 /** Botão com o ícone de calendário: mostra o período e abre a lista. */
 export function PeriodPicker({ value, onChange }: { value: Period; onChange: (p: Period) => void }) {
-  const { pos, close, toggle } = usePopover()
+  const { pos, close, toggle, menuRef } = usePopover()
   const current = PERIODS.find(p => p[0] === value) ?? PERIODS[1]
   return (
     <>
@@ -34,7 +25,7 @@ export function PeriodPicker({ value, onChange }: { value: Period; onChange: (p:
       {pos && createPortal(
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={close} data-hm-ignore />
-          <div className="popover" role="listbox" aria-label="Período" data-hm-ignore style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 1000, minWidth: 160 }}>
+          <div ref={menuRef} className="popover" role="listbox" aria-label="Período" data-hm-ignore style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 1000, minWidth: 160 }}>
             {PERIODS.map(([k, l]) => (
               <div key={k} role="option" aria-selected={k === value} tabIndex={0} className="popover-item" style={k === value ? { background: 'var(--accent-soft)' } : undefined}
                 onClick={() => { close(); onChange(k) }} onKeyDown={e => { if (e.key === 'Enter') { close(); onChange(k) } }}>
@@ -51,7 +42,7 @@ export function PeriodPicker({ value, onChange }: { value: Period; onChange: (p:
 
 /** Botão só com o ícone de filtro; o número mostra quantos filtros estão ligados. Os campos ficam dentro do popover. */
 export function FilterPicker({ active, onClear, children }: { active: number; onClear: () => void; children: React.ReactNode }) {
-  const { pos, close, toggle } = usePopover()
+  const { pos, close, toggle, menuRef } = usePopover()
   return (
     <>
       <button type="button" className="btn btn-outline btn-icon btn-sm" aria-haspopup="dialog" aria-expanded={!!pos} aria-label={active ? `Filtros (${active} ligados)` : 'Filtros'} title="Filtros" onClick={toggle} style={{ position: 'relative', borderColor: active ? 'var(--accent)' : undefined }}>
@@ -61,7 +52,7 @@ export function FilterPicker({ active, onClear, children }: { active: number; on
       {pos && createPortal(
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={close} data-hm-ignore />
-          <div className="popover filter-pop" role="dialog" aria-label="Filtros" data-hm-ignore style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 1000, width: 280, maxWidth: 'calc(100vw - 16px)', padding: 16, borderRadius: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div ref={menuRef} className="popover filter-pop" role="dialog" aria-label="Filtros" data-hm-ignore style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 1000, width: 280, maxWidth: 'calc(100vw - 16px)', padding: 16, borderRadius: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 13, fontWeight: 700 }}>Filtros</span>
               {active > 0 && <button type="button" onClick={() => { onClear(); close() }} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--accent)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Limpar filtros</button>}
