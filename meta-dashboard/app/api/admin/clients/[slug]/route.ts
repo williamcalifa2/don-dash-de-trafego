@@ -48,16 +48,16 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ slug: str
   if (!Object.keys(update).length && newManager === undefined) return NextResponse.json({ error: 'Nada para atualizar.' }, { status: 400 })
 
   // Não deixa dois clientes com o mesmo nome ou a mesma conta de anúncios.
-  if ('display_name' in update || 'ad_account_id' in update || 'page_id' in update) {
-    const { data: all } = await db.from('clients').select('slug,display_name,ad_account_id,page_id')
-    const dup = duplicateOf(((all ?? []) as Array<{ slug: string; display_name: string | null; ad_account_id: string | null; page_id: string | null }>).map(c => ({ slug: c.slug, name: c.display_name ?? c.slug, adAccountId: c.ad_account_id, pageId: c.page_id })),
-      { pageId: 'page_id' in update ? (update.page_id as string | null) : null, name: 'display_name' in update ? String(update.display_name) : null, adAccountId: 'ad_account_id' in update ? (update.ad_account_id as string | null) : null }, slug)
+  if ('display_name' in update || 'ad_account_id' in update) {
+    const { data: all } = await db.from('clients').select('slug,display_name,ad_account_id')
+    const dup = duplicateOf(((all ?? []) as Array<{ slug: string; display_name: string | null; ad_account_id: string | null }>).map(c => ({ slug: c.slug, name: c.display_name ?? c.slug, adAccountId: c.ad_account_id })),
+      { name: 'display_name' in update ? String(update.display_name) : null, adAccountId: 'ad_account_id' in update ? (update.ad_account_id as string | null) : null }, slug)
     if (dup) return NextResponse.json({ error: dup }, { status: 409 })
   }
 
   const { error } = Object.keys(update).length ? await db.from('clients').update(update).eq('slug', slug) : { error: null }
   clearClientCache()
-  if (error && /clients_page_id_idx/.test(error.message)) return NextResponse.json({ error: 'Essa Página já é de outro cliente. Cada Página só pode estar em um cliente.' }, { status: 409 })
+  if (error && /clients_page_id_idx/.test(error.message)) return NextResponse.json({ error: 'O banco ainda impede a mesma Página em dois clientes. Rode o SQL supabase/2026-09-pagina-compartilhada.sql no Supabase e tente de novo.' }, { status: 409 })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (newManager !== undefined) await assignClient(slug, newManager)
 

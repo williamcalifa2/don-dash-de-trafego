@@ -28,10 +28,4 @@ describe('duplicateOf', () => {
     expect(duplicateOf(list, { slug: 'magtag', name: 'MagTag', adAccountId: 'act_111111' }, 'magtag')).toBeNull()
     expect(duplicateOf(list, { name: 'Becker & Floriano' }, 'magtag')).toMatch(/nome/)
   })
-  it('a mesma Página não pode estar em dois clientes', () => {
-    const l = [{ slug: 'a', name: 'Alfa', adAccountId: null, pageId: '12345' }]
-    expect(duplicateOf(l, { pageId: '12345' })).toMatch(/Alfa/)
-    expect(duplicateOf(l, { pageId: '12345' }, 'a')).toBeNull()
-    expect(duplicateOf(l, { pageId: '99999' })).toBeNull()
-  })
 })

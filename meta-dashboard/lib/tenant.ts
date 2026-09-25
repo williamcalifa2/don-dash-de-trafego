@@ -43,8 +43,9 @@ async function fetchClient(by: 'slug' | 'page_id' | 'ad_account_id', value: stri
   if (hit && Date.now() - hit.at < TTL) return hit.row
   const db = getSupabaseServer()
   if (!db) return null
-  const { data } = await db.from('clients').select(COLUMNS).eq(by, value).maybeSingle()
-  const row = (data as ClientRow | null) ?? null
+  // A mesma Página pode estar em mais de um cliente (contas de anúncios diferentes): nesse caso a Página não identifica o cliente.
+  const { data: found } = await db.from('clients').select(COLUMNS).eq(by, value).limit(2)
+  const row = found && found.length === 1 ? (found[0] as unknown as ClientRow) : null
   cache.set(key, { row, at: Date.now() })
   return row
 }

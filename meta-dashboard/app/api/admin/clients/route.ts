@@ -183,8 +183,8 @@ export async function POST(req: NextRequest) {
   if (reg?.managers.length && !managerId) return NextResponse.json({ error: 'Selecione o gestor responsável.' }, { status: 400 })
   if (managerId && (!reg || !reg.managers.some(m => m.id === managerId))) return NextResponse.json({ error: 'Gestor não encontrado.' }, { status: 400 })
 
-  const { data: all } = await db.from('clients').select('slug,display_name,ad_account_id,page_id')
-  const dup = duplicateOf(((all ?? []) as Array<{ slug: string; display_name: string | null; ad_account_id: string | null; page_id: string | null }>).map(c => ({ slug: c.slug, name: c.display_name ?? c.slug, adAccountId: c.ad_account_id, pageId: c.page_id })), { slug, name, adAccountId, pageId })
+  const { data: all } = await db.from('clients').select('slug,display_name,ad_account_id')
+  const dup = duplicateOf(((all ?? []) as Array<{ slug: string; display_name: string | null; ad_account_id: string | null }>).map(c => ({ slug: c.slug, name: c.display_name ?? c.slug, adAccountId: c.ad_account_id })), { slug, name, adAccountId })
   if (dup) return NextResponse.json({ error: dup }, { status: 409 })
 
   const code = generateCode()
@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
   // A tabela pode ter uma coluna "name" obrigatória de antes; preenche e tenta de novo.
   if (error && /null value in column "name"/i.test(error.message)) ({ error } = await db.from('clients').insert({ ...row, name }))
   clearClientCache()
-  if (error && /clients_page_id_idx/.test(error.message)) return NextResponse.json({ error: 'Essa Página já é de outro cliente. Cada Página só pode estar em um cliente.' }, { status: 409 })
+  if (error && /clients_page_id_idx/.test(error.message)) return NextResponse.json({ error: 'O banco ainda impede a mesma Página em dois clientes. Rode o SQL supabase/2026-09-pagina-compartilhada.sql no Supabase e tente de novo.' }, { status: 409 })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (managerId) await assignClient(slug, managerId)
 
