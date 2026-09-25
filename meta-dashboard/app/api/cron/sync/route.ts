@@ -119,7 +119,7 @@ async function run(req: NextRequest) {
   after(async () => {
     try { await execute() } catch (e) { console.error('[cron] falha no ciclo:', e instanceof Error ? e.message : e) }
     // Carona no mesmo agendador: mantém o histórico de alterações dos gestores em dia (leitura curta, só o que mudou desde a última).
-    try { const last = await lastSyncAt(); if (!last || Date.now() - Date.parse(last) > 4 * 60_000) await syncMetaActivity({ budgetMs: 20_000, limit: 8 }) } catch (e) { console.error('[cron] histórico dos gestores:', e instanceof Error ? e.message : e) }
+    try { const last = await lastSyncAt(); if (!last || Date.now() - Date.parse(last) > 8 * 60_000) await syncMetaActivity({ budgetMs: 20_000, limit: 6 }) } catch (e) { console.error('[cron] histórico dos gestores:', e instanceof Error ? e.message : e) }
   })
   return NextResponse.json({ ok: true, accepted: true })
 }

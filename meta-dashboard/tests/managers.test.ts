@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activityByClient, cleanManagerInput, matchActor, countByKind, dailyCounts, idleSlugs, isHumanMetaEvent, kindOfMetaEvent, managerId, metaDelta, metaToLog, objectLabel, type LogRow, type MetaActivity } from '@/lib/managers'
+import { activityByClient, cleanManagerInput, cleanReason, groupTasks, isAnswered, matchActor, taskOwner, type TaskRow, countByKind, dailyCounts, idleSlugs, isHumanMetaEvent, kindOfMetaEvent, managerId, metaDelta, metaToLog, objectLabel, type LogRow, type MetaActivity } from '@/lib/managers'
 
 const ev = (o: Partial<MetaActivity>): MetaActivity => ({ event_time: '2026-09-14T12:27:02+0000', event_type: 'update_campaign_run_status', actor_id: '122128246653277733', actor_name: 'William', object_id: '5252', object_name: 'Campanha X', object_type: 'CAMPAIGN_GROUP', translated_event_type: 'Status da campanha atualizado', ...o })
 const row = (o: Partial<LogRow>): LogRow => ({ at: '2026-09-24T12:00:00Z', source: 'app', client_slug: 'magtag', manager_id: 'ana', actor_key: 'a@x.com', actor_name: 'Ana', kind: 'status', summary: 's', object_name: null, detail: null, ...o })
@@ -98,5 +98,45 @@ describe('matchActor', () => {
     expect(matchActor('Paulo', [...actors, { id: '5', name: 'Paulo Souza' }])).toBeNull()
     expect(matchActor('Paulo Souza', [{ id: '4', name: 'Paulo Henrique Carvalho Souza' }, { id: '5', name: 'Paulo Souza' }])).toBeNull() // dois candidatos
     expect(matchActor('', actors)).toBeNull()
+  })
+})
+
+describe('justificativas', () => {
+  const t = (id: number, min: number, o: Partial<TaskRow> = {}): TaskRow => ({ id, at: new Date(Date.parse('2026-09-25T12:00:00Z') + min * 60_000).toISOString(), source: 'meta', client_slug: 'magtag', manager_id: 'ana', actor_key: 'meta:1', actor_name: 'Ana', kind: 'status', summary: 'Status do anúncio atualizado', object_name: `AD ${id}`, detail: { from: 'Ativa', to: 'Inativa' }, reason: null, reason_kind: null, reasoned_at: null, ...o })
+
+  it('alterações seguidas do mesmo tipo, cliente e autor viram uma tarefa; 30 min de intervalo separa', () => {
+    const tasks = groupTasks([t(1, 0), t(2, 10), t(3, 25), t(4, 90)])
+    expect(tasks).toHaveLength(2)
+    const first = tasks.find(x => x.ids.includes(1))!
+    expect(first).toMatchObject({ count: 3, ids: [1, 2, 3], clientSlug: 'magtag', kind: 'status' })
+    expect(first.items[0]).toMatchObject({ summary: 'Status do anúncio atualizado', change: 'Ativa → Inativa' })
+    expect(tasks[0].ids).toEqual([4]) // a mais recente primeiro
+  })
+  it('tipo, cliente ou autor diferente não juntam', () => {
+    expect(groupTasks([t(1, 0), t(2, 1, { kind: 'budget' }), t(3, 2, { client_slug: 'becker' }), t(4, 3, { actor_key: 'meta:9' })])).toHaveLength(4)
+  })
+  it('só otimização vira tarefa (lead, relatório e "outros" não)', () => {
+    expect(groupTasks([t(1, 0, { kind: 'lead' }), t(2, 1, { kind: 'report' }), t(3, 2, { kind: 'other' }), t(4, 3, { kind: 'creative' })]).map(x => x.kind)).toEqual(['creative'])
+  })
+  it('respondida quando alguma alteração do grupo tem motivo ou texto', () => {
+    const [a] = groupTasks([t(1, 0), t(2, 5, { reason_kind: 'cost', reason: 'CPL alto', reasoned_at: '2026-09-25T13:00:00Z' })])
+    expect(isAnswered(a)).toBe(true)
+    expect(a).toMatchObject({ reasonKind: 'cost', reason: 'CPL alto' })
+    expect(isAnswered(groupTasks([t(1, 0)])[0])).toBe(false)
+  })
+  it('dono: quem fez, se é gestor cadastrado; senão o gestor da conta', () => {
+    const ms = [{ id: 'ana', email: 'ana@x.com', metaActorId: '1' }, { id: 'bruno', email: 'b@x.com', metaActorId: '2' }]
+    expect(taskOwner({ actorKey: 'meta:2', managerId: 'ana' }, ms)).toBe('bruno')
+    expect(taskOwner({ actorKey: 'b@x.com', managerId: 'ana' }, ms)).toBe('bruno')
+    expect(taskOwner({ actorKey: 'meta:99', managerId: 'ana' }, ms)).toBe('ana')
+    expect(taskOwner({ actorKey: null, managerId: null }, ms)).toBeNull()
+  })
+  it('valida a justificativa: motivo da lista e/ou texto', () => {
+    expect(cleanReason({ reasonKind: 'cost' })).toEqual({ reasonKind: 'cost', reason: null })
+    expect(cleanReason({ reason: '  Custo   alto  ' })).toEqual({ reasonKind: null, reason: 'Custo alto' })
+    expect(cleanReason({ reasonKind: 'inventado', reason: 'custo' })).toEqual({ reasonKind: null, reason: 'custo' })
+    expect(cleanReason({})).toHaveProperty('error')
+    expect(cleanReason({ reason: 'a' })).toHaveProperty('error')
+    expect((cleanReason({ reason: 'x'.repeat(900) }) as { reason: string }).reason).toHaveLength(500)
   })
 })

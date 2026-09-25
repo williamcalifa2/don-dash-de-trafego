@@ -6,7 +6,7 @@ import { metaConfig } from './meta/config'
 import { loadRegistry, toManager, __resetManagersMemo, type ManagerRow } from './activityLog'
 import {
   cleanManagerInput, isHumanMetaEvent, managerId as slugFromName, metaToLog,
-  matchActor, type LogInsert, type LogRow, type Manager, type ManagerInput, type MetaActivity,
+  TASK_KINDS, groupTasks, matchActor, taskOwner, type LogInsert, type LogRow, type Manager, type Task, type TaskRow, type ManagerInput, type MetaActivity,
 } from './managers'
 
 /** Cria ou atualiza o gestor e refaz a carteira dele. Cliente que já era de outro gestor passa para este. */
@@ -191,9 +191,9 @@ export async function clientNames(): Promise<Map<string, string>> {
 
 // ─── Carona no uso do app ────────────────────────────────────────────────────
 
-const STALE_MS = 4 * 60_000
-/** Contas lidas por rodada automática: mantém a leitura em cerca de 8 chamadas a cada 4 min, longe do teto por hora das métricas. */
-const AUTO_LIMIT = 8
+const STALE_MS = 8 * 60_000
+/** Contas lidas por rodada automática: mantém a leitura em cerca de 6 chamadas a cada 8 min, longe do teto por hora das métricas. */
+const AUTO_LIMIT = 6
 let lastCheck = 0
 let running = false
 
@@ -241,4 +241,57 @@ export async function autoLinkActors(force = false): Promise<number> {
   }
   if (n) __resetManagersMemo()
   return n
+}
+
+// ─── Justificativas ──────────────────────────────────────────────────────────
+
+const TASKS_START_KEY = 'gestores_tasks_start'
+const TASK_WINDOW_DAYS = 30
+
+/** Desde quando existem tarefas: a 1ª vez que alguém abre a área. O histórico de antes (a leitura dos 30 dias) não vira pendência. */
+async function tasksStart(): Promise<string> {
+  const db = getSupabaseServer()
+  if (!db) return new Date().toISOString()
+  const { data } = await db.from('meta_settings').select('value').eq('key', TASKS_START_KEY).maybeSingle()
+  const v = (data as { value?: string } | null)?.value
+  if (typeof v === 'string' && !Number.isNaN(Date.parse(v))) return v
+  const now = new Date().toISOString()
+  await db.from('meta_settings').upsert({ key: TASKS_START_KEY, value: now, updated_at: now }, { onConflict: 'key' })
+  return now
+}
+
+const TASK_COLUMNS = 'id,at,source,client_slug,manager_id,actor_key,actor_name,kind,summary,object_name,detail,reason,reason_kind,reasoned_at'
+
+export type TasksResult = { error: 'tables' | 'columns' } | { tasks: Array<Task & { ownerId: string | null }> }
+
+/** Todas as tarefas do período, cada uma com o dono (quem fez, se for gestor; senão o gestor da conta). */
+export async function loadTasks(): Promise<TasksResult> {
+  const db = getSupabaseServer()
+  const reg = await loadRegistry()
+  if (!db || !reg) return { error: 'tables' }
+  const since = new Date(Math.max(Date.parse(await tasksStart()), Date.now() - TASK_WINDOW_DAYS * 86_400_000)).toISOString()
+  const { data, error } = await db.from('activity_log').select(TASK_COLUMNS).in('kind', [...TASK_KINDS]).gte('at', since).order('at', { ascending: false }).limit(20000)
+  if (error) return { error: /reason/i.test(error.message) ? 'columns' : 'tables' }
+  const tasks = groupTasks((data ?? []) as TaskRow[]).map(t => ({ ...t, ownerId: taskOwner(t, reg.managers) }))
+  return { tasks }
+}
+
+/** Grava a justificativa nas alterações da tarefa. Devolve mensagem de erro ou null. */
+export async function saveReason(ids: number[], v: { reasonKind: string | null; reason: string | null }, by: string): Promise<string | null> {
+  const db = getSupabaseServer()
+  if (!db) return 'Banco indisponível.'
+  const { error } = await db.from('activity_log').update({ reason: v.reason, reason_kind: v.reasonKind, reasoned_at: new Date().toISOString(), reasoned_by: by }).in('id', ids)
+  return error ? (/reason/i.test(error.message) ? 'Rode o SQL supabase/2026-09-gestores-3.sql no Supabase.' : error.message) : null
+}
+
+/** Dono de cada alteração pedida (para conferir se quem responde pode responder). */
+export async function ownersOf(ids: number[]): Promise<Array<string | null> | null> {
+  const db = getSupabaseServer()
+  const reg = await loadRegistry()
+  if (!db || !reg) return null
+  const { data, error } = await db.from('activity_log').select('id,actor_key,manager_id,kind').in('id', ids)
+  if (error) return null
+  return ((data ?? []) as Array<{ id: number; actor_key: string | null; manager_id: string | null; kind: string }>)
+    .filter(r => (TASK_KINDS as readonly string[]).includes(r.kind))
+    .map(r => taskOwner({ actorKey: r.actor_key, managerId: r.manager_id }, reg.managers))
 }

@@ -203,3 +203,81 @@ export function matchActor(name: string, actors: Array<{ id: string; name: strin
   })
   return hits.length === 1 ? hits[0] : null
 }
+
+// ─── Justificativas: "por que você fez essa alteração?" ──────────────────────
+
+/** Só otimizações viram tarefa (pausa, orçamento, público, criativo, lance, estrutura). Renomear conjunto ou ler dado não. */
+export const TASK_KINDS: readonly ActivityKind[] = OPTIMIZATION_KINDS
+/** Alterações do mesmo tipo, no mesmo cliente e pela mesma pessoa, com menos de 30 min entre uma e outra, viram uma tarefa só. */
+export const TASK_GAP_MS = 30 * 60_000
+
+export const REASONS: ReadonlyArray<readonly [string, string]> = [
+  ['performance', 'Baixo desempenho'], ['cost', 'Custo alto'], ['scale', 'Escalar o que funciona'], ['fatigue', 'Fadiga do criativo'],
+  ['test', 'Teste'], ['client', 'Pedido do cliente'], ['budget', 'Ajuste de verba'], ['fix', 'Correção de erro'], ['other', 'Outro'],
+]
+export const REASON_LABEL: Record<string, string> = Object.fromEntries(REASONS)
+export const isReasonKind = (v: unknown): v is string => typeof v === 'string' && v in REASON_LABEL
+
+export interface TaskRow {
+  id: number; at: string; source: string; client_slug: string; manager_id: string | null; actor_key: string | null; actor_name: string | null
+  kind: string; summary: string; object_name: string | null; detail: { from?: string | null; to?: string | null; level?: string } | null
+  reason: string | null; reason_kind: string | null; reasoned_at: string | null
+}
+export interface TaskItem { summary: string; objectName: string | null; change: string | null; level: string | null }
+export interface Task {
+  key: string; ids: number[]; startedAt: string; at: string; clientSlug: string; managerId: string | null; actorKey: string | null; actorName: string | null
+  kind: ActivityKind; count: number; items: TaskItem[]; reason: string | null; reasonKind: string | null; reasonedAt: string | null
+}
+
+/** Junta as alterações em tarefas. Uma tarefa está respondida quando alguma das alterações dela já tem justificativa. */
+export function groupTasks(rows: TaskRow[], gapMs = TASK_GAP_MS): Task[] {
+  const eligible = rows.filter(r => (TASK_KINDS as readonly string[]).includes(r.kind))
+  const by = new Map<string, TaskRow[]>()
+  for (const r of eligible) { const k = `${r.client_slug}|${r.actor_key ?? ''}|${r.kind}`; (by.get(k) ?? by.set(k, []).get(k)!).push(r) }
+  const out: Task[] = []
+  for (const list of by.values()) {
+    list.sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+    let cur: TaskRow[] = []
+    const flush = () => {
+      if (!cur.length) return
+      const first = cur[0], last = cur[cur.length - 1]
+      const seen = new Set<string>()
+      const items: TaskItem[] = []
+      for (const r of cur) {
+        const change = r.detail && (r.detail.from != null || r.detail.to != null) ? `${r.detail.from ?? '—'} → ${r.detail.to ?? '—'}` : null
+        const k = `${r.summary}|${r.object_name}|${change}`
+        if (seen.has(k) || items.length >= 5) continue
+        seen.add(k); items.push({ summary: r.summary, objectName: r.object_name, change, level: r.detail?.level ?? null })
+      }
+      const answered = cur.find(r => r.reason || r.reason_kind)
+      out.push({
+        key: String(first.id), ids: cur.map(r => r.id), startedAt: first.at, at: last.at, clientSlug: first.client_slug, managerId: last.manager_id, actorKey: first.actor_key, actorName: first.actor_name,
+        kind: first.kind as ActivityKind, count: cur.length, items, reason: answered?.reason ?? null, reasonKind: answered?.reason_kind ?? null, reasonedAt: answered?.reasoned_at ?? null,
+      })
+      cur = []
+    }
+    for (const r of list) {
+      if (cur.length && Date.parse(r.at) - Date.parse(cur[cur.length - 1].at) > gapMs) flush()
+      cur.push(r)
+    }
+    flush()
+  }
+  return out.sort((a, b) => b.at.localeCompare(a.at))
+}
+
+export const isAnswered = (t: Task) => !!(t.reason || t.reasonKind)
+
+/** De quem é a tarefa: de quem fez a alteração, se essa pessoa é um gestor cadastrado; senão, do gestor da conta. */
+export function taskOwner(t: Pick<Task, 'actorKey' | 'managerId'>, managers: Array<{ id: string; email: string | null; metaActorId: string | null }>): string | null {
+  const own = t.actorKey ? managers.find(m => (m.metaActorId && t.actorKey === `meta:${m.metaActorId}`) || (m.email && t.actorKey === m.email)) : undefined
+  return own?.id ?? t.managerId
+}
+
+/** Valida a justificativa: um motivo da lista e/ou texto (pelo menos um dos dois). */
+export function cleanReason(body: unknown): { reasonKind: string | null; reason: string | null } | { error: string } {
+  const o = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>
+  const kind = isReasonKind(o.reasonKind) ? o.reasonKind : null
+  const text = typeof o.reason === 'string' ? o.reason.replace(/\s+/g, ' ').trim().slice(0, 500) : ''
+  if (!kind && text.length < 3) return { error: 'Escolha um motivo ou escreva a justificativa.' }
+  return { reasonKind: kind, reason: text || null }
+}

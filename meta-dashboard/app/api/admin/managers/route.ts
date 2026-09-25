@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { requireRole } from '@/lib/admin'
 import { usageSince } from '@/lib/usage'
-import { OPTIMIZATION_KINDS, cleanManagerInput, countByKind, dailyCounts } from '@/lib/managers'
-import { autoLinkActors, clientNames, lastSyncAt, loadRegistry, readLog, saveManager, syncMetaActivity, tablesMissing, timeByEmail } from '@/lib/managersStore'
+import { OPTIMIZATION_KINDS, cleanManagerInput, countByKind, dailyCounts, isAnswered } from '@/lib/managers'
+import { autoLinkActors, clientNames, lastSyncAt, loadRegistry, loadTasks, readLog, saveManager, syncMetaActivity, tablesMissing, timeByEmail } from '@/lib/managersStore'
 import { getSupabaseServer } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
@@ -26,6 +26,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ setup: probe.error && tablesMissing(probe.error.message) ? 'tables' : 'error' })
   }
   const [rows, names, sync] = await Promise.all([readLog({ sinceIso, limit: 20000 }), clientNames(), lastSyncAt()])
+  const tk = await loadTasks()
+  const openTasks = 'tasks' in tk ? tk.tasks.filter(t => !isAnswered(t)) : []
   const time = await timeByEmail(reg.managers.flatMap(m => (m.email ? [m.email] : [])), sinceIso)
 
   const bySlug = new Map<string, string>(reg.byClient)
@@ -36,6 +38,7 @@ export async function GET(req: NextRequest) {
       ...m, clients: slugs.map(slug => ({ slug, name: names.get(slug) ?? slug })),
       actions: mine.length, optimizations: mine.filter(r => (OPTIMIZATION_KINDS as readonly string[]).includes(r.kind)).length,
       activeSec: m.email ? time.get(m.email)?.total ?? 0 : null, lastAt: mine[0]?.at ?? null,
+      pending: openTasks.filter(t => t.ownerId === m.id).length,
       byKind: countByKind(mine), daily: dailyCounts(mine, sinceMs, now).map(d => d.n),
     }
   })
@@ -43,11 +46,11 @@ export async function GET(req: NextRequest) {
   const nameOfManager = new Map(reg.managers.map(m => [m.id, m.name]))
   const avatarOfManager = new Map(reg.managers.map(m => [m.id, m.avatarUrl]))
   const recent = (rows ?? []).filter(r => r.manager_id).slice(0, 30).map(r => ({ at: r.at, source: r.source, kind: r.kind, summary: r.summary, clientName: names.get(r.client_slug) ?? r.client_slug, managerId: r.manager_id, managerName: nameOfManager.get(r.manager_id!) ?? r.manager_id, managerAvatar: avatarOfManager.get(r.manager_id!) ?? null, actorName: r.actor_name, objectName: r.object_name }))
-  const stale = !sync || Date.now() - Date.parse(sync) > 4 * 60_000
-  if (stale) after(() => { void syncMetaActivity({ budgetMs: 45_000, limit: 8 }).catch(() => { }) }) // abrir a página mantém o histórico da Meta em dia
+  const stale = !sync || Date.now() - Date.parse(sync) > 8 * 60_000
+  if (stale) after(() => { void syncMetaActivity({ budgetMs: 45_000, limit: 6 }).catch(() => { }) }) // abrir a página mantém o histórico da Meta em dia
   return NextResponse.json({
     setup: 'ready', period, managers, recent, clients, unassigned: clients.filter(c => !c.managerId), lastSync: sync,
-    totals: { actions: (rows ?? []).filter(r => r.manager_id).length, optimizations: (rows ?? []).filter(r => r.manager_id && (OPTIMIZATION_KINDS as readonly string[]).includes(r.kind)).length },
+    totals: { pending: openTasks.filter(t => t.ownerId).length, actions: (rows ?? []).filter(r => r.manager_id).length, optimizations: (rows ?? []).filter(r => r.manager_id && (OPTIMIZATION_KINDS as readonly string[]).includes(r.kind)).length },
   })
 }
 
@@ -58,6 +61,6 @@ export async function POST(req: NextRequest) {
   if ('error' in input) return NextResponse.json({ error: input.error }, { status: 400 })
   const r = await saveManager(input)
   if ('error' in r) return NextResponse.json({ error: r.error }, { status: 400 })
-  after(() => { void syncMetaActivity({ budgetMs: 45_000, limit: 8 }).catch(() => { }); void autoLinkActors(true).catch(() => { }) })
+  after(() => { void syncMetaActivity({ budgetMs: 45_000, limit: 6 }).catch(() => { }); void autoLinkActors(true).catch(() => { }) })
   return NextResponse.json({ ok: true, manager: r.manager })
 }

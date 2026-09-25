@@ -10,6 +10,7 @@ import { KIND_LABEL, KINDS, type ActivityKind } from '@/lib/managers'
 import { useTheme } from '@/lib/useTheme'
 import { MetricTile } from './MetricTile'
 import { Sparkline } from './Sparkline'
+import { TaskPanel } from './Tasks'
 import { ProfileMenu } from './ProfileMenu'
 import { PulseLoader } from './PulseLoader'
 import { StaffShell } from './StaffShell'
@@ -22,10 +23,10 @@ const KIND_ICON: Record<ActivityKind, React.ReactNode> = {
   config: <Settings2 size={18} strokeWidth={1.75} />, access: <KeyRound size={18} strokeWidth={1.75} />, sync: <RefreshCw size={18} strokeWidth={1.75} />, client: <Building2 size={18} strokeWidth={1.75} />, other: <Activity size={18} strokeWidth={1.75} />,
 }
 
-interface ListManager { id: string; name: string; email: string | null; avatarUrl: string | null; metaActorId: string | null; metaActorName: string | null; clients: Array<{ slug: string; name: string }>; actions: number; optimizations: number; activeSec: number | null; lastAt: string | null; byKind: Array<{ kind: ActivityKind; n: number }>; daily: number[] }
+interface ListManager { pending: number; id: string; name: string; email: string | null; avatarUrl: string | null; metaActorId: string | null; metaActorName: string | null; clients: Array<{ slug: string; name: string }>; actions: number; optimizations: number; activeSec: number | null; lastAt: string | null; byKind: Array<{ kind: ActivityKind; n: number }>; daily: number[] }
 interface RecentRow { managerAvatar: string | null; at: string; source: string; kind: ActivityKind; summary: string; clientName: string; managerId: string; managerName: string; actorName: string | null; objectName: string | null }
 interface ClientOpt { slug: string; name: string; managerId: string | null }
-interface ListData { setup: 'ready' | 'tables' | 'error'; managers: ListManager[]; recent: RecentRow[]; clients: ClientOpt[]; unassigned: ClientOpt[]; lastSync: string | null; totals: { actions: number; optimizations: number } }
+interface ListData { setup: 'ready' | 'tables' | 'error'; managers: ListManager[]; recent: RecentRow[]; clients: ClientOpt[]; unassigned: ClientOpt[]; lastSync: string | null; totals: { pending: number; actions: number; optimizations: number } }
 interface TimelineRow { at: string; source: string; client_slug: string; clientName: string; actor_key: string | null; actor_name: string | null; kind: ActivityKind; summary: string; object_name: string | null; detail: { from?: string | null; to?: string | null; level?: string } | null }
 interface Profile {
   setup: 'ready' | 'tables'; manager: { id: string; name: string; email: string | null; avatarUrl: string | null; metaActorId: string | null; metaActorName: string | null }; hasEmail: boolean; hasActor: boolean
@@ -86,7 +87,7 @@ export function TeamManagers() {
   useEffect(() => {
     const t = setInterval(() => {
       if (document.hidden) return
-      apiFetch('/api/admin/managers/sync', { method: 'POST' }).then(() => { void load(); setTick(t => t + 1) }).catch(() => { })
+      apiFetch('/api/admin/managers/sync?auto=1', { method: 'POST' }).then(() => { void load(); setTick(t => t + 1) }).catch(() => { })
     }, 5 * 60_000)
     return () => clearInterval(t)
   }, [load])
@@ -102,7 +103,7 @@ export function TeamManagers() {
   }
 
   const current = sel ? list?.managers.find(m => m.id === sel) ?? null : null
-  const open = (id: string | null) => router.push(id ? `/admin/equipe?g=${id}` : '/admin/equipe')
+  const open = (id: string | null, tab?: string) => router.push(id ? `/admin/equipe?g=${id}${tab ? `&tab=${tab}` : ''}` : '/admin/equipe')
 
   return (
     <StaffShell>
@@ -132,7 +133,7 @@ export function TeamManagers() {
 
         {list?.setup === 'ready' && !current && !sel && <Overview list={list} onOpen={open} onEdit={id => setEditing({ id })} onNew={() => setEditing('new')} onAssigned={load} />}
         {list?.setup === 'ready' && sel && !current && <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>Gestor não encontrado.</div>}
-        {list?.setup === 'ready' && current && <ProfileView key={current.id} id={current.id} period={period} tick={tick} onEdit={() => setEditing({ id: current.id })} />}
+        {list?.setup === 'ready' && current && <ProfileView key={current.id} id={current.id} period={period} tick={tick} pending={current.pending} initialTab={sp.get('tab')} onEdit={() => setEditing({ id: current.id })} />}
       </main>
 
       {editing && list?.setup === 'ready' && (
@@ -145,7 +146,7 @@ export function TeamManagers() {
   )
 }
 
-function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData; onOpen: (id: string) => void; onEdit: (id: string) => void; onNew: () => void; onAssigned: () => void }) {
+function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData; onOpen: (id: string, tab?: string) => void; onEdit: (id: string) => void; onNew: () => void; onAssigned: () => void }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [today] = useState(() => Date.now())
   async function assign(slug: string, managerId: string) {
@@ -175,6 +176,7 @@ function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData;
         <MetricTile label="Clientes com gestor" value={String(withManager)} />
         <MetricTile label="Clientes sem gestor" value={String(list.unassigned.length)} />
         <MetricTile label="Ações nas contas" value={String(list.totals.actions)} />
+        <MetricTile label="Justificativas pendentes" value={String(list.totals.pending)} />
       </div>
 
       {list.managers.length === 0 ? (
@@ -220,13 +222,13 @@ function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData;
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 32 }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-2)', minWidth: 0 }}>{m.lastAt ? `Última ação ${ago(m.lastAt)}` : 'Sem ações no período'}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-2)', minWidth: 0 }}>{m.lastAt ? `Última ação ${ago(m.lastAt)}` : 'Sem ações no período'}{m.pending > 0 && <><br /><span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{plural(m.pending, 'justificativa pendente', 'justificativas pendentes')}</span></>}</span>
                     <Sparkline data={m.daily} width={112} height={32} color={paletteAt(i)} />
                   </div>
 
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button type="button" className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => onOpen(m.id)}>
-                      <ArrowRight size={16} strokeWidth={1.75} /> Ver perfil
+                    <button type="button" className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => onOpen(m.id, m.pending > 0 ? 'justificativas' : undefined)}>
+                      <ArrowRight size={16} strokeWidth={1.75} /> {m.pending > 0 ? 'Ver justificativas' : 'Ver perfil'}
                     </button>
                     <button type="button" className="btn btn-outline btn-icon btn-sm" onClick={() => onEdit(m.id)} aria-label={`Editar ${m.name}`} title="Editar gestor"><Pencil size={16} strokeWidth={1.75} /></button>
                   </div>
@@ -279,8 +281,8 @@ function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData;
   )
 }
 
-function ProfileView({ id, period, tick, onEdit }: { id: string; period: Period; tick: number; onEdit: () => void }) {
-  const [tab, setTab] = useState<'geral' | 'timeline' | 'clientes'>('geral')
+function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: string; period: Period; tick: number; pending: number; initialTab: string | null; onEdit: () => void }) {
+  const [tab, setTab] = useState<'geral' | 'timeline' | 'clientes' | 'justificativas'>(initialTab === 'justificativas' ? 'justificativas' : 'geral')
   const [scope, setScope] = useState<'accounts' | 'actor'>('accounts')
   const [client, setClient] = useState('')
   const [kind, setKind] = useState('')
@@ -329,7 +331,7 @@ function ProfileView({ id, period, tick, onEdit }: { id: string; period: Period;
         </p>
       )}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <SubTabs value={tab} onChange={setTab} tabs={[{ key: 'geral', label: 'Visão geral' }, { key: 'timeline', label: 'Linha do tempo' }, { key: 'clientes', label: 'Clientes' }]} />
+        <SubTabs value={tab} onChange={setTab} tabs={[{ key: 'geral', label: 'Visão geral' }, { key: 'justificativas', label: pending > 0 ? `Justificativas (${pending})` : 'Justificativas' }, { key: 'timeline', label: 'Linha do tempo' }, { key: 'clientes', label: 'Clientes' }]} />
         {client && <button type="button" className="badge" onClick={() => setClient('')} title="Tirar este filtro" style={{ cursor: 'pointer', background: 'var(--accent-soft)', color: 'var(--text-1)', fontSize: 12, gap: 6, marginLeft: 'auto' }}>Cliente: {data.clients.find(c => c.slug === client)?.name ?? client} <X size={12} /></button>}
       </div>
 
@@ -374,6 +376,8 @@ function ProfileView({ id, period, tick, onEdit }: { id: string; period: Period;
           </div>
         </>
       )}
+
+      {tab === 'justificativas' && <TaskPanel managerId={id} />}
 
       {tab === 'timeline' && (
         <section className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>

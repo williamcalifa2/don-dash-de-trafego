@@ -11,6 +11,7 @@ export async function POST(req: NextRequest) {
   const denied = await requireRole(req, 'admin')
   if (denied) return denied
   if (!allow('managers-sync', 3, 60_000)) return NextResponse.json({ ok: true, throttled: true })
-  const r = await syncMetaActivity({ budgetMs: 50_000 })
+  // ?auto=1 (a página aberta pedindo sozinha) lê só as contas mais atrasadas; o botão de atualizar lê todas.
+  const r = await syncMetaActivity({ budgetMs: 50_000, ...(req.nextUrl.searchParams.get('auto') === '1' ? { limit: 6 } : {}) })
   return NextResponse.json({ ok: true, ...r })
 }

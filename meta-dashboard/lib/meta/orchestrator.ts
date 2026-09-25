@@ -148,9 +148,17 @@ export async function workQueue(d: OrchDeps, report: CycleReport, startedAt: num
     const job = await d.jobs.claim(d.now(), d.cfg.jobLeaseSec * 1000, d.cfg.workerGlobalConcurrency)
     if (!job) break
     const acc = (await d.accounts()).find(a => a.clientId === job.clientId)
+    // Cliente pausado (ou sem conta de anúncios) não está na lista de contas ativas: não há o que coletar. Encerra o job em vez de mandá-lo à dead-letter,
+    // que reabria o mesmo job a cada poucos minutos e mantinha o alerta vermelho por algo que não é falha.
+    if (!acc) {
+      await d.jobs.complete(job.id, d.now())
+      report.processed++
+      report.outcomes.push({ kind: job.kind, clientId: job.clientId, status: 'deferred', reason: 'cliente pausado ou sem conta de anúncios' })
+      continue
+    }
     let outcome: CollectOutcome
     try {
-      outcome = acc ? await collectors[job.kind](d.collect, acc) : { status: 'failed', error: 'conta não encontrada', calls: 0 }
+      outcome = await collectors[job.kind](d.collect, acc)
     } catch (e) {
       outcome = { status: 'failed', error: e instanceof Error ? e.message : 'erro', calls: 0 }
     }

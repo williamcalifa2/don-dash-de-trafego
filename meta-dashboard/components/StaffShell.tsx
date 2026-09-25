@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Building2, FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, KeyRound, PanelLeftClose, Puzzle, PanelLeftOpen, Users, X } from 'lucide-react'
+import { Building2, FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, ClipboardCheck, KeyRound, PanelLeftClose, Puzzle, PanelLeftOpen, Users, X } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import type { Me } from '@/components/ProfileMenu'
 import { PulseLoader } from '@/components/PulseLoader'
@@ -13,10 +13,11 @@ export const STAFF_EVENT = 'staff-open'
 const ROLE_KEY = 'staff_role'
 const COLLAPSE_KEY = 'staff_sidebar_collapsed'
 
-function Item({ icon, label, onClick, active, collapsed }: { icon: React.ReactNode; label: string; onClick: () => void; active?: boolean; collapsed: boolean }) {
+function Item({ icon, label, onClick, active, collapsed, badge }: { icon: React.ReactNode; label: string; onClick: () => void; active?: boolean; collapsed: boolean; /** número de pendências ao lado do nome */ badge?: number }) {
   return (
-    <button type="button" className="staff-item" aria-current={active ? 'page' : undefined} onClick={onClick} title={collapsed ? label : undefined}>
-      <span className="staff-icon" aria-hidden="true">{icon}</span><span className="staff-label">{label}</span>
+    <button type="button" className="staff-item" aria-current={active ? 'page' : undefined} onClick={onClick} title={collapsed ? (badge ? `${label} (${badge})` : label) : undefined}>
+      <span className="staff-icon" aria-hidden="true" style={{ position: 'relative' }}>{icon}{collapsed && !!badge && <i style={{ position: 'absolute', top: -2, right: -3, width: 8, height: 8, borderRadius: '50%', background: 'var(--amber)' }} />}</span><span className="staff-label">{label}</span>
+      {!!badge && <span className="staff-label" aria-label={`${badge} pendentes`} style={{ marginLeft: 'auto', minWidth: 20, height: 20, padding: '0 6px', borderRadius: 999, background: 'var(--amber)', color: '#000', fontSize: 11, fontWeight: 700, display: 'inline-grid', placeItems: 'center' }}>{badge}</span>}
     </button>
   )
 }
@@ -46,6 +47,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
     if (role) { setMe(cur => cur ?? { role, name: '', email: '', avatar: null }); setKnown(true) }
   }, [])
   const [collapsed, setCollapsed] = useState(false)
+  const [tasks, setTasks] = useState<{ managerId: string | null; pending: number }>({ managerId: null, pending: 0 })
   const [drawer, setDrawer] = useState(false)
   const [navigating, setNavigating] = useState(false)
   useEffect(() => { setNavigating(false) }, [pathname])
@@ -61,6 +63,14 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
     }).catch(() => { if (alive) setKnown(true) })
     return () => { alive = false }
   }, [])
+
+  // Justificativas pendentes de quem está logado (pelo e-mail de login do gestor): aparece como aviso no menu.
+  useEffect(() => {
+    if (!known || !me) return
+    let alive = true
+    apiFetch('/api/admin/tasks/summary', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((j: { managerId: string | null; pending: number } | null) => { if (alive && j) setTasks(j) }).catch(() => { })
+    return () => { alive = false }
+  }, [known, me, pathname])
 
   const toggleCollapse = () => setCollapsed(c => { const n = !c; try { localStorage.setItem(COLLAPSE_KEY, n ? '1' : '0') } catch { } return n })
 
@@ -96,6 +106,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
 
         <nav aria-label="Menu da agência" className="staff-nav">
           <Item collapsed={collapsed} icon={<LayoutGrid size={18} strokeWidth={1.75} />} label="Painel" active={onPanel} onClick={() => { setDrawer(false); if (!onPanel) go('/admin'); else window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
+          {tasks.managerId && <Item collapsed={collapsed} icon={<ClipboardCheck size={18} strokeWidth={1.75} />} label="Justificativas" badge={tasks.pending} active={pathname.startsWith('/admin/tarefas')} onClick={() => { setDrawer(false); go('/admin/tarefas') }} />}
           <div className="staff-group">Administração</div>
           {canOperate && <Item collapsed={collapsed} icon={<Building2 size={18} strokeWidth={1.75} />} label="Clientes" onClick={() => open('clients')} />}
           {canManage && <Item collapsed={collapsed} icon={<Users size={18} strokeWidth={1.75} />} label="Equipe" active={onTeam} onClick={() => { setDrawer(false); go('/admin/equipe') }} />}
