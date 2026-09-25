@@ -11,7 +11,7 @@ import { PulseLoader } from './PulseLoader'
 import { SubTabs, Thumb, plural } from './UsageUi'
 
 export type TaskView = Task & { clientName: string; clientLogo: string | null }
-interface ClientSummary { slug: string; name: string; logo: string | null; pending: number; answered: number; lastAt: string; headline: string }
+interface ClientSummary { slug: string; name: string; logo: string | null; pending: number; answered: number; lastAt: string; headline: string; accountManager?: string | null }
 interface TasksData {
   setup: 'ready' | 'tables' | 'columns' | 'error'
   manager: { id: string; name: string } | null
@@ -133,6 +133,7 @@ function ClientCard({ c, onOpen }: { c: ClientSummary; onOpen: () => void }) {
         <Thumb name={c.name} src={c.logo} size={40} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <h3 title={c.name} style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</h3>
+          {c.accountManager && <div title={`Essa conta é da carteira de ${c.accountManager}. As alterações foram feitas por quem está nesta lista, então a justificativa fica com ele.`} style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Conta de {c.accountManager}</div>}
         </div>
         <span className="badge" style={{ background: done ? 'var(--green-soft)' : 'rgba(245, 158, 11, 0.15)', color: 'var(--text-1)', flexShrink: 0 }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: done ? 'var(--green)' : 'var(--amber)' }} />{done ? 'Em dia' : 'Pendente'}
