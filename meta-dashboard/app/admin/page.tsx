@@ -664,25 +664,27 @@ function useLockBodyScroll() {
 }
 
 /** Foto da página do Facebook ligada à conta; sem foto (ou se falhar carregar) mostra as iniciais. */
-function PageImage({ page, size = 40 }: { page: MetaOption['page']; size?: number }) {
+function PageImage({ page, size = 40, square }: { page: MetaOption['page']; size?: number; square?: boolean }) {
   const [broken, setBroken] = useState(false)
   if (page?.picture && !broken) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={page.picture} alt="" title={page.name} onError={() => setBroken(true)} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, background: 'var(--bg-card2)' }} />
+    return <img src={page.picture} alt="" title={page.name} onError={() => setBroken(true)} style={{ width: size, height: size, borderRadius: square ? 8 : '50%', objectFit: 'cover', flexShrink: 0, background: 'var(--bg-card2)' }} />
   }
-  return <span aria-hidden="true" title={page?.name} style={{ width: size, height: size, borderRadius: '50%', background: 'var(--bg-card2)', color: 'var(--text-2)', display: 'grid', placeItems: 'center', fontSize: Math.round(size * 0.36), fontWeight: 700, flexShrink: 0 }}>{page?.name ? page.name.slice(0, 1).toUpperCase() : '—'}</span>
+  return <span aria-hidden="true" title={page?.name} style={{ width: size, height: size, borderRadius: square ? 8 : '50%', background: 'var(--bg-card2)', color: 'var(--text-2)', display: 'grid', placeItems: 'center', fontSize: Math.round(size * 0.36), fontWeight: 700, flexShrink: 0 }}>{page?.name ? page.name.slice(0, 1).toUpperCase() : '—'}</span>
 }
 
-/** "Selecionar conta": abre uma janela com as contas de anúncios (nome, número embaixo e a foto da página ao lado). */
+/** "Selecionar conta": abre uma janela com as contas de anúncios em duas colunas: caixinha, foto da página, nome e o número embaixo. */
 function AccountPicker({ accounts, value, onPick }: { accounts: MetaOption[]; value: string; onPick: (a: MetaOption | null) => void }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
+  const [sel, setSel] = useState(value)
   const picked = accounts.find(a => a.id === value) ?? null
   const norm = (t: string) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   const shown = accounts.filter(a => !q.trim() || norm(`${a.name} ${a.id} ${a.page?.name ?? ''}`).includes(norm(q.trim())))
+  const confirm = () => { onPick(accounts.find(a => a.id === sel) ?? null); setOpen(false) }
   return (
     <>
-      <button type="button" id="c-acc" className="btn btn-outline" onClick={() => { setQ(''); setOpen(true) }} aria-haspopup="dialog"
+      <button type="button" id="c-acc" className="btn btn-outline" onClick={() => { setQ(''); setSel(value); setOpen(true) }} aria-haspopup="dialog"
         style={{ width: '100%', justifyContent: 'flex-start', gap: 12, height: picked ? 56 : 40, textAlign: 'left' }}>
         {picked && <PageImage page={picked.page} size={32} />}
         <span style={{ flex: 1, minWidth: 0 }}>
@@ -693,28 +695,33 @@ function AccountPicker({ accounts, value, onPick }: { accounts: MetaOption[]; va
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', flexShrink: 0 }}>{picked || value ? 'Trocar' : ''}</span>
       </button>
       {open && (
-        <ModalShell title="Selecionar conta de anúncios" onClose={() => setOpen(false)} maxWidth={520}>
+        <ModalShell title="Selecionar conta de anúncios" onClose={() => setOpen(false)} maxWidth={780}>
           <label className="search" style={{ height: 36 }}>
             <Search size={16} color="var(--text-2)" strokeWidth={1.75} aria-hidden="true" />
             <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por nome, número ou página" aria-label="Buscar conta" />
           </label>
-          <div role="listbox" aria-label="Contas de anúncios" style={{ display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', maxHeight: 'min(52vh, 420px)', margin: '0 -8px', padding: '0 8px' }}>
+          <div role="listbox" aria-label="Contas de anúncios" className="acc-grid">
             {shown.map(a => {
-              const on = a.id === value
+              const on = a.id === sel
               return (
-                <button key={a.id} type="button" role="option" aria-selected={on} onClick={() => { onPick(a); setOpen(false) }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '10px 12px', borderRadius: 12, border: `1px solid ${on ? 'var(--accent)' : 'transparent'}`, background: on ? 'var(--accent-soft)' : 'none', color: 'inherit', font: 'inherit', cursor: 'pointer' }}>
+                <button key={a.id} type="button" role="option" aria-selected={on} onClick={() => setSel(on ? '' : a.id)} onDoubleClick={() => { onPick(a); setOpen(false) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, textAlign: 'left', padding: '10px 12px', borderRadius: 12, border: `1px solid ${on ? 'var(--accent)' : 'var(--border-soft)'}`, background: on ? 'var(--accent-soft)' : 'transparent', color: 'inherit', font: 'inherit', cursor: 'pointer' }}>
+                  <span aria-hidden="true" style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-input)'}`, background: on ? 'var(--accent)' : 'transparent', display: 'grid', placeItems: 'center', flexShrink: 0 }}>{on && <Check size={12} strokeWidth={3} color="#fff" />}</span>
+                  <PageImage page={a.page} size={36} square />
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
-                    <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>{a.id}{a.currency ? ` · ${a.currency}` : ''}</span>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={a.name}>{a.name}</span>
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>{a.id}</span>
                   </span>
-                  <PageImage page={a.page} size={40} />
                 </button>
               )
             })}
-            {shown.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-2)', padding: 12, margin: 0 }}>Nenhuma conta encontrada.</p>}
+            {shown.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-2)', padding: 12, margin: 0, gridColumn: '1 / -1' }}>Nenhuma conta encontrada.</p>}
           </div>
-          {value && <div style={{ display: 'flex', justifyContent: 'flex-end' }}><button type="button" className="btn btn-ghost btn-sm" onClick={() => { onPick(null); setOpen(false) }}>Limpar seleção</button></div>}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
+            {value && <button type="button" className="btn btn-ghost btn-sm" style={{ marginRight: 'auto' }} onClick={() => { onPick(null); setOpen(false) }}>Limpar seleção</button>}
+            <button type="button" className="btn btn-outline" onClick={() => setOpen(false)}>Voltar</button>
+            <button type="button" className="btn btn-primary" onClick={confirm} disabled={!sel || sel === value}>Continuar</button>
+          </div>
         </ModalShell>
       )}
     </>
@@ -772,6 +779,20 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  // Gestor responsável (obrigatório quando já existem gestores cadastrados)
+  const [managers, setManagers] = useState<{ ready: boolean; list: Array<{ id: string; name: string }> } | null>(null)
+  const [managerId, setManagerId] = useState('')
+  useEffect(() => {
+    let alive = true
+    api<{ ready: boolean; managers: Array<{ id: string; name: string }>; byClient: Record<string, string> }>('/api/admin/managers/options').then(r => {
+      if (!alive || !r.ok) return
+      setManagers({ ready: r.data.ready, list: r.data.managers })
+      if (initial?.slug && r.data.byClient[initial.slug]) setManagerId(r.data.byClient[initial.slug])
+    })
+    return () => { alive = false }
+  }, [initial?.slug])
+  const needsManager = !!managers?.ready && managers.list.length > 0
+
   // Status Ativo/Pausado da conta
   const [active, setActive] = useState<boolean>(initial?.active !== false)
   // "Tem e-commerce?": libera a aba E-commerce e a integração com a loja para este cliente
@@ -795,7 +816,8 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
     e.preventDefault()
     setSaving(true)
     setError(null)
-    const payload = { name, slug, adAccountId, pageId, logoUrl }
+    if (needsManager && !managerId) { setSaving(false); setError('Selecione o gestor responsável.'); return }
+    const payload = { name, slug, adAccountId, pageId, logoUrl, ...(needsManager || managerId ? { managerId: managerId || null } : {}) }
     const r = initial
       ? await api(`/api/admin/clients/${initial.slug}`, 'PATCH', payload)
       : await api<{ slug: string; code: string }>('/api/admin/clients', 'POST', payload)
@@ -881,6 +903,18 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
               onChange={e => { setSlug(slugify(e.target.value)); setSlugTouched(true) }} />
             {baseDomain && <span style={{ fontSize: 14, color: 'var(--text-2)' }}>.{baseDomain}</span>}
           </div>
+        </div>
+      )}
+
+      {managers?.ready && (
+        <div>
+          <label htmlFor="c-mgr" style={labelStyle}>Gestor responsável{needsManager ? '' : ' (opcional)'}</label>
+          {managers.list.length > 0
+            ? <select id="c-mgr" className="field" value={managerId} onChange={e => setManagerId(e.target.value)} required={needsManager}>
+              <option value="">Selecione…</option>
+              {managers.list.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+            : <p style={{ fontSize: 12, color: 'var(--text-2)', margin: 0 }}>Nenhum gestor cadastrado ainda. Cadastre em Equipe para escolher o responsável.</p>}
         </div>
       )}
 

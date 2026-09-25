@@ -7,6 +7,7 @@ import { syncLeads } from '@/lib/metaLeads'
 import { liveOrigin } from '@/lib/meta/mode'
 import { logStaffActivity } from '@/lib/activityLog'
 import { duplicateOf, normName } from '@/lib/clientsDup'
+import { assignClient, loadRegistry } from '@/lib/managersStore'
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const denied = await requireRole(req, 'admin')
@@ -37,7 +38,14 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ slug: str
     if (!logo.ok) return NextResponse.json({ error: logo.error }, { status: 400 })
     if (!logo.unchanged) update.logo_url = logo.value
   }
-  if (!Object.keys(update).length) return NextResponse.json({ error: 'Nada para atualizar.' }, { status: 400 })
+  // Trocar o gestor responsável (nulo tira o cliente da carteira).
+  let newManager: string | null | undefined
+  if ('managerId' in b) {
+    newManager = clean(b.managerId)
+    const reg = await loadRegistry().catch(() => null)
+    if (newManager && (!reg || !reg.managers.some(m => m.id === newManager))) return NextResponse.json({ error: 'Gestor não encontrado.' }, { status: 400 })
+  }
+  if (!Object.keys(update).length && newManager === undefined) return NextResponse.json({ error: 'Nada para atualizar.' }, { status: 400 })
 
   // Não deixa dois clientes com o mesmo nome ou a mesma conta de anúncios.
   if ('display_name' in update || 'ad_account_id' in update) {
@@ -47,9 +55,10 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ slug: str
     if (dup) return NextResponse.json({ error: dup }, { status: 409 })
   }
 
-  const { error } = await db.from('clients').update(update).eq('slug', slug)
+  const { error } = Object.keys(update).length ? await db.from('clients').update(update).eq('slug', slug) : { error: null }
   clearClientCache()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (newManager !== undefined) await assignClient(slug, newManager)
 
   // Se a conta de anúncios ou a página mudou, já importa os leads do Meta.
   let imported: number | null = null

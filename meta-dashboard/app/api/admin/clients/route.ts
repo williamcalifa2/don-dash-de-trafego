@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { duplicateOf } from '@/lib/clientsDup'
+import { assignClient, loadRegistry } from '@/lib/managersStore'
 import { requireAdmin, requireRole, requireServiceKey } from '@/lib/admin'
 import { getSupabaseServer, serviceKeyStatus } from '@/lib/supabase'
 import { clearClientCache, tenantBySlug } from '@/lib/tenant'
@@ -168,6 +169,12 @@ export async function POST(req: NextRequest) {
   if (pageId && !/^\d{5,25}$/.test(pageId)) return NextResponse.json({ error: 'ID da página inválido (só números).' }, { status: 400 })
   if (!logo.ok) return NextResponse.json({ error: logo.error }, { status: 400 })
 
+  // Gestor responsável: com gestores cadastrados, é obrigatório escolher um.
+  const managerId = clean(b.managerId)
+  const reg = await loadRegistry().catch(() => null)
+  if (reg?.managers.length && !managerId) return NextResponse.json({ error: 'Selecione o gestor responsável.' }, { status: 400 })
+  if (managerId && (!reg || !reg.managers.some(m => m.id === managerId))) return NextResponse.json({ error: 'Gestor não encontrado.' }, { status: 400 })
+
   const { data: all } = await db.from('clients').select('slug,display_name,ad_account_id')
   const dup = duplicateOf(((all ?? []) as Array<{ slug: string; display_name: string | null; ad_account_id: string | null }>).map(c => ({ slug: c.slug, name: c.display_name ?? c.slug, adAccountId: c.ad_account_id })), { slug, name, adAccountId })
   if (dup) return NextResponse.json({ error: dup }, { status: 409 })
@@ -183,6 +190,7 @@ export async function POST(req: NextRequest) {
   if (error && /null value in column "name"/i.test(error.message)) ({ error } = await db.from('clients').insert({ ...row, name }))
   clearClientCache()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (managerId) await assignClient(slug, managerId)
 
   // Já traz do Meta os leads dos últimos 30 dias (se falhar, o cliente continua criado e o cron importa depois).
   let imported: number | null = null
