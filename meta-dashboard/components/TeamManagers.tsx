@@ -9,11 +9,12 @@ import { fileToLogoDataUrl } from '@/lib/resizeLogo'
 import { KIND_LABEL, KINDS, type ActivityKind } from '@/lib/managers'
 import { useTheme } from '@/lib/useTheme'
 import { MetricTile } from './MetricTile'
+import { Sparkline } from './Sparkline'
 import { ProfileMenu } from './ProfileMenu'
 import { PulseLoader } from './PulseLoader'
 import { StaffShell } from './StaffShell'
 import { BarChart, ListCard, PagedRows, PeriodPicker, RankRow, SubTabs, Thumb, plural, type Period } from './UsageUi'
-import { ChartCard, DonutChart, KIND_COLOR, MiniBars, paletteAt, topSlices, type Slice } from './Donut'
+import { ChartCard, DonutChart, KIND_COLOR, paletteAt, topSlices, type Slice } from './Donut'
 
 const KIND_ICON: Record<ActivityKind, React.ReactNode> = {
   status: <ToggleRight size={18} strokeWidth={1.75} />, budget: <Wallet size={18} strokeWidth={1.75} />, audience: <Users size={18} strokeWidth={1.75} />, creative: <ImageIcon size={18} strokeWidth={1.75} />,
@@ -37,6 +38,7 @@ interface Profile {
 }
 interface Actor { id: string; name: string; n: number; manager: string | null }
 
+const eyebrow: React.CSSProperties = { fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)' }
 const pad = (n: number) => String(n).padStart(2, '0')
 const hm = (iso: string) => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}` }
 const dayLabel = (iso: string) => {
@@ -128,7 +130,7 @@ export function TeamManagers() {
         {!list && !failed && <PulseLoader size={44} />}
         {list?.setup === 'tables' && sqlHint}
 
-        {list?.setup === 'ready' && !current && !sel && <Overview list={list} onOpen={open} onNew={() => setEditing('new')} onAssigned={load} />}
+        {list?.setup === 'ready' && !current && !sel && <Overview list={list} onOpen={open} onEdit={id => setEditing({ id })} onNew={() => setEditing('new')} onAssigned={load} />}
         {list?.setup === 'ready' && sel && !current && <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>Gestor não encontrado.</div>}
         {list?.setup === 'ready' && current && <ProfileView key={current.id} id={current.id} period={period} tick={tick} onEdit={() => setEditing({ id: current.id })} />}
       </main>
@@ -143,7 +145,7 @@ export function TeamManagers() {
   )
 }
 
-function Overview({ list, onOpen, onNew, onAssigned }: { list: ListData; onOpen: (id: string) => void; onNew: () => void; onAssigned: () => void }) {
+function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData; onOpen: (id: string) => void; onEdit: (id: string) => void; onNew: () => void; onAssigned: () => void }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [today] = useState(() => Date.now())
   async function assign(slug: string, managerId: string) {
@@ -189,40 +191,48 @@ function Overview({ list, onOpen, onNew, onAssigned }: { list: ListData; onOpen:
               <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Gestores</h2>
               <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '2px 0 0' }}>Clique em um gestor para abrir o perfil, com o que ele fez em cada cliente</p>
             </div>
-          <div className="usage-grid">
-            {list.managers.map((m, i) => (
-              <button key={m.id} type="button" className="card" onClick={() => onOpen(m.id)} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ position: 'relative', display: 'inline-flex' }}>
-                    <Thumb name={m.name} src={m.avatarUrl} size={48} />
-                    <i aria-hidden="true" style={{ position: 'absolute', right: -1, bottom: -1, width: 12, height: 12, borderRadius: '50%', background: paletteAt(i), border: '2px solid var(--bg-card)' }} />
-                  </span>
-                  <span style={{ minWidth: 0, flex: 1 }}>
-                    <span style={{ display: 'block', fontSize: 15, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
-                    <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>{plural(m.clients.length, 'cliente', 'clientes')}{m.lastAt ? ` · última ação ${ago(m.lastAt)}` : ' · sem ações no período'}</span>
-                  </span>
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <DonutChart size={92} thickness={20} legend={false} slices={m.byKind.map(k => ({ key: k.kind, label: KIND_LABEL[k.kind], value: k.n, color: KIND_COLOR[k.kind] }))} center={String(m.actions)} />
-                  <span style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 12px' }}>
-                    {([['Ações', String(m.actions)], ['Otimizações', String(m.optimizations)], ['No painel', m.activeSec == null ? '—' : shortDur(m.activeSec)], ['Clientes', String(m.clients.length)]] as const).map(([l, v]) => (
-                      <span key={l} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)' }}>{l}</span>
-                        <span style={{ fontSize: 17, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
-                      </span>
+          <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
+            {list.managers.map((m, i) => {
+              const active = m.actions > 0
+              return (
+                <article key={m.id} className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+                      <Thumb name={m.name} src={m.avatarUrl} size={40} />
+                      <i aria-hidden="true" style={{ position: 'absolute', right: -1, bottom: -1, width: 11, height: 11, borderRadius: '50%', background: paletteAt(i), border: '2px solid var(--bg-card)' }} />
+                    </span>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <h3 title={m.name} style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</h3>
+                      <div style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{plural(m.clients.length, 'cliente', 'clientes')}</div>
+                    </div>
+                    <span className="badge" style={{ background: active ? 'var(--green-soft)' : 'rgba(245, 158, 11, 0.15)', color: 'var(--text-1)', flexShrink: 0 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: active ? 'var(--green)' : 'var(--amber)' }} />{active ? 'Ativo' : 'Sem ações'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '14px 12px' }}>
+                    {([['Ações', String(m.actions)], ['Otimizações', String(m.optimizations)], ['No painel', m.activeSec == null ? '—' : shortDur(m.activeSec)]] as const).map(([l, v]) => (
+                      <div key={l} style={{ minWidth: 0 }}>
+                        <div style={{ ...eyebrow, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l}</div>
+                        <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{v}</div>
+                      </div>
                     ))}
-                  </span>
-                </span>
-                {m.daily.length > 1 && (
-                  <span style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)' }}>Ações por dia</span>
-                    <MiniBars values={m.daily} color={paletteAt(i)} title={(d, v) => `${plural(v, 'ação', 'ações')} · ${m.daily.length - d - 1 === 0 ? 'hoje' : `há ${m.daily.length - d - 1} d`}`} />
-                  </span>
-                )}
-                <span style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.clients.length ? m.clients.slice(0, 4).map(c => c.name).join(', ') + (m.clients.length > 4 ? ` +${m.clients.length - 4}` : '') : 'Nenhum cliente na carteira'}</span>
-                <span className="btn btn-outline btn-sm" style={{ justifyContent: 'center', gap: 8, pointerEvents: 'none' }}>Ver perfil <ArrowRight size={14} strokeWidth={1.75} /></span>
-              </button>
-            ))}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 32 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-2)', minWidth: 0 }}>{m.lastAt ? `Última ação ${ago(m.lastAt)}` : 'Sem ações no período'}</span>
+                    <Sparkline data={m.daily} width={112} height={32} color={paletteAt(i)} />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button type="button" className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => onOpen(m.id)}>
+                      <ArrowRight size={16} strokeWidth={1.75} /> Ver perfil
+                    </button>
+                    <button type="button" className="btn btn-outline btn-icon btn-sm" onClick={() => onEdit(m.id)} aria-label={`Editar ${m.name}`} title="Editar gestor"><Pencil size={16} strokeWidth={1.75} /></button>
+                  </div>
+                </article>
+              )
+            })}
           </div>
           </div>
           <div className="usage-grid">
