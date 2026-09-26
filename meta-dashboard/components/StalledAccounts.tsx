@@ -8,7 +8,7 @@ import { FilterField, FilterPicker, ListCard, PagedRows, RankRow, Thumb } from '
 
 interface Data { setup: 'ready' | 'tables'; rows: StalledRow[]; byManager: Array<{ id: string; name: string; n: number }>; lookbackDays: number }
 
-const BY: Array<[StalledBy, string]> = [['any', 'Sem ação e sem abrir'], ['action', 'Sem ação'], ['access', 'Sem abrir no painel']]
+const BY: Array<[StalledBy, string]> = [['any', 'Sem ação e sem abrir'], ['action', 'Sem ação'], ['access', 'Sem abrir (painel ou Gerenciador)']]
 const DEFAULT_DAYS = 3
 const dias = (d: number | null) => (d == null ? 'nunca' : d === 0 ? 'hoje' : `há ${d} d`)
 

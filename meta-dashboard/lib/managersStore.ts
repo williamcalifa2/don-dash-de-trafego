@@ -198,7 +198,7 @@ export async function timeByEmail(emails: string[], sinceIso: string): Promise<M
   return out
 }
 
-/** Última vez que cada gestor (pelo e-mail de login) abriu cada cliente no painel: a última atividade das sessões em que passou pelo cliente. */
+/** Última vez que cada gestor (pelo e-mail de login) abriu cada cliente: no painel (última atividade das sessões em que passou pelo cliente) ou no Gerenciador da Meta (extensão do navegador). */
 export async function lastAccessByEmail(emails: string[], sinceIso: string): Promise<Map<string, string>> {
   const out = new Map<string, string>()
   const db = getSupabaseServer()
@@ -215,6 +215,12 @@ export async function lastAccessByEmail(emails: string[], sinceIso: string): Pro
       const key = `${s.email}|${v.client_slug}`
       if (!out.get(key) || s.seen > out.get(key)!) out.set(key, s.seen)
     }
+  }
+  // Gerenciador da Meta, avisado pela extensão. Sem a tabela (SQL não rodou) segue só com o painel.
+  const { data: ext } = await db.from('account_visits').select('user_key,client_slug,last_seen').in('user_key', emails).gte('last_seen', sinceIso).limit(20000)
+  for (const v of (ext ?? []) as Array<{ user_key: string; client_slug: string; last_seen: string }>) {
+    const key = `${v.user_key}|${v.client_slug}`
+    if (!out.get(key) || v.last_seen > out.get(key)!) out.set(key, v.last_seen)
   }
   return out
 }

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Grupo Don</title>
+<style>
+  body{margin:0;width:300px;font:13px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#0f172a;background:#fff}
+  .w{padding:16px;display:flex;flex-direction:column;gap:12px}
+  h1{font-size:15px;margin:0}
+  p{margin:0;color:#475569;font-size:12px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  label.f{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:12px}
+  input[type=password],input[type=text]{height:34px;padding:0 10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}
+  button{height:34px;border:0;border-radius:8px;background:#5b6cf0;color:#fff;font:600 13px system-ui;cursor:pointer}
+  #st{font-size:12px;min-height:16px}
+  .ok{color:#15803d}.bad{color:#b91c1c}
+  input[type=checkbox]{width:36px;height:20px;accent-color:#5b6cf0}
+</style></head>
+<body><div class="w">
+  <h1>Grupo Don · Contas de anúncios</h1>
+  <p>Avisa o painel quando você abre uma conta de cliente no Gerenciador da Meta. Só o endereço da aba é lido.</p>
+  <div class="row"><strong>Ligada</strong><input id="on" type="checkbox" aria-label="Ligar ou desligar"></div>
+  <label class="f">Seu token pessoal<input id="tk" type="password" autocomplete="off" placeholder="Copie no painel: Extensão"></label>
+  <button id="save">Salvar e testar</button>
+  <div id="st" role="status"></div>
+</div><script src="popup.js"></script></body></html>

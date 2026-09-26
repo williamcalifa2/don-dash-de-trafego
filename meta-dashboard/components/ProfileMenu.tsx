@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { LogOut, Moon, Settings, Sun, X } from 'lucide-react'
+import { LogOut, Moon, Puzzle, Settings, Sun, X } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import { fileToLogoDataUrl } from '@/lib/resizeLogo'
 import { useTheme } from '@/lib/useTheme'
@@ -109,6 +109,7 @@ export function ProfileMenu({ align = 'right' }: { align?: 'left' | 'right' }) {
             <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{ROLE_LABEL[me.role] ?? me.role}</div>
           </div>
           <button role="menuitem" className="popover-item" style={item} onClick={() => { setMenu(false); setProfile(true) }}><Settings size={15} strokeWidth={1.75} /> Configurações</button>
+          <button role="menuitem" className="popover-item" style={item} onClick={() => { setMenu(false); window.location.assign('/admin/extensao') }}><Puzzle size={15} strokeWidth={1.75} /> Extensão do navegador</button>
           <button role="menuitem" className="popover-item" style={item} onClick={logout}><LogOut size={15} strokeWidth={1.75} /> Sair</button>
         </div>
       )}

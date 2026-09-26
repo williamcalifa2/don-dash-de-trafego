@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Grupo Don · Contas de anúncios",
+  "version": "1.0.0",
+  "description": "Avisa o painel da Grupo Don quando você abre uma conta de anúncios de cliente no Gerenciador da Meta. Lê só o endereço da aba.",
+  "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "action": { "default_title": "Grupo Don", "default_popup": "popup.html", "default_icon": { "16": "icons/16.png", "32": "icons/32.png" } },
+  "permissions": ["storage"],
+  "host_permissions": ["https://business.facebook.com/*", "https://adsmanager.facebook.com/*", "https://dashboard.dondigital.com.br/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    { "matches": ["https://business.facebook.com/*", "https://adsmanager.facebook.com/*"], "js": ["content.js"], "run_at": "document_idle" }
+  ]
+}
