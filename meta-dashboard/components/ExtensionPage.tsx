@@ -5,6 +5,7 @@ import { Check, Copy, Download, Eye, EyeOff } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import { StaffShell } from './StaffShell'
 import { ProfileMenu } from './ProfileMenu'
+import { AccessCard } from './AccessCard'
 
 /** Extensão do navegador: baixar, instalar e copiar o token pessoal. */
 export function ExtensionPage() {
@@ -50,6 +51,8 @@ export function ExtensionPage() {
             {step(4, <>Volte a esta página (ou a qualquer tela do painel) com o seu login: a extensão se conecta <strong>sozinha</strong> em alguns segundos. O ícone dela mostra &quot;Conectada como …&quot;.</>)}
           </ol>
         </section>
+
+        <div style={{ marginTop: 16 }}><AccessCard own /></div>
 
         <section className="card" style={{ padding: 20, marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>

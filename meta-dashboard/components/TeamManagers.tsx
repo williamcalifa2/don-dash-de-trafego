@@ -16,6 +16,7 @@ import { PulseLoader } from './PulseLoader'
 import { StaffShell } from './StaffShell'
 import { StalledAccounts } from './StalledAccounts'
 import { ManagersAudit } from './ManagersAudit'
+import { AccessCard } from './AccessCard'
 import { BarChart, ListCard, PagedRows, PeriodPicker, RankRow, SubTabs, Thumb, plural, type Period } from './UsageUi'
 import { ChartCard, DonutChart, KIND_COLOR, paletteAt, topSlices, type Slice } from './Donut'
 
@@ -296,6 +297,7 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
             ))} />
           </ListCard>
         )}
+        {list.managers.length > 0 && <AccessCard onOpenManager={id => onOpen(id)} />}
         {list.managers.length > 0 && <StalledAccounts onOpenManager={id => onOpen(id)} />}
         <ManagersAudit onFixed={onAssigned} />
       </div>
@@ -392,6 +394,7 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
                 <RankRow key={c.slug} lead={<Thumb name={c.name} />} title={c.name} sub={c.daysIdle == null ? 'Nenhuma ação registrada' : `Última ação ${ago(c.lastAt!)}`} value={c.daysIdle == null ? '—' : `${c.daysIdle} d`} valueTone="plain" onClick={() => goClient(c.slug)} chevron />
               ))} />
             </ListCard>
+            <AccessCard manager={id} />
             <ListCard icon={<Activity size={18} strokeWidth={1.75} />} title="Últimas ações" hint="As mais recentes nas contas dele">
               <PagedRows size={4} empty={none('Nenhuma ação neste período.')} rows={timelineRows.slice(0, 12)} />
             </ListCard>
