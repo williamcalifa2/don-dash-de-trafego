@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { ExtensionLink } from './ExtensionLink'
-import { Building2, FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, ClipboardCheck, Gauge, Receipt, PanelLeftClose, Puzzle, PanelLeftOpen, Users, X } from 'lucide-react'
+import { Building2, FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, ClipboardCheck, Gauge, Receipt, Radar, PanelLeftClose, Puzzle, PanelLeftOpen, Users, X } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import type { Me } from '@/components/ProfileMenu'
 import { PulseLoader } from '@/components/PulseLoader'
@@ -122,6 +122,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
           {canManage && <>
             <div className="staff-group">Análise</div>
             <Item collapsed={collapsed} icon={<Activity size={18} strokeWidth={1.75} />} label="Uso do app" active={onUsage} onClick={() => { setDrawer(false); go('/admin/uso') }} />
+            <Item collapsed={collapsed} icon={<Radar size={18} strokeWidth={1.75} />} label="Consumo da Meta" active={pathname.startsWith('/admin/consumo-meta')} onClick={() => { setDrawer(false); go('/admin/consumo-meta') }} />
             <Item collapsed={collapsed} icon={<MousePointerClick size={18} strokeWidth={1.75} />} label="Heatmap" active={onHeatmap} onClick={() => { setDrawer(false); go('/admin/heatmap') }} />
           </>}
         </nav>
