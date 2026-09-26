@@ -1,6 +1,7 @@
 'use client'
 
 import { MetricTile } from './MetricTile'
+import { costBase } from '@/lib/campaignFit'
 import { PulseLoader } from '@/components/PulseLoader'
 import { CampaignTable } from './CampaignTable'
 import { CreativesSection } from './CreativesSection'
@@ -27,8 +28,12 @@ export function CampaignsTab({ campaigns, summary, summaryPrev, currency, kind, 
   const withSpend = campaigns.filter(c => c.spend > 0).sort((a, b) => b.spend - a.spend)
   const totalSpend = withSpend.reduce((s, c) => s + c.spend, 0)
   const totalResults = withSpend.reduce((s, c) => s + (c.results || 0), 0)
-  const costAll = totalResults > 0 ? totalSpend / totalResults : null
-  const active = campaigns.filter(c => c.status === 'ACTIVE').length
+  // Custo por resultado: só a verba das campanhas do tipo do cliente (tráfego, alcance e engajamento não geram lead e inflariam o custo).
+  const base = costBase(kind, campaigns.map(c => ({ objective: c.objective, spend: c.spend, results: c.results || 0, leads: c.leads || 0 })))
+  const costAll = base.results > 0 ? base.spend / base.results : null
+  const delivering = campaigns.filter(c => c.status === 'ACTIVE' && (c.spend > 0 || c.impressions > 0))
+  const active = delivering.length
+  const idle = campaigns.filter(c => c.status === 'ACTIVE').length - active
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -38,7 +43,7 @@ export function CampaignsTab({ campaigns, summary, summaryPrev, currency, kind, 
               <MetricTile label="Investido" value={money(totalSpend, currency)} currentRaw={summary?.spend} prevValue={summaryPrev?.spend} />
               <MetricTile label={L.many} value={nf.format(totalResults)} currentRaw={summary?.results} prevValue={summaryPrev?.results} />
               <MetricTile label={L.costFull} value={costAll != null ? money(costAll, currency) : '—'} currentRaw={summary?.cost_per_result ?? undefined} prevValue={summaryPrev?.cost_per_result ?? undefined} lowerIsBetter />
-              <MetricTile label="Campanhas ativas" value={String(active)} note={`${withSpend.length} com investimento`} />
+              <MetricTile label="Campanhas ativas" value={String(active)} note={idle > 0 ? `${idle} ativa${idle === 1 ? '' : 's'} sem entrega` : `${withSpend.length} com investimento`} />
             </div>
 
             {campaigns.length > 0 && (

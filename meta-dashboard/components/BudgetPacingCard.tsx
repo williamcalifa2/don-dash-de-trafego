@@ -28,7 +28,7 @@ export function BudgetPacingCard({ campaigns, currentSpend, currency, clientSlug
 
   // Default target budget: sum of active campaigns daily budgets * totalDays
   const activeDailyBudgetsSum = campaigns
-    .filter(c => c.status === 'ACTIVE' && (c.daily_budget || 0) > 0)
+    .filter(c => c.status === 'ACTIVE' && (c.spend > 0 || c.impressions > 0) && (c.daily_budget || 0) > 0)
     .reduce((acc, c) => acc + (c.daily_budget || 0), 0)
   const autoTarget = activeDailyBudgetsSum > 0 ? activeDailyBudgetsSum * totalDays : Math.max(1000, Math.round(currentSpend * 1.25))
 

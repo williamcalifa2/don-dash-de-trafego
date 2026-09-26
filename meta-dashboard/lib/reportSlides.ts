@@ -692,7 +692,7 @@ export function buildAdvancedSlides(d: ReportData, notes: ReportNotes, theme: 'l
           colWidths: [400, 120, 180, 160, 160, 140],
           rows: camps.map(c => [
             { text: c.name, bold: true },
-            { text: c.status === 'ACTIVE' ? 'Ativa' : 'Pausada', color: c.status === 'ACTIVE' ? P.green : P.soft, align: 'center' as const },
+            { text: c.status === 'ACTIVE' ? (c.spend > 0 ? 'Ativa' : 'Sem entrega') : 'Pausada', color: c.status === 'ACTIVE' && c.spend > 0 ? P.green : P.soft, align: 'center' as const },
             { text: c.primaryMetric ? c.primaryMetric.value : (c.results > 0 ? `${compact(c.results)} res.` : c.clicks ? `${compact(c.clicks)} cliques` : '—'), bold: true, align: 'center' as const },
             { text: c.primaryMetric ? c.primaryMetric.cost : (c.costPerResult != null ? money(c.costPerResult) : '—'), align: 'center' as const },
             { text: money(c.spend), align: 'right' as const },

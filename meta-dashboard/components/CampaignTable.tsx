@@ -305,7 +305,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                                           </span>
                                         </td>
                                         <td style={{ padding: '9px 14px', borderBottom: isAdsetExpanded ? 'none' : '1px solid var(--border-soft)' }}>
-                                          <StatusBadge status={as.status} />
+                                          <StatusBadge status={statusOf(as)} />
                                         </td>
                                         <SubNum>{fmt(as.spend, currency)}</SubNum>
                                         <SubNum>
@@ -401,7 +401,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                                                         <div style={{ padding: 8 }}>
                                                           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ad.name}</div>
                                                           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, alignItems: 'center', gap: 4 }}>
-                                                            <StatusBadge status={ad.status} />
+                                                            <StatusBadge status={statusOf(ad)} />
                                                             <span
                                                               style={{
                                                                 fontSize: 9,

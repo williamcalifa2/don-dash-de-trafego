@@ -45,7 +45,8 @@ export function BudgetPacingPopover({ campaigns = [], currentSpend, currency, cl
   const monthProgressPct = Math.round((currentDay / totalDays) * 100)
 
   // Default target budget
-  const activeCampaigns = campaigns.filter(c => c.status === 'ACTIVE')
+  // Só as que entregam: campanha ativa sem gasto nem impressão não consome o orçamento e distorceria o ritmo.
+  const activeCampaigns = campaigns.filter(c => c.status === 'ACTIVE' && (c.spend > 0 || c.impressions > 0))
   const activeDailyBudgetsSum = activeCampaigns
     .filter(c => (c.daily_budget || 0) > 0)
     .reduce((acc, c) => acc + (c.daily_budget || 0), 0)
