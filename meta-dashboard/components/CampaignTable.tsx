@@ -12,10 +12,14 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string; dot
   ACTIVE: { label: 'Ativo', color: 'var(--green)', bg: 'var(--green-soft)', dot: 'var(--green)' },
   PAUSED: { label: 'Pausado', color: 'var(--red)', bg: 'var(--red-soft)', dot: 'var(--red)' },
   DELETED: { label: 'Deletado', color: 'var(--red)', bg: 'var(--red-soft)', dot: 'var(--red)' },
+  NO_DELIVERY: { label: 'Sem entrega', color: 'var(--amber)', bg: 'var(--amber-soft)', dot: 'var(--amber)' },
   ARCHIVED: { label: 'Arquivado', color: 'var(--text-2)', bg: 'var(--bg-card2)', dot: 'var(--text-2)' },
   IN_PROCESS: { label: 'Aprendizado', color: 'var(--amber)', bg: 'var(--amber-soft)', dot: 'var(--amber)' },
   WITH_ISSUES: { label: 'Com erros', color: 'var(--amber)', bg: 'var(--amber-soft)', dot: 'var(--amber)' },
 }
+
+/** Ativa na Meta mas sem gasto nem impressão no período: não está entregando. */
+const statusOf = (c: { status: string; spend: number; impressions: number }) => (c.status === 'ACTIVE' && c.spend === 0 && c.impressions === 0 ? 'NO_DELIVERY' : c.status)
 
 function StatusBadge({ status }: { status: string }) {
   const s = STATUS_MAP[status] ?? { label: status, color: 'var(--text-2)', bg: 'var(--bg-card2)', dot: 'var(--text-2)' }
@@ -105,10 +109,11 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
     setLoadingAds(null)
   }, [expandedAdset, adsData, datePreset])
 
-  const statuses = ['ALL', ...Array.from(new Set(campaigns.map(c => c.status)))]
+  const order = ['ACTIVE', 'NO_DELIVERY']
+  const statuses = ['ALL', ...Array.from(new Set(campaigns.map(statusOf))).sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99))]
 
   const sorted = [...campaigns]
-    .filter(c => filterStatus === 'ALL' || c.status === filterStatus)
+    .filter(c => filterStatus === 'ALL' || statusOf(c) === filterStatus)
     .sort((a, b) => {
       let av: number | string, bv: number | string
       if (sortCol === 'name') { av = a.name; bv = b.name }
@@ -216,7 +221,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px', borderBottom: isExpanded ? 'none' : '1px solid var(--border-soft)' }}>
-                      <StatusBadge status={c.status} />
+                      <StatusBadge status={statusOf(c)} />
                     </td>
                     <NumCell>{fmt(c.spend, currency)}</NumCell>
                     <NumCell>
