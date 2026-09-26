@@ -275,7 +275,7 @@ function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData;
           <ListCard icon={<Clock size={18} strokeWidth={1.75} />} tone="green" title="Acontecendo agora" hint="As últimas otimizações nas contas dos gestores">
             <PagedRows size={5} empty={none('Nenhuma ação registrada ainda.')} rows={list.recent.map((r, i) => (
               <RankRow key={`${r.at}-${i}`} wrap lead={<Thumb name={r.clientName} src={r.clientLogo} />} title={r.title}
-                sub={<>{r.clientName}{r.object ? ` · ${r.object}` : ''}{r.change ? <><br />{r.change}</> : null}<br /><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Thumb name={r.managerName} src={r.managerAvatar} size={16} />{r.managerName}</span> · {dayLabel(r.at)} às {hm(r.at)}{r.actorName && r.actorName !== r.managerName ? ` · por ${r.actorName}` : ''}</>}
+                sub={<>{r.clientName}{r.object ? ` · ${r.object}` : ''}{r.change ? <><br />{r.change}</> : null}<br />{dayLabel(r.at)} às {hm(r.at)}{r.actorName ? ` · por ${r.actorName}` : ''}</>}
                 value={<span className="badge" style={{ background: 'var(--bg-card2)', color: 'var(--text-2)', fontSize: 11 }}>{r.source === 'meta' ? 'Meta' : 'Painel'}</span>} valueTone="plain" onClick={() => onOpen(r.managerId)} />
             ))} />
           </ListCard>
@@ -326,7 +326,6 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
   const kindSlices: Slice[] = data.byKind.map(k => ({ key: k.kind, label: KIND_LABEL[k.kind], value: k.n, color: KIND_COLOR[k.kind] }))
   const clientSlices = topSlices(data.clients.map((c, i) => ({ key: c.slug, label: c.name, value: c.actions, color: paletteAt(i) })), 7)
   const timeSlices = topSlices(withTime.map((t, i) => ({ key: t.slug, label: t.name, value: t.sec, color: paletteAt(i) })), 7)
-  const sourceSlices: Slice[] = [{ key: 'meta', label: 'Gerenciador (Meta)', value: data.bySource.meta, color: 'var(--accent)' }, { key: 'app', label: 'Painel do app', value: data.bySource.app, color: 'var(--green)' }]
   const hourBars = data.hours.map((n, h) => ({ label: `${h}h`, value: n, title: `${h}h: ${plural(n, 'ação', 'ações')}` }))
 
   const timelineRows = data.timeline.map((r, i) => {
@@ -370,9 +369,6 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
             <ChartCard title="Tempo por cliente" hint={data.hasEmail ? 'Tempo ativo dele em cada painel de cliente' : undefined}>
               {!data.hasEmail ? <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0, textAlign: 'center' }}>Informe o e-mail de login do gestor para medir o tempo em cada cliente.</p>
                 : <DonutChart slices={timeSlices} center={shortDur(withTime.reduce((n, t) => n + t.sec, 0))} sub="no painel" unit={fmtDuration} onPick={goClient} />}
-            </ChartCard>
-            <ChartCard title="Onde as ações acontecem" hint="Gerenciador de Anúncios (Meta) ou painel do app">
-              <DonutChart slices={sourceSlices} center={String(data.bySource.app + data.bySource.meta)} sub="ações" />
             </ChartCard>
             <ChartCard title="Ações por dia" hint="Tudo que foi feito nas contas dele">
               <div style={{ width: '100%' }}><BarChart bars={dayBars} labelEvery={dayBars.length > 10 ? Math.ceil(dayBars.length / 6) : 1} summary="Ações por dia" /></div>

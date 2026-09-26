@@ -20,7 +20,7 @@ export function JustificationsCard({ data, onOpen }: { data: { answered: JItem[]
       <PagedRows size={5} empty={none(tab === 'pending' ? 'Nenhuma otimização sem motivo.' : 'Nenhuma otimização com motivo ainda.')}
         rows={list.map((j, i) => (
           <RankRow key={`${j.managerId}-${j.at}-${i}`} wrap lead={<Thumb name={j.clientName} src={j.clientLogo} />} title={j.headline} valueTone="plain" chevron onClick={() => onOpen(j.managerId)}
-            sub={<><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Thumb name={j.managerName} src={j.managerAvatar} size={16} />{j.managerName}</span> · {j.clientName}{tab === 'answered' && (j.reasons.length || j.reason) ? <><br />{[...j.reasons, ...(j.reason ? [`“${j.reason}”`] : [])].join(' · ')}</> : null}</>}
+            sub={<>{j.managerName} · {j.clientName}{tab === 'answered' && (j.reasons.length || j.reason) ? <><br />{[...j.reasons, ...(j.reason ? [`“${j.reason}”`] : [])].join(' · ')}</> : null}</>}
             value={tab === 'pending'
               ? <span style={{ color: days(j.at) >= 3 ? 'var(--red)' : 'var(--amber)' }}>{when(j.at)}</span>
               : when(j.reasonedAt ?? j.at)} />

@@ -355,11 +355,10 @@ export function cleanReason(body: unknown): { reasonKinds: string[]; reason: str
 
 /**
  * Só entra nos números e nas listas o que uma pessoa fez de verdade. Da Meta: pausar, ativar, criar, orçamento, público, lance e criativo
- * (o estado que a Meta muda sozinha — "Processo pendente → Análise pendente" — e a biblioteca de imagens ficam de fora). Do painel: tudo, menos leitura e login.
+ * (o estado que a Meta muda sozinha — "Processo pendente → Análise pendente" — e a biblioteca de imagens ficam de fora). Nada que o painel registra (ligar e-commerce, alterar metas, leitura, login) é otimização.
  */
 export function isMeaningfulLog(r: Pick<LogRow, 'source' | 'kind' | 'event_type' | 'object_type' | 'detail' | 'summary'>): boolean {
-  if (r.kind === 'sync' || r.kind === 'access') return false
-  if (r.source !== 'meta') return true
+  if (r.source !== 'meta') return false
   if (!(OPTIMIZATION_KINDS as readonly string[]).includes(r.kind)) return false
   return classifyChange({ kind: r.kind, event_type: r.event_type ?? null, object_type: r.object_type ?? null, detail: r.detail as TaskRow['detail'], summary: r.summary }) !== null
 }

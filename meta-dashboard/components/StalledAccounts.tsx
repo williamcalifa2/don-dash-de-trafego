@@ -47,7 +47,7 @@ export function StalledAccounts({ onOpenManager }: { onOpenManager: (id: string)
       <PagedRows size={5} empty={<p style={{ margin: 0, padding: '4px 12px', fontSize: 13, color: 'var(--text-2)' }}>Todas as contas tiveram movimento recente.</p>}
         rows={data.rows.map(r => (
           <RankRow key={`${r.managerId}|${r.slug}`} lead={<Thumb name={r.clientName} src={r.clientLogo} />} title={r.clientName} valueTone="plain" chevron
-            sub={<><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Thumb name={r.managerName} src={r.managerAvatar} size={16} />{r.managerName}</span><br />Última ação {r.daysAction == null ? `nenhuma em ${data.lookbackDays} d` : dias(r.daysAction)} · Acesso {r.accessUnknown ? 'sem e-mail ligado' : r.daysAccess == null ? `nenhum em ${data.lookbackDays} d` : dias(r.daysAccess)}</>}
+            sub={<>{r.managerName}<br />Última ação {r.daysAction == null ? `nenhuma em ${data.lookbackDays} d` : dias(r.daysAction)} · Acesso {r.accessUnknown ? 'sem e-mail ligado' : r.daysAccess == null ? `nenhum em ${data.lookbackDays} d` : dias(r.daysAccess)}</>}
             value={<span style={{ color: (r.daysIdle ?? 99) >= 7 ? 'var(--red)' : 'var(--amber)' }}>{r.daysIdle == null ? '—' : `${r.daysIdle} d`}</span>}
             onClick={() => onOpenManager(r.managerId)} />
         ))} />

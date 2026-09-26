@@ -185,10 +185,10 @@ describe('o que conta e como aparece', () => {
     expect(isMeaningfulLog(mk({ detail: { from: 'Ativo', to: 'Processo pendente' } }))).toBe(false)
     expect(isMeaningfulLog(mk({ detail: { from: 'Ativo', to: 'Inativo' } }))).toBe(true)
   })
-  it('leitura e login do painel não contam; ação do painel conta', () => {
+  it('nada que o painel registra conta como otimização', () => {
     expect(isMeaningfulLog(mk({ source: 'app', kind: 'sync' }))).toBe(false)
     expect(isMeaningfulLog(mk({ source: 'app', kind: 'access' }))).toBe(false)
-    expect(isMeaningfulLog(mk({ source: 'app', kind: 'config' }))).toBe(true)
+    expect(isMeaningfulLog(mk({ source: 'app', kind: 'config', summary: 'Desligou o e-commerce' }))).toBe(false)
   })
   it('evento da Meta que não é otimização fica de fora', () => {
     expect(isMeaningfulLog(mk({ kind: 'other', event_type: 'update_campaign_name' }))).toBe(false)
