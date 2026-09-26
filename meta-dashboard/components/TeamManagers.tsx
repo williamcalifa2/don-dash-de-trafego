@@ -214,7 +214,7 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Gestores</h2>
-              <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '2px 0 0' }}>Otimizações e contas com ação seguem o período escolhido no topo. Justificadas considera os últimos 30 dias e "sem movimento", 3 dias ou mais</p>
+              <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '2px 0 0' }}>Otimizações e contas com ação seguem o período escolhido no topo. Justificadas considera os últimos 30 dias e &quot;sem movimento&quot;, 3 dias ou mais</p>
             </div>
           <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
             {list.managers.map((m, i) => {
