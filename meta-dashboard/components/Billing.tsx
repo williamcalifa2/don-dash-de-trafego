@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, CheckCircle2, RefreshCw, XCircle } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import type { Billing as B, Severity } from '@/lib/billing'
@@ -11,7 +11,7 @@ import { PlatformBadges } from './PlatformBadges'
 import type { PlatformKey } from '@/lib/platforms'
 
 interface Item { platforms: PlatformKey[]; managerId: string | null; slug: string; name: string; logoUrl: string | null; active: boolean; accountId: string; billing: B | null; error: string | null; severity: Severity }
-interface Data { managers: Array<{ id: string; name: string }>; items: Item[]; totals: Record<Severity, number>; at: number }
+interface Data { pending?: number; oldest?: number | null; managers: Array<{ id: string; name: string }>; items: Item[]; totals: Record<Severity, number>; at: number }
 
 const money = (v: number, cur: string) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: cur }).format(v)
 const SEV: Record<Severity, { color: string; soft: string; label: string; icon: React.ReactNode }> = {
@@ -35,15 +35,22 @@ export function Billing() {
   const [filter, setFilter] = useState<'all' | Severity>('all')
   const [mgr, setMgr] = useState('')
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (refresh = false) => {
     setBusy(true)
     try {
-      const r = await apiFetch('/api/admin/billing', { cache: 'no-store' })
+      const r = await apiFetch(`/api/admin/billing${refresh ? '?refresh=1' : ''}`, { cache: 'no-store' })
       if (!r.ok) throw new Error()
       setData(await r.json() as Data); setFailed(null)
     } catch { setFailed('Não foi possível carregar o faturamento agora.') } finally { setBusy(false) }
   }, [])
   useEffect(() => { void load() }, [load])
+  // Contas ainda sem leitura entram aos poucos: volta a buscar até completar (no máximo 8 vezes).
+  const tries = useRef(0)
+  useEffect(() => {
+    if (!data?.pending || tries.current >= 8) return
+    const t = setTimeout(() => { tries.current++; void load() }, 15_000)
+    return () => clearTimeout(t)
+  }, [data, load])
 
   const items = useMemo(() => (data?.items ?? []).filter(i => (filter === 'all' || i.severity === filter) && (!mgr || (mgr === '_none' ? !i.managerId : i.managerId === mgr))), [data, filter, mgr])
 
@@ -53,9 +60,9 @@ export function Billing() {
         <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 220 }}>
             <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>Faturamento</h1>
-            <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>Situação financeira das contas de anúncios{data ? ` · atualizado ${new Date(data.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}</p>
+            <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>Situação financeira das contas de anúncios{data ? (data.pending ? ` · ${data.pending} aguardando leitura` : data.oldest ? ` · lido há ${Math.max(1, Math.round((Date.now() - data.oldest) / 60_000))} min` : '') : ''}</p>
           </div>
-          <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={busy}><RefreshCw size={14} strokeWidth={1.75} style={{ animation: busy ? 'spin 1s linear infinite' : undefined }} /> Atualizar</button>
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => { tries.current = 0; void load(true) }} disabled={busy}><RefreshCw size={14} strokeWidth={1.75} style={{ animation: busy ? 'spin 1s linear infinite' : undefined }} /> Atualizar</button>
         </header>
 
         {!data && !failed && <PulseLoader size={44} />}
