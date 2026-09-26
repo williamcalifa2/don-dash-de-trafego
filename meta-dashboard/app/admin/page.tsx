@@ -1167,7 +1167,7 @@ export default function AdminPage() {
   const [filter, setFilter] = useState<'todos' | 'ativos' | 'pausados' | 'bloqueados'>('todos')
   const [openingSlug, setOpeningSlug] = useState<string | null>(null)
 
-  useEffect(() => { document.title = 'Painel de controle' }, [])
+  useEffect(() => { document.title = 'Painel · Grupo Don' }, [])
 
   const load = useCallback(async () => {
     const start = Date.now()
@@ -1483,9 +1483,9 @@ export default function AdminPage() {
 
   const kpis = [
     { icon: <Users size={16} strokeWidth={1.75} />, label: 'Clientes', value: String(stats.total), sub: `${stats.activeCount} ativos · ${stats.pausedCount} pausados`, warn: false },
-    { icon: <TrendingUp size={16} strokeWidth={1.75} />, label: `Leads e conversas · ${periodNoun}`, value: String(stats.leadsP), sub: `${stats.leadsToday} hoje`, warn: false },
-    { icon: <DollarSign size={16} strokeWidth={1.75} />, label: `Vendas · ${periodNoun}`, value: String(stats.vendasP), sub: brl(stats.receitaP), warn: false },
-    { icon: <Clock size={16} strokeWidth={1.75} />, label: 'Sem contato', value: String(stats.parados), sub: 'leads esperando retorno', warn: stats.parados > 0 },
+    { icon: <TrendingUp size={16} strokeWidth={1.75} />, label: `Leads e conversas · ${periodNoun}`, value: String(stats.leadsP), sub: `${stats.leadsToday} hoje · do CRM`, warn: false },
+    { icon: <DollarSign size={16} strokeWidth={1.75} />, label: `Vendas · ${periodNoun}`, value: String(stats.vendasP), sub: `${brl(stats.receitaP)} · do CRM`, warn: false },
+    { icon: <Clock size={16} strokeWidth={1.75} />, label: 'Sem contato', value: String(stats.parados), sub: 'leads do CRM esperando retorno', warn: stats.parados > 0 },
   ]
 
   return (
@@ -1495,7 +1495,7 @@ export default function AdminPage() {
         <header style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
           <MetaSyncPopover logoUrl={brandLogo} onLogoChange={canManage ? setBrandLogo : undefined} canEditBrand={canManage} openSignal={syncSignal} />
           <div style={{ flex: 1, minWidth: 200 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2 }}>Painel de controle</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2 }}>Painel</h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)' }}>Acompanhe os clientes, os leads e os acessos em um só lugar</p>
           </div>
           {themeButton}

@@ -60,6 +60,7 @@ export default function AdminOverview({ days, refreshKey = 0, clients = [], acti
         <button type="button" onClick={toggle} aria-expanded={open} className="btn btn-ghost btn-sm" style={{ padding: 0, gap: 6, fontSize: 16, fontWeight: 600 }}>
           Visão geral {open ? <ChevronUp size={16} strokeWidth={1.75} /> : <ChevronDown size={16} strokeWidth={1.75} />}
         </button>
+        {open && <span style={{ fontSize: 12, color: 'var(--text-2)' }}>Meta Ads: investimento e resultados de todos os clientes</span>}
         {open && clients.length > 1 && (
           <select value={client} onChange={e => { setO(null); setClient(e.target.value) }} aria-label="Filtrar por cliente"
             style={{ height: 32, padding: '0 10px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-1)', fontSize: 13, maxWidth: 220 }}>

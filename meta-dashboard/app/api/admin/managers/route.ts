@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { requireRole } from '@/lib/admin'
 import { usageSince } from '@/lib/usage'
-import { OPTIMIZATION_KINDS, cleanManagerInput, countByKind, dailyCounts, isAnswered } from '@/lib/managers'
+import { OPTIMIZATION_KINDS, REASON_LABEL, cleanManagerInput, countByKind, dailyCounts, isAnswered } from '@/lib/managers'
 import { autoLinkActors, clientNames, lastSyncAt, loadRegistry, loadTasks, readLog, saveManager, syncMetaActivity, tablesMissing, timeByEmail } from '@/lib/managersStore'
 import { getSupabaseServer } from '@/lib/supabase'
 import { listMembers } from '@/lib/team'
@@ -61,8 +61,16 @@ export async function GET(req: NextRequest) {
   const recent = (rows ?? []).filter(r => r.manager_id).slice(0, 30).map(r => ({ at: r.at, source: r.source, kind: r.kind, summary: r.summary, clientName: names.get(r.client_slug) ?? r.client_slug, managerId: r.manager_id, managerName: nameOfManager.get(r.manager_id!) ?? r.manager_id, managerAvatar: avatarOfManager.get(r.manager_id!) ?? null, actorName: r.actor_name, objectName: r.object_name }))
   const stale = !sync || Date.now() - Date.parse(sync) > 8 * 60_000
   if (stale) after(() => { void syncMetaActivity({ budgetMs: 45_000, limit: 6 }).catch(() => { }) }) // abrir a página mantém o histórico da Meta em dia
+  // Justificativas de todos os gestores numa lista só: as respondidas (com o motivo) e as pendentes (há quantos dias esperam).
+  const mgrName = new Map(reg.managers.map(m => [m.id, m.name]))
+  const allTasks = 'tasks' in tk ? tk.tasks.filter(t => t.ownerId) : []
+  const jItem = (t: (typeof allTasks)[number]) => ({ managerId: t.ownerId!, managerName: mgrName.get(t.ownerId!) ?? t.ownerId!, clientName: names.get(t.clientSlug) ?? t.clientSlug, headline: t.headline, at: t.at, reasons: t.reasonKinds.map(k => REASON_LABEL[k] ?? k), reason: t.reason, reasonedAt: t.reasonedAt })
+  const justifications = {
+    answered: allTasks.filter(isAnswered).sort((a, b) => (b.reasonedAt ?? b.at).localeCompare(a.reasonedAt ?? a.at)).slice(0, 40).map(jItem),
+    pending: allTasks.filter(t => !isAnswered(t)).sort((a, b) => a.at.localeCompare(b.at)).slice(0, 40).map(jItem),
+  }
   return NextResponse.json({
-    setup: 'ready', period, managers, recent, unlinkedMembers, clients, unassigned: clients.filter(c => !c.managerId), lastSync: sync,
+    setup: 'ready', period, managers, recent, justifications, unlinkedMembers, clients, unassigned: clients.filter(c => !c.managerId), lastSync: sync,
     totals: { pending: openTasks.filter(t => t.ownerId).length, actions: (rows ?? []).filter(r => r.manager_id).length, optimizations: (rows ?? []).filter(r => r.manager_id && (OPTIMIZATION_KINDS as readonly string[]).includes(r.kind)).length },
   })
 }

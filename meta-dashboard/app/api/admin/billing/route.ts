@@ -3,7 +3,8 @@ import { requireRole } from '@/lib/admin'
 import { scopeFor } from '@/lib/scope'
 import { getSupabaseServer } from '@/lib/supabase'
 import { logoPublicUrl } from '@/lib/logo'
-import { getAllClientsConfig } from '@/lib/clientConfig'
+import { getAllClientsConfig, hasEcommerce } from '@/lib/clientConfig'
+import { platformsFor, type PlatformKey } from '@/lib/platforms'
 import { legacyGet } from '@/lib/meta/legacy'
 import { loadRegistry } from '@/lib/activityLog'
 import { liveOrigin } from '@/lib/meta/mode'
@@ -29,14 +30,14 @@ export async function GET(req: NextRequest) {
   const reg = await loadRegistry().catch(() => null)
   const cfgs = await getAllClientsConfig(rows.map(r => r.slug))
 
-  type Item = { managerId: string | null; slug: string; name: string; logoUrl: string | null; active: boolean; accountId: string; billing: Billing | null; error: string | null; severity: Billing['severity'] }
+  type Item = { platforms: PlatformKey[]; managerId: string | null; slug: string; name: string; logoUrl: string | null; active: boolean; accountId: string; billing: Billing | null; error: string | null; severity: Billing['severity'] }
   const items: Item[] = new Array(rows.length)
   let next = 0
   await Promise.all(Array.from({ length: Math.min(POOL, rows.length) }, async () => {
     while (next < rows.length) {
       const i = next++
       const c = rows[i]
-      const base = { managerId: reg?.byClient.get(c.slug) ?? null, slug: c.slug, name: c.display_name ?? c.slug, logoUrl: logoPublicUrl(c.slug, c.logo_url), active: cfgs[c.slug]?.active !== false, accountId: c.ad_account_id }
+      const base = { platforms: platformsFor({ adAccountId: c.ad_account_id, ecommerce: cfgs[c.slug] ? hasEcommerce(cfgs[c.slug]) : false, google: Boolean(cfgs[c.slug]?.googleAdsCustomerId) }), managerId: reg?.byClient.get(c.slug) ?? null, slug: c.slug, name: c.display_name ?? c.slug, logoUrl: logoPublicUrl(c.slug, c.logo_url), active: cfgs[c.slug]?.active !== false, accountId: c.ad_account_id }
       const r = await legacyGet<RawAccount>(`${c.ad_account_id}?fields=${BILLING_FIELDS}`, { accountId: c.ad_account_id, clientId: c.id, purpose: 'billing', origin })
       if (r.ok) { const b = billingOf(r.data); items[i] = { ...base, billing: b, error: null, severity: b.severity } }
       else items[i] = { ...base, billing: null, error: r.error?.message ?? 'Não foi possível ler esta conta agora.', severity: 'attention' }

@@ -7,8 +7,10 @@ import type { Billing as B, Severity } from '@/lib/billing'
 import { StaffShell } from './StaffShell'
 import { PulseLoader } from './PulseLoader'
 import { Thumb } from './UsageUi'
+import { PlatformBadges } from './PlatformBadges'
+import type { PlatformKey } from '@/lib/platforms'
 
-interface Item { managerId: string | null; slug: string; name: string; logoUrl: string | null; active: boolean; accountId: string; billing: B | null; error: string | null; severity: Severity }
+interface Item { platforms: PlatformKey[]; managerId: string | null; slug: string; name: string; logoUrl: string | null; active: boolean; accountId: string; billing: B | null; error: string | null; severity: Severity }
 interface Data { managers: Array<{ id: string; name: string }>; items: Item[]; totals: Record<Severity, number>; at: number }
 
 const money = (v: number, cur: string) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: cur }).format(v)
@@ -89,7 +91,7 @@ export function Billing() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 <Thumb name={i.name} src={i.logoUrl} size={36} />
                                 <div style={{ minWidth: 0 }}>
-                                  <a href={`/dashboard/${i.slug}`} style={{ fontWeight: 600, color: 'var(--text-1)' }}>{i.name}</a>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><a href={`/dashboard/${i.slug}`} style={{ fontWeight: 600, color: 'var(--text-1)' }}>{i.name}</a><PlatformBadges platforms={i.platforms} height={10} /></span>
                                   <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{i.accountId.replace('act_', '')}{!i.active ? ' · cliente pausado' : ''}</div>
                                 </div>
                               </div>

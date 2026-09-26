@@ -17,6 +17,7 @@ import { StaffShell } from './StaffShell'
 import { StalledAccounts } from './StalledAccounts'
 import { ManagersAudit } from './ManagersAudit'
 import { AccessCard } from './AccessCard'
+import { JustificationsCard, type JItem } from './JustificationsCard'
 import { BarChart, ListCard, PagedRows, PeriodPicker, RankRow, SubTabs, Thumb, plural, type Period } from './UsageUi'
 import { ChartCard, DonutChart, KIND_COLOR, paletteAt, topSlices, type Slice } from './Donut'
 
@@ -30,7 +31,7 @@ interface Score { made: number | null; worked: number; total: number; stalled: n
 interface ListManager { score: Score; pending: number; id: string; name: string; email: string | null; avatarUrl: string | null; metaActorId: string | null; metaActorName: string | null; clients: Array<{ slug: string; name: string }>; actions: number; optimizations: number; activeSec: number | null; lastAt: string | null; byKind: Array<{ kind: ActivityKind; n: number }>; daily: number[] }
 interface RecentRow { managerAvatar: string | null; at: string; source: string; kind: ActivityKind; summary: string; clientName: string; managerId: string; managerName: string; actorName: string | null; objectName: string | null }
 interface ClientOpt { slug: string; name: string; managerId: string | null }
-interface ListData { setup: 'ready' | 'tables' | 'error'; managers: ListManager[]; recent: RecentRow[]; unlinkedMembers: string[]; clients: ClientOpt[]; unassigned: ClientOpt[]; lastSync: string | null; totals: { pending: number; actions: number; optimizations: number } }
+interface ListData { justifications?: { answered: JItem[]; pending: JItem[] }; setup: 'ready' | 'tables' | 'error'; managers: ListManager[]; recent: RecentRow[]; unlinkedMembers: string[]; clients: ClientOpt[]; unassigned: ClientOpt[]; lastSync: string | null; totals: { pending: number; actions: number; optimizations: number } }
 interface TimelineRow { at: string; source: string; client_slug: string; clientName: string; actor_key: string | null; actor_name: string | null; kind: ActivityKind; summary: string; object_name: string | null; detail: { from?: string | null; to?: string | null; level?: string } | null }
 interface Profile {
   setup: 'ready' | 'tables'; manager: { id: string; name: string; email: string | null; avatarUrl: string | null; metaActorId: string | null; metaActorName: string | null }; hasEmail: boolean; hasActor: boolean
@@ -181,7 +182,7 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
         <MetricTile label="Clientes com gestor" value={String(withManager)} />
         <MetricTile label="Clientes sem gestor" value={String(list.unassigned.length)} />
         <MetricTile label="Ações nas contas" value={String(list.totals.actions)} />
-        <MetricTile label="Otimizações a justificar" value={String(list.totals.pending)} />
+        <MetricTile label="Justificativas pendentes" value={String(list.totals.pending)} />
       </div>
 
       {list.unlinkedMembers.length > 0 && (
@@ -213,7 +214,7 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Gestores</h2>
-              <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '2px 0 0' }}>Clique em um gestor para abrir o perfil, com o que ele fez em cada cliente</p>
+              <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '2px 0 0' }}>Otimizações e contas com ação seguem o período escolhido no topo. Justificadas considera os últimos 30 dias e "sem movimento", 3 dias ou mais</p>
             </div>
           <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
             {list.managers.map((m, i) => {
@@ -259,7 +260,7 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
 
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <button type="button" className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => onOpen(m.id, m.pending > 0 ? 'justificativas' : undefined)}>
-                      <ArrowRight size={16} strokeWidth={1.75} /> {m.pending > 0 ? 'Ver otimizações' : 'Ver perfil'}
+                      <ArrowRight size={16} strokeWidth={1.75} /> {m.pending > 0 ? 'Ver justificativas' : 'Ver perfil'}
                     </button>
                     <button type="button" className="btn btn-outline btn-icon btn-sm" onClick={() => onEdit(m.id)} aria-label={`Editar ${m.name}`} title="Editar gestor"><Pencil size={16} strokeWidth={1.75} /></button>
                   </div>
@@ -307,6 +308,7 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
             ))} />
           </ListCard>
         )}
+        {list.managers.length > 0 && list.justifications && <JustificationsCard data={list.justifications} onOpen={id => onOpen(id, 'justificativas')} />}
         {list.managers.length > 0 && <AccessCard onOpenManager={id => onOpen(id)} />}
         {list.managers.length > 0 && <StalledAccounts onOpenManager={id => onOpen(id)} />}
         <ManagersAudit onFixed={onAssigned} />
@@ -365,7 +367,7 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
         </p>
       )}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <SubTabs value={tab} onChange={setTab} tabs={[{ key: 'geral', label: 'Visão geral' }, { key: 'justificativas', label: pending > 0 ? `Otimizações (${pending})` : 'Otimizações' }, { key: 'timeline', label: 'Linha do tempo' }, { key: 'clientes', label: 'Clientes' }]} />
+        <SubTabs value={tab} onChange={setTab} tabs={[{ key: 'geral', label: 'Visão geral' }, { key: 'justificativas', label: pending > 0 ? `Justificativas (${pending})` : 'Justificativas' }, { key: 'timeline', label: 'Linha do tempo' }, { key: 'clientes', label: 'Clientes' }]} />
         {client && <button type="button" className="badge" onClick={() => setClient('')} title="Tirar este filtro" style={{ cursor: 'pointer', background: 'var(--accent-soft)', color: 'var(--text-1)', fontSize: 12, gap: 6, marginLeft: 'auto' }}>Cliente: {data.clients.find(c => c.slug === client)?.name ?? client} <X size={12} /></button>}
       </div>
 
