@@ -17,6 +17,7 @@ import { StaffShell } from './StaffShell'
 import { StalledAccounts } from './StalledAccounts'
 import { AccessCard } from './AccessCard'
 import { JustificationsCard, type JItem } from './JustificationsCard'
+import { PeriodSummary } from './PeriodSummary'
 import { BarChart, ListCard, PagedRows, PeriodPicker, RankRow, SubTabs, Thumb, plural } from './UsageUi'
 import { RANGE_LABEL, RANGE_PERIODS, type RangePeriod } from '@/lib/usage'
 import { ChartCard, DonutChart, KIND_COLOR, paletteAt, topSlices, type Slice } from './Donut'
@@ -139,7 +140,7 @@ export function TeamManagers() {
         {!list && !failed && <PulseLoader size={44} />}
         {list?.setup === 'tables' && sqlHint}
 
-        {list?.setup === 'ready' && !current && !sel && <Overview list={list} onOpen={open} onEdit={id => setEditing({ id })} onNew={() => { setPrefill(''); setEditing('new') }} onAssigned={load} />}
+        {list?.setup === 'ready' && !current && !sel && <Overview list={list} period={period} onOpen={open} onEdit={id => setEditing({ id })} onNew={() => { setPrefill(''); setEditing('new') }} onAssigned={load} />}
         {list?.setup === 'ready' && sel && !current && <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>Gestor não encontrado.</div>}
         {list?.setup === 'ready' && current && <ProfileView key={current.id} id={current.id} period={period} tick={tick} pending={current.pending} initialTab={sp.get('tab')} onEdit={() => setEditing({ id: current.id })} />}
       </main>
@@ -154,7 +155,7 @@ export function TeamManagers() {
   )
 }
 
-function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData; onOpen: (id: string, tab?: string) => void; onEdit: (id: string) => void; onNew: () => void; onAssigned: () => void }) {
+function Overview({ list, period, onOpen, onEdit, onNew, onAssigned }: { list: ListData; period: RangePeriod; onOpen: (id: string, tab?: string) => void; onEdit: (id: string) => void; onNew: () => void; onAssigned: () => void }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [today] = useState(() => Date.now())
   async function assign(slug: string, managerId: string) {
@@ -291,6 +292,7 @@ function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData;
             ))} />
           </ListCard>
         )}
+        {list.managers.length > 0 && <div style={{ gridColumn: '1 / -1' }}><PeriodSummary period={period} /></div>}
         {list.managers.length > 0 && list.justifications && <JustificationsCard data={list.justifications} onOpen={id => onOpen(id, 'otimizacoes')} />}
         {list.managers.length > 0 && <AccessCard onOpenManager={id => onOpen(id)} />}
         {list.managers.length > 0 && <StalledAccounts onOpenManager={id => onOpen(id)} />}
@@ -358,6 +360,7 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
             <MetricTile label="Feito por ele (todas as ações)" value={String(data.totals.byMe)} />
             <MetricTile label="Tempo no painel" value={data.totals.activeSec == null ? '—' : fmtDuration(data.totals.activeSec)} />
           </div>
+          <PeriodSummary period={period} manager={id} tick={tick} />
           <div className="usage-grid">
             <ChartCard title="O que foi feito" hint="Ações por tipo. Clique num tipo para ver na linha do tempo">
               <DonutChart slices={kindSlices} center={String(data.totals.actions)} sub="ações" onPick={k => { setKind(k); setScope('accounts'); setTab('timeline') }} />
