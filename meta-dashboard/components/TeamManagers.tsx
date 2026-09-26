@@ -26,7 +26,8 @@ const KIND_ICON: Record<ActivityKind, React.ReactNode> = {
   config: <Settings2 size={18} strokeWidth={1.75} />, access: <KeyRound size={18} strokeWidth={1.75} />, sync: <RefreshCw size={18} strokeWidth={1.75} />, client: <Building2 size={18} strokeWidth={1.75} />, other: <Activity size={18} strokeWidth={1.75} />,
 }
 
-interface ListManager { pending: number; id: string; name: string; email: string | null; avatarUrl: string | null; metaActorId: string | null; metaActorName: string | null; clients: Array<{ slug: string; name: string }>; actions: number; optimizations: number; activeSec: number | null; lastAt: string | null; byKind: Array<{ kind: ActivityKind; n: number }>; daily: number[] }
+interface Score { made: number | null; worked: number; total: number; stalled: number; justifiedPct: number | null; lastOwnAt: string | null }
+interface ListManager { score: Score; pending: number; id: string; name: string; email: string | null; avatarUrl: string | null; metaActorId: string | null; metaActorName: string | null; clients: Array<{ slug: string; name: string }>; actions: number; optimizations: number; activeSec: number | null; lastAt: string | null; byKind: Array<{ kind: ActivityKind; n: number }>; daily: number[] }
 interface RecentRow { managerAvatar: string | null; at: string; source: string; kind: ActivityKind; summary: string; clientName: string; managerId: string; managerName: string; actorName: string | null; objectName: string | null }
 interface ClientOpt { slug: string; name: string; managerId: string | null }
 interface ListData { setup: 'ready' | 'tables' | 'error'; managers: ListManager[]; recent: RecentRow[]; unlinkedMembers: string[]; clients: ClientOpt[]; unassigned: ClientOpt[]; lastSync: string | null; totals: { pending: number; actions: number; optimizations: number } }
@@ -216,7 +217,8 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
             </div>
           <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
             {list.managers.map((m, i) => {
-              const active = m.actions > 0
+              const sc = m.score
+              const attention = m.pending > 0 || sc.stalled > 0
               return (
                 <article key={m.id} className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -228,14 +230,18 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
                       <h3 title={m.name} style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</h3>
                       <div style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{plural(m.clients.length, 'cliente', 'clientes')}{!m.email && <span title="Sem e-mail de login: esse gestor não entra no painel e não recebe otimizações" style={{ color: 'var(--amber)', fontWeight: 600 }}> · sem login</span>}</div>
                     </div>
-                    <span className="badge" style={{ background: active ? 'var(--green-soft)' : 'rgba(245, 158, 11, 0.15)', color: 'var(--text-1)', flexShrink: 0 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: active ? 'var(--green)' : 'var(--amber)' }} />{active ? 'Ativo' : 'Sem ações'}
+                    <span className="badge" title={attention ? 'Tem otimização a justificar ou conta sem movimento' : 'Nada pendente e nenhuma conta parada'} style={{ background: attention ? 'rgba(245, 158, 11, 0.15)' : 'var(--green-soft)', color: 'var(--text-1)', flexShrink: 0 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: attention ? 'var(--amber)' : 'var(--green)' }} />{attention ? 'Atenção' : 'Em dia'}
                     </span>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '14px 12px' }}>
-                    {([['Ações', String(m.actions)], ['Otimizações', String(m.optimizations)], ['No painel', m.activeSec == null ? '—' : shortDur(m.activeSec)]] as const).map(([l, v]) => (
-                      <div key={l} style={{ minWidth: 0 }}>
+                    {([
+                      ['Otimizações', sc.made == null ? '—' : String(sc.made), sc.made == null ? 'Sem e-mail nem usuário da Meta ligado: não dá para saber o que ele fez' : 'Otimizações que ele mesmo fez no período (pausar, orçamento, público, criativo, lance, estrutura)'],
+                      ['Contas com ação', `${sc.worked}/${sc.total}`, 'Contas da carteira que tiveram alguma otimização no período, do total de contas ativas'],
+                      ['Justificadas', sc.justifiedPct == null ? '—' : `${sc.justifiedPct}%`, 'Das otimizações dele nos últimos 30 dias, quantas já têm motivo informado'],
+                    ] as const).map(([l, v, tip]) => (
+                      <div key={l} title={tip} style={{ minWidth: 0 }}>
                         <div style={{ ...eyebrow, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l}</div>
                         <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{v}</div>
                       </div>
@@ -243,7 +249,11 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 32 }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-2)', minWidth: 0 }}>{m.lastAt ? `Última ação ${ago(m.lastAt)}` : 'Sem ações no período'}{m.pending > 0 && <><br /><span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{plural(m.pending, 'otimização a justificar', 'otimizações a justificar')}</span></>}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-2)', minWidth: 0 }}>
+                      {sc.made == null ? 'Sem usuário da Meta ligado' : sc.lastOwnAt ? `Última ação dele ${ago(sc.lastOwnAt)}` : 'Nenhuma ação dele nos últimos 30 dias'}
+                      {sc.stalled > 0 && <><br /><span style={{ color: 'var(--amber)', fontWeight: 600 }}>{plural(sc.stalled, 'conta sem movimento', 'contas sem movimento')} há 3+ dias</span></>}
+                      {m.pending > 0 && <><br /><span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{plural(m.pending, 'otimização a justificar', 'otimizações a justificar')}</span></>}
+                    </span>
                     <Sparkline data={m.daily} width={112} height={32} color={paletteAt(i)} />
                   </div>
 
@@ -363,8 +373,8 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
         <>
           <div className="tile-grid stagger">
             <MetricTile label="Ações nas contas" value={String(data.totals.actions)} />
-            <MetricTile label="Otimizações na Meta" value={String(data.totals.optimizations)} />
-            <MetricTile label="Feito por ele" value={String(data.totals.byMe)} />
+            <MetricTile label="Otimizações nas contas" value={String(data.totals.optimizations)} />
+            <MetricTile label="Feito por ele (todas as ações)" value={String(data.totals.byMe)} />
             <MetricTile label="Tempo no painel" value={data.totals.activeSec == null ? '—' : fmtDuration(data.totals.activeSec)} />
           </div>
           <div className="usage-grid">
@@ -523,7 +533,7 @@ function ManagerForm({ manager, clients, managers, prefillEmail, onClose, onSave
             {manager?.email && !team.includes(manager.email) && <option value={manager.email}>{manager.email}</option>}
             <option value="none">Sem acesso ao painel</option>
           </select>
-          <span style={{ fontWeight: 400 }}>É o login (em Acessos) que esta pessoa usa. Com ele, o gestor vê só a própria carteira, recebe as otimizações para justificar e tem o tempo por cliente medido. Sem acesso, ele só aparece como responsável.</span>
+          <span style={{ fontWeight: 400 }}>É o login (em Equipe) que esta pessoa usa. Com ele, o gestor vê só a própria carteira, recebe as otimizações para justificar e tem o tempo por cliente medido. Sem acesso, ele só aparece como responsável.</span>
         </label>
         <label style={label}>Usuário na Meta (opcional)
           <select id="mg-actor" className="field" value={actorId} onChange={e => { const a = actors.find(x => x.id === e.target.value); setActorId(e.target.value); setActorName(a?.name ?? '') }}>
