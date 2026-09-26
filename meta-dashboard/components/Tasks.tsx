@@ -90,7 +90,7 @@ function TaskItem({ t, onSaved, boxed }: { t: TaskView; onSaved: () => void; box
       <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ fontSize: 14, lineHeight: 1.5, overflowWrap: 'anywhere', minWidth: 0 }}>
           <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>{when(t.at)}{t.actorName ? ` · ${t.actorName}` : ''}</span>
-          {t.headline}
+          <span style={{ display: 'block', whiteSpace: 'pre-line', fontWeight: 600 }}>{t.short || t.headline}</span>
           {t.items.length > 0 && <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} style={{ marginLeft: 8, background: 'none', border: 0, padding: 0, font: 'inherit', fontSize: 12, color: 'var(--text-2)', textDecoration: 'underline', cursor: 'pointer' }}>{open ? 'ocultar detalhes' : 'ver detalhes'}</button>}
         </div>
         <span className="badge" style={{ background: answered ? 'var(--green-soft)' : 'rgba(245, 158, 11, 0.15)', color: 'var(--text-1)', flexShrink: 0 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: answered ? 'var(--green)' : 'var(--amber)' }} />{answered ? 'Com motivo' : 'Sem motivo'}</span>
@@ -147,7 +147,7 @@ function ClientCard({ c, onOpen }: { c: ClientSummary; onOpen: () => void }) {
           </div>
         ))}
       </div>
-      <div style={{ fontSize: 12, color: 'var(--text-2)', height: 36, lineHeight: '18px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.headline}</div>
+      <div style={{ fontSize: 12, color: 'var(--text-2)', height: 54, lineHeight: '18px', whiteSpace: 'pre-line', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.headline}</div>
       <button type="button" className="btn btn-primary btn-sm" onClick={onOpen}><ArrowRight size={16} strokeWidth={1.75} /> {done ? 'Ver otimizações' : 'Informar motivo'}</button>
     </article>
   )

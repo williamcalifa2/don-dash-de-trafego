@@ -121,7 +121,7 @@ export function metaToLog(e: MetaActivity, clientSlug: string, managerId: string
   return {
     at, source: 'meta', client_slug: clientSlug, manager_id: managerId, actor_key: `meta:${e.actor_id}`, actor_name: e.actor_name ?? null, kind,
     event_type: e.event_type, object_type: e.object_type ?? null, object_name: e.object_name ? e.object_name.slice(0, 160) : null,
-    summary: (e.translated_event_type || e.event_type).slice(0, 160), detail: delta ? { ...delta, level: objectLabel(e.object_type) || undefined } : (objectLabel(e.object_type) ? { level: objectLabel(e.object_type) } : null),
+    summary: (e.translated_event_type || e.event_type).slice(0, 160), detail: delta ? { ...delta, level: objectLabel(e.object_type) || undefined, objectId: e.object_id } : (objectLabel(e.object_type) || e.object_id ? { level: objectLabel(e.object_type) || undefined, objectId: e.object_id } : null),
     ext_id: `${adAccount}:${at}:${e.event_type}:${e.object_id ?? ''}:${e.actor_id}:${(e.extra_data ?? '').length}`,
   }
 }
@@ -292,14 +292,30 @@ export function headlineOf(items: Array<{ action: Action; level: string | null; 
   return parts.join(' · ')
 }
 
-const SHORT: Record<Action, string> = { criou: 'Criou', pausou: 'Pausou', ativou: 'Ativou', orcamento: 'Orçamento', publico: 'Público', lance: 'Lance', criativo: 'Criativo', alterou: 'Alterou' }
+const NOUN: Record<string, [string, string]> = { campanha: ['campanha', 'campanhas'], conjunto: ['conjunto', 'conjuntos'], 'anúncio': ['anúncio', 'anúncios'] }
+const THING: Record<'orcamento' | 'publico' | 'lance' | 'criativo', [string, string]> = { orcamento: ['orçamento', 'orçamentos'], publico: ['público', 'públicos'], lance: ['lance', 'lances'], criativo: ['criativo', 'criativos'] }
 
-/** Versão curta para listas: só o verbo e a quantidade de objetos ("Criou 20 · Pausou 6 · Público 10"), no máximo 3 itens. */
-export function shortHeadline(items: Array<{ action: Action; object: string }>): string {
-  const by = new Map<Action, Set<string>>()
-  for (const i of items) (by.get(i.action) ?? by.set(i.action, new Set()).get(i.action)!).add(i.object)
-  const parts = ORDER.filter(a => by.has(a)).map(a => `${SHORT[a]} ${by.get(a)!.size}`)
-  return parts.length > 3 ? `${parts.slice(0, 3).join(' · ')} · +${parts.length - 3}` : parts.join(' · ')
+/**
+ * O que foi feito, uma linha por tipo de ação, com a quantidade de objetos diferentes: "Pausou 1 campanha", "Alterou 2 criativos", "Criou 3 conjuntos".
+ * Vocabulário fixo (Criou, Pausou, Ativou, Alterou) para dar para contar depois: quantos criativos trocaram no mês, quantas campanhas subiram no cliente.
+ */
+export function actionLines(items: Array<{ action: Action; level: string | null; object: string }>): string[] {
+  const by = new Map<string, Set<string>>()
+  const add = (key: string, o: string) => (by.get(key) ?? by.set(key, new Set()).get(key)!).add(o)
+  for (const i of items) {
+    if (i.action === 'criou' || i.action === 'pausou' || i.action === 'ativou' || i.action === 'alterou') add(`${i.action}|${i.level ?? ''}`, i.object)
+    else add(`alterou|#${i.action}`, i.object)
+  }
+  const verb: Record<string, string> = { criou: 'Criou', pausou: 'Pausou', ativou: 'Ativou', alterou: 'Alterou' }
+  const order = ['criou', 'pausou', 'ativou', 'alterou']
+  const rank = (k: string) => { const [a, l] = k.split('|'); return order.indexOf(a) * 10 + (l.startsWith('#') ? ['#orcamento', '#publico', '#lance', '#criativo'].indexOf(l) : ['campanha', 'conjunto', 'anúncio', ''].indexOf(l)) }
+  return [...by.keys()].sort((x, y) => rank(x) - rank(y)).map(k => {
+    const [a, l] = k.split('|')
+    const n = by.get(k)!.size
+    if (l.startsWith('#')) { const t = THING[l.slice(1) as keyof typeof THING]; return `Alterou ${n} ${n === 1 ? t[0] : t[1]}` }
+    const noun = NOUN[l]
+    return `${verb[a]} ${n} ${noun ? (n === 1 ? noun[0] : noun[1]) : n === 1 ? 'item' : 'itens'}`
+  })
 }
 
 /** Junta o que uma pessoa fez num cliente numa mesma sessão (até 30 min entre uma alteração e a próxima) em uma tarefa só. */
@@ -331,7 +347,7 @@ export function groupTasks(rows: TaskRow[], gapMs = TASK_GAP_MS): Task[] {
       const answered = cur.find(r => r.reason || r.reason_kind)
       out.push({
         key: String(first.id), ids: cur.map(r => r.id), startedAt: first.at, at: last.at, clientSlug: first.client_slug, managerId: last.manager_id, actorKey: first.actor_key, actorName: first.actor_name,
-        headline: headlineOf(forHeadline), short: shortHeadline(forHeadline), kind: kinds.includes('structure') && forHeadline.some(f => f.action === 'criou') ? 'structure' : kinds[0], kinds, count: cur.length, items,
+        headline: headlineOf(forHeadline), short: actionLines(forHeadline).join('\n'), kind: kinds.includes('structure') && forHeadline.some(f => f.action === 'criou') ? 'structure' : kinds[0], kinds, count: cur.length, items,
         reason: answered?.reason ?? null, reasonKinds: splitReasons(answered?.reason_kind), reasonedAt: answered?.reasoned_at ?? null,
       })
       cur = []
@@ -398,8 +414,8 @@ export function describeLog(r: Pick<LogRow, 'source' | 'kind' | 'event_type' | '
   const change = (c.action === 'orcamento' || c.action === 'lance') && d && (d.from != null || d.to != null) ? `${d.from ?? '—'} → ${d.to ?? '—'}` : null
   const title: Record<Action, string> = {
     pausou: `Pausou ${THE(lv)}`, ativou: `Ativou ${THE(lv)}`, criou: `Criou ${THE(lv)}`,
-    orcamento: `Mudou o orçamento ${lv ? OF[lv] : 'do item'}`, publico: 'Mudou o público do conjunto', lance: 'Mudou o lance do conjunto',
-    criativo: 'Trocou o criativo do anúncio', alterou: `Alterou ${THE(lv)}`,
+    orcamento: `Alterou o orçamento ${lv ? OF[lv] : 'do item'}`, publico: 'Alterou o público do conjunto', lance: 'Alterou o lance do conjunto',
+    criativo: 'Alterou o criativo do anúncio', alterou: `Alterou ${THE(lv)}`,
   }
   return { title: title[c.action], object: r.object_name, change, level: lv }
 }

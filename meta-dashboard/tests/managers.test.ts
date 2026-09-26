@@ -197,10 +197,23 @@ describe('o que conta e como aparece', () => {
     expect(describeLog(mk({})).title).toBe('Pausou o anúncio')
     expect(describeLog(mk({ object_type: 'CAMPAIGN', detail: { from: 'Inativo', to: 'Ativo' } })).title).toBe('Ativou o conjunto')
     const b = describeLog(mk({ kind: 'budget', event_type: 'update_ad_set_budget', object_type: 'CAMPAIGN', detail: { from: 'R$ 50,00', to: 'R$ 80,00' } }))
-    expect(b.title).toBe('Mudou o orçamento do conjunto')
+    expect(b.title).toBe('Alterou o orçamento do conjunto')
     expect(b.change).toBe('R$ 50,00 → R$ 80,00')
   })
   it('ação do painel mantém o texto gravado', () => {
     expect(describeLog(mk({ source: 'app', kind: 'config', summary: 'Alterou objetivos e metas' })).title).toBe('Alterou objetivos e metas')
+  })
+})
+
+import { actionLines } from '@/lib/managers'
+describe('resumo das ações', () => {
+  it('uma linha por tipo, com objetos diferentes contados uma vez', () => {
+    const r = actionLines([
+      { action: 'pausou', level: 'campanha', object: 'A' }, { action: 'pausou', level: 'campanha', object: 'A' },
+      { action: 'criativo', level: 'anúncio', object: 'x' }, { action: 'criativo', level: 'anúncio', object: 'y' },
+      { action: 'criou', level: 'conjunto', object: 'c1' }, { action: 'criou', level: 'conjunto', object: 'c2' }, { action: 'criou', level: 'conjunto', object: 'c3' },
+      { action: 'orcamento', level: 'campanha', object: 'A' }, { action: 'publico', level: 'conjunto', object: 'c1' },
+    ])
+    expect(r).toEqual(['Criou 3 conjuntos', 'Pausou 1 campanha', 'Alterou 1 orçamento', 'Alterou 1 público', 'Alterou 2 criativos'])
   })
 })
