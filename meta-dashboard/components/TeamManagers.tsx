@@ -199,7 +199,7 @@ function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData;
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Gestores</h2>
-              <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '2px 0 0' }}>Os números seguem o período escolhido no topo. A última otimização olha os últimos 30 dias</p>
+              <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '2px 0 0' }}>Clique para abrir o perfil</p>
             </div>
           <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
             {list.managers.map((m, i) => {
@@ -253,7 +253,7 @@ function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData;
           </div>
           </div>
           <div className="usage-grid">
-            <ChartCard title="Ações por gestor" hint="Quem mais mexeu nas contas no período. Clique para abrir o perfil">
+            <ChartCard title="Ações por gestor" hint="Por gestor">
               <DonutChart slices={perManager} center={String(list.totals.actions)} sub="ações" onPick={id => onOpen(id)} />
             </ChartCard>
             <ChartCard title="O que a equipe faz" hint="Ações por tipo, de todos os gestores">
@@ -281,7 +281,7 @@ function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData;
           </ListCard>
         )}
         {list.unassigned.length > 0 && list.managers.length > 0 && (
-          <ListCard icon={<Building2 size={18} strokeWidth={1.75} />} title="Clientes sem gestor" hint="Nada feito nessas contas entra no perfil de ninguém. Escolha o gestor de cada uma">
+          <ListCard icon={<Building2 size={18} strokeWidth={1.75} />} title="Clientes sem gestor" hint="Escolha o gestor de cada conta">
             <PagedRows size={5} empty={none('Todos os clientes têm gestor.')} rows={list.unassigned.map(c => (
               <RankRow key={c.slug} lead={<Thumb name={c.name} src={c.logoUrl} />} title={c.name} valueTone="plain"
                 value={<select className="field" aria-label={`Gestor de ${c.name}`} disabled={busy === c.slug} value="" onChange={e => assign(c.slug, e.target.value)} style={{ height: 32, width: 'auto', fontSize: 12 }}>
@@ -340,9 +340,8 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {(!data.hasActor || !data.hasEmail) && (
-        <p style={{ margin: 0, fontSize: 12, color: 'var(--text-2)', lineHeight: 1.6 }}>
-          {!data.hasActor && 'Não achei o usuário da Meta deste gestor pelo nome. As ações nas contas dele já contam normalmente; ligar o usuário em Editar só acrescenta o que ele faz em contas de outros gestores. '}
-          {!data.hasEmail && 'Com o e-mail de login dele, o painel também mostra o tempo em cada cliente. '}
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--text-2)' }}>
+          {!data.hasActor && 'Sem usuário da Meta ligado. '}{!data.hasEmail && 'Sem e-mail de login. '}
           <button type="button" onClick={onEdit} style={{ background: 'none', border: 0, padding: 0, font: 'inherit', fontWeight: 600, color: 'var(--text-1)', textDecoration: 'underline', cursor: 'pointer' }}>Editar gestor</button>
         </p>
       )}
@@ -363,14 +362,14 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
             <ChartCard title="O que foi feito" hint="Ações por tipo. Clique num tipo para ver na linha do tempo">
               <DonutChart slices={kindSlices} center={String(data.totals.actions)} sub="ações" onPick={k => { setKind(k); setScope('accounts'); setTab('timeline') }} />
             </ChartCard>
-            <ChartCard title="Onde foi feito" hint="Ações por cliente da carteira. Clique para ver o que foi feito">
+            <ChartCard title="Onde foi feito" hint="Por cliente">
               <DonutChart slices={clientSlices} center={String(data.clients.length)} sub="clientes" onPick={goClient} />
             </ChartCard>
             <ChartCard title="Tempo por cliente" hint={data.hasEmail ? 'Tempo ativo dele em cada painel de cliente' : undefined}>
               {!data.hasEmail ? <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0, textAlign: 'center' }}>Informe o e-mail de login do gestor para medir o tempo em cada cliente.</p>
                 : <DonutChart slices={timeSlices} center={shortDur(withTime.reduce((n, t) => n + t.sec, 0))} sub="no painel" unit={fmtDuration} onPick={goClient} />}
             </ChartCard>
-            <ChartCard title="Ações por dia" hint="Tudo que foi feito nas contas dele">
+            <ChartCard title="Ações por dia" hint="Nas contas dele">
               <div style={{ width: '100%' }}><BarChart bars={dayBars} labelEvery={dayBars.length > 10 ? Math.ceil(dayBars.length / 6) : 1} summary="Ações por dia" /></div>
             </ChartCard>
             <ChartCard title="Horários de trabalho" hint="Ações por hora do dia (horário de Brasília)">
@@ -416,7 +415,7 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
 
       {tab === 'clientes' && (
         <div className="usage-grid">
-          <ListCard icon={<Building2 size={18} strokeWidth={1.75} />} title="Carteira" hint="Ações, otimizações e tempo em cada cliente. Clique para ver o que foi feito">
+          <ListCard icon={<Building2 size={18} strokeWidth={1.75} />} title="Carteira" hint="Otimizações por cliente">
             <PagedRows size={6} empty={none('Nenhum cliente na carteira deste gestor.')} rows={data.clients.map(c => (
               <RankRow key={c.slug} lead={<Thumb name={c.name} src={c.logoUrl} />} title={c.name}
                 sub={<>{plural(c.actions, 'ação', 'ações')} · {plural(c.optimizations, 'otimização', 'otimizações')}<br />{c.lastAt ? `última ${ago(c.lastAt)}` : 'sem ações no período'}</>}

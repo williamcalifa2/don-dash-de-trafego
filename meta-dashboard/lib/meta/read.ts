@@ -57,7 +57,7 @@ export function sliceDaily(rows: InsightRow[], preset: DatePreset, now: Date): I
   return rows.filter(r => String(r.date_start ?? '') > cutoff)
 }
 
-interface StructRow { id: string; name?: string; effective_status?: string; daily_budget?: string | number | null; lifetime_budget?: string | number | null; campaign_id?: string; adset_id?: string; creative?: Record<string, unknown> }
+interface StructRow { id: string; name?: string; objective?: string | null; effective_status?: string; daily_budget?: string | number | null; lifetime_budget?: string | number | null; campaign_id?: string; adset_id?: string; creative?: Record<string, unknown> }
 
 export async function readMetrics(snaps: SnapshotStore, clientId: string, adAccountId: string, preset: DatePreset, cfg: MetaConfig, st: AccountState | null, now = Date.now()): Promise<MetricsResponse & { freshness: Freshness; dailyMissing: boolean }> {
   const isPastMonth = preset === 'last_month' || preset === 'month_2' || preset === 'month_3'
@@ -79,7 +79,7 @@ export async function readMetrics(snaps: SnapshotStore, clientId: string, adAcco
     summaryRow: summary?.payload.row ?? undefined,
     prevRow: summary?.payload.prev ?? undefined,
     dailyRows: daily ? (dailySpecific ? dailySpecific.payload : sliceDaily(daily.payload, preset, new Date(now))) : undefined,
-    campaigns: (camps?.payload ?? []).map(c => ({ id: c.id, name: c.name ?? c.id, effective_status: c.effective_status, daily_budget: c.daily_budget, insight: byCampaign.get(c.id) })),
+    campaigns: (camps?.payload ?? []).map(c => ({ id: c.id, name: c.name ?? c.id, objective: c.objective, effective_status: c.effective_status, daily_budget: c.daily_budget, insight: byCampaign.get(c.id) })),
   }, new Date(summary?.fetchedAt ?? now).toISOString())
   // dailyMissing: a série diária nunca foi coletada (o gráfico não tem de onde sair); a leitura pede a busca em segundo plano.
   return { ...resp, freshness: fresh, dailyMissing: !daily, ...(fresh.pending ? { error: fresh.note ?? undefined } : {}) }

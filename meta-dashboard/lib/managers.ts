@@ -231,6 +231,8 @@ export interface Task {
   key: string; ids: number[]; startedAt: string; at: string; clientSlug: string; managerId: string | null; actorKey: string | null; actorName: string | null
   /** o que foi feito, em uma frase ("Pausou 3 conjuntos · Mudou o orçamento de 1 conjunto") */
   headline: string
+  /** o mesmo em poucas palavras, para listas */
+  short: string
   kind: ActivityKind; kinds: ActivityKind[]; count: number; items: TaskItem[]; reason: string | null; /** motivos escolhidos (pode ser mais de um) */ reasonKinds: string[]; reasonedAt: string | null
 }
 
@@ -290,6 +292,16 @@ export function headlineOf(items: Array<{ action: Action; level: string | null; 
   return parts.join(' · ')
 }
 
+const SHORT: Record<Action, string> = { criou: 'Criou', pausou: 'Pausou', ativou: 'Ativou', orcamento: 'Orçamento', publico: 'Público', lance: 'Lance', criativo: 'Criativo', alterou: 'Alterou' }
+
+/** Versão curta para listas: só o verbo e a quantidade de objetos ("Criou 20 · Pausou 6 · Público 10"), no máximo 3 itens. */
+export function shortHeadline(items: Array<{ action: Action; object: string }>): string {
+  const by = new Map<Action, Set<string>>()
+  for (const i of items) (by.get(i.action) ?? by.set(i.action, new Set()).get(i.action)!).add(i.object)
+  const parts = ORDER.filter(a => by.has(a)).map(a => `${SHORT[a]} ${by.get(a)!.size}`)
+  return parts.length > 3 ? `${parts.slice(0, 3).join(' · ')} · +${parts.length - 3}` : parts.join(' · ')
+}
+
 /** Junta o que uma pessoa fez num cliente numa mesma sessão (até 30 min entre uma alteração e a próxima) em uma tarefa só. */
 export function groupTasks(rows: TaskRow[], gapMs = TASK_GAP_MS): Task[] {
   const eligible = rows.filter(r => (TASK_KINDS as readonly string[]).includes(r.kind) && classifyChange(r))
@@ -319,7 +331,7 @@ export function groupTasks(rows: TaskRow[], gapMs = TASK_GAP_MS): Task[] {
       const answered = cur.find(r => r.reason || r.reason_kind)
       out.push({
         key: String(first.id), ids: cur.map(r => r.id), startedAt: first.at, at: last.at, clientSlug: first.client_slug, managerId: last.manager_id, actorKey: first.actor_key, actorName: first.actor_name,
-        headline: headlineOf(forHeadline), kind: kinds.includes('structure') && forHeadline.some(f => f.action === 'criou') ? 'structure' : kinds[0], kinds, count: cur.length, items,
+        headline: headlineOf(forHeadline), short: shortHeadline(forHeadline), kind: kinds.includes('structure') && forHeadline.some(f => f.action === 'criou') ? 'structure' : kinds[0], kinds, count: cur.length, items,
         reason: answered?.reason ?? null, reasonKinds: splitReasons(answered?.reason_kind), reasonedAt: answered?.reasoned_at ?? null,
       })
       cur = []

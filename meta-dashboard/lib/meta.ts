@@ -1,4 +1,5 @@
 import { legacyGet, errMsg } from './meta/legacy'
+import { costBase } from './campaignFit'
 import { detectKind, KIND_LABELS, type ResultKind } from './resultKind'
 import { isCustomConversion, labelAction } from './actionLabels'
 export type DatePreset = 'today' | 'last_7d' | 'last_30d' | 'last_14d' | 'this_month' | 'last_month' | 'month_2' | 'month_3'
@@ -42,6 +43,8 @@ export interface MetricsSummary {
 
 export interface CampaignRow {
   id: string
+  /** objetivo da campanha na Meta (OUTCOME_LEADS, OUTCOME_TRAFFIC…) */
+  objective?: string | null
   name: string
   status: string
   spend: number
@@ -673,7 +676,7 @@ export interface RawMetrics {
   summaryRow: InsightRow | undefined
   prevRow?: InsightRow | undefined
   dailyRows?: InsightRow[]
-  campaigns: Array<{ id: string; name: string; effective_status?: string; daily_budget?: string | number | null; insight?: InsightRow }>
+  campaigns: Array<{ id: string; name: string; objective?: string | null; effective_status?: string; daily_budget?: string | number | null; insight?: InsightRow }>
   /** id da conversão personalizada -> nome dado na Meta */
   customNames?: Record<string, string>
 }
@@ -712,6 +715,7 @@ export function assembleMetrics(adAccountId: string, datePreset: DatePreset, raw
     return {
       id: c.id,
       name: c.name,
+      objective: c.objective ?? null,
       status: c.effective_status ?? 'UNKNOWN',
       spend: cs.spend,
       impressions: cs.impressions,
@@ -728,6 +732,17 @@ export function assembleMetrics(adAccountId: string, datePreset: DatePreset, raw
     }
   })
 
+  const result_kind = detectKind(resultCounts(raw.summaryRow?.actions as ActionRow[] | undefined))
+  // Custo por lead / conversa / compra: só entram as campanhas do tipo de resultado do cliente (tráfego, alcance e engajamento não geram lead e inflariam o custo).
+  const base = costBase(result_kind, campaigns.map(c => ({ objective: c.objective, spend: c.spend, results: c.results, leads: c.leads })))
+  if (base.campaigns > 0 && base.campaigns < base.total) {
+    if (base.results > 0) summary.cost_per_result = base.spend / base.results
+    if (base.leads > 0) summary.cpl = base.spend / base.leads
+    if (result_kind === 'conversa' && base.results > 0) summary.cost_per_conversation = base.spend / base.results
+    // O período anterior vem da conta inteira (sem campanhas): comparar seria misturar bases. Sem variação nesses custos.
+    if (summary_prev) { summary_prev.cost_per_result = null; summary_prev.cpl = null; summary_prev.cost_per_conversation = null }
+  }
+
   return {
     account_id: adAccountId,
     account_name: raw.account.name ?? '',
@@ -739,7 +754,7 @@ export function assembleMetrics(adAccountId: string, datePreset: DatePreset, raw
     daily,
     campaigns,
     conversions: listConversions((raw.summaryRow?.actions as ActionRow[] | undefined), summary.spend, raw.customNames),
-    result_kind: detectKind(resultCounts(raw.summaryRow?.actions as ActionRow[] | undefined)),
+    result_kind,
   }
 }
 
@@ -781,28 +796,30 @@ export async function fetchMetrics(
   const prevRes = await legacyGet<Rows>(`${adAccountId}/insights?fields=${INSIGHT_FIELDS}&time_range=${encodeURIComponent(prevTimeRange(datePreset))}`, ctx)
   const dailyRes = await legacyGet<Rows>(`${adAccountId}/insights?fields=${INSIGHT_FIELDS}&${timeParam}&time_increment=1&limit=100`, ctx)
 
-  let campaignsList: Array<{ id: string; name: string; effective_status?: string; daily_budget?: string; insight?: InsightRow }> = []
+  let campaignsList: Array<{ id: string; name: string; objective?: string | null; effective_status?: string; daily_budget?: string; insight?: InsightRow }> = []
 
   if (isCustomMonth) {
     const [campsRes, campInsRes] = await Promise.all([
-      legacyGet<{ data?: Array<Record<string, unknown>> }>(`${adAccountId}/campaigns?fields=id,name,effective_status,daily_budget&limit=50`, ctx),
+      legacyGet<{ data?: Array<Record<string, unknown>> }>(`${adAccountId}/campaigns?fields=id,name,objective,effective_status,daily_budget&limit=50`, ctx),
       legacyGet<Rows>(`${adAccountId}/insights?level=campaign&fields=campaign_id,campaign_name,${INSIGHT_FIELDS}&${timeParam}&limit=50`, ctx),
     ])
     const byId = new Map((campInsRes.ok ? campInsRes.data.data ?? [] : []).map(r => [String(r.campaign_id), r]))
     campaignsList = (campsRes.ok ? campsRes.data.data ?? [] : []).map(c => ({
       id: c.id as string,
       name: c.name as string,
+      objective: c.objective as string | undefined,
       effective_status: c.effective_status as string | undefined,
       daily_budget: c.daily_budget as string | undefined,
       insight: byId.get(String(c.id)),
     }))
   } else {
     const campsRes = await legacyGet<{ data?: Array<Record<string, unknown>> }>(
-      `${adAccountId}/campaigns?fields=id,name,effective_status,daily_budget,insights.date_preset(${datePreset}){${INSIGHT_FIELDS}}&limit=50`, ctx)
+      `${adAccountId}/campaigns?fields=id,name,objective,effective_status,daily_budget,insights.date_preset(${datePreset}){${INSIGHT_FIELDS}}&limit=50`, ctx)
     if (!campsRes.ok) throw new Error(errMsg(campsRes, 'Failed to fetch campaigns'))
     campaignsList = (campsRes.data.data ?? []).map(c => ({
       id: c.id as string,
       name: c.name as string,
+      objective: c.objective as string | undefined,
       effective_status: c.effective_status as string | undefined,
       daily_budget: c.daily_budget as string | undefined,
       insight: (c.insights as { data?: InsightRow[] } | undefined)?.data?.[0],

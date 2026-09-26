@@ -61,14 +61,14 @@ export function UsageQuality({ period, client, user, onUser }: { period: string;
         <MetricTile label={worst ? `Mais lenta: ${viewLabel(worst.view)}` : 'Tela mais lenta'} value={worst ? secs(worst.p75) : '—'} />
       </div>
       <div className="usage-grid">
-        <ListCard icon={<Flame size={18} strokeWidth={1.75} />} title="Quem mais passa raiva" hint="Pessoas que mais repetem cliques sem resposta ou clicam em botões que não funcionam. Clique para filtrar por ela">
+        <ListCard icon={<Flame size={18} strokeWidth={1.75} />} title="Quem mais passa raiva" hint="Cliques repetidos ou em botões que não funcionam">
           <PagedRows size={4} empty={none('Ninguém esbarrou em cliques de raiva ou mortos neste período.')} rows={data.people.map(p => (
             <RankRow key={p.userKey} lead={<Thumb name={p.name} src={p.photo} />} title={p.name}
               sub={<>{p.rage > 0 ? plural(p.rage, 'rajada de raiva', 'rajadas de raiva') : 'sem raiva'}{p.dead > 0 ? ` · ${plural(p.dead, 'clique morto', 'cliques mortos')}` : ''}{p.topView ? <><br />mais em {viewLabel(p.topView)} · {ago(p.last)}</> : null}</>}
               value={p.rage + p.dead} valueTone="accent" active={user === p.userKey} onClick={onUser ? () => onUser(p.userKey) : undefined} chevron={!!onUser} />
           ))} />
         </ListCard>
-        <ListCard icon={<OctagonAlert size={18} strokeWidth={1.75} />} title="Erros de tela" hint="Falhas do app no navegador de quem estava usando, com quem viu por último">
+        <ListCard icon={<OctagonAlert size={18} strokeWidth={1.75} />} title="Erros de tela" hint="Falhas do app, com quem viu por último">
           <PagedRows size={4} empty={none('Nenhum erro registrado neste período.')} rows={data.errors.map(e => (
             <RankRow key={`${e.view}|${e.msg}`} wrap lead={<Thumb icon={<AlertTriangle size={18} strokeWidth={1.75} />} />} title={e.msg}
               sub={<>{viewLabel(e.view)}{e.file ? ` · ${e.file}${e.line ? `:${e.line}` : ''}` : ''} · {plural(e.sessions, 'sessão', 'sessões')}<br />última: {e.lastUserName}{e.lastClientName ? ` em ${e.lastClientName}` : ''} {ago(e.last)}</>}
@@ -82,13 +82,13 @@ export function UsageQuality({ period, client, user, onUser }: { period: string;
               value={<span style={{ color: p.p75 > SLOW_MS ? bad : good }}>{secs(p.p75)}</span>} valueTone="plain" bar={(p.p75 / maxPerf) * 100} />
           ))} />
         </ListCard>
-        <ListCard icon={<MousePointerClick size={18} strokeWidth={1.75} />} title="Cliques de raiva" hint="Vários cliques seguidos no mesmo ponto: a pessoa esperava uma resposta que não veio">
+        <ListCard icon={<MousePointerClick size={18} strokeWidth={1.75} />} title="Cliques de raiva" hint="Vários cliques seguidos sem resposta">
           <PagedRows empty={none('Nenhum clique de raiva neste período.')} rows={frictionRows(data.rage, 'clique', 'cliques')} />
         </ListCard>
         <ListCard icon={<MousePointerClick size={18} strokeWidth={1.75} />} title="Cliques mortos" hint="Cliques em algo que parece botão e não mudou nada na tela">
           <PagedRows empty={none('Nenhum clique morto neste período.')} rows={frictionRows(data.dead, 'clique', 'cliques')} />
         </ListCard>
-        <ListCard icon={<MoveVertical size={18} strokeWidth={1.75} />} title="Rolagem por tela" hint="Até onde as pessoas descem. Só telas mais compridas que a janela">
+        <ListCard icon={<MoveVertical size={18} strokeWidth={1.75} />} title="Rolagem por tela" hint="Até onde as pessoas descem">
           <PagedRows empty={none('Sem rolagem registrada neste período.')} rows={data.scroll.map(s => (
             <RankRow key={s.view} wrap lead={<Thumb icon={<MoveVertical size={18} strokeWidth={1.75} />} />} title={viewLabel(s.view)}
               sub={`${plural(s.visits, 'visita', 'visitas')} · descem em média ${s.avg}% · ${s.reach[50]}% passam da metade`} value={`${s.reach[100]}% veem o fim`} valueTone="accent" bar={s.avg} />

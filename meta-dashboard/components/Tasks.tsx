@@ -219,7 +219,7 @@ export function TaskPanel({ managerId, onCount }: { managerId: string | null; on
             </div>
           ))}
         </div>
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6, flex: '1 1 260px', maxWidth: 520 }}>Tudo que foi feito numa conta em uma sessão vira uma otimização. Abra o cliente, escolha um ou mais motivos e, se quiser, escreva uma frase. Últimos 30 dias.</p>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)', flex: '1 1 260px' }}>Informe o motivo de cada otimização. Últimos 30 dias.</p>
       </section>
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>

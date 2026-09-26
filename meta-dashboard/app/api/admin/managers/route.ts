@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
   // Justificativas de todos os gestores numa lista só: as respondidas (com o motivo) e as pendentes (há quantos dias esperam).
   const mgrName = new Map(reg.managers.map(m => [m.id, m.name]))
   const allTasks = 'tasks' in tk ? tk.tasks.filter(t => t.ownerId) : []
-  const jItem = (t: (typeof allTasks)[number]) => ({ managerAvatar: reg.managers.find(m => m.id === t.ownerId)?.avatarUrl ?? null, clientLogo: logos.get(t.clientSlug) ?? null, managerId: t.ownerId!, managerName: mgrName.get(t.ownerId!) ?? t.ownerId!, clientName: names.get(t.clientSlug) ?? t.clientSlug, headline: t.headline, at: t.at, reasons: t.reasonKinds.map(k => REASON_LABEL[k] ?? k), reason: t.reason, reasonedAt: t.reasonedAt })
+  const jItem = (t: (typeof allTasks)[number]) => ({ managerAvatar: reg.managers.find(m => m.id === t.ownerId)?.avatarUrl ?? null, clientLogo: logos.get(t.clientSlug) ?? null, managerId: t.ownerId!, managerName: mgrName.get(t.ownerId!) ?? t.ownerId!, clientName: names.get(t.clientSlug) ?? t.clientSlug, headline: t.short, at: t.at, reasons: t.reasonKinds.map(k => REASON_LABEL[k] ?? k), reason: t.reason, reasonedAt: t.reasonedAt })
   const justifications = {
     answered: allTasks.filter(isAnswered).sort((a, b) => (b.reasonedAt ?? b.at).localeCompare(a.reasonedAt ?? a.at)).slice(0, 40).map(jItem),
     pending: allTasks.filter(t => !isAnswered(t)).sort((a, b) => a.at.localeCompare(b.at)).slice(0, 40).map(jItem),

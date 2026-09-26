@@ -229,7 +229,7 @@ export async function collectStructure(d: CollectDeps, acc: Account): Promise<Co
 
   try {
     const account = await run.one<{ name?: string; currency?: string; account_status?: number }>(`${a}?fields=name,currency,account_status`)
-    const campaigns = await run.paged<{ id: string }>(`${a}/campaigns?fields=id,name,effective_status,daily_budget,updated_time&limit=${cfg.pageSize}${filter}`, 'structure:campaigns')
+    const campaigns = await run.paged<{ id: string }>(`${a}/campaigns?fields=id,name,objective,effective_status,daily_budget,updated_time&limit=${cfg.pageSize}${filter}`, 'structure:campaigns')
     const adsets = await run.paged<{ id: string }>(`${a}/adsets?fields=id,name,effective_status,daily_budget,lifetime_budget,campaign_id,updated_time&limit=${cfg.pageSize}${filter}`, 'structure:adsets')
     const customs = await run.one<{ data?: Array<{ id: string; name?: string }> }>(`${a}/customconversions?fields=id,name&limit=${cfg.pageSize}`)
     const ads = await run.paged<{ id: string; effective_status?: string; preview_shareable_link?: string }>(`${a}/ads?fields=id,name,effective_status,adset_id,campaign_id,updated_time,preview_shareable_link,creative{id,name,thumbnail_url,image_url,object_type}&limit=${cfg.pageSize}${filter}`, 'structure:ads')

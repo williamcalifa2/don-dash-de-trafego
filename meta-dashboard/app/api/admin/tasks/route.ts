@@ -33,9 +33,9 @@ export async function GET(req: NextRequest) {
   // Resumo por cliente para os cards: quantas pendentes e justificadas, e a última alteração.
   const clients = new Map<string, { slug: string; name: string; logo: string | null; pending: number; answered: number; lastAt: string; headline: string; /** gestor da conta, quando não é o dono da otimização (a pessoa mexeu na conta de outro) */ accountManager: string | null }>()
   for (const t of mine) {
-    const c = clients.get(t.clientSlug) ?? { slug: t.clientSlug, name: t.clientName, logo: t.clientLogo, pending: 0, answered: 0, lastAt: t.at, headline: t.headline, accountManager: (() => { const mid = a.reg.byClient.get(t.clientSlug) ?? null; return mid && mid !== a.managerId ? a.reg.managers.find(m => m.id === mid)?.name ?? null : null })() }
+    const c = clients.get(t.clientSlug) ?? { slug: t.clientSlug, name: t.clientName, logo: t.clientLogo, pending: 0, answered: 0, lastAt: t.at, headline: t.short, accountManager: (() => { const mid = a.reg.byClient.get(t.clientSlug) ?? null; return mid && mid !== a.managerId ? a.reg.managers.find(m => m.id === mid)?.name ?? null : null })() }
     if (isAnswered(t)) c.answered++; else c.pending++
-    if (t.at >= c.lastAt) { c.lastAt = t.at; if (!isAnswered(t)) c.headline = t.headline }
+    if (t.at >= c.lastAt) { c.lastAt = t.at; if (!isAnswered(t)) c.headline = t.short }
     clients.set(t.clientSlug, c)
   }
   return NextResponse.json({
