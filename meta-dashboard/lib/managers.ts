@@ -70,6 +70,7 @@ export function kindOfMetaEvent(type: string): ActivityKind {
   if (t.includes('target') || t.includes('audience') || t.includes('placement')) return 'audience'
   if (t.includes('bid') || t.includes('optimization') || t.includes('schedule')) return 'bid'
   if (t.includes('creative') || t.includes('image') || t.includes('video') || t === 'create_ad' || t === 'update_ad') return 'creative'
+  if (/duplicat|copy|copied/.test(t)) return 'structure' // duplicar também é criar
   if (t.startsWith('create_')) return 'structure'
   return 'other'
 }
@@ -250,6 +251,8 @@ export function classifyChange(r: Pick<TaskRow, 'kind' | 'event_type' | 'object_
   const t = (r.event_type ?? '').toLowerCase()
   const level = r.object_type ? LEVEL_OF[r.object_type] ?? null : null
   if (t.includes('budget_scheduling') || t === 'add_images' || t === 'edit_images') return null
+  // Rascunho não é campanha no ar: não conta.
+  if (/draft|rascunho/.test(t) || /rascunho|draft/i.test(r.summary ?? '')) return null
   if (t.includes('run_status')) {
     const from = r.detail?.from ?? '', to = r.detail?.to ?? ''
     if (INACTIVE.test(to)) return { action: 'pausou', level }
@@ -257,6 +260,8 @@ export function classifyChange(r: Pick<TaskRow, 'kind' | 'event_type' | 'object_
     if (INACTIVE.test(from) && (ACTIVE.test(to) || INTERNAL_STATE.test(to))) return { action: 'ativou', level }
     return null
   }
+  // Duplicar conjunto, campanha ou anúncio também é criar.
+  if (/duplicat|copy|copied/.test(t)) return { action: 'criou', level }
   if (t.startsWith('create_')) return { action: 'criou', level: t === 'create_campaign_group' ? 'campanha' : t === 'create_ad_set' ? 'conjunto' : t === 'create_ad' ? 'anúncio' : level }
   if (t.includes('target')) return { action: 'publico', level: 'conjunto' }
   if (t.includes('bid') || t.includes('optimization')) return { action: 'lance', level: 'conjunto' }

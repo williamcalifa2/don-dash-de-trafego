@@ -217,3 +217,14 @@ describe('resumo das ações', () => {
     expect(r).toEqual(['Criou 3 conjuntos', 'Pausou 1 campanha', 'Alterou 1 orçamento', 'Alterou 1 público', 'Alterou 2 criativos'])
   })
 })
+
+describe('criar: rascunho não conta, duplicar conta', () => {
+  it('rascunho fica de fora', () => {
+    expect(classifyChange({ kind: 'structure', event_type: 'create_campaign_draft', object_type: 'CAMPAIGN_GROUP', detail: null, summary: 'Rascunho criado' })).toBeNull()
+    expect(classifyChange({ kind: 'structure', event_type: 'create_ad_set', object_type: 'CAMPAIGN', detail: null, summary: 'Conjunto de anúncios criado' })).toMatchObject({ action: 'criou', level: 'conjunto' })
+  })
+  it('duplicar conta como criar', () => {
+    expect(classifyChange({ kind: 'structure', event_type: 'duplicate_ad_set', object_type: 'CAMPAIGN', detail: null, summary: 'Conjunto duplicado' })).toMatchObject({ action: 'criou', level: 'conjunto' })
+    expect(kindOfMetaEvent('duplicate_ad_set')).toBe('structure')
+  })
+})

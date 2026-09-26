@@ -59,7 +59,8 @@ export function PeriodSummary({ period, manager, tick }: { period: RangePeriod; 
   const [d, setD] = useState<Data | null>(null)
   useEffect(() => {
     let alive = true
-    apiFetch(`/api/admin/managers/summary?period=${period}${manager ? `&manager=${manager}` : ''}`, { cache: 'no-store' }).then(r => r.json()).then((j: Data) => { if (alive) setD(j) }).catch(() => { })
+    setD(null)
+    apiFetch(`/api/admin/managers/summary?period=${period}${manager ? `&manager=${manager}` : ''}`, { cache: 'no-store' }).then(r => r.json()).then((j: Data) => { if (alive) setD(j) }).catch(() => { if (alive) setD({ setup: 'error' }) })
     return () => { alive = false }
   }, [period, manager, tick])
 
