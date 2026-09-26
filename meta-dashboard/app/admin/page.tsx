@@ -1628,7 +1628,7 @@ export default function AdminPage() {
                             return (
                               <div key={k} style={{ minWidth: 0 }}>
                                 <div style={{ ...eyebrow, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={def.label(c.resultKind ?? 'form')}>{def.label(c.resultKind ?? 'form')}</div>
-                                <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.3, color: tone === 'good' ? 'var(--green)' : tone === 'warn' ? 'var(--amber)' : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{def.value(c, p)}</div>
+                                <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.3, color: tone === 'good' ? 'var(--green)' : tone === 'warn' ? 'var(--amber)' : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={def.group === 'meta' && !c.resultsAt ? 'A Meta ainda não foi lida para este cliente' : undefined}>{def.group === 'meta' && !c.resultsAt ? '—' : def.value(c, p)}</div>
                               </div>
                             )
                           })}

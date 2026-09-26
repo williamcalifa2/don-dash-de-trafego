@@ -24,6 +24,7 @@ import { useLeadAlerts } from '@/lib/useLeadAlerts'
 import { isStale } from '@/lib/leadUtils'
 import { apiFetch } from '@/lib/apiFetch'
 import { useMetricsRealtime } from '@/lib/useMetricsRealtime'
+import { isAwaitingData } from '@/lib/metricsState'
 import type { DatePreset, MetricsSummary } from '@/lib/meta'
 import type { PlatformKey } from '@/lib/platforms'
 import type { ReportMode } from '@/lib/report'
@@ -259,7 +260,10 @@ function Dashboard() {
     try { localStorage.setItem('theme', next) } catch { }
   }
 
-  const { data, error, isLoading, isValidating, mutate } = useMetricsRealtime(preset)
+  const { data: liveData, error, isLoading, isValidating, mutate, refreshWhy } = useMetricsRealtime(preset)
+  // Sem leitura da Meta neste período: os números vêm zerados. Nada disso pode aparecer como se fosse dado real.
+  const awaiting = !isLoading && isAwaitingData(liveData)
+  const data = awaiting ? null : liveData
   const currency = data?.currency ?? 'BRL'
   const s = data?.summary
   const p = data?.summary_prev
@@ -564,7 +568,7 @@ function Dashboard() {
 
         {/* Funnel tab */}
         {!isLoading && tab === 'funnel' && s && <FunnelTab summary={s} currency={currency} kind={kind} />}
-        {tab === 'campaigns' && <CampaignsTab campaigns={data?.campaigns ?? []} summary={s} summaryPrev={p} currency={currency} kind={kind} preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} loading={isLoading} />}
+        {tab === 'campaigns' && !awaiting && <CampaignsTab campaigns={data?.campaigns ?? []} summary={s} summaryPrev={p} currency={currency} kind={kind} preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} loading={isLoading} />}
         {tab === 'ecommerce' && (
           <EcommerceTab
             clientSlug={me?.slug}
@@ -597,8 +601,17 @@ function Dashboard() {
             defaultPreset={preset === 'last_7d' ? 'last_7d' : preset === 'this_month' ? 'this_month' : 'last_month'}
           />
         )}
-        {!isLoading && tab === 'funnel' && !s && !error && (
+        {!isLoading && !awaiting && tab === 'funnel' && !s && !error && (
           <PulseLoader size={40} />
+        )}
+
+        {awaiting && ['metrics', 'campaigns', 'funnel'].includes(tab) && (
+          <div className="card" style={{ padding: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }} role="status">
+            <PulseLoader size={40} />
+            <div style={{ fontSize: 16, fontWeight: 600 }}>Ainda sem dados de {PRESETS.find(pr => pr.value === preset)?.label ?? 'este período'}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-2)' }}>{refreshWhy ?? 'A leitura da Meta para este período ainda não terminou.'}</div>
+            <button type="button" className="btn btn-outline btn-sm" onClick={handleManualRefresh} disabled={isValidating || refreshing}>Buscar agora</button>
+          </div>
         )}
 
         {/* Loading skeleton (apenas se não houver dados anteriores) */}
