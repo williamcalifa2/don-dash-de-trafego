@@ -4,7 +4,6 @@ import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { ExtensionLink } from './ExtensionLink'
 import { Building2, FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, ClipboardCheck, Gauge, Receipt, Radar, PanelLeftClose, Puzzle, PanelLeftOpen, Users, X } from 'lucide-react'
-import { apiFetch } from '@/lib/apiFetch'
 import type { Me } from '@/components/ProfileMenu'
 import { PulseLoader } from '@/components/PulseLoader'
 
@@ -57,7 +56,8 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try { setCollapsed(localStorage.getItem(COLLAPSE_KEY) === '1') } catch { }
     let alive = true
-    apiFetch('/api/admin/profile', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((j: Me | null) => {
+    // fetch simples (não apiFetch): o painel do cliente também usa esta barra, e a sessão de cliente recebe 401 aqui. Isso não pode derrubar o login dele.
+    fetch('/api/admin/profile', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((j: Me | null) => {
       if (!alive) return
       setMe(j && j.role ? j : null); setKnown(true)
       try { if (j?.role) sessionStorage.setItem(ROLE_KEY, j.role); else sessionStorage.removeItem(ROLE_KEY) } catch { }
@@ -69,7 +69,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!known || !me) return
     let alive = true
-    apiFetch('/api/admin/tasks/summary', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((j: { managerId: string | null; pending: number } | null) => { if (alive && j) setTasks(j) }).catch(() => { })
+    fetch('/api/admin/tasks/summary', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((j: { managerId: string | null; pending: number } | null) => { if (alive && j) setTasks(j) }).catch(() => { })
     return () => { alive = false }
   }, [known, me, pathname])
 
