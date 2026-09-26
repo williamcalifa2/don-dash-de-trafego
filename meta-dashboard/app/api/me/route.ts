@@ -5,6 +5,7 @@ import { canSee, scopeFor } from '@/lib/scope'
 import { isAdmin, requestRole, VIEW_COOKIE } from '@/lib/admin'
 import { platformsFor } from '@/lib/platforms'
 import { getClientConfig, hasEcommerce } from '@/lib/clientConfig'
+import { notePresence } from '@/lib/usageStore'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,6 +18,7 @@ export async function GET(req: NextRequest) {
     if (view && scope.slugs && !canSee(scope, view)) return NextResponse.json({ error: 'out_of_scope' }, { status: 403 })
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
+  await notePresence(req, tenant.slug)
   const cfg = await getClientConfig(tenant.slug)
   const ecommerce = hasEcommerce(cfg)
   const google = Boolean(cfg.googleAdsCustomerId)

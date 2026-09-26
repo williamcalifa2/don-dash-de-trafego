@@ -29,7 +29,7 @@ export const deviceOf = (width: number): Device => (width >= 1024 ? 'desktop' : 
 
 const VIEW_RE = /^[a-z0-9][a-z0-9/_-]{0,39}$/
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/
-const SID_RE = /^[A-Za-z0-9_-]{8,40}$/
+export const SID_RE = /^[A-Za-z0-9_-]{8,40}$/
 
 export interface BeatClick { sel: string; rx: number; ry: number; /** tela e cliente no instante do clique (o lote pode sair depois de a pessoa mudar de tela) */ view: string | null; client: string | null; label: string | null }
 export interface BeatEntry { client: string; view: string; delta: number }

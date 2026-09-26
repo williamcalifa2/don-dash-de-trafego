@@ -4,7 +4,7 @@ import { readSession, SESSION_COOKIE } from './auth'
 import { ADMIN_SLUG, ownerEmail, sessionRole } from './admin'
 import { getSupabaseServer } from './supabase'
 import { geoFromHeaders } from './storeTrack'
-import { deviceOf } from './usage'
+import { deviceOf, SID_RE } from './usage'
 
 export interface UsageIdentity { userKey: string; role: string; /** painel do cliente quando é a própria pessoa do cliente */ tenantSlug: string | null }
 
@@ -29,5 +29,29 @@ export async function recordLogin(req: NextRequest, e: { userKey: string; role: 
     const w = Number(req.headers.get('sec-ch-viewport-width'))
     const mobile = /mobile|android|iphone/i.test(req.headers.get('user-agent') ?? '')
     await db.from('usage_logins').insert({ user_key: e.userKey.slice(0, 120).toLowerCase(), role: e.role, client_slug: e.clientSlug, ok: e.ok, country: g.country, city: g.city, device: Number.isFinite(w) && w > 0 ? deviceOf(w) : mobile ? 'mobile' : 'desktop' })
+  } catch { /* análise de uso é secundária */ }
+}
+
+/**
+ * Acesso do cliente registrado pelo servidor: cada vez que o painel dele abre, a sessão de uso passa a existir (mesmo id que o coletor do navegador usa).
+ * Se o navegador bloquear o coletor (bloqueador de anúncios, rede), o acesso ainda aparece na análise, só sem o tempo por tela. Nunca derruba a leitura.
+ */
+export async function notePresence(req: NextRequest, tenantSlug: string): Promise<void> {
+  try {
+    const sid = req.headers.get('x-usage-sid') ?? ''
+    if (!SID_RE.test(sid)) return
+    const who = await usageIdentity(req)
+    if (!who || who.role !== 'client' || who.tenantSlug !== tenantSlug) return // equipe vendo o painel do cliente não conta como cliente
+    const db = getSupabaseServer()
+    if (!db) return
+    const w = Number(req.headers.get('sec-ch-viewport-width'))
+    const mobile = /mobile|android|iphone/i.test(req.headers.get('user-agent') ?? '')
+    const g = geoFromHeaders(req.headers)
+    await db.from('usage_sessions').upsert({
+      sid, user_key: who.userKey, role: 'client', last_seen: new Date().toISOString(), last_view: 'dashboard', last_client: tenantSlug,
+      device: Number.isFinite(w) && w > 0 ? deviceOf(w) : mobile ? 'mobile' : 'desktop', country: g.country,
+    }, { onConflict: 'sid' })
+    // Linha de tela com 0 s: faz o acesso aparecer também na aba do cliente, mesmo sem o tempo medido pelo navegador.
+    await db.rpc('usage_add_time', { p_sid: sid, p_client: tenantSlug, p_view: 'dashboard', p_delta: 0 })
   } catch { /* análise de uso é secundária */ }
 }

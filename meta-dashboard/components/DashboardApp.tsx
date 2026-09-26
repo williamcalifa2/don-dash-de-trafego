@@ -198,7 +198,10 @@ function Dashboard() {
 
   useEffect(() => {
     let alive = true
-    apiFetch('/api/me')
+    // Manda o id da sessão de uso: o servidor já registra o acesso do cliente mesmo que o coletor do navegador seja bloqueado.
+    let usageSid = ''
+    try { usageSid = sessionStorage.getItem('don_usage_sid') ?? '' } catch { /* sem sessionStorage */ }
+    apiFetch('/api/me', usageSid ? { headers: { 'x-usage-sid': usageSid } } : undefined)
       .then(r => { if (r.status === 403) { window.location.replace('/admin'); return null } return r.ok ? r.json() : null })
       .then(j => {
         if (!alive) return
