@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     await recordLogin(req, { userKey: byEmail ? email : `cliente:${slug}`, role: 'client', clientSlug: slug, ok: false })
     return result.reason === 'locked'
       ? NextResponse.json({ error: `Acesso bloqueado por segurança. Tente de novo em ${result.minutes} minuto${result.minutes === 1 ? '' : 's'}.` }, { status: 429 })
-      : NextResponse.json({ error: byEmail ? 'E-mail ou token incorreto.' : 'Código incorreto.' }, { status: 401 })
+      : NextResponse.json({ error: byEmail ? 'E-mail ou senha incorretos.' : 'Código incorreto.' }, { status: 401 })
   }
 
   const sess = await readSession(result.session)

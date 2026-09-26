@@ -241,7 +241,7 @@ function TeamModal({ onClose, onToken }: { onClose: () => void; onToken: (email:
     setBusy(true); setErr(null)
     const r = await api<{ token: string }>('/api/admin/team', 'PUT', { email: m.email })
     setBusy(false)
-    if (!r.ok) return setErr(r.data.error ?? 'Não foi possível gerar o token.')
+    if (!r.ok) return setErr(r.data.error ?? 'Não foi possível gerar a senha.')
     onToken(m.email, r.data.token, m.role)
   }
   async function changeRole(m: TeamMember, next: TeamRole) {
@@ -429,12 +429,12 @@ function MemberTokenModal({ email, token, role, onClose }: { email: string; toke
 
 /** Mensagem pronta para mandar ao cliente: nome do negócio, link, e-mail e token. */
 function clientInviteMessage(business: string, url: string, email: string, token: string): string {
-  return `Oi! Segue o seu acesso ao painel de resultados da ${business}:\n\nLink: ${url}\nE-mail: ${email}\nToken de acesso (é a sua senha): ${token}\n\nÉ só entrar com esse e-mail e colar o token no campo "Token".`
+  return `Oi! Segue o seu acesso ao painel de resultados da ${business}:\n\nLink: ${url}\nE-mail: ${email}\nSenha: ${token}\n\nÉ só entrar com esse e-mail e essa senha.`
 }
 
 interface AccessEntry { email: string; createdAt: string; lastLoginAt: string | null }
 
-/** Quem pode entrar no painel do cliente: e-mails cadastrados pela agência, cada um com o seu token. */
+/** Quem pode entrar no painel do cliente: e-mails cadastrados pela agência, cada um com a sua senha. */
 function AccessPanel({ client, canManage, urlFor }: { client: AdminClient; canManage: boolean; urlFor: (slug: string) => string }) {
   const slug = client.slug
   const [list, setList] = useState<AccessEntry[] | null>(null)
@@ -457,7 +457,7 @@ function AccessPanel({ client, canManage, urlFor }: { client: AdminClient; canMa
     setBusy(true); setErr(null)
     const r = await api<{ token: string; business: string }>(`/api/admin/clients/${slug}/access`, 'POST', { email: target })
     setBusy(false)
-    if (!r.ok) return setErr(r.data.error ?? 'Não foi possível gerar o token.')
+    if (!r.ok) return setErr(r.data.error ?? 'Não foi possível gerar a senha.')
     setIssued({ email: target.trim().toLowerCase(), token: r.data.token, business: r.data.business })
     setEmail('')
     void load()
@@ -475,18 +475,21 @@ function AccessPanel({ client, canManage, urlFor }: { client: AdminClient; canMa
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {issued && (
-        <div className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10, border: '1.5px solid var(--accent)' }}>
-          <div style={{ fontSize: 13, color: 'var(--text-2)' }}>Token de <strong>{issued.email}</strong>. Ele não aparece de novo depois de fechar: copie a mensagem e envie.</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--bg-card2)', borderRadius: 'var(--radius)' }}>
-            <span style={{ flex: 1, minWidth: 0, fontSize: 22, fontWeight: 700, letterSpacing: '0.12em', userSelect: 'all', overflowWrap: 'anywhere' }}>{issued.token}</span>
-            <CopyIconButton value={issued.token} label="Copiar token" />
-          </div>
-          <pre style={{ margin: 0, padding: 12, background: 'var(--bg-card2)', borderRadius: 'var(--radius)', fontSize: 12, lineHeight: 1.5, whiteSpace: 'pre-wrap', fontFamily: 'inherit', color: 'var(--text-2)' }}>{message}</pre>
+        <div className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, border: '1.5px solid var(--accent)' }}>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>Acesso criado</div>
+          {([['Link', urlFor(slug), false], ['E-mail', issued.email, false], ['Senha', issued.token, true]] as const).map(([label, value, big]) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--bg-card2)', borderRadius: 'var(--radius)' }}>
+              <span style={{ width: 56, flexShrink: 0, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)' }}>{label}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: big ? 20 : 14, fontWeight: big ? 700 : 500, letterSpacing: big ? '0.12em' : undefined, userSelect: 'all', overflowWrap: 'anywhere' }}>{value}</span>
+              <CopyIconButton value={value} label={`Copiar ${label.toLowerCase()}`} />
+            </div>
+          ))}
+          <div style={{ fontSize: 12, color: 'var(--text-2)' }}>A senha só aparece agora. Depois, só dá para gerar outra.</div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap' }}>
             <button className="btn btn-primary" onClick={async () => { try { await navigator.clipboard.writeText(message); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { } }}>
-              {copied ? <Check size={16} strokeWidth={1.75} /> : <Copy size={16} strokeWidth={1.75} />} {copied ? 'Mensagem copiada' : 'Copiar mensagem'}
+              {copied ? <Check size={16} strokeWidth={1.75} /> : <Copy size={16} strokeWidth={1.75} />} {copied ? 'Mensagem copiada' : 'Copiar mensagem pronta'}
             </button>
-            <button className="btn btn-outline" onClick={() => setIssued(null)}>Fechar token</button>
+            <button className="btn btn-outline" onClick={() => setIssued(null)}>Fechar</button>
           </div>
         </div>
       )}
@@ -494,7 +497,7 @@ function AccessPanel({ client, canManage, urlFor }: { client: AdminClient; canMa
       <div>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)', marginBottom: 8 }}>E-mails com acesso{list ? ` · ${list.length}` : ''}</div>
         {list === null ? <PulseLoader size={32} inline /> : list.length === 0 ? (
-          <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0, lineHeight: 1.6 }}>{client.name} ainda entra pelo código antigo de 6 dígitos. Ao cadastrar o primeiro e-mail, o acesso passa a ser por e-mail e token, e o código antigo deixa de valer.</p>
+          <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0, lineHeight: 1.6 }}>Hoje entra pelo código de 6 dígitos. Ao cadastrar o primeiro e-mail, o código deixa de valer e o acesso passa a ser por e-mail e senha.</p>
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>
             {list.map(a => (
@@ -505,7 +508,7 @@ function AccessPanel({ client, canManage, urlFor }: { client: AdminClient; canMa
                 </div>
                 {canManage && (confirm === a.email
                   ? <><button className="btn btn-sm" style={{ background: 'var(--red)', color: '#fff' }} onClick={() => remove(a.email)} disabled={busy}>Remover acesso</button><button className="btn btn-outline btn-sm" onClick={() => setConfirm(null)}>Cancelar</button></>
-                  : <><button className="btn btn-outline btn-sm" onClick={() => issue(a.email)} disabled={busy} title="Gera outro token e derruba o atual"><KeyRound size={14} strokeWidth={1.75} /> Novo token</button><button className="btn btn-outline btn-icon btn-sm" onClick={() => setConfirm(a.email)} aria-label={`Remover ${a.email}`} title="Remover"><Trash2 size={14} strokeWidth={1.75} /></button></>)}
+                  : <><button className="btn btn-outline btn-sm" onClick={() => issue(a.email)} disabled={busy} title="A senha não fica salva. Gera outra e a atual deixa de valer"><KeyRound size={14} strokeWidth={1.75} /> Nova senha</button><button className="btn btn-outline btn-icon btn-sm" onClick={() => setConfirm(a.email)} aria-label={`Remover ${a.email}`} title="Remover"><Trash2 size={14} strokeWidth={1.75} /></button></>)}
               </li>
             ))}
           </ul>
@@ -515,7 +518,7 @@ function AccessPanel({ client, canManage, urlFor }: { client: AdminClient; canMa
       {canManage && (
         <form onSubmit={e => { e.preventDefault(); if (email.trim()) void issue(email) }} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <input className="field" type="email" style={{ flex: '1 1 240px' }} placeholder="E-mail de quem vai entrar" value={email} onChange={e => setEmail(e.target.value)} aria-label="E-mail do cliente" />
-          <button className="btn btn-primary" type="submit" disabled={busy || !email.trim() || !slug}>{busy ? 'Gerando…' : 'Cadastrar e gerar token'}</button>
+          <button className="btn btn-primary" type="submit" disabled={busy || !email.trim() || !slug}>{busy ? 'Gerando…' : 'Cadastrar e gerar senha'}</button>
         </form>
       )}
       {err && <p role="alert" style={{ fontSize: 13, color: 'var(--red)', margin: 0 }}>{err}</p>}
@@ -1591,7 +1594,7 @@ export default function AdminPage() {
                 ...(canManage ? [{ icon: <Pencil size={16} strokeWidth={1.75} />, text: 'Editar cliente e metas', onClick: () => setModal({ kind: 'clients', select: c.slug, tab: 'cadastro' }) }] : []),
                 ...(canOperate ? [{ icon: <Webhook size={16} strokeWidth={1.75} />, text: 'Integrações', onClick: () => setModal({ kind: 'clients', select: c.slug, tab: 'integracoes' }) }] : []),
                 ...(canOperate ? [{ icon: <Settings2 size={16} strokeWidth={1.75} />, text: 'Métricas do card', onClick: () => setModal({ kind: 'metrics', client: c }) }] : []),
-                ...(canOperate ? [{ icon: <KeyRound size={16} strokeWidth={1.75} />, text: 'Acessos (e-mail e token)', onClick: () => setModal({ kind: 'clients', select: c.slug, tab: 'acessos' }) }] : []),
+                ...(canOperate ? [{ icon: <KeyRound size={16} strokeWidth={1.75} />, text: 'Acessos (e-mail e senha)', onClick: () => setModal({ kind: 'clients', select: c.slug, tab: 'acessos' }) }] : []),
                 ...(canManage ? [{ icon: <KeyRound size={16} strokeWidth={1.75} />, text: c.hasCode ? 'Revogar código antigo' : 'Gerar código antigo', onClick: () => c.hasCode ? setModal({ kind: 'confirm', action: 'rotate', client: c }) : runAction('rotate', c) }] : []),
                 { icon: <Link2 size={16} strokeWidth={1.75} />, text: 'Copiar link do painel', onClick: () => { navigator.clipboard?.writeText(clientUrl(c.slug)).then(() => setNotice('Link copiado.')).catch(() => setNotice(clientUrl(c.slug))) } },
               ]
