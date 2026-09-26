@@ -1,7 +1,9 @@
 /** Google Ads: períodos, consultas GAQL e leitura das linhas devolvidas. Só funções puras. */
 
-export type GooglePreset = 'today' | 'last_7d' | 'last_14d' | 'last_30d' | 'this_month' | 'last_month' | 'month_2' | 'month_3'
-export const GOOGLE_PRESETS: readonly GooglePreset[] = ['today', 'last_7d', 'last_14d', 'last_30d', 'this_month', 'last_month', 'month_2', 'month_3']
+import { extraRange, type ExtraPreset } from '../periodsMeta'
+
+export type GooglePreset = 'today' | 'last_7d' | 'last_14d' | 'last_30d' | 'this_month' | 'last_month' | 'month_2' | 'month_3' | ExtraPreset
+export const GOOGLE_PRESETS: readonly GooglePreset[] = ['today', 'yesterday', 'today_yesterday', 'last_7d', 'last_14d', 'last_28d', 'last_30d', 'this_week', 'last_week', 'this_month', 'last_month', 'month_2', 'month_3']
 
 export interface Range { since: string; until: string }
 
@@ -10,6 +12,8 @@ const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86_400_000)
 
 /** Intervalo (datas de Brasília) de cada período do painel. `now` só existe para teste. */
 export function rangeFor(preset: GooglePreset, now = new Date()): Range {
+  const extra = extraRange(preset, now.getTime())
+  if (extra) return extra
   const br = new Date(now.getTime() - 3 * 3_600_000)
   const today = new Date(Date.UTC(br.getUTCFullYear(), br.getUTCMonth(), br.getUTCDate()))
   const month = (back: number) => {
@@ -26,6 +30,7 @@ export function rangeFor(preset: GooglePreset, now = new Date()): Range {
     case 'last_month': return month(1)
     case 'month_2': return month(2)
     case 'month_3': return month(3)
+    default: return { since: iso(today), until: iso(today) } // período extra já tratado acima
   }
 }
 

@@ -1,3 +1,4 @@
+import { METRIC_PRESETS } from '@/lib/periodsMeta'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireTenant } from '@/lib/tenant'
 import { tenantOwns } from '@/lib/metaAccess'
@@ -9,7 +10,7 @@ import { stores } from '@/lib/meta/pipeline'
 
 export const dynamic = 'force-dynamic'
 
-const PRESETS = ['today', 'last_7d', 'last_14d', 'last_30d', 'this_month']
+const PRESETS = METRIC_PRESETS as readonly string[]
 type Action = { action_type: string; value: string }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

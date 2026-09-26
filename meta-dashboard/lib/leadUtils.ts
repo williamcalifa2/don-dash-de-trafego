@@ -1,3 +1,4 @@
+import { extraRange, prevExtraRange } from './periodsMeta'
 import type { Lead } from './leadTypes'
 
 export const STALE_HOURS = Number(process.env.NEXT_PUBLIC_STALE_HOURS ?? 2)
@@ -62,7 +63,23 @@ export function timeAgo(iso: string | null | undefined): string {
 
 export const PRESET_DAYS: Record<string, number> = { today: 1, last_7d: 7, last_14d: 14, last_30d: 30 }
 
+/** Datas (Brasil) de um período que não é "N dias até agora", para conferir os leads do CRM com o mesmo recorte dos anúncios. */
+function crmRange(preset: string, offsetPeriods: number): { since: string; until: string } | null {
+  if (preset === 'last_month') {
+    const n = new Date(Date.now() - 3 * 3_600_000)
+    const y = n.getUTCFullYear(), m = n.getUTCMonth() - 1 - offsetPeriods
+    const f = (d: Date) => d.toISOString().slice(0, 10)
+    return { since: f(new Date(Date.UTC(y, m, 1))), until: f(new Date(Date.UTC(y, m + 1, 0))) }
+  }
+  return offsetPeriods === 0 ? extraRange(preset) : prevExtraRange(preset)
+}
+
 export function leadsInPeriod(leads: Lead[], preset: string, offsetPeriods = 0): Lead[] {
+  const range = crmRange(preset, offsetPeriods)
+  if (range) {
+    const start = Date.parse(`${range.since}T00:00:00-03:00`), end = Date.parse(`${range.until}T23:59:59.999-03:00`)
+    return leads.filter(l => { const t = new Date(l.created_at).getTime(); return t >= start && t <= end })
+  }
   if (preset === 'this_month') {
     // Do dia 1 até agora; o período anterior é o mesmo trecho do mês passado.
     const n = new Date()

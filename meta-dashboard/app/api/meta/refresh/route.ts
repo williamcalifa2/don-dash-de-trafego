@@ -15,7 +15,7 @@ import { logStaffActivity } from '@/lib/activityLog'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-const PRESETS = ['today', 'last_7d', 'last_14d', 'last_30d', 'this_month'] as const
+const PRESETS = ['today', 'yesterday', 'today_yesterday', 'last_7d', 'last_14d', 'last_28d', 'last_30d', 'this_week', 'last_week', 'this_month', 'last_month'] as const
 
 /**
  * "Atualizar" do painel: NÃO chama a Meta. Só pede à fila uma atualização desta conta, com resfriamento por conta.

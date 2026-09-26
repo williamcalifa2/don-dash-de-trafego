@@ -1,3 +1,4 @@
+import { METRIC_PRESETS } from '@/lib/periodsMeta'
 import { NextRequest, NextResponse, after } from 'next/server'
 import { fetchMetrics, type DatePreset, type MetricsResponse } from '@/lib/meta'
 import { requireTenant } from '@/lib/tenant'
@@ -14,7 +15,11 @@ import { allow } from '@/lib/rateLimit'
 export const maxDuration = 60
 
 /** Períodos que o "atualizar na hora" sabe buscar. Os meses fechados vêm por outro caminho. */
-const AUTO_PRESETS: DatePreset[] = ['today', 'last_7d', 'last_14d', 'last_30d', 'this_month']
+/** Períodos que o ciclo automático já renova. */
+const CYCLE_PRESETS: DatePreset[] = ['today', 'last_7d', 'last_14d', 'last_30d', 'this_month']
+/** Períodos que só mudam quando o dia, a semana ou o mês virar: dado de algumas horas ainda serve. */
+const CLOSED_PRESETS: DatePreset[] = ['yesterday', 'last_week', 'last_month']
+const AUTO_PRESETS: DatePreset[] = ['today', 'yesterday', 'today_yesterday', 'last_7d', 'last_14d', 'last_28d', 'last_30d', 'this_week', 'last_week', 'this_month', 'last_month']
 
 function pastDates(n: number): string[] {
   return Array.from({ length: n }, (_, i) => {
@@ -167,8 +172,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const datePreset = (searchParams.get('date_preset') ?? 'last_7d') as DatePreset
 
-  const validPresets: DatePreset[] = ['today', 'last_7d', 'last_14d', 'last_30d', 'this_month', 'last_month', 'month_2', 'month_3']
-  if (!validPresets.includes(datePreset)) {
+  const validPresets = METRIC_PRESETS as readonly string[]
+  if (!validPresets.includes(datePreset as string)) {
     return NextResponse.json({ error: 'Invalid date_preset' }, { status: 400 })
   }
 
@@ -179,7 +184,9 @@ export async function GET(req: NextRequest) {
       const resp = await readMetrics(stores.snaps, tenant.clientId, accountId, datePreset, metaConfig(), st)
       // Ainda não existe cópia deste período (ou da série diária do gráfico): busca sozinho na Meta, em segundo plano, no máximo uma vez a cada 10 min por conta e período.
       // O painel tenta de novo até os dados chegarem; os freios (pausa, bloqueio, tetos) continuam valendo dentro do refreshNow.
-      if ((resp.freshness.pending || resp.dailyMissing) && AUTO_PRESETS.includes(datePreset) && allow(`auto:${tenant.slug}:${datePreset}`, 1, 10 * 60_000)) {
+      // Períodos que o ciclo automático não renova (ontem, semana, mês passado...) são lidos sob demanda: sem dado, ou com dado velho, busca em segundo plano.
+      const onDemandStale = !CYCLE_PRESETS.includes(datePreset) && resp.freshness.stale && resp.freshness.updatedAt != null && Date.now() - resp.freshness.updatedAt > (CLOSED_PRESETS.includes(datePreset) ? 12 * 3_600_000 : 0)
+      if ((resp.freshness.pending || resp.dailyMissing || onDemandStale) && AUTO_PRESETS.includes(datePreset) && allow(`auto:${tenant.slug}:${datePreset}`, 1, 10 * 60_000)) {
         const acc = { clientId: tenant.clientId, slug: tenant.slug, adAccountId: accountId, pageId: tenant.pageId }
         after(async () => { try { await refreshNow(acc, datePreset) } catch (e) { console.error('[metrics] busca automática:', e instanceof Error ? e.message : e) } })
       }

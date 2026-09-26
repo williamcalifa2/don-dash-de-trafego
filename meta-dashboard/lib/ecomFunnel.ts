@@ -1,3 +1,4 @@
+import { extraRange } from './periodsMeta'
 /** Funil real da loja: visitas, carrinho e checkout vêm do pixel; pedidos e pagos, da Shopify. Sem pixel, só mostra o que a loja informa. */
 export interface FunnelInput { sessions: number; carts: number; checkouts: number; orders: number; paid: number }
 
@@ -36,6 +37,14 @@ export function presetRangeBr(preset: string | null | undefined, now = Date.now(
   const back = (n: number) => new Date(dayStart - n * DAY_MS + BR_MS).toISOString()
   const d = new Date(dayStart)
   const monthStart = (offset: number) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - offset, 1) + BR_MS).toISOString()
+  const extra = preset ? extraRange(preset, now) : null
+  if (extra) {
+    const startOf = (ymd: string) => new Date(`${ymd}T00:00:00-03:00`).toISOString()
+    const nextDay = (ymd: string) => new Date(Date.parse(`${ymd}T00:00:00-03:00`) + DAY_MS).toISOString()
+    const today = new Date(dayStart + BR_MS).toISOString()
+    const until = nextDay(extra.until)
+    return { since: startOf(extra.since), until: until > today ? null : until } // inclui hoje: vai até agora
+  }
   switch (preset) {
     case 'today': return { since: back(0), until: null }
     case 'last_7d': return { since: back(6), until: null }

@@ -1,3 +1,4 @@
+import { METRIC_PRESETS } from '@/lib/periodsMeta'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireTenant } from '@/lib/tenant'
 import { errMsg, legacyPaged } from '@/lib/meta/legacy'
@@ -9,7 +10,7 @@ import { friendlyLiveError, performanceFallback, remember } from '@/lib/meta/sta
 
 export const dynamic = 'force-dynamic'
 
-const PRESETS = ['today', 'last_7d', 'last_14d', 'last_30d', 'this_month']
+const PRESETS = METRIC_PRESETS as readonly string[]
 
 export type { AdPerfRow } from '@/lib/meta/read'
 

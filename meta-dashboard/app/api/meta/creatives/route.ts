@@ -1,3 +1,4 @@
+import { METRIC_PRESETS } from '@/lib/periodsMeta'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireTenant } from '@/lib/tenant'
 import { stores } from '@/lib/meta/stores'
@@ -6,7 +7,7 @@ import { buildCreatives } from '@/lib/creatives'
 
 export const dynamic = 'force-dynamic'
 
-const PRESETS = ['today', 'last_7d', 'last_14d', 'last_30d', 'this_month']
+const PRESETS = METRIC_PRESETS as readonly string[]
 
 /**
  * Criativos do cliente (campeões, fadiga e tendência do CTR). Só lê do banco: nada aqui chama a Meta.

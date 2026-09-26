@@ -9,7 +9,8 @@ import type { LimitStore } from './limits'
 import type { SnapshotStore } from './snapshots'
 import type { JobKind } from './queue'
 import { inBusinessHours } from './time'
-import { INSIGHT_FIELDS, prevTimeRange, type DatePreset } from '../meta'
+import { currentTimeRange, INSIGHT_FIELDS, prevTimeRange, type DatePreset } from '../meta'
+import { periodQuery } from '../periodsMeta'
 
 export interface Account {
   clientId: string
@@ -147,16 +148,22 @@ export async function collectInsights(d: CollectDeps, acc: Account, opts: { forc
     for (const p of due) {
       // Um período é gravado inteiro ou não é gravado: só começa um novo se ainda cabe no teto de páginas do job.
       if (run.pagesLeft < 3) throw new Stop({ status: 'deferred', reason: 'page_limit', runAfter: d.now(), calls: run.calls })
-      const summary = await run.one<{ data?: Array<Record<string, unknown>> }>(`${a}/insights?fields=${INSIGHT_FIELDS}&date_preset=${p}`)
+      const q = periodQuery(p, currentTimeRange(p)) // "date_preset=…" ou o intervalo de datas (semana, hoje e ontem)
+      const summary = await run.one<{ data?: Array<Record<string, unknown>> }>(`${a}/insights?fields=${INSIGHT_FIELDS}&${q}`)
       const prev = await run.one<{ data?: Array<Record<string, unknown>> }>(`${a}/insights?fields=${INSIGHT_FIELDS}&time_range=${encodeURIComponent(prevTimeRange(p))}`)
-      const campaigns = await run.paged(`${a}/insights?level=campaign&fields=${CAMPAIGN_FIELDS}&date_preset=${p}&limit=${cfg.pageSize}`, `campaigns:${p}`)
-      const adsets = await run.paged(`${a}/insights?level=adset&fields=${ADSET_FIELDS}&date_preset=${p}&limit=${cfg.pageSize}`, `adsets:${p}`)
-      const ads = await run.paged(`${a}/insights?level=ad&fields=${AD_FIELDS}&date_preset=${p}&limit=${cfg.pageSize}`, `ads:${p}`)
+      const campaigns = await run.paged(`${a}/insights?level=campaign&fields=${CAMPAIGN_FIELDS}&${q}&limit=${cfg.pageSize}`, `campaigns:${p}`)
+      const adsets = await run.paged(`${a}/insights?level=adset&fields=${ADSET_FIELDS}&${q}&limit=${cfg.pageSize}`, `adsets:${p}`)
+      const ads = await run.paged(`${a}/insights?level=ad&fields=${AD_FIELDS}&${q}&limit=${cfg.pageSize}`, `ads:${p}`)
       if (!run.dry) {
         await snaps.put(acc.clientId, 'summary', p, { row: summary.data?.[0] ?? null, prev: prev.data?.[0] ?? null }, d.now())
         await snaps.put(acc.clientId, 'campaign_insights', p, campaigns, d.now())
         await snaps.put(acc.clientId, 'adset_insights', p, adsets, d.now())
         await snaps.put(acc.clientId, 'ad_insights', p, ads, d.now())
+      }
+      // Mês passado tem mais de 30 dias de idade em parte do mês: a série diária dele é lida à parte, uma vez.
+      if (p === 'last_month' && !run.dry) {
+        const dailyMonth = await run.paged<Record<string, unknown>>(`${a}/insights?fields=${INSIGHT_FIELDS}&${q}&time_increment=1&limit=${cfg.pageSize}`, `daily:${p}`)
+        await snaps.put(acc.clientId, 'daily', p, dailyMonth, d.now())
       }
       synced.push(`${prefix}insights:${p}`)
     }

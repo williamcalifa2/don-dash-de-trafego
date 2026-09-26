@@ -25,6 +25,7 @@ import { isStale } from '@/lib/leadUtils'
 import { apiFetch } from '@/lib/apiFetch'
 import { useMetricsRealtime } from '@/lib/useMetricsRealtime'
 import { isAwaitingData } from '@/lib/metricsState'
+import { dashboardPresets } from '@/lib/periodsMeta'
 import type { DatePreset, MetricsSummary } from '@/lib/meta'
 import type { PlatformKey } from '@/lib/platforms'
 import type { ReportMode } from '@/lib/report'
@@ -37,25 +38,7 @@ import { ClientIntegrationsTab } from '@/components/ClientIntegrationsTab'
 import { KIND_LABELS, type ResultKind } from '@/lib/resultKind'
 
 function getDashboardPresets(): { value: DatePreset; label: string }[] {
-  const br = new Date(Date.now() - 3 * 3600 * 1000)
-  const MONTHS_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
-  const day = (yr: number, mo: number, d: number) => new Date(Date.UTC(yr, mo, d))
-
-  const fmtMonthYear = (offset: number) => {
-    const d = day(br.getUTCFullYear(), br.getUTCMonth() - offset, 1)
-    return `${MONTHS_PT[d.getUTCMonth()]} / ${d.getUTCFullYear()}`
-  }
-
-  return [
-    { value: 'today', label: 'Hoje' },
-    { value: 'last_7d', label: '7 dias' },
-    { value: 'last_14d', label: '14 dias' },
-    { value: 'last_30d', label: '30 dias' },
-    { value: 'this_month', label: `${MONTHS_PT[br.getUTCMonth()]} (Este mês)` },
-    { value: 'last_month', label: `${fmtMonthYear(1)} (Mês passado)` },
-    { value: 'month_2', label: fmtMonthYear(2) },
-    { value: 'month_3', label: fmtMonthYear(3) },
-  ]
+  return dashboardPresets() as { value: DatePreset; label: string }[]
 }
 
 const PRESETS = getDashboardPresets()

@@ -31,8 +31,8 @@ export async function GET(req: NextRequest) {
   const tenant = await requireTenant(req)
   if (tenant instanceof NextResponse) return tenant
   const preset = req.nextUrl.searchParams.get('date_preset') ?? 'last_7d'
-  if (preset === 'today' || preset === 'this_month') return NextResponse.json({ audience: null, reason: 'today' })
-  if (!PRESETS.includes(preset)) return NextResponse.json({ error: 'Invalid date_preset' }, { status: 400 })
+  // O público é lido só para 7, 14 e 30 dias. Qualquer outro período mostra o aviso na tela, sem erro.
+  if (!PRESETS.includes(preset)) return NextResponse.json({ audience: null, reason: 'today' })
   if (!tenant.adAccountId) return NextResponse.json({ audience: null, reason: 'no_account' })
 
   try {

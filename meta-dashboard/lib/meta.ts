@@ -1,8 +1,9 @@
 import { legacyGet, errMsg } from './meta/legacy'
 import { costBase } from './campaignFit'
+import { extraRange, NATIVE_PRESETS, periodQuery, prevExtraRange, type ExtraPreset } from './periodsMeta'
 import { detectKind, KIND_LABELS, type ResultKind } from './resultKind'
 import { isCustomConversion, labelAction } from './actionLabels'
-export type DatePreset = 'today' | 'last_7d' | 'last_30d' | 'last_14d' | 'this_month' | 'last_month' | 'month_2' | 'month_3'
+export type DatePreset = 'today' | 'last_7d' | 'last_30d' | 'last_14d' | 'this_month' | 'last_month' | 'month_2' | 'month_3' | ExtraPreset
 
 export interface MetricsSummary {
   spend: number
@@ -588,6 +589,8 @@ function buildSummary(s: Record<string, unknown>): MetricsSummary {
  * Retorna o intervalo { since, until } caso o preset seja um mês específico fechado (last_month, month_2, month_3).
  */
 export function currentTimeRange(datePreset: DatePreset, nowMs = Date.now()): { since: string; until: string } | null {
+  const extra = extraRange(datePreset, nowMs)
+  if (extra) return extra
   const br = new Date(nowMs - 3 * 3600 * 1000) // relógio do Brasil lido em UTC
   const day = (yr: number, mo: number, d: number) => new Date(Date.UTC(yr, mo, d))
   const fmt = (d: Date) => d.toISOString().slice(0, 10)
@@ -637,6 +640,8 @@ export function getMonthlyPresets(nowMs = Date.now()): Array<{ value: DatePreset
  * imediatamente antes; "este mês" (do dia 1 até hoje) com o mesmo trecho do mês passado; meses fechados comparam com o mês fechado anterior.
  */
 function prevTimeRange(datePreset: DatePreset, nowMs = Date.now()): string {
+  const extra = prevExtraRange(datePreset, nowMs)
+  if (extra) return `{"since":"${extra.since}","until":"${extra.until}"}`
   const br = new Date(nowMs - 3 * 3600 * 1000) // relógio do Brasil lido em UTC
   const day = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d))
   const fmt = (d: Date) => d.toISOString().slice(0, 10)
@@ -661,7 +666,7 @@ function prevTimeRange(datePreset: DatePreset, nowMs = Date.now()): string {
   } else if (datePreset === 'today') {
     since = until = shift(today, -1)
   } else {
-    const days = { last_7d: 7, last_14d: 14, last_30d: 30 }[datePreset] ?? 7
+    const days = ({ last_7d: 7, last_14d: 14, last_30d: 30 } as Record<string, number>)[datePreset] ?? 7
     until = shift(today, -1 - days)
     since = shift(until, -days + 1)
   }
@@ -782,10 +787,10 @@ export async function fetchMetrics(
   type Rows = { data?: InsightRow[] }
 
   const customRange = currentTimeRange(datePreset)
-  const isCustomMonth = datePreset === 'month_2' || datePreset === 'month_3'
+  const isCustomMonth = !NATIVE_PRESETS.has(datePreset) // períodos que a Meta não conhece pelo nome vão como intervalo de datas
   const timeParam = isCustomMonth && customRange
     ? `time_range=${encodeURIComponent(`{"since":"${customRange.since}","until":"${customRange.until}"}`)}`
-    : `date_preset=${datePreset}`
+    : periodQuery(datePreset, customRange)
 
   const accountRes = await legacyGet<{ name?: string; currency?: string }>(`${adAccountId}?fields=name,currency`, ctx)
   if (!accountRes.ok) throw new Error(errMsg(accountRes, 'Failed to fetch account info'))
