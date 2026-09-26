@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/admin'
 import { getSupabaseServer } from '@/lib/supabase'
 import { activityBreakdown, buildVisits, clientsWithoutTeamAccess, focusClient, summarizeUsage, usageSince, type LoginRow, type SessionRow, type ViewRow } from '@/lib/usage'
 import { nameFromEmail } from '@/lib/adminProfile'
+import { photosFor } from '@/lib/peoplePhotos'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,14 +56,16 @@ export async function GET(req: NextRequest) {
   const allClients = ((clients.data ?? []) as Array<{ slug: string; display_name: string | null }>).map(c => ({ slug: c.slug, name: c.display_name || c.slug }))
   const idleClients = client || user ? [] : clientsWithoutTeamAccess(allClients, sessions, views)
 
+  const keys = [...onlineNow.map(o => o.userKey), ...summary.people.map(p => p.userKey), ...visits.map(v => v.userKey), ...((logins.data ?? []) as LoginRow[]).map(l => l.user_key)]
+  const ph = await photosFor(keys)
   return NextResponse.json({
-    setup: 'ready', period, user, client, generatedAt: now, breakdown, idleClients,
+    setup: 'ready', period, user, client, generatedAt: now, breakdown, idleClients: idleClients.map(c => ({ ...c, logoUrl: ph.logo(c.slug) })),
     kpis,
-    online: onlineNow.map(o => ({ ...o, name: nameOf(o.userKey), clientName: o.client ? (clientName.get(o.client) ?? o.client) : '' })),
-    people: summary.people.map(p => ({ ...p, name: nameOf(p.userKey), topClientName: p.topClient ? (clientName.get(p.topClient) ?? p.topClient) : null })),
-    byClient: overall.byClient.map(c => ({ ...c, name: clientName.get(c.slug) ?? c.slug })),
-    visits: visits.map(v => ({ ...v, name: nameOf(v.userKey), clientName: v.lastClient ? (clientName.get(v.lastClient) ?? v.lastClient) : '' })),
+    online: onlineNow.map(o => ({ ...o, photo: ph.person(o.userKey), name: nameOf(o.userKey), clientName: o.client ? (clientName.get(o.client) ?? o.client) : '' })),
+    people: summary.people.map(p => ({ ...p, photo: ph.person(p.userKey), name: nameOf(p.userKey), topClientName: p.topClient ? (clientName.get(p.topClient) ?? p.topClient) : null })),
+    byClient: overall.byClient.map(c => ({ ...c, logoUrl: ph.logo(c.slug), name: clientName.get(c.slug) ?? c.slug })),
+    visits: visits.map(v => ({ ...v, photo: ph.person(v.userKey), name: nameOf(v.userKey), clientName: v.lastClient ? (clientName.get(v.lastClient) ?? v.lastClient) : '' })),
     byView: summary.byView,
-    logins: ((logins.data ?? []) as LoginRow[]).filter(l => !l.ok && (!client || l.client_slug === client) && (!user || l.user_key === user)).map(l => ({ ...l, name: nameOf(l.user_key), clientName: l.client_slug ? (clientName.get(l.client_slug) ?? l.client_slug) : '' })),
+    logins: ((logins.data ?? []) as LoginRow[]).filter(l => !l.ok && (!client || l.client_slug === client) && (!user || l.user_key === user)).map(l => ({ ...l, photo: ph.person(l.user_key), name: nameOf(l.user_key), clientName: l.client_slug ? (clientName.get(l.client_slug) ?? l.client_slug) : '' })),
   })
 }

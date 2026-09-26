@@ -26,6 +26,12 @@ async function readAll(): Promise<Record<string, AdminProfile>> {
   return v && typeof v === 'object' ? (v as Record<string, AdminProfile>) : {}
 }
 
+/** Fotos de várias pessoas de uma vez (uma leitura só). */
+export async function getProfiles(emails: string[]): Promise<Map<string, AdminProfile>> {
+  const all = await readAll()
+  return new Map(emails.map(e => [e.toLowerCase(), cleanProfile(all[e.toLowerCase()])]))
+}
+
 export async function getProfile(email: string): Promise<AdminProfile> {
   return cleanProfile((await readAll())[email.toLowerCase()])
 }
@@ -47,6 +53,12 @@ export async function saveProfile(email: string, patch: { name?: unknown; avatar
 }
 
 export const AVATAR_URL = '/api/admin/profile/avatar'
+
+/** Endereço da foto de OUTRA pessoa da equipe (as telas de gestão mostram quem é quem). */
+export function avatarUrlOf(email: string, avatar: string | undefined | null): string | null {
+  const u = avatarUrl(avatar)
+  return u ? `${u}&email=${encodeURIComponent(email.toLowerCase())}` : null
+}
 
 /** Endereço da foto para o navegador. O `v` muda quando a foto muda, então o cache longo nunca mostra foto velha. */
 export function avatarUrl(avatar: string | undefined | null): string | null {

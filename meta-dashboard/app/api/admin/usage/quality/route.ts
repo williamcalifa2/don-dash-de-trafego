@@ -4,6 +4,7 @@ import { getSupabaseServer } from '@/lib/supabase'
 import { usageSince } from '@/lib/usage'
 import { frictionByElement, frictionByPerson, groupErrors, perfByView, scrollByView, type EventRow, type Friction } from '@/lib/usageQuality'
 import { nameFromEmail } from '@/lib/adminProfile'
+import { photosFor } from '@/lib/peoplePhotos'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,11 +34,13 @@ export async function GET(req: NextRequest) {
 
   const withNames = (f: Friction) => ({ ...f, who: f.who.map(w => ({ ...w, name: nameOf(w.userKey) })) })
 
+  const peopleF = frictionByPerson(rows)
+  const ph = await photosFor(peopleF.map(p => p.userKey))
   return NextResponse.json({
     setup: 'ready', period,
     rage: frictionByElement(rows, 'rage').map(withNames),
     dead: frictionByElement(rows, 'dead').map(withNames),
-    people: frictionByPerson(rows).map(p => ({ ...p, name: nameOf(p.userKey) })),
+    people: peopleF.map(p => ({ ...p, photo: ph.person(p.userKey), name: nameOf(p.userKey) })),
     errors: groupErrors(rows).map(e => ({ ...e, lastUserName: nameOf(e.lastUser), lastClientName: e.lastClient ? (clientName.get(e.lastClient) ?? e.lastClient) : '' })),
     perf: perfByView(rows),
     scroll: scrollByView(rows),

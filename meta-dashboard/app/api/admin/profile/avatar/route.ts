@@ -8,7 +8,9 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: NextRequest) {
   const who = await requestIdentity(req)
   if (!who) return new NextResponse(null, { status: 401 })
-  const p = await getProfile(who.email).catch(() => ({} as { avatar?: string }))
+  // Sem `email`: a própria foto. Com `email`: a de outra pessoa da equipe (tela de gestão).
+  const wanted = req.nextUrl.searchParams.get('email')
+  const p = await getProfile(wanted && /^[^\s@]{1,80}@[^\s@]{1,80}$/.test(wanted) ? wanted : who.email).catch(() => ({} as { avatar?: string }))
   const m = /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(p.avatar ?? '')
   if (!m) return new NextResponse(null, { status: 404 })
   return new NextResponse(Buffer.from(m[2], 'base64'), { headers: { 'Content-Type': m[1], 'Cache-Control': 'private, max-age=31536000, immutable' } })

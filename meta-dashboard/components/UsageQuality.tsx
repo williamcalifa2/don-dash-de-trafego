@@ -12,7 +12,7 @@ import { ListCard, PagedRows, RankRow, Thumb, plural } from './UsageUi'
 interface Quality {
   setup: 'ready' | 'events' | 'error'
   rage: Array<Friction & { who: Array<{ userKey: string; n: number; name: string }> }>; dead: Array<Friction & { who: Array<{ userKey: string; n: number; name: string }> }>
-  people: Array<Frustrated & { name: string }>
+  people: Array<Frustrated & { name: string; photo?: string | null }>
   errors: Array<ErrorGroup & { lastUserName: string; lastClientName: string }>
   perf: PerfRow[]; scroll: ScrollRow[]
   totals: { rage: number; dead: number; errors: number; sessions: number }
@@ -63,7 +63,7 @@ export function UsageQuality({ period, client, user, onUser }: { period: string;
       <div className="usage-grid">
         <ListCard icon={<Flame size={18} strokeWidth={1.75} />} title="Quem mais passa raiva" hint="Pessoas que mais repetem cliques sem resposta ou clicam em botões que não funcionam. Clique para filtrar por ela">
           <PagedRows size={4} empty={none('Ninguém esbarrou em cliques de raiva ou mortos neste período.')} rows={data.people.map(p => (
-            <RankRow key={p.userKey} lead={<Thumb name={p.name} />} title={p.name}
+            <RankRow key={p.userKey} lead={<Thumb name={p.name} src={p.photo} />} title={p.name}
               sub={<>{p.rage > 0 ? plural(p.rage, 'rajada de raiva', 'rajadas de raiva') : 'sem raiva'}{p.dead > 0 ? ` · ${plural(p.dead, 'clique morto', 'cliques mortos')}` : ''}{p.topView ? <><br />mais em {viewLabel(p.topView)} · {ago(p.last)}</> : null}</>}
               value={p.rage + p.dead} valueTone="accent" active={user === p.userKey} onClick={onUser ? () => onUser(p.userKey) : undefined} chevron={!!onUser} />
           ))} />

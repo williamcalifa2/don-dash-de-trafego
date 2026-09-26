@@ -17,20 +17,20 @@ const TEAM = ['owner', 'admin', 'member', 'reader']
 const DEVICE_LABEL: Record<string, string> = { desktop: 'Computador', tablet: 'Tablet', mobile: 'Celular' }
 const DEVICE_ICON: Record<string, React.ReactNode> = { desktop: <Monitor size={18} strokeWidth={1.75} />, tablet: <Tablet size={18} strokeWidth={1.75} />, mobile: <Smartphone size={18} strokeWidth={1.75} /> }
 
-interface Visit { sid: string; userKey: string; name: string; role: string; startedAt: string; lastSeen: string; seconds: number; topView: string | null; views: Array<{ view: string; sec: number }>; lastClient: string | null; clientName: string; device: string | null; country: string | null; online: boolean }
-interface Person { userKey: string; name: string; role: string; sessions: number; activeSec: number; lastSeen: string; topView: string | null; topClientName: string | null }
+interface Visit { photo?: string | null; sid: string; userKey: string; name: string; role: string; startedAt: string; lastSeen: string; seconds: number; topView: string | null; views: Array<{ view: string; sec: number }>; lastClient: string | null; clientName: string; device: string | null; country: string | null; online: boolean }
+interface Person { photo?: string | null; userKey: string; name: string; role: string; sessions: number; activeSec: number; lastSeen: string; topView: string | null; topClientName: string | null }
 interface Overview {
   setup: 'ready' | 'tables'
   client: string | null
   kpis: { online: number; sessions: number; activeSec: number; users: number }
-  online: Array<{ userKey: string; name: string; role: string; view: string; client: string; clientName: string; since: string; lastSeen: string; device: string | null }>
+  online: Array<{ photo?: string | null; userKey: string; name: string; role: string; view: string; client: string; clientName: string; since: string; lastSeen: string; device: string | null }>
   people: Person[]
-  byClient: Array<{ slug: string; name: string; sec: number; users: number }>
+  byClient: Array<{ slug: string; name: string; logoUrl?: string | null; sec: number; users: number }>
   byView: Array<{ view: string; sec: number; users: number }>
   visits: Visit[]
-  logins: Array<{ at: string; user_key: string; name: string; role: string; client_slug: string | null; clientName: string; ok: boolean; country: string | null; city: string | null; device: string | null }>
+  logins: Array<{ photo?: string | null; at: string; user_key: string; name: string; role: string; client_slug: string | null; clientName: string; ok: boolean; country: string | null; city: string | null; device: string | null }>
   breakdown: Breakdown
-  idleClients: Array<{ slug: string; name: string }>
+  idleClients: Array<{ slug: string; name: string; logoUrl?: string | null }>
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -95,18 +95,18 @@ export function UsageAnalytics() {
 
   /* ── pedaços reaproveitados nas abas ── */
   const personRows = (list: Person[]) => list.map(p => (
-    <RankRow key={p.userKey} lead={<Thumb name={p.name} />} title={p.name}
+    <RankRow key={p.userKey} lead={<Thumb name={p.name} src={p.photo} />} title={p.name}
       sub={`${ROLE[p.role] ?? p.role} · ${plural(p.sessions, client ? 'acesso' : 'sessão', client ? 'acessos' : 'sessões')}${!client && p.topClientName ? ` · mais vê ${p.topClientName}` : ''}${p.topView ? ` · ${viewLabel(p.topView)}` : ''} · ${ago(p.lastSeen)}`}
       value={fmtDuration(p.activeSec)} bar={(p.activeSec / Math.max(1, ...list.map(x => x.activeSec))) * 100} active={user === p.userKey} onClick={() => setUser(u => (u === p.userKey ? '' : p.userKey))} chevron />
   ))
 
   const entryRows = (list: Entry[]) => list.map(e => e.kind === 'failed'
     ? (
-      <RankRow key={`f-${e.at}-${e.l.user_key}`} lead={<Thumb name={e.l.name} />} title={e.l.name}
+      <RankRow key={`f-${e.at}-${e.l.user_key}`} lead={<Thumb name={e.l.name} src={e.l.photo} />} title={e.l.name}
         sub={`Tentativa recusada · ${dayLabel(e.at)} ${hm(e.at)}${e.l.clientName ? ` · painel ${e.l.clientName}` : ''}`}
         value={<span className="badge" style={{ background: 'var(--red-soft)', color: 'var(--red)', fontSize: 11 }}>Recusada</span>} valueTone="plain" />
     ) : (
-      <RankRow key={e.v.sid} lead={<Thumb name={e.v.name} />}
+      <RankRow key={e.v.sid} lead={<Thumb name={e.v.name} src={e.v.photo} />}
         title={<>{e.v.name} <span className="badge" style={{ marginLeft: 6, fontSize: 10, fontWeight: 500, background: 'var(--bg-card2)', color: 'var(--text-2)' }}>{ROLE[e.v.role] ?? e.v.role}</span></>}
         sub={<>{dayLabel(e.v.startedAt)}: entrou às {hm(e.v.startedAt)} · {e.v.online ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>online agora</span> : <>saiu às {hm(e.v.lastSeen)}{dayLabel(e.v.lastSeen) !== dayLabel(e.v.startedAt) ? ` (${dayLabel(e.v.lastSeen)})` : ''}</>}{(scope || e.v.clientName) ? ` · ${scope || e.v.clientName}` : ''}</>}
         value={fmtDuration(e.v.seconds)} valueTone="green"
@@ -115,7 +115,7 @@ export function UsageAnalytics() {
 
   const viewRows = (data?.byView ?? []).map((v, i) => <RankRow key={v.view} lead={<Thumb name={String(i + 1)} />} title={viewLabel(v.view)} sub={plural(v.users, 'pessoa', 'pessoas')} value={fmtDuration(v.sec)} bar={(v.sec / maxView) * 100} />)
   const clientRows = (data?.byClient ?? []).map(c => (
-    <RankRow key={c.slug} lead={<Thumb name={c.name} />} title={c.name} sub={plural(c.users, 'pessoa', 'pessoas')} value={fmtDuration(c.sec)} bar={(c.sec / maxClient) * 100} active={client === c.slug} onClick={() => setClient(cur => (cur === c.slug ? '' : c.slug))} chevron />
+    <RankRow key={c.slug} lead={<Thumb name={c.name} src={c.logoUrl} />} title={c.name} sub={plural(c.users, 'pessoa', 'pessoas')} value={fmtDuration(c.sec)} bar={(c.sec / maxClient) * 100} active={client === c.slug} onClick={() => setClient(cur => (cur === c.slug ? '' : c.slug))} chevron />
   ))
 
   const b = data?.breakdown
@@ -128,7 +128,7 @@ export function UsageAnalytics() {
     <ListCard icon={<Building2 size={18} strokeWidth={1.75} />} title="Clientes sem acesso da equipe" hint={client || user ? 'Disponível sem filtros' : 'Nenhum tempo da equipe neste período'}>
               {client || user ? none('Limpe os filtros para ver quais clientes ficaram sem acesso.') : (
                 <PagedRows empty={none('A equipe acessou todos os clientes neste período.')} rows={data.idleClients.map(c => (
-                  <RankRow key={c.slug} lead={<Thumb name={c.name} />} title={c.name} sub="Sem acesso da equipe" onClick={() => { setClient(c.slug); setTab('clientes') }} chevron />
+                  <RankRow key={c.slug} lead={<Thumb name={c.name} src={c.logoUrl} />} title={c.name} sub="Sem acesso da equipe" onClick={() => { setClient(c.slug); setTab('clientes') }} chevron />
                 ))} />
               )}
             </ListCard>
@@ -153,7 +153,7 @@ export function UsageAnalytics() {
           <div className="usage-grid">
             <ListCard icon={<Radio size={18} strokeWidth={1.75} />} tone="green" title={client ? `Online em ${clientName}` : 'Online agora'} hint="Quem está com o app aberto e o que está vendo">
               <PagedRows empty={none(client ? `Ninguém vendo ${clientName} agora.` : 'Ninguém com o app aberto agora.')} rows={data.online.map(o => (
-                <RankRow key={o.userKey} lead={<Thumb name={o.name} />} title={o.name}
+                <RankRow key={o.userKey} lead={<Thumb name={o.name} src={o.photo} />} title={o.name}
                   sub={<>vendo {viewLabel(o.view)}{o.clientName ? ` de ${o.clientName}` : ''} · entrou {ago(o.since)}</>}
                   value={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{o.device && <MonitorSmartphone size={14} color="var(--text-3)" aria-label={o.device} />}<span className="badge" style={{ background: 'var(--green-soft)', color: 'var(--green)', fontSize: 11, gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)' }} />online</span></span>} valueTone="plain" />
               ))} />
