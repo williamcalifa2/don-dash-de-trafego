@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Grupo Don · Contas de anúncios",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Avisa o painel da Grupo Don quando você abre uma conta de anúncios de cliente no Gerenciador da Meta. Lê só o endereço da aba.",
   "icons": {
     "16": "icons/16.png",

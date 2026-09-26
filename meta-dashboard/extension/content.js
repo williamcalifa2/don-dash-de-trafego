@@ -27,12 +27,20 @@
       host.style.cssText = 'all:initial;position:fixed;inset:0;pointer-events:none;z-index:2147483647'
       const root = host.attachShadow({ mode: 'closed' })
       root.innerHTML = `<style>
-        .g{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 0 2px rgba(143,163,255,.55),inset 0 0 70px 6px rgba(143,163,255,.22),inset 0 0 160px 20px rgba(143,163,255,.10);animation:p 5s ease-in-out infinite}
-        .t{position:fixed;left:16px;bottom:16px;display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;font:600 12px/1 system-ui,-apple-system,Segoe UI,sans-serif;color:#0f172a;background:rgba(143,163,255,.92);box-shadow:0 4px 18px rgba(80,100,220,.35);backdrop-filter:blur(4px)}
-        .d{width:8px;height:8px;border-radius:50%;background:#1d4ed8}
-        @keyframes p{0%,100%{opacity:.75}50%{opacity:1}}
-        @media (prefers-reduced-motion:reduce){.g{animation:none}}
-      </style><div class="g"></div><div class="t"><span class="d"></span><span id="n"></span></div>`
+        /* Brilho de baixo para cima, roxo da Don, dissolvendo na tela (como o modo de voz do Claude) */
+        .b{position:fixed;left:0;right:0;bottom:0;height:150px;pointer-events:none;
+          background:
+            radial-gradient(60% 100% at 25% 100%,rgba(139,92,246,.55),transparent 70%),
+            radial-gradient(55% 100% at 75% 100%,rgba(143,163,255,.50),transparent 70%),
+            linear-gradient(to top,rgba(124,92,255,.42),rgba(124,92,255,.16) 45%,transparent);
+          background-size:140% 100%,140% 100%,100% 100%;background-repeat:no-repeat;
+          filter:blur(10px);animation:w 7s ease-in-out infinite alternate}
+        .g{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(143,163,255,.30),inset 0 -2px 40px 0 rgba(139,92,246,.30)}
+        .t{position:fixed;left:16px;bottom:16px;display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;font:600 12px/1 system-ui,-apple-system,Segoe UI,sans-serif;color:#1e1b4b;background:rgba(196,181,253,.92);box-shadow:0 4px 18px rgba(124,92,255,.40);backdrop-filter:blur(4px)}
+        .d{width:8px;height:8px;border-radius:50%;background:#6d28d9}
+        @keyframes w{0%{background-position:0% 0,100% 0,0 0;opacity:.85}100%{background-position:100% 0,0% 0,0 0;opacity:1}}
+        @media (prefers-reduced-motion:reduce){.b{animation:none}}
+      </style><div class="b"></div><div class="g"></div><div class="t"><span class="d"></span><span id="n"></span></div>`
       document.documentElement.appendChild(host)
       host._n = root.getElementById('n')
     }
