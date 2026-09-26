@@ -1,3 +1,4 @@
+import { pagedAll } from '../pagedRows'
 import { getSupabaseServer } from '../supabase'
 import { defaultAccountState, StoreNotMigrated, type AccountState, type AlertInput, type LimitStore, type UsageSummary } from './limits'
 import type { UsageEntry } from './client'
@@ -86,18 +87,21 @@ export class SupabaseLimitStore implements LimitStore {
 
   async callsSince(sinceMs: number, clientId?: string) {
     return memoized(`c:${sinceMs - (sinceMs % 1000)}:${clientId ?? '*'}`, async () => {
-      let q = db().from('meta_api_usage').select('calls').eq('dry_run', false).not('outcome', 'like', 'blocked%').gte('created_at', new Date(sinceMs).toISOString()).limit(20000)
-      if (clientId) q = q.eq('client_id', clientId)
-      const { data, error } = await q
+      // Em páginas: a leitura simples corta no "Max rows" do Supabase (1000) e o teto de chamadas contaria menos do que saiu.
+      const { data, error } = await pagedAll<Row>(() => {
+        let q = db().from('meta_api_usage').select('calls').eq('dry_run', false).not('outcome', 'like', 'blocked%').gte('created_at', new Date(sinceMs).toISOString()).order('id')
+        if (clientId) q = q.eq('client_id', clientId)
+        return q
+      })
       check(error)
-      return ((data ?? []) as Row[]).reduce((n, r) => n + Number(r.calls ?? 1), 0)
+      return data.reduce((n, r) => n + Number(r.calls ?? 1), 0)
     })
   }
 
   async usageSummary(sinceMs: number): Promise<UsageSummary> {
-    const { data, error } = await db().from('meta_api_usage').select('calls,outcome,dry_run,app_pct,account_pct').gte('created_at', new Date(sinceMs).toISOString()).limit(50000)
+    const { data, error } = await pagedAll<Row>(() => db().from('meta_api_usage').select('calls,outcome,dry_run,app_pct,account_pct').gte('created_at', new Date(sinceMs).toISOString()).order('id'))
     check(error)
-    const rows = (data ?? []) as Row[]
+    const rows = data
     const real = rows.filter(r => !r.dry_run && !String(r.outcome).startsWith('blocked'))
     return {
       calls: real.reduce((n, r) => n + Number(r.calls ?? 1), 0),
@@ -115,10 +119,10 @@ export class SupabaseLimitStore implements LimitStore {
   }
 
   async callsByClient(sinceMs: number, dryRun: boolean) {
-    const { data, error } = await db().from('meta_api_usage').select('client_id,calls,outcome').eq('dry_run', dryRun).gte('created_at', new Date(sinceMs).toISOString()).limit(50000)
+    const { data, error } = await pagedAll<Row>(() => db().from('meta_api_usage').select('client_id,calls,outcome').eq('dry_run', dryRun).gte('created_at', new Date(sinceMs).toISOString()).order('id'))
     check(error)
     const out: Record<string, number> = {}
-    for (const r of (data ?? []) as Row[]) if (r.client_id && !String(r.outcome).startsWith('blocked')) out[String(r.client_id)] = (out[String(r.client_id)] ?? 0) + Number(r.calls ?? 1)
+    for (const r of data) if (r.client_id && !String(r.outcome).startsWith('blocked')) out[String(r.client_id)] = (out[String(r.client_id)] ?? 0) + Number(r.calls ?? 1)
     return out
   }
 

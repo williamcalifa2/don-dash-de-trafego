@@ -1,3 +1,4 @@
+import { pagedAll } from '@/lib/pagedRows'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/admin'
 import { getSupabaseServer } from '@/lib/supabase'
@@ -18,7 +19,7 @@ async function collect(): Promise<AuditInput | null> {
   const [cl, mc, log, sync, members] = await Promise.all([
     db.from('clients').select('slug,display_name,ad_account_id,page_id'),
     db.from('manager_clients').select('client_slug,manager_id'),
-    db.from('activity_log').select('client_slug,manager_id,actor_key,actor_name,source').gte('at', new Date(Date.now() - DAYS * 86_400_000).toISOString()).limit(50000),
+    pagedAll(() => db.from('activity_log').select('client_slug,manager_id,actor_key,actor_name,source').gte('at', new Date(Date.now() - DAYS * 86_400_000).toISOString()).order('id'), { max: 50000 }),
     db.from('activity_sync').select('client_slug,last_error').not('last_error', 'is', null),
     listMembers().catch(() => null),
   ])

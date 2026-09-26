@@ -1,3 +1,4 @@
+import { pagedAll } from '@/lib/pagedRows'
 import { NextRequest, NextResponse } from 'next/server'
 import { duplicateOf } from '@/lib/clientsDup'
 import { canSee, scopeFor } from '@/lib/scope'
@@ -68,8 +69,8 @@ export async function GET(req: NextRequest) {
   const registry = await loadRegistry().catch(() => null)
   const clients = await Promise.all((data ?? []).map(async c => {
     // Leads dos últimos 30 dias deste cliente (para todos os períodos do card).
-    const q = (cols: string) => db.from('leads').select(cols)
-      .eq('client_id', c.id).gte('created_at', since30).order('created_at', { ascending: false }).limit(5000)
+    const q = (cols: string) => pagedAll(() => db.from('leads').select(cols)
+      .eq('client_id', c.id).gte('created_at', since30).order('created_at', { ascending: false }).order('id'), { max: 20000 })
     let r = await q('created_at, status, valor_pedido, ultimo_contato, meta_lead_id, manual')
     if (r.error) r = await q('created_at, status, valor_pedido, ultimo_contato, meta_lead_id') // banco ainda sem a coluna "manual"
     const mine = (r.data ?? []) as unknown as Array<{ created_at: string; status: string; valor_pedido: number | null; ultimo_contato: string | null; meta_lead_id?: string | null; manual?: boolean }>

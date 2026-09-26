@@ -1,3 +1,4 @@
+import { pagedAll } from '@/lib/pagedRows'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/admin'
 import { getSupabaseServer } from '@/lib/supabase'
@@ -23,18 +24,18 @@ export async function GET(req: NextRequest) {
   const since = new Date(usageSince(period, now)).toISOString()
 
   const [sess, logins, clients] = await Promise.all([
-    db.from('usage_sessions').select('sid,user_key,role,started_at,last_seen,active_sec,last_view,last_client,device,country').gte('last_seen', since).order('last_seen', { ascending: false }).limit(5000),
+    pagedAll<SessionRow>(() => db.from('usage_sessions').select('sid,user_key,role,started_at,last_seen,active_sec,last_view,last_client,device,country').gte('last_seen', since).order('last_seen', { ascending: false }).order('sid'), { max: 5000 }),
     db.from('usage_logins').select('at,user_key,role,client_slug,ok,country,city,device').gte('at', since).order('at', { ascending: false }).limit(300),
     db.from('clients').select('slug,display_name'),
   ])
   if (sess.error && /relation|schema cache|does not exist/i.test(sess.error.message)) return NextResponse.json({ setup: 'tables' })
 
-  const sessions = (sess.data ?? []) as SessionRow[]
+  const sessions = sess.data
   const views: ViewRow[] = []
   for (let i = 0; i < sessions.length; i += 200) {
     const ids = sessions.slice(i, i + 200).map(s => s.sid)
-    const { data } = await db.from('usage_views').select('sid,client_slug,view,seconds').in('sid', ids).limit(20000)
-    views.push(...((data ?? []) as ViewRow[]))
+    const { data } = await pagedAll<ViewRow>(() => db.from('usage_views').select('sid,client_slug,view,seconds').in('sid', ids).order('sid').order('client_slug').order('view'), { max: 20000 })
+    views.push(...data)
   }
 
   // Sem cliente escolhido: visão geral. Com cliente: só o que aconteceu dentro dele (quem acessou, quanto tempo, em quais telas).

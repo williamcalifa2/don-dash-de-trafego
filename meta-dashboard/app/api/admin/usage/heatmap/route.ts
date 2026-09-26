@@ -1,3 +1,4 @@
+import { pagedAll } from '@/lib/pagedRows'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/admin'
 import { getSupabaseServer } from '@/lib/supabase'
@@ -34,16 +35,16 @@ export async function GET(req: NextRequest) {
   if (mode !== 'clicks') {
     const kind = mode
     const base = () => {
-      let b = db.from('usage_events').select('sid,user_key,client_slug,view,kind,sel,rx,ry,n,value,label').eq('kind', kind).gte('at', since).limit(50000)
+      let b = db.from('usage_events').select('sid,user_key,client_slug,view,kind,sel,rx,ry,n,value,label').eq('kind', kind).gte('at', since).order('id')
       if (view) b = b.eq('view', view)
       if (client) b = b.eq('client_slug', client)
       if (user) b = b.eq('user_key', user)
       if (device) b = b.eq('device', device)
       return b
     }
-    const { data, error } = await base()
+    const { data, error } = await pagedAll(() => base(), { max: 50000 })
     if (error) return NextResponse.json({ setup: missingTable(error.message) ? 'events' : 'error' })
-    const rows = (data ?? []) as unknown as EventRow[]
+    const rows = data as unknown as EventRow[]
 
     if (!view) {
       const by = new Map<string, { count: number; users: Set<string>; sids: Set<string>; clients: Map<string, number> }>()
@@ -67,11 +68,11 @@ export async function GET(req: NextRequest) {
   }
 
   if (!view) {
-    let query = db.from('usage_clicks').select('view,client_slug,user_key').neq('view', 'admin/heatmap').gte('at', since).limit(60000)
+    let query = db.from('usage_clicks').select('view,client_slug,user_key').neq('view', 'admin/heatmap').gte('at', since).order('id')
     if (client) query = query.eq('client_slug', client)
     if (user) query = query.eq('user_key', user)
     if (device) query = query.eq('device', device)
-    const { data, error } = await query
+    const { data, error } = await pagedAll(() => query, { max: 60000 })
     if (error) return NextResponse.json({ setup: missingTable(error.message) ? 'tables' : 'error' })
     const by = new Map<string, { clicks: number; users: Set<string>; clients: Map<string, number> }>()
     for (const r of (data ?? []) as Array<{ view: string; client_slug: string; user_key: string }>) {
@@ -84,27 +85,27 @@ export async function GET(req: NextRequest) {
   }
 
   if (q.get('top') === '1') {
-    let tq = db.from('usage_clicks').select('sel,label').eq('view', view).gte('at', since).limit(50000)
+    let tq = db.from('usage_clicks').select('sel,label').eq('view', view).gte('at', since).order('id')
     if (client) tq = tq.eq('client_slug', client)
     if (user) tq = tq.eq('user_key', user)
     if (device) tq = tq.eq('device', device)
-    let r = await tq
+    let r = await pagedAll(() => tq, { max: 50000 }) as { data: unknown[]; error: { message: string } | null }
     if (r.error && /label/i.test(r.error.message)) {
-      let t2 = db.from('usage_clicks').select('sel').eq('view', view).gte('at', since).limit(50000)
+      let t2 = db.from('usage_clicks').select('sel').eq('view', view).gte('at', since).order('id')
       if (client) t2 = t2.eq('client_slug', client)
       if (user) t2 = t2.eq('user_key', user)
       if (device) t2 = t2.eq('device', device)
-      r = await t2 as typeof r
+      r = await pagedAll(() => t2, { max: 50000 }) as typeof r
     }
     const rows = (r.data ?? []) as unknown as Array<{ sel: string; label?: string | null }>
     return NextResponse.json({ setup: 'ready', mode, view, total: rows.length, top: topElements(rows) })
   }
 
-  let query = db.from('usage_clicks').select('sel,rx,ry,user_key').eq('view', view).gte('at', since).limit(50000)
+  let query = db.from('usage_clicks').select('sel,rx,ry,user_key').eq('view', view).gte('at', since).order('id')
   if (client) query = query.eq('client_slug', client)
   if (user) query = query.eq('user_key', user)
   if (device) query = query.eq('device', device)
-  const { data, error } = await query
+  const { data, error } = await pagedAll(() => query, { max: 50000 })
   if (error) return NextResponse.json({ setup: 'error' })
   const rows = (data ?? []) as Array<{ sel: string; rx: number; ry: number; user_key: string }>
   return NextResponse.json({ setup: 'ready', mode, view, total: rows.length, users: new Set(rows.map(r => r.user_key)).size, points: heatBins(rows) })

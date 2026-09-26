@@ -5,6 +5,7 @@ import { metaConfig } from '@/lib/meta/config'
 import { ensureRuntime } from '@/lib/meta/runtime'
 import { clientLogos } from '@/lib/managersStore'
 import { buildReport, type UsageRow } from '@/lib/metaUsage'
+import { pagedAll } from '@/lib/pagedRows'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,9 +18,9 @@ export async function GET(req: NextRequest) {
   await ensureRuntime()
   const hours = req.nextUrl.searchParams.get('window') === '24h' ? 24 : 1
   const since = new Date(Date.now() - hours * 3_600_000).toISOString()
-  const { data, error } = await db.from('meta_api_usage').select('client_id,endpoint,calls,outcome,dry_run,app_pct,account_pct').gte('created_at', since).limit(50000)
+  const { data, error } = await pagedAll<UsageRow>(() => db.from('meta_api_usage').select('client_id,endpoint,calls,outcome,dry_run,app_pct,account_pct').gte('created_at', since).order('id'))
   if (error) return NextResponse.json({ setup: /relation|schema cache|does not exist/i.test(error.message) ? 'sql' : 'error' })
-  const report = buildReport((data ?? []) as UsageRow[])
+  const report = buildReport(data)
   const [names, logos] = await Promise.all([db.from('clients').select('id,slug,display_name'), clientLogos()])
   const bySlug = new Map(((names.data ?? []) as Array<{ id: string; slug: string; display_name: string | null }>).map(c => [c.id, c]))
   return NextResponse.json({

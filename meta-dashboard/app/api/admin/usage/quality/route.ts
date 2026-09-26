@@ -1,3 +1,4 @@
+import { pagedAll } from '@/lib/pagedRows'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/admin'
 import { getSupabaseServer } from '@/lib/supabase'
@@ -22,13 +23,18 @@ export async function GET(req: NextRequest) {
   const user = (q.get('user') ?? '').toLowerCase().slice(0, 120)
   const since = new Date(usageSince(period)).toISOString()
 
-  let query = db.from('usage_events').select('at,sid,user_key,client_slug,view,kind,sel,rx,ry,n,value,label,msg,meta').gte('at', since).order('at', { ascending: false }).limit(50000)
-  if (client) query = query.eq('client_slug', client)
-  if (user) query = query.eq('user_key', user)
-  const [ev, clients] = await Promise.all([query, db.from('clients').select('slug,display_name')])
+  const [ev, clients] = await Promise.all([
+    pagedAll(() => {
+      let query = db.from('usage_events').select('at,sid,user_key,client_slug,view,kind,sel,rx,ry,n,value,label,msg,meta').gte('at', since).order('at', { ascending: false }).order('id', { ascending: false })
+      if (client) query = query.eq('client_slug', client)
+      if (user) query = query.eq('user_key', user)
+      return query
+    }, { max: 50000 }),
+    db.from('clients').select('slug,display_name'),
+  ])
   if (ev.error) return NextResponse.json({ setup: /relation|schema cache|does not exist/i.test(ev.error.message) ? 'events' : 'error' })
 
-  const rows = (ev.data ?? []) as unknown as EventRow[]
+  const rows = ev.data as unknown as EventRow[]
   const clientName = new Map(((clients.data ?? []) as Array<{ slug: string; display_name: string | null }>).map(c => [c.slug, c.display_name || c.slug]))
   const nameOf = (k: string) => (k.startsWith('cliente:') ? `Cliente ${clientName.get(k.slice(8)) ?? k.slice(8)}` : nameFromEmail(k))
 

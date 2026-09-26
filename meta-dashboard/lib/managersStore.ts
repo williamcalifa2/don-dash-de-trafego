@@ -1,5 +1,6 @@
 /** Gestores de tráfego no banco: cadastro, carteira de clientes, histórico de ações e leitura das alterações feitas na Meta. */
 import { getSupabaseServer } from './supabase'
+import { pagedAll } from './pagedRows'
 import { logoPublicUrl } from './logo'
 import { legacyGet } from './meta/legacy'
 import { liveOrigin } from './meta/mode'
@@ -75,17 +76,19 @@ const LOG_COLUMNS = 'at,source,client_slug,manager_id,actor_key,actor_name,kind,
 export async function readLog(o: { managerId?: string; actorKeys?: string[]; /** só estas contas (independe do gestor gravado na linha) */ clients?: string[]; sinceIso: string; /** fim do período (exclusivo) */ untilIso?: string; /** inclui também o que não conta (mudança de estado da Meta, leitura, login) */ raw?: boolean; client?: string; kind?: string; limit?: number }): Promise<LogRow[] | null> {
   const db = getSupabaseServer()
   if (!db) return null
-  let q = db.from('activity_log').select(LOG_COLUMNS).gte('at', o.sinceIso).order('at', { ascending: false }).limit(o.limit ?? 5000)
-  if (o.managerId) q = q.eq('manager_id', o.managerId)
-  if (o.untilIso) q = q.lt('at', o.untilIso)
-  if (o.actorKeys) q = q.in('actor_key', o.actorKeys)
-  if (o.clients) q = q.in('client_slug', o.clients)
-  if (o.client) q = q.eq('client_slug', o.client)
-  if (o.kind) q = q.eq('kind', o.kind)
-  const { data, error } = await q
+  // Em páginas até `limit` linhas (padrão 5000): a consulta simples corta no "Max rows" do Supabase e o histórico saía incompleto.
+  const { data, error } = await pagedAll<LogRow>(() => {
+    let q = db.from('activity_log').select(LOG_COLUMNS).gte('at', o.sinceIso).order('at', { ascending: false }).order('id', { ascending: false })
+    if (o.untilIso) q = q.lt('at', o.untilIso)
+    if (o.managerId) q = q.eq('manager_id', o.managerId)
+    if (o.actorKeys) q = q.in('actor_key', o.actorKeys)
+    if (o.clients) q = q.in('client_slug', o.clients)
+    if (o.client) q = q.eq('client_slug', o.client)
+    if (o.kind) q = q.eq('kind', o.kind)
+    return q
+  }, { max: o.limit ?? 5000 })
   if (error) return null
-  const rows = (data ?? []) as unknown as LogRow[]
-  return o.raw ? rows : rows.filter(isMeaningfulLog)
+  return o.raw ? data : data.filter(isMeaningfulLog)
 }
 
 // ─── Leitura do histórico da Meta ────────────────────────────────────────────
@@ -164,7 +167,7 @@ export async function lastSyncAt(): Promise<string | null> {
 export async function metaActors(): Promise<Array<{ id: string; name: string; n: number }>> {
   const db = getSupabaseServer()
   if (!db) return []
-  const { data } = await db.from('activity_log').select('actor_key,actor_name').eq('source', 'meta').order('at', { ascending: false }).limit(5000)
+  const { data } = await pagedAll(() => db.from('activity_log').select('actor_key,actor_name').eq('source', 'meta').order('at', { ascending: false }).order('id', { ascending: false }), { max: 5000 })
   const m = new Map<string, { id: string; name: string; n: number }>()
   for (const r of (data ?? []) as Array<{ actor_key: string | null; actor_name: string | null }>) {
     if (!r.actor_key?.startsWith('meta:')) continue
@@ -185,7 +188,7 @@ export async function timeByEmail(emails: string[], sinceIso: string): Promise<M
   const out = new Map<string, { total: number; byClient: Map<string, number> }>()
   const db = getSupabaseServer()
   if (!db || !emails.length) return out
-  const { data: sess } = await db.from('usage_sessions').select('sid,user_key,active_sec').in('user_key', emails).gte('last_seen', sinceIso).limit(5000)
+  const { data: sess } = await pagedAll(() => db.from('usage_sessions').select('sid,user_key,active_sec').in('user_key', emails).gte('last_seen', sinceIso).order('sid'), { max: 5000 })
   const owner = new Map<string, string>()
   for (const s of (sess ?? []) as Array<{ sid: string; user_key: string; active_sec: number }>) {
     owner.set(s.sid, s.user_key)
@@ -194,7 +197,7 @@ export async function timeByEmail(emails: string[], sinceIso: string): Promise<M
   }
   const sids = [...owner.keys()]
   for (let i = 0; i < sids.length; i += 200) {
-    const { data } = await db.from('usage_views').select('sid,client_slug,seconds').in('sid', sids.slice(i, i + 200)).limit(20000)
+    const { data } = await pagedAll(() => db.from('usage_views').select('sid,client_slug,seconds').in('sid', sids.slice(i, i + 200)).order('sid').order('client_slug').order('view'), { max: 20000 })
     for (const v of (data ?? []) as Array<{ sid: string; client_slug: string; seconds: number }>) {
       if (!v.client_slug) continue
       const e = out.get(owner.get(v.sid)!)
@@ -209,12 +212,12 @@ export async function lastAccessByEmail(emails: string[], sinceIso: string): Pro
   const out = new Map<string, string>()
   const db = getSupabaseServer()
   if (!db || !emails.length) return out
-  const { data: sess } = await db.from('usage_sessions').select('sid,user_key,last_seen').in('user_key', emails).gte('last_seen', sinceIso).limit(10000)
+  const { data: sess } = await pagedAll(() => db.from('usage_sessions').select('sid,user_key,last_seen').in('user_key', emails).gte('last_seen', sinceIso).order('sid'), { max: 10000 })
   const info = new Map<string, { email: string; seen: string }>()
   for (const s of (sess ?? []) as Array<{ sid: string; user_key: string; last_seen: string }>) info.set(s.sid, { email: s.user_key, seen: s.last_seen })
   const sids = [...info.keys()]
   for (let i = 0; i < sids.length; i += 200) {
-    const { data } = await db.from('usage_views').select('sid,client_slug,seconds').in('sid', sids.slice(i, i + 200)).gt('seconds', 0).limit(20000)
+    const { data } = await pagedAll(() => db.from('usage_views').select('sid,client_slug,seconds').in('sid', sids.slice(i, i + 200)).gt('seconds', 0).order('sid').order('client_slug').order('view'), { max: 20000 })
     for (const v of (data ?? []) as Array<{ sid: string; client_slug: string }>) {
       const s = info.get(v.sid)
       if (!s || !v.client_slug) continue
@@ -223,7 +226,7 @@ export async function lastAccessByEmail(emails: string[], sinceIso: string): Pro
     }
   }
   // Gerenciador da Meta, avisado pela extensão. Sem a tabela (SQL não rodou) segue só com o painel.
-  const { data: ext } = await db.from('account_visits').select('user_key,client_slug,last_seen').in('user_key', emails).gte('last_seen', sinceIso).limit(20000)
+  const { data: ext } = await pagedAll(() => db.from('account_visits').select('user_key,client_slug,last_seen').in('user_key', emails).gte('last_seen', sinceIso).order('visit_id'), { max: 20000 })
   for (const v of (ext ?? []) as Array<{ user_key: string; client_slug: string; last_seen: string }>) {
     const key = `${v.user_key}|${v.client_slug}`
     if (!out.get(key) || v.last_seen > out.get(key)!) out.set(key, v.last_seen)
@@ -324,9 +327,9 @@ export async function loadTasks(): Promise<TasksResult> {
   const reg = await loadRegistry()
   if (!db || !reg) return { error: 'tables' }
   const since = new Date(Math.max(Date.parse(await tasksStart()), Date.now() - TASK_WINDOW_DAYS * 86_400_000)).toISOString()
-  const { data, error } = await db.from('activity_log').select(TASK_COLUMNS).in('kind', [...TASK_KINDS]).gte('at', since).order('at', { ascending: false }).limit(20000)
+  const { data, error } = await pagedAll<TaskRow>(() => db.from('activity_log').select(TASK_COLUMNS).in('kind', [...TASK_KINDS]).gte('at', since).order('at', { ascending: false }).order('id', { ascending: false }), { max: 20000 })
   if (error) return { error: /reason/i.test(error.message) ? 'columns' : 'tables' }
-  const tasks = groupTasks((data ?? []) as TaskRow[]).map(t => ({ ...t, ownerId: taskOwner(t, reg.managers) }))
+  const tasks = groupTasks(data).map(t => ({ ...t, ownerId: taskOwner(t, reg.managers) }))
   return { tasks }
 }
 
