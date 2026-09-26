@@ -15,10 +15,10 @@ import { ProfileMenu } from './ProfileMenu'
 import { PulseLoader } from './PulseLoader'
 import { StaffShell } from './StaffShell'
 import { StalledAccounts } from './StalledAccounts'
-import { ManagersAudit } from './ManagersAudit'
 import { AccessCard } from './AccessCard'
 import { JustificationsCard, type JItem } from './JustificationsCard'
-import { BarChart, ListCard, PagedRows, PeriodPicker, RankRow, SubTabs, Thumb, plural, type Period } from './UsageUi'
+import { BarChart, ListCard, PagedRows, PeriodPicker, RankRow, SubTabs, Thumb, plural } from './UsageUi'
+import { RANGE_LABEL, RANGE_PERIODS, type RangePeriod } from '@/lib/usage'
 import { ChartCard, DonutChart, KIND_COLOR, paletteAt, topSlices, type Slice } from './Donut'
 
 const KIND_ICON: Record<ActivityKind, React.ReactNode> = {
@@ -27,18 +27,20 @@ const KIND_ICON: Record<ActivityKind, React.ReactNode> = {
   config: <Settings2 size={18} strokeWidth={1.75} />, access: <KeyRound size={18} strokeWidth={1.75} />, sync: <RefreshCw size={18} strokeWidth={1.75} />, client: <Building2 size={18} strokeWidth={1.75} />, other: <Activity size={18} strokeWidth={1.75} />,
 }
 
-interface Score { made: number | null; worked: number; total: number; stalled: number; justifiedPct: number | null; lastOwnAt: string | null }
+interface Score { made: number | null; worked: number; total: number; stalled: number; perDay: number | null; lastOwnAt: string | null }
+const PERIOD_OPTIONS = RANGE_PERIODS.map(p => [p, RANGE_LABEL[p]] as [RangePeriod, string])
 interface ListManager { score: Score; pending: number; id: string; name: string; email: string | null; avatarUrl: string | null; metaActorId: string | null; metaActorName: string | null; clients: Array<{ slug: string; name: string }>; actions: number; optimizations: number; activeSec: number | null; lastAt: string | null; byKind: Array<{ kind: ActivityKind; n: number }>; daily: number[] }
-interface RecentRow { managerAvatar: string | null; at: string; source: string; kind: ActivityKind; summary: string; clientName: string; managerId: string; managerName: string; actorName: string | null; objectName: string | null }
-interface ClientOpt { slug: string; name: string; managerId: string | null }
+interface LogView { title: string; object: string | null; change: string | null; level: string | null }
+interface RecentRow extends LogView { clientLogo?: string | null; managerAvatar: string | null; at: string; source: string; kind: ActivityKind; summary: string; clientName: string; managerId: string; managerName: string; actorName: string | null; objectName: string | null }
+interface ClientOpt { slug: string; name: string; logoUrl?: string | null; managerId: string | null }
 interface ListData { justifications?: { answered: JItem[]; pending: JItem[] }; setup: 'ready' | 'tables' | 'error'; managers: ListManager[]; recent: RecentRow[]; unlinkedMembers: string[]; clients: ClientOpt[]; unassigned: ClientOpt[]; lastSync: string | null; totals: { pending: number; actions: number; optimizations: number } }
-interface TimelineRow { at: string; source: string; client_slug: string; clientName: string; actor_key: string | null; actor_name: string | null; kind: ActivityKind; summary: string; object_name: string | null; detail: { from?: string | null; to?: string | null; level?: string } | null }
+interface TimelineRow { view: LogView; clientLogo?: string | null; at: string; source: string; client_slug: string; clientName: string; actor_key: string | null; actor_name: string | null; kind: ActivityKind; summary: string; object_name: string | null; detail: { from?: string | null; to?: string | null; level?: string } | null }
 interface Profile {
   setup: 'ready' | 'tables'; manager: { id: string; name: string; email: string | null; avatarUrl: string | null; metaActorId: string | null; metaActorName: string | null }; hasEmail: boolean; hasActor: boolean
   totals: { actions: number; optimizations: number; byMe: number; activeSec: number | null; idle: number }
   byKind: Array<{ kind: ActivityKind; n: number }>; daily: Array<{ day: string; n: number }>; hours: number[]; bySource: { app: number; meta: number }
-  clients: Array<{ slug: string; name: string; actions: number; optimizations: number; lastAt: string | null; timeSec: number; daysIdle: number }>
-  idle: Array<{ slug: string; name: string; lastAt: string | null; daysIdle: number | null }>
+  clients: Array<{ slug: string; name: string; logoUrl?: string | null; actions: number; optimizations: number; lastAt: string | null; timeSec: number; daysIdle: number }>
+  idle: Array<{ slug: string; name: string; logoUrl?: string | null; lastAt: string | null; daysIdle: number | null }>
   otherTime: Array<{ slug: string; name: string; sec: number }>
   timeline: TimelineRow[]
 }
@@ -71,7 +73,7 @@ export function TeamManagers() {
   const router = useRouter()
   const sp = useSearchParams()
   const sel = sp.get('g')
-  const [period, setPeriod] = useState<Period>('7')
+  const [period, setPeriod] = useState<RangePeriod>('7')
   const [list, setList] = useState<ListData | null>(null)
   const [failed, setFailed] = useState(false)
   const [editing, setEditing] = useState<null | 'new' | { id: string }>(null)
@@ -123,7 +125,7 @@ export function TeamManagers() {
               <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>{current ? `Gestor de tráfego · ${plural(current.clients.length, 'cliente', 'clientes')}${current.email ? ` · ${current.email}` : ''}` : 'Gestores de tráfego e o que cada um faz nas contas'}</p>
             </div>
           </div>
-          <PeriodPicker value={period} onChange={setPeriod} />
+          <PeriodPicker value={period} onChange={setPeriod} options={PERIOD_OPTIONS} />
           <button type="button" className="btn btn-outline btn-icon btn-sm" onClick={syncNow} disabled={syncing} aria-label="Atualizar histórico da Meta" title="Atualizar o histórico de alterações da Meta agora">{syncing ? <Loader2 size={16} className="spin" /> : <RefreshCw size={16} strokeWidth={1.75} />}</button>
           {current
             ? <button type="button" className="btn btn-outline btn-sm" onClick={() => setEditing({ id: current.id })}><Pencil size={14} strokeWidth={1.75} /> Editar</button>
@@ -137,7 +139,7 @@ export function TeamManagers() {
         {!list && !failed && <PulseLoader size={44} />}
         {list?.setup === 'tables' && sqlHint}
 
-        {list?.setup === 'ready' && !current && !sel && <Overview list={list} onOpen={open} onEdit={id => setEditing({ id })} onNew={() => { setPrefill(''); setEditing('new') }} onLink={email => { setPrefill(email); setEditing('new') }} onAssigned={load} />}
+        {list?.setup === 'ready' && !current && !sel && <Overview list={list} onOpen={open} onEdit={id => setEditing({ id })} onNew={() => { setPrefill(''); setEditing('new') }} onAssigned={load} />}
         {list?.setup === 'ready' && sel && !current && <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>Gestor não encontrado.</div>}
         {list?.setup === 'ready' && current && <ProfileView key={current.id} id={current.id} period={period} tick={tick} pending={current.pending} initialTab={sp.get('tab')} onEdit={() => setEditing({ id: current.id })} />}
       </main>
@@ -152,7 +154,7 @@ export function TeamManagers() {
   )
 }
 
-function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: ListData; onOpen: (id: string, tab?: string) => void; onEdit: (id: string) => void; onNew: () => void; onLink: (email: string) => void; onAssigned: () => void }) {
+function Overview({ list, onOpen, onEdit, onNew, onAssigned }: { list: ListData; onOpen: (id: string, tab?: string) => void; onEdit: (id: string) => void; onNew: () => void; onAssigned: () => void }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [today] = useState(() => Date.now())
   async function assign(slug: string, managerId: string) {
@@ -177,30 +179,13 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
   const kindSlices: Slice[] = [...kindTotals.entries()].map(([kind, n]) => ({ key: kind, label: KIND_LABEL[kind], value: n, color: KIND_COLOR[kind] }))
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div className="tile-grid stagger">
+      <div className="tile-grid stagger" style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
         <MetricTile label="Gestores" value={String(list.managers.length)} />
         <MetricTile label="Clientes com gestor" value={String(withManager)} />
         <MetricTile label="Clientes sem gestor" value={String(list.unassigned.length)} />
         <MetricTile label="Ações nas contas" value={String(list.totals.actions)} />
-        <MetricTile label="Justificativas pendentes" value={String(list.totals.pending)} />
+        <MetricTile label="Otimizações sem motivo" value={String(list.totals.pending)} />
       </div>
-
-      {list.unlinkedMembers.length > 0 && (
-        <section className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div>
-            <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>Acessos sem gestor ({list.unlinkedMembers.length})</h3>
-            <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '2px 0 0' }}>Essas pessoas entram no painel mas não estão ligadas a nenhum gestor. Enquanto isso, elas veem todos os clientes e não recebem otimizações para justificar.</p>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {list.unlinkedMembers.map(email => (
-              <span key={email} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 4px 4px 12px', border: '1px solid var(--border)', borderRadius: 9999, fontSize: 13 }}>
-                {email}
-                <button type="button" className="btn btn-outline btn-sm" style={{ borderRadius: 9999, height: 28 }} onClick={() => onLink(email)}>Ligar a um gestor</button>
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
 
       {list.managers.length === 0 ? (
         <div className="card" style={{ padding: 40, textAlign: 'center', border: '1px dashed var(--border)', boxShadow: 'none' }}>
@@ -214,12 +199,12 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Gestores</h2>
-              <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '2px 0 0' }}>Otimizações e contas com ação seguem o período escolhido no topo. Justificadas considera os últimos 30 dias e &quot;sem movimento&quot;, 3 dias ou mais</p>
+              <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '2px 0 0' }}>Os números seguem o período escolhido no topo. A última otimização olha os últimos 30 dias</p>
             </div>
           <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
             {list.managers.map((m, i) => {
               const sc = m.score
-              const attention = m.pending > 0 || sc.stalled > 0
+              const active = (sc.made ?? 0) > 0
               return (
                 <article key={m.id} className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -231,16 +216,16 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
                       <h3 title={m.name} style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</h3>
                       <div style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{plural(m.clients.length, 'cliente', 'clientes')}{!m.email && <span title="Sem e-mail de login: esse gestor não entra no painel e não recebe otimizações" style={{ color: 'var(--amber)', fontWeight: 600 }}> · sem login</span>}</div>
                     </div>
-                    <span className="badge" title={attention ? 'Tem otimização a justificar ou conta sem movimento' : 'Nada pendente e nenhuma conta parada'} style={{ background: attention ? 'rgba(245, 158, 11, 0.15)' : 'var(--green-soft)', color: 'var(--text-1)', flexShrink: 0 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: attention ? 'var(--amber)' : 'var(--green)' }} />{attention ? 'Atenção' : 'Em dia'}
+                    <span className="badge" title={active ? 'Fez otimizações no período' : 'Nenhuma otimização dele no período'} style={{ background: active ? 'var(--green-soft)' : 'rgba(245, 158, 11, 0.15)', color: 'var(--text-1)', flexShrink: 0 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: active ? 'var(--green)' : 'var(--amber)' }} />{active ? 'Ativo' : 'Sem otimizações'}
                     </span>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '14px 12px' }}>
                     {([
-                      ['Otimizações', sc.made == null ? '—' : String(sc.made), sc.made == null ? 'Sem e-mail nem usuário da Meta ligado: não dá para saber o que ele fez' : 'Otimizações que ele mesmo fez no período (pausar, orçamento, público, criativo, lance, estrutura)'],
-                      ['Contas com ação', `${sc.worked}/${sc.total}`, 'Contas da carteira que tiveram alguma otimização no período, do total de contas ativas'],
-                      ['Justificadas', sc.justifiedPct == null ? '—' : `${sc.justifiedPct}%`, 'Das otimizações dele nos últimos 30 dias, quantas já têm motivo informado'],
+                      ['Otimizações', sc.made == null ? '—' : String(sc.made), sc.made == null ? 'Sem e-mail nem usuário da Meta ligado: não dá para saber o que ele fez' : 'Otimizações que ele mesmo fez no período (pausar, ativar, criar, orçamento, público, lance, criativo)'],
+                      ['Otimizadas', `${sc.worked}/${sc.total}`, 'Contas ativas da carteira que tiveram alguma otimização no período'],
+                      ['Média por dia', sc.perDay == null ? '—' : String(sc.perDay).replace('.', ','), 'Média de otimizações dele por dia no período'],
                     ] as const).map(([l, v, tip]) => (
                       <div key={l} title={tip} style={{ minWidth: 0 }}>
                         <div style={{ ...eyebrow, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l}</div>
@@ -251,16 +236,14 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 32 }}>
                     <span style={{ fontSize: 12, color: 'var(--text-2)', minWidth: 0 }}>
-                      {sc.made == null ? 'Sem usuário da Meta ligado' : sc.lastOwnAt ? `Última ação dele ${ago(sc.lastOwnAt)}` : 'Nenhuma ação dele nos últimos 30 dias'}
-                      {sc.stalled > 0 && <><br /><span style={{ color: 'var(--amber)', fontWeight: 600 }}>{plural(sc.stalled, 'conta sem movimento', 'contas sem movimento')} há 3+ dias</span></>}
-                      {m.pending > 0 && <><br /><span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{plural(m.pending, 'otimização a justificar', 'otimizações a justificar')}</span></>}
+                      {sc.made == null ? 'Sem usuário da Meta ligado' : sc.lastOwnAt ? `Última otimização ${ago(sc.lastOwnAt)}` : 'Nenhuma otimização dele nos últimos 30 dias'}
                     </span>
                     <Sparkline data={m.daily} width={112} height={32} color={paletteAt(i)} />
                   </div>
 
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button type="button" className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => onOpen(m.id, m.pending > 0 ? 'justificativas' : undefined)}>
-                      <ArrowRight size={16} strokeWidth={1.75} /> {m.pending > 0 ? 'Ver justificativas' : 'Ver perfil'}
+                    <button type="button" className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => onOpen(m.id, m.pending > 0 ? 'otimizacoes' : undefined)}>
+                      <ArrowRight size={16} strokeWidth={1.75} /> {m.pending > 0 ? 'Ver otimizações' : 'Ver perfil'}
                     </button>
                     <button type="button" className="btn btn-outline btn-icon btn-sm" onClick={() => onEdit(m.id)} aria-label={`Editar ${m.name}`} title="Editar gestor"><Pencil size={16} strokeWidth={1.75} /></button>
                   </div>
@@ -289,10 +272,10 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
 
       <div className="usage-grid">
         {list.managers.length > 0 && (
-          <ListCard icon={<Clock size={18} strokeWidth={1.75} />} tone="green" title="Acontecendo agora" hint="As últimas ações nas contas dos gestores">
+          <ListCard icon={<Clock size={18} strokeWidth={1.75} />} tone="green" title="Acontecendo agora" hint="As últimas otimizações nas contas dos gestores">
             <PagedRows size={5} empty={none('Nenhuma ação registrada ainda.')} rows={list.recent.map((r, i) => (
-              <RankRow key={`${r.at}-${i}`} wrap lead={<KindChip kind={r.kind} />} title={r.summary}
-                sub={<>{r.clientName}{r.objectName ? ` · ${r.objectName}` : ''}<br />{r.managerName} · {dayLabel(r.at)} às {hm(r.at)}{r.actorName && r.actorName !== r.managerName ? ` · por ${r.actorName}` : ''}</>}
+              <RankRow key={`${r.at}-${i}`} wrap lead={<Thumb name={r.clientName} src={r.clientLogo} />} title={r.title}
+                sub={<>{r.clientName}{r.object ? ` · ${r.object}` : ''}{r.change ? <><br />{r.change}</> : null}<br /><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Thumb name={r.managerName} src={r.managerAvatar} size={16} />{r.managerName}</span> · {dayLabel(r.at)} às {hm(r.at)}{r.actorName && r.actorName !== r.managerName ? ` · por ${r.actorName}` : ''}</>}
                 value={<span className="badge" style={{ background: 'var(--bg-card2)', color: 'var(--text-2)', fontSize: 11 }}>{r.source === 'meta' ? 'Meta' : 'Painel'}</span>} valueTone="plain" onClick={() => onOpen(r.managerId)} />
             ))} />
           </ListCard>
@@ -300,7 +283,7 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
         {list.unassigned.length > 0 && list.managers.length > 0 && (
           <ListCard icon={<Building2 size={18} strokeWidth={1.75} />} title="Clientes sem gestor" hint="Nada feito nessas contas entra no perfil de ninguém. Escolha o gestor de cada uma">
             <PagedRows size={5} empty={none('Todos os clientes têm gestor.')} rows={list.unassigned.map(c => (
-              <RankRow key={c.slug} lead={<Thumb name={c.name} />} title={c.name} valueTone="plain"
+              <RankRow key={c.slug} lead={<Thumb name={c.name} src={c.logoUrl} />} title={c.name} valueTone="plain"
                 value={<select className="field" aria-label={`Gestor de ${c.name}`} disabled={busy === c.slug} value="" onChange={e => assign(c.slug, e.target.value)} style={{ height: 32, width: 'auto', fontSize: 12 }}>
                   <option value="">Escolher gestor…</option>
                   {list.managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
@@ -308,17 +291,16 @@ function Overview({ list, onOpen, onEdit, onNew, onLink, onAssigned }: { list: L
             ))} />
           </ListCard>
         )}
-        {list.managers.length > 0 && list.justifications && <JustificationsCard data={list.justifications} onOpen={id => onOpen(id, 'justificativas')} />}
+        {list.managers.length > 0 && list.justifications && <JustificationsCard data={list.justifications} onOpen={id => onOpen(id, 'otimizacoes')} />}
         {list.managers.length > 0 && <AccessCard onOpenManager={id => onOpen(id)} />}
         {list.managers.length > 0 && <StalledAccounts onOpenManager={id => onOpen(id)} />}
-        <ManagersAudit onFixed={onAssigned} />
       </div>
     </div>
   )
 }
 
-function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: string; period: Period; tick: number; pending: number; initialTab: string | null; onEdit: () => void }) {
-  const [tab, setTab] = useState<'geral' | 'timeline' | 'clientes' | 'justificativas'>(initialTab === 'justificativas' ? 'justificativas' : 'geral')
+function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: string; period: RangePeriod; tick: number; pending: number; initialTab: string | null; onEdit: () => void }) {
+  const [tab, setTab] = useState<'geral' | 'timeline' | 'clientes' | 'otimizacoes'>(initialTab === 'otimizacoes' ? 'otimizacoes' : 'geral')
   const [scope, setScope] = useState<'accounts' | 'actor'>('accounts')
   const [client, setClient] = useState('')
   const [kind, setKind] = useState('')
@@ -348,11 +330,10 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
   const hourBars = data.hours.map((n, h) => ({ label: `${h}h`, value: n, title: `${h}h: ${plural(n, 'ação', 'ações')}` }))
 
   const timelineRows = data.timeline.map((r, i) => {
-    const change = r.detail && (r.detail.from != null || r.detail.to != null) ? `${r.detail.from ?? '—'} → ${r.detail.to ?? '—'}` : null
     const by = r.actor_name && r.actor_name !== data.manager.name ? ` · por ${r.actor_name}` : ''
     return (
-      <RankRow key={`${r.at}-${i}`} wrap lead={<KindChip kind={r.kind} />} title={r.summary}
-        sub={<>{r.clientName}{r.object_name ? ` · ${r.detail?.level ? `${r.detail.level} ` : ''}${r.object_name}` : ''}{change ? <><br />{change}</> : null}<br />{dayLabel(r.at)} às {hm(r.at)}{by}</>}
+      <RankRow key={`${r.at}-${i}`} wrap lead={<Thumb name={r.clientName} src={r.clientLogo} />} title={r.view.title}
+        sub={<>{r.clientName}{r.view.object ? ` · ${r.view.object}` : ''}{r.view.change ? <><br />{r.view.change}</> : null}<br />{dayLabel(r.at)} às {hm(r.at)}{by}</>}
         value={<span className="badge" style={{ background: 'var(--bg-card2)', color: 'var(--text-2)', fontSize: 11 }}>{r.source === 'meta' ? 'Meta' : 'Painel'}</span>} valueTone="plain" />
     )
   })
@@ -367,13 +348,13 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
         </p>
       )}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <SubTabs value={tab} onChange={setTab} tabs={[{ key: 'geral', label: 'Visão geral' }, { key: 'justificativas', label: pending > 0 ? `Justificativas (${pending})` : 'Justificativas' }, { key: 'timeline', label: 'Linha do tempo' }, { key: 'clientes', label: 'Clientes' }]} />
+        <SubTabs value={tab} onChange={setTab} tabs={[{ key: 'geral', label: 'Visão geral' }, { key: 'otimizacoes', label: pending > 0 ? `Otimizações (${pending})` : 'Otimizações' }, { key: 'timeline', label: 'Linha do tempo' }, { key: 'clientes', label: 'Clientes' }]} />
         {client && <button type="button" className="badge" onClick={() => setClient('')} title="Tirar este filtro" style={{ cursor: 'pointer', background: 'var(--accent-soft)', color: 'var(--text-1)', fontSize: 12, gap: 6, marginLeft: 'auto' }}>Cliente: {data.clients.find(c => c.slug === client)?.name ?? client} <X size={12} /></button>}
       </div>
 
       {tab === 'geral' && (
         <>
-          <div className="tile-grid stagger">
+          <div className="tile-grid stagger" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
             <MetricTile label="Ações nas contas" value={String(data.totals.actions)} />
             <MetricTile label="Otimizações nas contas" value={String(data.totals.optimizations)} />
             <MetricTile label="Feito por ele (todas as ações)" value={String(data.totals.byMe)} />
@@ -403,7 +384,7 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
           <div className="usage-grid">
             <ListCard icon={<Building2 size={18} strokeWidth={1.75} />} title="Clientes sem movimentação" hint="Sem nenhuma ação há 7 dias ou mais">
               <PagedRows empty={none('Todos os clientes da carteira tiveram movimentação recente.')} rows={data.idle.map(c => (
-                <RankRow key={c.slug} lead={<Thumb name={c.name} />} title={c.name} sub={c.daysIdle == null ? 'Nenhuma ação registrada' : `Última ação ${ago(c.lastAt!)}`} value={c.daysIdle == null ? '—' : `${c.daysIdle} d`} valueTone="plain" onClick={() => goClient(c.slug)} chevron />
+                <RankRow key={c.slug} lead={<Thumb name={c.name} src={c.logoUrl} />} title={c.name} sub={c.daysIdle == null ? 'Nenhuma ação registrada' : `Última ação ${ago(c.lastAt!)}`} value={c.daysIdle == null ? '—' : `${c.daysIdle} d`} valueTone="plain" onClick={() => goClient(c.slug)} chevron />
               ))} />
             </ListCard>
             <AccessCard manager={id} />
@@ -414,7 +395,7 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
         </>
       )}
 
-      {tab === 'justificativas' && <TaskPanel managerId={id} />}
+      {tab === 'otimizacoes' && <TaskPanel managerId={id} />}
 
       {tab === 'timeline' && (
         <section className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
@@ -441,7 +422,7 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
         <div className="usage-grid">
           <ListCard icon={<Building2 size={18} strokeWidth={1.75} />} title="Carteira" hint="Ações, otimizações e tempo em cada cliente. Clique para ver o que foi feito">
             <PagedRows size={6} empty={none('Nenhum cliente na carteira deste gestor.')} rows={data.clients.map(c => (
-              <RankRow key={c.slug} lead={<Thumb name={c.name} />} title={c.name}
+              <RankRow key={c.slug} lead={<Thumb name={c.name} src={c.logoUrl} />} title={c.name}
                 sub={<>{plural(c.actions, 'ação', 'ações')} · {plural(c.optimizations, 'otimização', 'otimizações')}<br />{c.lastAt ? `última ${ago(c.lastAt)}` : 'sem ações no período'}</>}
                 value={data.hasEmail ? fmtDuration(c.timeSec) : undefined} onClick={() => goClient(c.slug)} chevron />
             ))} />
@@ -535,7 +516,7 @@ function ManagerForm({ manager, clients, managers, prefillEmail, onClose, onSave
             {manager?.email && !team.includes(manager.email) && <option value={manager.email}>{manager.email}</option>}
             <option value="none">Sem acesso ao painel</option>
           </select>
-          <span style={{ fontWeight: 400 }}>É o login (em Equipe) que esta pessoa usa. Com ele, o gestor vê só a própria carteira, recebe as otimizações para justificar e tem o tempo por cliente medido. Sem acesso, ele só aparece como responsável.</span>
+          <span style={{ fontWeight: 400 }}>É o login (em Equipe) que esta pessoa usa. Com ele, o gestor vê só a própria carteira, recebe as otimizações para informar o motivo e tem o tempo por cliente medido. Sem acesso, ele só aparece como responsável.</span>
         </label>
         <label style={label}>Usuário na Meta (opcional)
           <select id="mg-actor" className="field" value={actorId} onChange={e => { const a = actors.find(x => x.id === e.target.value); setActorId(e.target.value); setActorName(a?.name ?? '') }}>

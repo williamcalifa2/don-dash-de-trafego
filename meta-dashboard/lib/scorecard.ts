@@ -10,9 +10,9 @@ export interface Score {
   worked: number; total: number
   /** contas ativas da carteira sem nenhuma ação há `stalledDays` dias ou mais */
   stalled: number
-  /** % das otimizações dele (últimos 30 dias) que já têm justificativa; nulo se não teve nenhuma */
-  justifiedPct: number | null
-  /** última ação feita por ele */
+  /** média de otimizações dele por dia no período; nulo se não dá para saber quem fez */
+  perDay: number | null
+  /** última otimização feita por ele */
   lastOwnAt: string | null
 }
 
@@ -26,28 +26,31 @@ export function scoreOf(o: {
   /** histórico dos últimos 30 dias */
   rows: ScoreRow[]
   sinceMs: number; nowMs: number; stalledDays: number
-  tasks: Array<{ answered: boolean }>
+  /** fim do período (exclusivo); padrão: agora */
+  untilMs?: number
+  /** dias corridos do período, para a média por dia */
+  days?: number
 }): Score {
   const keys = new Set([o.manager.email?.toLowerCase(), o.manager.metaActorId ? `meta:${o.manager.metaActorId}` : null].filter((x): x is string => !!x))
   const mine = new Set(o.slugs)
+  const until = o.untilMs ?? o.nowMs + 1
   let made = 0, lastOwnAt: string | null = null
   const worked = new Set<string>()
   const lastAny = new Map<string, number>()
   for (const r of o.rows) {
     const t = Date.parse(r.at)
     const own = !!r.actor_key && keys.has(r.actor_key.toLowerCase())
-    if (own && !HOUSEKEEPING.has(r.kind) && (!lastOwnAt || r.at > lastOwnAt)) lastOwnAt = r.at
+    if (own && isOpt(r.kind) && (!lastOwnAt || r.at > lastOwnAt)) lastOwnAt = r.at
     if (mine.has(r.client_slug)) {
       if (!HOUSEKEEPING.has(r.kind) && t > (lastAny.get(r.client_slug) ?? 0)) lastAny.set(r.client_slug, t)
-      if (t >= o.sinceMs && isOpt(r.kind)) worked.add(r.client_slug)
+      if (t >= o.sinceMs && t < until && isOpt(r.kind)) worked.add(r.client_slug)
     }
-    if (own && t >= o.sinceMs && isOpt(r.kind)) made++
+    if (own && t >= o.sinceMs && t < until && isOpt(r.kind)) made++
   }
   const limit = o.nowMs - o.stalledDays * 86_400_000
   const stalled = o.slugs.filter(s => (lastAny.get(s) ?? 0) < limit).length
-  const answered = o.tasks.filter(t => t.answered).length
   return {
     made: keys.size ? made : null, worked: worked.size, total: o.slugs.length, stalled,
-    justifiedPct: o.tasks.length ? Math.round((answered / o.tasks.length) * 100) : null, lastOwnAt: keys.size ? lastOwnAt : null,
+    perDay: keys.size ? Math.round((made / Math.max(1, o.days ?? 1)) * 10) / 10 : null, lastOwnAt: keys.size ? lastOwnAt : null,
   }
 }

@@ -128,7 +128,7 @@ export function metaToLog(e: MetaActivity, clientSlug: string, managerId: string
 
 // ─── Números do perfil ───────────────────────────────────────────────────────
 
-export interface LogRow { at: string; source: string; client_slug: string; manager_id: string | null; actor_key: string | null; actor_name: string | null; kind: string; summary: string; object_name: string | null; detail: Record<string, unknown> | null }
+export interface LogRow { at: string; source: string; client_slug: string; manager_id: string | null; actor_key: string | null; actor_name: string | null; kind: string; event_type?: string | null; object_type?: string | null; summary: string; object_name: string | null; detail: Record<string, unknown> | null }
 
 const BR_MS = 3 * 3_600_000
 export const brDay = (ms: number) => new Date(ms - BR_MS).toISOString().slice(0, 10)
@@ -141,6 +141,7 @@ export function countByKind(rows: Array<{ kind: string }>): Array<{ kind: Activi
 
 /** Ações por dia (horário de Brasília), com os dias sem nenhuma ação também. */
 export function dailyCounts(rows: Array<{ at: string }>, sinceMs: number, nowMs: number): Array<{ day: string; n: number }> {
+  // `nowMs` é o fim do período (pode ser antes de agora: ontem, mês passado)
   const by = new Map<string, number>()
   for (const r of rows) { const d = brDay(Date.parse(r.at)); by.set(d, (by.get(d) ?? 0) + 1) }
   const out: Array<{ day: string; n: number }> = []
@@ -348,4 +349,46 @@ export function cleanReason(body: unknown): { reasonKinds: string[]; reason: str
   const text = typeof o.reason === 'string' ? o.reason.replace(/\s+/g, ' ').trim().slice(0, 500) : ''
   if (!kinds.length && text.length < 3) return { error: 'Escolha um motivo ou escreva a justificativa.' }
   return { reasonKinds: kinds, reason: text || null }
+}
+
+// ─── O que conta e como aparece ──────────────────────────────────────────────
+
+/**
+ * Só entra nos números e nas listas o que uma pessoa fez de verdade. Da Meta: pausar, ativar, criar, orçamento, público, lance e criativo
+ * (o estado que a Meta muda sozinha — "Processo pendente → Análise pendente" — e a biblioteca de imagens ficam de fora). Do painel: tudo, menos leitura e login.
+ */
+export function isMeaningfulLog(r: Pick<LogRow, 'source' | 'kind' | 'event_type' | 'object_type' | 'detail' | 'summary'>): boolean {
+  if (r.kind === 'sync' || r.kind === 'access') return false
+  if (r.source !== 'meta') return true
+  if (!(OPTIMIZATION_KINDS as readonly string[]).includes(r.kind)) return false
+  return classifyChange({ kind: r.kind, event_type: r.event_type ?? null, object_type: r.object_type ?? null, detail: r.detail as TaskRow['detail'], summary: r.summary }) !== null
+}
+
+const ART: Record<string, [string, string]> = { campanha: ['a', 'campanha'], conjunto: ['o', 'conjunto'], 'anúncio': ['o', 'anúncio'] }
+const OF: Record<string, string> = { campanha: 'da campanha', conjunto: 'do conjunto', 'anúncio': 'do anúncio' }
+const THE = (l: string | null) => (l && ART[l] ? `${ART[l][0]} ${ART[l][1]}` : 'o item')
+
+export interface LogView {
+  /** o que foi feito, em uma frase curta ("Pausou o conjunto") */
+  title: string
+  /** em qual campanha, conjunto ou anúncio */
+  object: string | null
+  /** de onde para onde mudou (só orçamento e lance) */
+  change: string | null
+  level: 'campanha' | 'conjunto' | 'anúncio' | null
+}
+
+/** Uma ação já explicada: verbo + nível + nome do objeto + mudança. Ação do painel mantém o texto que o app gravou. */
+export function describeLog(r: Pick<LogRow, 'source' | 'kind' | 'event_type' | 'object_type' | 'detail' | 'summary' | 'object_name'>): LogView {
+  const c = r.source === 'meta' ? classifyChange({ kind: r.kind, event_type: r.event_type ?? null, object_type: r.object_type ?? null, detail: r.detail as TaskRow['detail'], summary: r.summary }) : null
+  if (!c) return { title: r.summary, object: r.object_name, change: null, level: null }
+  const lv = c.level
+  const d = r.detail as { from?: string | null; to?: string | null } | null
+  const change = (c.action === 'orcamento' || c.action === 'lance') && d && (d.from != null || d.to != null) ? `${d.from ?? '—'} → ${d.to ?? '—'}` : null
+  const title: Record<Action, string> = {
+    pausou: `Pausou ${THE(lv)}`, ativou: `Ativou ${THE(lv)}`, criou: `Criou ${THE(lv)}`,
+    orcamento: `Mudou o orçamento ${lv ? OF[lv] : 'do item'}`, publico: 'Mudou o público do conjunto', lance: 'Mudou o lance do conjunto',
+    criativo: 'Trocou o criativo do anúncio', alterou: `Alterou ${THE(lv)}`,
+  }
+  return { title: title[c.action], object: r.object_name, change, level: lv }
 }

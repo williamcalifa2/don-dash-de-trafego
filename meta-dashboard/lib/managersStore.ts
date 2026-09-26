@@ -7,7 +7,7 @@ import { metaConfig } from './meta/config'
 import { loadRegistry, toManager, __resetManagersMemo, type ManagerRow } from './activityLog'
 import {
   cleanManagerInput, isHumanMetaEvent, managerId as slugFromName, metaToLog,
-  TASK_KINDS, groupTasks, matchActor, taskOwner, type LogInsert, type LogRow, type Manager, type Task, type TaskRow, type ManagerInput, type MetaActivity,
+  TASK_KINDS, groupTasks, isMeaningfulLog, matchActor, taskOwner, type LogInsert, type LogRow, type Manager, type Task, type TaskRow, type ManagerInput, type MetaActivity,
 } from './managers'
 
 /**
@@ -69,21 +69,23 @@ export async function assignClient(slug: string, managerId: string | null): Prom
 
 // ─── Histórico ───────────────────────────────────────────────────────────────
 
-const LOG_COLUMNS = 'at,source,client_slug,manager_id,actor_key,actor_name,kind,summary,object_name,detail'
+const LOG_COLUMNS = 'at,source,client_slug,manager_id,actor_key,actor_name,kind,event_type,object_type,summary,object_name,detail'
 
 /** Histórico do gestor: o que aconteceu nas contas dele ("accounts") ou o que ele mesmo fez em qualquer conta ("actor"). */
-export async function readLog(o: { managerId?: string; actorKeys?: string[]; /** só estas contas (independe do gestor gravado na linha) */ clients?: string[]; sinceIso: string; client?: string; kind?: string; limit?: number }): Promise<LogRow[] | null> {
+export async function readLog(o: { managerId?: string; actorKeys?: string[]; /** só estas contas (independe do gestor gravado na linha) */ clients?: string[]; sinceIso: string; /** fim do período (exclusivo) */ untilIso?: string; /** inclui também o que não conta (mudança de estado da Meta, leitura, login) */ raw?: boolean; client?: string; kind?: string; limit?: number }): Promise<LogRow[] | null> {
   const db = getSupabaseServer()
   if (!db) return null
   let q = db.from('activity_log').select(LOG_COLUMNS).gte('at', o.sinceIso).order('at', { ascending: false }).limit(o.limit ?? 5000)
   if (o.managerId) q = q.eq('manager_id', o.managerId)
+  if (o.untilIso) q = q.lt('at', o.untilIso)
   if (o.actorKeys) q = q.in('actor_key', o.actorKeys)
   if (o.clients) q = q.in('client_slug', o.clients)
   if (o.client) q = q.eq('client_slug', o.client)
   if (o.kind) q = q.eq('kind', o.kind)
   const { data, error } = await q
   if (error) return null
-  return (data ?? []) as LogRow[]
+  const rows = (data ?? []) as unknown as LogRow[]
+  return o.raw ? rows : rows.filter(isMeaningfulLog)
 }
 
 // ─── Leitura do histórico da Meta ────────────────────────────────────────────
@@ -127,7 +129,11 @@ export async function syncMetaActivity(opts: { only?: string[]; budgetMs?: numbe
       const r = await legacyGet<{ data?: MetaActivity[]; paging?: { cursors?: { after?: string }; next?: string } }>(path, { origin, purpose: 'activity_log', accountId: c.act, clientId: c.id })
       if (r.dryRun) { out.dryRun = true; return }
       if (!r.ok) { failed = r.blocked ?? r.error?.message ?? 'falha na Meta'; break }
-      for (const e of r.data.data ?? []) if (isHumanMetaEvent(e)) rows.push(metaToLog(e, c.slug, reg?.byClient.get(c.slug) ?? null, c.act))
+      for (const e of r.data.data ?? []) {
+        if (!isHumanMetaEvent(e)) continue
+        const row = metaToLog(e, c.slug, reg?.byClient.get(c.slug) ?? null, c.act)
+        if (isMeaningfulLog(row)) rows.push(row) // mudança de estado que a Meta faz sozinha não é ação de ninguém
+      }
       after = r.data.paging?.next ? r.data.paging.cursors?.after : undefined
       if (!after) break
     }

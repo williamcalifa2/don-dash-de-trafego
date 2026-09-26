@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useFastTip } from './FastTip'
 import { useAnchoredPopover } from '@/lib/useAnchoredPopover'
 import { CalendarDays, Check, ChevronDown, ChevronRight, Filter } from 'lucide-react'
 import { fmtDuration } from '@/lib/usage'
@@ -14,9 +15,10 @@ export const PERIODS: Array<[Period, string]> = [['today', 'Hoje'], ['7', '7 dia
 const usePopover = () => useAnchoredPopover(6)
 
 /** Botão com o ícone de calendário: mostra o período e abre a lista. */
-export function PeriodPicker({ value, onChange }: { value: Period; onChange: (p: Period) => void }) {
+export function PeriodPicker<T extends string = Period>({ value, onChange, options }: { value: T; onChange: (p: T) => void; /** lista própria de períodos (padrão: hoje, 7 e 30 dias) */ options?: Array<[T, string]> }) {
   const { pos, close, toggle, menuRef } = usePopover()
-  const current = PERIODS.find(p => p[0] === value) ?? PERIODS[1]
+  const list = (options ?? PERIODS) as Array<[T, string]>
+  const current = list.find(p => p[0] === value) ?? list[0]
   return (
     <>
       <button type="button" className="btn btn-outline btn-sm" aria-haspopup="listbox" aria-expanded={!!pos} aria-label={`Período: ${current[1]}`} onClick={toggle}>
@@ -26,7 +28,7 @@ export function PeriodPicker({ value, onChange }: { value: Period; onChange: (p:
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={close} data-hm-ignore />
           <div ref={menuRef} className="popover" role="listbox" aria-label="Período" data-hm-ignore style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 1000, minWidth: 160 }}>
-            {PERIODS.map(([k, l]) => (
+            {list.map(([k, l]) => (
               <div key={k} role="option" aria-selected={k === value} tabIndex={0} className="popover-item" style={k === value ? { background: 'var(--accent-soft)' } : undefined}
                 onClick={() => { close(); onChange(k) }} onKeyDown={e => { if (e.key === 'Enter') { close(); onChange(k) } }}>
                 <span style={{ flex: 1 }}>{l}</span>{k === value && <Check size={14} strokeWidth={1.75} color="var(--accent)" />}
@@ -174,16 +176,18 @@ export function BarChart({ bars, labelEvery, height = 132, summary }: { bars: Ar
   const max = Math.max(1, ...bars.map(b => b.value))
   const top = bars.reduce((m, b, i) => (b.value > bars[m].value ? i : m), 0)
   const gap = bars.length > 16 ? 3 : 6
+  const tip = useFastTip()
   return (
     <div role="img" aria-label={summary} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap, height }}>
         {bars.map((b, i) => (
-          <div key={i} title={b.title} style={{ flex: 1, minWidth: 0, height: `${Math.max(b.value > 0 ? 4 : 2, Math.round((b.value / max) * 100))}%`, borderRadius: '4px 4px 2px 2px', background: b.value > 0 ? 'var(--accent)' : 'var(--bg-card2)', opacity: b.value > 0 && i !== top ? 0.5 : 1 }} />
+          <div key={i} {...tip.bind(b.title)} style={{ flex: 1, minWidth: 0, height: `${Math.max(b.value > 0 ? 4 : 2, Math.round((b.value / max) * 100))}%`, borderRadius: '4px 4px 2px 2px', background: b.value > 0 ? 'var(--accent)' : 'var(--bg-card2)', opacity: b.value > 0 && i !== top ? 0.5 : 1 }} />
         ))}
       </div>
       <div aria-hidden="true" style={{ display: 'flex', gap }}>
         {bars.map((b, i) => <span key={i} style={{ flex: 1, minWidth: 0, fontSize: 10, color: 'var(--text-3)', textAlign: 'center', whiteSpace: 'nowrap' }}>{i % labelEvery === 0 ? b.label : ''}</span>)}
       </div>
+      {tip.node}
     </div>
   )
 }

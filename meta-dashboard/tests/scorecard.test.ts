@@ -4,7 +4,7 @@ import { scoreOf, type ScoreRow } from '@/lib/scorecard'
 const NOW = Date.parse('2026-09-25T12:00:00Z')
 const ago = (d: number) => new Date(NOW - d * 86_400_000).toISOString()
 const row = (d: number, slug: string, actor: string | null, kind = 'budget'): ScoreRow => ({ at: ago(d), client_slug: slug, actor_key: actor, kind })
-const base = { manager: { email: 'ana@x.com', metaActorId: '900' }, slugs: ['a', 'b', 'c'], sinceMs: NOW - 7 * 86_400_000, nowMs: NOW, stalledDays: 3, tasks: [] as Array<{ answered: boolean }> }
+const base = { manager: { email: 'ana@x.com', metaActorId: '900' }, slugs: ['a', 'b', 'c'], sinceMs: NOW - 7 * 86_400_000, nowMs: NOW, stalledDays: 3, days: 7 }
 
 describe('placar do gestor', () => {
   it('conta só o que ele fez, por e-mail ou usuário da Meta', () => {
@@ -28,8 +28,10 @@ describe('placar do gestor', () => {
     expect(s.made).toBeNull()
     expect(s.lastOwnAt).toBeNull()
   })
-  it('percentual de justificadas', () => {
-    expect(scoreOf({ ...base, rows: [], tasks: [{ answered: true }, { answered: false }, { answered: true }, { answered: true }] }).justifiedPct).toBe(75)
-    expect(scoreOf({ ...base, rows: [], tasks: [] }).justifiedPct).toBeNull()
+  it('média de otimizações por dia e última otimização dele', () => {
+    const s = scoreOf({ ...base, rows: [row(1, 'a', 'meta:900'), row(2, 'a', 'meta:900'), row(3, 'b', 'ana@x.com'), row(4, 'b', 'meta:900', 'lead')] })
+    expect(s.made).toBe(3)
+    expect(s.perDay).toBe(0.4) // 3 em 7 dias
+    expect(s.lastOwnAt).toBe(ago(1)) // a ação de lead não é otimização
   })
 })

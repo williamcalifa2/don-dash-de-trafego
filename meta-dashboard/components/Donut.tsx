@@ -25,6 +25,8 @@ export function topSlices(all: Slice[], max = 6): Slice[] {
  * Donut com número no centro e legenda (o mesmo desenho do gráfico de público). Sem dados, mostra o anel vazio.
  * `legend={false}` deixa só o anel, para caber dentro de cards pequenos.
  */
+import { useFastTip } from './FastTip'
+
 export function DonutChart({ slices, center, sub, size = 148, thickness = 22, legend = true, unit, onPick }: {
   slices: Slice[]; center?: string; sub?: string; size?: number; thickness?: number; legend?: boolean; unit?: (n: number) => string; /** torna cada item da legenda clicável (ex.: filtrar a linha do tempo) */ onPick?: (key: string) => void
 }) {
@@ -34,6 +36,7 @@ export function DonutChart({ slices, center, sub, size = 148, thickness = 22, le
   const C = 2 * Math.PI * R
   let acc = 0
   const pct = (v: number) => `${Math.round((v / total) * 100)}%`
+  const tip = useFastTip()
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap', justifyContent: legend ? 'center' : 'flex-start', width: '100%' }}>
       <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
@@ -42,9 +45,7 @@ export function DonutChart({ slices, center, sub, size = 148, thickness = 22, le
           {total > 0 && slices.filter(s => s.value > 0).map(s => {
             const len = (s.value / total) * C
             const el = (
-              <circle key={s.key} cx={50} cy={50} r={R} fill="none" stroke={s.color} strokeWidth={sw} strokeDasharray={`${Math.max(0, len - (slices.length > 1 ? 0.8 : 0))} ${C - len + (slices.length > 1 ? 0.8 : 0)}`} strokeDashoffset={-acc} transform="rotate(-90 50 50)">
-                <title>{`${s.label}: ${unit ? unit(s.value) : s.value} (${pct(s.value)})`}</title>
-              </circle>
+              <circle key={s.key} cx={50} cy={50} r={R} fill="none" stroke={s.color} strokeWidth={sw} strokeDasharray={`${Math.max(0, len - (slices.length > 1 ? 0.8 : 0))} ${C - len + (slices.length > 1 ? 0.8 : 0)}`} strokeDashoffset={-acc} transform="rotate(-90 50 50)" {...tip.bind(`${s.label}: ${unit ? unit(s.value) : s.value} (${pct(s.value)})`)} style={{ cursor: 'default' }} />
             )
             acc += len
             return el
@@ -80,6 +81,7 @@ export function DonutChart({ slices, center, sub, size = 148, thickness = 22, le
           {total === 0 && <li style={{ color: 'var(--text-2)' }}>Sem dados neste período.</li>}
         </ul>
       )}
+      {tip.node}
     </div>
   )
 }
@@ -87,9 +89,11 @@ export function DonutChart({ slices, center, sub, size = 148, thickness = 22, le
 /** Barrinhas de um número por dia (ou por hora), sem eixo: mostra o ritmo de relance. */
 export function MiniBars({ values, color = 'var(--accent)', height = 30, title }: { values: number[]; color?: string; height?: number; title: (i: number, v: number) => string }) {
   const max = Math.max(1, ...values)
+  const tip = useFastTip()
   return (
     <div role="img" aria-label="Ritmo de ações" style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height }}>
-      {values.map((v, i) => <div key={i} title={title(i, v)} style={{ flex: 1, minWidth: 2, height: `${Math.max(v > 0 ? 12 : 5, Math.round((v / max) * 100))}%`, borderRadius: 3, background: v > 0 ? color : 'var(--bg-card2)', opacity: v > 0 ? 0.55 + 0.45 * (v / max) : 1 }} />)}
+      {values.map((v, i) => <div key={i} {...tip.bind(title(i, v))} style={{ flex: 1, minWidth: 2, height: `${Math.max(v > 0 ? 12 : 5, Math.round((v / max) * 100))}%`, borderRadius: 3, background: v > 0 ? color : 'var(--bg-card2)', opacity: v > 0 ? 0.55 + 0.45 * (v / max) : 1 }} />)}
+      {tip.node}
     </div>
   )
 }

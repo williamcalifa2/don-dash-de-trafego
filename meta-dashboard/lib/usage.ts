@@ -231,6 +231,33 @@ export function usageSince(period: string, now = Date.now()): number {
   return dayStart - days * DAY + BR
 }
 
+/** Períodos da gestão (Performance): hoje, ontem, 7/14/30 dias, este mês e mês passado. */
+export const RANGE_PERIODS = ['today', 'yesterday', '7', '14', '30', 'month', 'last_month'] as const
+export type RangePeriod = (typeof RANGE_PERIODS)[number]
+export const RANGE_LABEL: Record<RangePeriod, string> = { today: 'Hoje', yesterday: 'Ontem', '7': '7 dias', '14': '14 dias', '30': '30 dias', month: 'Este mês', last_month: 'Mês passado' }
+export const isRangePeriod = (v: unknown): v is RangePeriod => typeof v === 'string' && (RANGE_PERIODS as readonly string[]).includes(v)
+
+/** Intervalo [since, until) em ms, no horário de Brasília. Até `now` quando o período ainda não terminou. `days` = dias corridos cobertos (para médias por dia). */
+export function usageRange(period: RangePeriod, now = Date.now()): { sinceMs: number; untilMs: number; days: number } {
+  const BR = 3 * 3_600_000, DAY = 86_400_000
+  const local = now - BR
+  const dayStart = local - (((local % DAY) + DAY) % DAY)
+  const d = new Date(local)
+  const monthStart = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)
+  const lastMonthStart = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1)
+  let since: number, until: number
+  switch (period) {
+    case 'today': since = dayStart; until = now - BR; break
+    case 'yesterday': since = dayStart - DAY; until = dayStart; break
+    case '14': since = dayStart - 13 * DAY; until = now - BR; break
+    case '30': since = dayStart - 29 * DAY; until = now - BR; break
+    case 'month': since = monthStart; until = now - BR; break
+    case 'last_month': since = lastMonthStart; until = monthStart; break
+    default: since = dayStart - 6 * DAY; until = now - BR
+  }
+  return { sinceMs: since + BR, untilMs: until + BR, days: Math.max(1, Math.ceil((until - since) / DAY)) }
+}
+
 /** Recorta as sessões e os tempos para um cliente só: o "tempo ativo" de cada sessão passa a ser o tempo dentro desse cliente. */
 export function focusClient(sessions: SessionRow[], views: ViewRow[], client: string): { sessions: SessionRow[]; views: ViewRow[] } {
   const cv = views.filter(v => v.client_slug === client)

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/admin'
 import { getSupabaseServer } from '@/lib/supabase'
-import { clientNames, loadRegistry } from '@/lib/managersStore'
+import { clientLogos, clientNames, loadRegistry } from '@/lib/managersStore'
 import { summarizeVisits, type VisitRow } from '@/lib/visits'
 
 export const dynamic = 'force-dynamic'
@@ -24,8 +24,8 @@ export async function GET(req: NextRequest) {
   else { const emails = reg.managers.flatMap(m => (m.email ? [m.email] : [])); if (!emails.length) return NextResponse.json({ setup: 'ready', days, entries: [] }); q = q.in('user_key', emails) }
   const { data, error } = await q
   if (error) return NextResponse.json({ setup: /relation|schema cache|does not exist/i.test(error.message) ? 'sql' : 'error' })
-  const names = await clientNames()
+  const [names, logos] = await Promise.all([clientNames(), clientLogos()])
   const byEmail = new Map(reg.managers.flatMap(m => (m.email ? [[m.email, m] as const] : [])))
-  const entries = summarizeVisits((data ?? []) as VisitRow[], now).map(e => ({ ...e, clientName: names.get(e.slug) ?? e.slug, managerId: byEmail.get(e.userKey)?.id ?? null, managerName: byEmail.get(e.userKey)?.name ?? e.userKey, managerAvatar: byEmail.get(e.userKey)?.avatarUrl ?? null }))
+  const entries = summarizeVisits((data ?? []) as VisitRow[], now).map(e => ({ ...e, clientName: names.get(e.slug) ?? e.slug, clientLogo: logos.get(e.slug) ?? null, managerId: byEmail.get(e.userKey)?.id ?? null, managerName: byEmail.get(e.userKey)?.name ?? e.userKey, managerAvatar: byEmail.get(e.userKey)?.avatarUrl ?? null }))
   return NextResponse.json({ setup: 'ready', days, entries }, { headers: { 'Cache-Control': 'no-store' } })
 }

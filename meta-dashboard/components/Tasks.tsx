@@ -62,7 +62,7 @@ function ReasonSelect({ value, onChange }: { value: string[]; onChange: (v: stri
 
 const eyebrow: React.CSSProperties = { fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)' }
 
-/** Uma otimização (sessão de alterações): o que foi feito numa frase; pendente mostra o formulário, justificada mostra o motivo e o botão Editar. */
+/** Uma otimização (sessão de alterações): o que foi feito numa frase; pendente mostra o formulário, com motivo mostra o motivo e o botão Editar. */
 function TaskItem({ t, onSaved, boxed }: { t: TaskView; onSaved: () => void; boxed?: boolean }) {
   const answered = !!(t.reason || t.reasonKinds.length)
   const [edit, setEdit] = useState(false)
@@ -93,7 +93,7 @@ function TaskItem({ t, onSaved, boxed }: { t: TaskView; onSaved: () => void; box
           {t.headline}
           {t.items.length > 0 && <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} style={{ marginLeft: 8, background: 'none', border: 0, padding: 0, font: 'inherit', fontSize: 12, color: 'var(--text-2)', textDecoration: 'underline', cursor: 'pointer' }}>{open ? 'ocultar detalhes' : 'ver detalhes'}</button>}
         </div>
-        <span className="badge" style={{ background: answered ? 'var(--green-soft)' : 'rgba(245, 158, 11, 0.15)', color: 'var(--text-1)', flexShrink: 0 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: answered ? 'var(--green)' : 'var(--amber)' }} />{answered ? 'Justificada' : 'Pendente'}</span>
+        <span className="badge" style={{ background: answered ? 'var(--green-soft)' : 'rgba(245, 158, 11, 0.15)', color: 'var(--text-1)', flexShrink: 0 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: answered ? 'var(--green)' : 'var(--amber)' }} />{answered ? 'Com motivo' : 'Sem motivo'}</span>
       </div>
       {open && (
         <ul style={{ margin: 0, padding: '10px 12px', listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--text-2)', background: 'var(--bg-card2)', borderRadius: 10 }}>
@@ -133,14 +133,14 @@ function ClientCard({ c, onOpen }: { c: ClientSummary; onOpen: () => void }) {
         <Thumb name={c.name} src={c.logo} size={40} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <h3 title={c.name} style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</h3>
-          {c.accountManager && <div title={`Essa conta é da carteira de ${c.accountManager}. As alterações foram feitas por quem está nesta lista, então a justificativa fica com ele.`} style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Conta de {c.accountManager}</div>}
+          {c.accountManager && <div title={`Essa conta é da carteira de ${c.accountManager}. As alterações foram feitas por quem está nesta lista, então o motivo fica com ele informar.`} style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Conta de {c.accountManager}</div>}
         </div>
         <span className="badge" style={{ background: done ? 'var(--green-soft)' : 'rgba(245, 158, 11, 0.15)', color: 'var(--text-1)', flexShrink: 0 }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: done ? 'var(--green)' : 'var(--amber)' }} />{done ? 'Em dia' : 'Pendente'}
         </span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '14px 12px' }}>
-        {([['A justificar', String(c.pending), done ? undefined : 'var(--amber)'], ['Justificadas', String(c.answered), undefined], ['Última', when(c.lastAt).replace(' às ', ' ').replace('hoje', 'hoje'), undefined]] as const).map(([l, v, col]) => (
+        {([['Sem motivo', String(c.pending), done ? undefined : 'var(--amber)'], ['Com motivo', String(c.answered), undefined], ['Última', when(c.lastAt).replace(' às ', ' ').replace('hoje', 'hoje'), undefined]] as const).map(([l, v, col]) => (
           <div key={l} style={{ minWidth: 0 }}>
             <div style={{ ...eyebrow, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l}</div>
             <div style={{ fontSize: l === 'Última' ? 15 : 20, fontWeight: 700, lineHeight: 1.6, color: col, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{v}</div>
@@ -148,14 +148,14 @@ function ClientCard({ c, onOpen }: { c: ClientSummary; onOpen: () => void }) {
         ))}
       </div>
       <div style={{ fontSize: 12, color: 'var(--text-2)', height: 36, lineHeight: '18px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.headline}</div>
-      <button type="button" className="btn btn-primary btn-sm" onClick={onOpen}><ArrowRight size={16} strokeWidth={1.75} /> {done ? 'Ver otimizações' : 'Justificar'}</button>
+      <button type="button" className="btn btn-primary btn-sm" onClick={onOpen}><ArrowRight size={16} strokeWidth={1.75} /> {done ? 'Ver otimizações' : 'Informar motivo'}</button>
     </article>
   )
 }
 
 type Filter = 'todos' | 'pendentes' | 'em-dia'
 
-/** Justificativas de um gestor: cards por cliente; ao abrir um cliente, a lista das otimizações dele (em lista ou em cards). */
+/** Otimizações de um gestor: cards por cliente; ao abrir um cliente, a lista das otimizações dele (em lista ou em cards). */
 export function TaskPanel({ managerId, onCount }: { managerId: string | null; onCount?: (pending: number) => void }) {
   const [data, setData] = useState<TasksData | null>(null)
   const [failed, setFailed] = useState(false)
@@ -190,7 +190,7 @@ export function TaskPanel({ managerId, onCount }: { managerId: string | null; on
           <Thumb name={client.name} src={client.logo} size={40} />
           <div style={{ minWidth: 0, flex: 1 }}>
             <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.name}</h2>
-            <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{plural(client.pending, 'otimização a justificar', 'otimizações a justificar')} · {plural(client.answered, 'justificada', 'justificadas')}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{plural(client.pending, 'otimização sem motivo', 'otimizações sem motivo')} · {plural(client.answered, 'com motivo', 'com motivo')}</div>
           </div>
           <div role="group" aria-label="Modo de exibição" style={{ display: 'flex', gap: 4 }}>
             <button type="button" className="pill-btn" aria-pressed={view === 'list'} onClick={() => setView('list')}><List size={14} strokeWidth={1.75} style={{ marginRight: 4, verticalAlign: -2 }} />Lista</button>
@@ -210,9 +210,9 @@ export function TaskPanel({ managerId, onCount }: { managerId: string | null; on
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <section className="card" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-        <DonutChart legend={false} size={84} thickness={18} slices={[{ key: 'ok', label: 'Justificadas', value: data.counts.answered, color: 'var(--green)' }, { key: 'pend', label: 'Pendentes', value: data.counts.pending, color: 'var(--amber)' }]} center={data.counts.rate == null ? '—' : `${data.counts.rate}%`} />
+        <DonutChart legend={false} size={84} thickness={18} slices={[{ key: 'ok', label: 'Com motivo', value: data.counts.answered, color: 'var(--green)' }, { key: 'pend', label: 'Pendentes', value: data.counts.pending, color: 'var(--amber)' }]} center={data.counts.rate == null ? '—' : `${data.counts.rate}%`} />
         <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
-          {([['A justificar', data.counts.pending, 'var(--amber)'], ['Justificadas', data.counts.answered, 'var(--green)']] as const).map(([l, v, col]) => (
+          {([['Sem motivo', data.counts.pending, 'var(--amber)'], ['Com motivo', data.counts.answered, 'var(--green)']] as const).map(([l, v, col]) => (
             <div key={l}>
               <div style={eyebrow}>{l}</div>
               <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, color: col }}>{v}</div>
@@ -223,7 +223,7 @@ export function TaskPanel({ managerId, onCount }: { managerId: string | null; on
       </section>
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <SubTabs value={filter} onChange={setFilter} tabs={[{ key: 'todos', label: 'Todos' }, { key: 'pendentes', label: 'A justificar' }, { key: 'em-dia', label: 'Em dia' }]} />
+        <SubTabs value={filter} onChange={setFilter} tabs={[{ key: 'todos', label: 'Todos' }, { key: 'pendentes', label: 'Sem motivo' }, { key: 'em-dia', label: 'Em dia' }]} />
       </div>
 
       {shown.length === 0

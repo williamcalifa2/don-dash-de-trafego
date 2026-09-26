@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/admin'
-import { usageSince } from '@/lib/usage'
-import { OPTIMIZATION_KINDS, activityByClient, cleanManagerInput, countByKind, countBySource, dailyCounts, hourCounts, idleSlugs, isKind } from '@/lib/managers'
-import { clientNames, deleteManager, loadRegistry, readLog, saveManager, timeByEmail } from '@/lib/managersStore'
+import { isRangePeriod, usageRange } from '@/lib/usage'
+import { OPTIMIZATION_KINDS, activityByClient, cleanManagerInput, countByKind, countBySource, dailyCounts, describeLog, hourCounts, idleSlugs, isKind } from '@/lib/managers'
+import { clientLogos, clientNames, deleteManager, loadRegistry, readLog, saveManager, timeByEmail } from '@/lib/managersStore'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,10 +14,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   if (denied) return denied
   const { id } = await ctx.params
   const q = req.nextUrl.searchParams
-  const period = ['today', '7', '30'].includes(q.get('period') ?? '') ? q.get('period') as string : '7'
+  const qp = q.get('period')
+  const period = isRangePeriod(qp) ? qp : '7'
   const now = Date.now()
-  const sinceMs = usageSince(period, now)
+  const { sinceMs, untilMs } = usageRange(period, now)
   const sinceIso = new Date(sinceMs).toISOString()
+  const untilIso = new Date(untilMs).toISOString()
   const client = /^[a-z0-9]+(-[a-z0-9]+)*$/.test(q.get('client') ?? '') ? q.get('client') as string : ''
   const kind = isKind(q.get('kind')) ? q.get('kind') as string : ''
   const scope = q.get('scope') === 'actor' ? 'actor' : 'accounts'
@@ -29,11 +31,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const slugs = [...reg.byClient.entries()].filter(([, mid]) => mid === id).map(([s]) => s)
   const actorKeys = [manager.email, manager.metaActorId ? `meta:${manager.metaActorId}` : null].filter((x): x is string => !!x)
 
-  const [inAccounts, byMe, recent, names, time] = await Promise.all([
-    readLog({ managerId: id, sinceIso, limit: 10000 }),
-    actorKeys.length ? readLog({ actorKeys, sinceIso, limit: 10000 }) : Promise.resolve([]),
+  const [inAccounts, byMe, recent, names, logos, time] = await Promise.all([
+    readLog({ managerId: id, sinceIso, untilIso, limit: 10000 }),
+    actorKeys.length ? readLog({ actorKeys, sinceIso, untilIso, limit: 10000 }) : Promise.resolve([]),
     readLog({ clients: slugs, sinceIso: new Date(now - 90 * 86_400_000).toISOString(), limit: 10000 }),
     clientNames(),
+    clientLogos(),
     timeByEmail(manager.email ? [manager.email] : [], sinceIso),
   ])
   const mineTime = manager.email ? time.get(manager.email) : undefined
@@ -51,11 +54,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       actions: accountsRows.length, optimizations: accountsRows.filter(r => (OPTIMIZATION_KINDS as readonly string[]).includes(r.kind)).length,
       byMe: (byMe ?? []).length, activeSec: mineTime?.total ?? null, idle: idle.length,
     },
-    byKind: countByKind(accountsRows), daily: dailyCounts(accountsRows, sinceMs, now), hours: hourCounts(accountsRows), bySource: countBySource(accountsRows),
-    clients: stats.map(s => ({ ...s, name: names.get(s.slug) ?? s.slug, timeSec: mineTime?.byClient.get(s.slug) ?? 0, daysIdle: idle.find(i => i.slug === s.slug)?.daysIdle ?? 0 })),
-    idle: idle.map(i => ({ ...i, name: names.get(i.slug) ?? i.slug })),
-    otherTime: mineTime ? [...mineTime.byClient.entries()].filter(([s]) => !slugs.includes(s)).map(([slug, sec]) => ({ slug, name: names.get(slug) ?? slug, sec })).sort((a, b) => b.sec - a.sec).slice(0, 10) : [],
-    timeline: timeline.map(r => ({ ...r, clientName: names.get(r.client_slug) ?? r.client_slug })),
+    byKind: countByKind(accountsRows), daily: dailyCounts(accountsRows, sinceMs, untilMs - 1), hours: hourCounts(accountsRows), bySource: countBySource(accountsRows),
+    clients: stats.map(s => ({ ...s, name: names.get(s.slug) ?? s.slug, logoUrl: logos.get(s.slug) ?? null, timeSec: mineTime?.byClient.get(s.slug) ?? 0, daysIdle: idle.find(i => i.slug === s.slug)?.daysIdle ?? 0 })),
+    idle: idle.map(i => ({ ...i, name: names.get(i.slug) ?? i.slug, logoUrl: logos.get(i.slug) ?? null })),
+    otherTime: mineTime ? [...mineTime.byClient.entries()].filter(([s]) => !slugs.includes(s)).map(([slug, sec]) => ({ slug, name: names.get(slug) ?? slug, logoUrl: logos.get(slug) ?? null, sec })).sort((a, b) => b.sec - a.sec).slice(0, 10) : [],
+    timeline: timeline.map(r => ({ ...r, view: describeLog(r), clientName: names.get(r.client_slug) ?? r.client_slug, clientLogo: logos.get(r.client_slug) ?? null })),
   })
 }
 

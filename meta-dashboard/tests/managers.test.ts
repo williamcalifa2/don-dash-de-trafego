@@ -175,3 +175,32 @@ describe('justificativas', () => {
     expect((cleanReason({ reason: 'x'.repeat(900) }) as { reason: string }).reason).toHaveLength(500)
   })
 })
+
+import { describeLog, isMeaningfulLog } from '@/lib/managers'
+const mk = (o: Record<string, unknown>) => ({ source: 'meta', kind: 'status', event_type: 'update_ad_run_status', object_type: 'ADGROUP', summary: 'Status do anúncio atualizado', object_name: 'Anúncio 1', detail: { from: 'Ativo', to: 'Inativo' } as Record<string, unknown> | null, ...o }) as Parameters<typeof describeLog>[0]
+
+describe('o que conta e como aparece', () => {
+  it('mudança de estado que a Meta faz sozinha não conta', () => {
+    expect(isMeaningfulLog(mk({ detail: { from: 'Processo pendente', to: 'Análise pendente' } }))).toBe(false)
+    expect(isMeaningfulLog(mk({ detail: { from: 'Ativo', to: 'Processo pendente' } }))).toBe(false)
+    expect(isMeaningfulLog(mk({ detail: { from: 'Ativo', to: 'Inativo' } }))).toBe(true)
+  })
+  it('leitura e login do painel não contam; ação do painel conta', () => {
+    expect(isMeaningfulLog(mk({ source: 'app', kind: 'sync' }))).toBe(false)
+    expect(isMeaningfulLog(mk({ source: 'app', kind: 'access' }))).toBe(false)
+    expect(isMeaningfulLog(mk({ source: 'app', kind: 'config' }))).toBe(true)
+  })
+  it('evento da Meta que não é otimização fica de fora', () => {
+    expect(isMeaningfulLog(mk({ kind: 'other', event_type: 'update_campaign_name' }))).toBe(false)
+  })
+  it('descreve pausar, ativar e orçamento em frases curtas', () => {
+    expect(describeLog(mk({})).title).toBe('Pausou o anúncio')
+    expect(describeLog(mk({ object_type: 'CAMPAIGN', detail: { from: 'Inativo', to: 'Ativo' } })).title).toBe('Ativou o conjunto')
+    const b = describeLog(mk({ kind: 'budget', event_type: 'update_ad_set_budget', object_type: 'CAMPAIGN', detail: { from: 'R$ 50,00', to: 'R$ 80,00' } }))
+    expect(b.title).toBe('Mudou o orçamento do conjunto')
+    expect(b.change).toBe('R$ 50,00 → R$ 80,00')
+  })
+  it('ação do painel mantém o texto gravado', () => {
+    expect(describeLog(mk({ source: 'app', kind: 'config', summary: 'Alterou objetivos e metas' })).title).toBe('Alterou objetivos e metas')
+  })
+})
