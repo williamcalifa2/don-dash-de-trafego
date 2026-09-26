@@ -47,13 +47,13 @@ export function ExtensionPage() {
             {step(1, <>Descompacte o arquivo baixado.</>)}
             {step(2, <>No Chrome, abra <code>chrome://extensions</code> e ligue o <strong>Modo do desenvolvedor</strong>.</>)}
             {step(3, <>Clique em <strong>Carregar sem compactação</strong> e escolha a pasta descompactada.</>)}
-            {step(4, <>Clique no ícone da extensão, cole o seu token abaixo e toque em <strong>Salvar e testar</strong>.</>)}
+            {step(4, <>Volte a esta página (ou a qualquer tela do painel) com o seu login: a extensão se conecta <strong>sozinha</strong> em alguns segundos. O ícone dela mostra &quot;Conectada como …&quot;.</>)}
           </ol>
         </section>
 
         <section className="card" style={{ padding: 20, marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Seu token</h2>
+            <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Seu token (só se a conexão automática falhar)</h2>
             <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '4px 0 0' }}>É pessoal{tk ? ` (${tk.email})` : ''}: identifica você no painel. Não compartilhe. Se sair da equipe, ele deixa de valer.</p>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

@@ -16,5 +16,6 @@ async function beat({ act, visit, sec }) {
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg && msg.type === 'beat') { beat(msg).then(reply); return true }
+  if (msg && msg.type === 'linked') { chrome.action.setBadgeText({ text: '' }); return }
   if (msg && msg.type === 'ping') { beat({ act: '10000', visit: 'ping-' + Date.now(), sec: 0 }).then(reply); return true }
 })

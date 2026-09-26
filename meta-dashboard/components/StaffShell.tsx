@@ -92,6 +92,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className={`staff-shell${collapsed ? ' is-collapsed' : ''}`}>
+      <ExtensionLink />
       <button type="button" className="staff-burger no-print btn btn-outline btn-icon btn-sm" onClick={() => setDrawer(true)} aria-label="Abrir menu"><Menu size={18} strokeWidth={1.75} /></button>
       {drawer && <div className="staff-backdrop no-print" onClick={() => setDrawer(false)} />}
       <aside className={`staff-sidebar no-print${drawer ? ' is-open' : ''}`}>

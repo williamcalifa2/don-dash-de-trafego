@@ -17,7 +17,10 @@
   <h1>Grupo Don · Contas de anúncios</h1>
   <p>Avisa o painel quando você abre uma conta de cliente no Gerenciador da Meta. Só o endereço da aba é lido.</p>
   <div class="row"><strong>Ligada</strong><input id="on" type="checkbox" aria-label="Ligar ou desligar"></div>
-  <label class="f">Seu token pessoal<input id="tk" type="password" autocomplete="off" placeholder="Copie no painel: Extensão"></label>
-  <button id="save">Salvar e testar</button>
+  <div id="who" class="ok"></div>
+  <details><summary style="cursor:pointer;font-size:12px;color:#475569">Conectar com token (avançado)</summary>
+    <label class="f" style="margin-top:8px">Token pessoal<input id="tk" type="password" autocomplete="off" placeholder="Copie no painel: Extensão"></label>
+    <button id="save" style="margin-top:8px;width:100%">Salvar e testar</button>
+  </details>
   <div id="st" role="status"></div>
 </div><script src="popup.js"></script></body></html>

@@ -10,7 +10,7 @@ Avisa o painel quando um gestor abre uma conta de anúncios de cliente no Gerenc
 ## Instalar (teste)
 1. Chrome → `chrome://extensions` → ligue **Modo do desenvolvedor**.
 2. **Carregar sem compactação** e escolha esta pasta.
-3. No painel, abra **Extensão** (menu do perfil), copie o token, clique no ícone da extensão, cole e **Salvar e testar**.
+3. Abra o painel (`dashboard.dondigital.com.br`) com o seu login. A extensão se conecta sozinha em alguns segundos (o ícone mostra "Conectada como …"). Só se isso falhar, copie o token em **Extensão** (menu do perfil) e cole no ícone.
 
 ## Para toda a equipe
 Publicar como "não listada" na Chrome Web Store ou instalar por política do Google Workspace (Console de administração → Dispositivos → Chrome → Apps e extensões), o que força a instalação e impede desligar.

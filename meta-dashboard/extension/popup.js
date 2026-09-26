@@ -1,7 +1,16 @@
 const $ = id => document.getElementById(id)
 const st = (t, cls) => { $('st').textContent = t; $('st').className = cls || '' }
 
-chrome.storage.local.get({ token: '', enabled: true }, v => { $('on').checked = v.enabled !== false; $('tk').value = v.token })
+function paint() {
+  chrome.storage.local.get({ token: '', enabled: true, email: '' }, v => {
+    $('on').checked = v.enabled !== false
+    $('tk').value = v.token
+    $('who').className = v.token ? 'ok' : 'bad'
+    $('who').textContent = v.token ? `Conectada${v.email ? ` como ${v.email}` : ''}.` : 'Ainda não conectada. Abra o painel (dashboard.dondigital.com.br) com o seu login: ela conecta sozinha.'
+  })
+}
+paint()
+chrome.storage.onChanged.addListener(paint)
 $('on').addEventListener('change', () => chrome.storage.local.set({ enabled: $('on').checked }, () => st($('on').checked ? 'Ligada.' : 'Desligada: nada é enviado.', $('on').checked ? 'ok' : '')))
 $('save').addEventListener('click', () => {
   const token = $('tk').value.trim()
