@@ -13,8 +13,8 @@ export function currentView(): string {
   if (p.startsWith('/dashboard/')) return 'dashboard'
   if (p === '/admin' || p === '/admin/') return 'admin'
   if (p.startsWith('/admin/reports')) return /present/.test(p) ? 'admin/apresentar' : 'admin/reports'
-  if (p.startsWith('/admin/uso')) return 'admin/uso'
-  if (p.startsWith('/admin/equipe')) return 'admin/equipe'
+  if (p.startsWith('/admin/heatmap')) return ''
+  if (p.startsWith('/admin/')) return p.replace(/^\//, '').replace(/\/$/, '')
   return ''
 }
 
