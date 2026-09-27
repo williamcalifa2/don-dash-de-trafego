@@ -6,7 +6,7 @@ import { apiFetch } from '@/lib/apiFetch'
 import { PulseLoader } from './PulseLoader'
 import { Thumb } from './UsageUi'
 
-interface Nums { spend: number; results: number; leads: number; cpl: number | null; cost_per_result: number | null; reach: number; clicks: number }
+interface Nums { spend: number; results: number; leads: number; cpl: number | null; cost_per_result: number | null; reach: number }
 interface Report { weekKey: string; range: { since: string; until: string }; status: 'ready' | 'empty'; text: string | null; edited?: string | null; generatedAt: number; kind?: string; current?: Nums }
 interface Item { slug: string; name: string; logoUrl: string | null; report: Report | null; state: 'ready' | 'empty' | 'old' | 'none' }
 

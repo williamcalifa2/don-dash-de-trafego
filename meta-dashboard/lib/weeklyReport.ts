@@ -2,7 +2,6 @@
 import { KIND_LABELS, type ResultKind } from './resultKind'
 export interface WeekNumbers {
   spend: number
-  clicks: number
   /** pessoas alcançadas */
   reach: number
   /** resultado do cliente: leads de formulário quando o tipo é "form"; senão os resultados somados */
@@ -12,29 +11,27 @@ export interface WeekNumbers {
 }
 export interface WeekCampaign { name: string; spend: number; results: number; leads: number }
 
-/** Visitas ao perfil e seguidores novos: dado orgânico real (Instagram/Facebook Insights), não vem dos anúncios. */
+/** Um número com o valor da semana anterior, quando dá para comparar (a série guardada cobre o período inteiro). */
+export interface WithPrev { value: number | null; prev: number | null }
+
+/** Engajamento, visitas ao perfil e seguidores novos: dado orgânico real (Instagram/Facebook Insights), não vem dos anúncios. */
 export interface OrganicWeekly {
-  visits: number
-  /** null = sem base de comparação (conta nova ou dado incompleto) */
-  visitsPrev: number | null
+  engagement: WithPrev
+  visits: WithPrev
+  newFollowers: WithPrev
   /** verba de campanhas de visita ao perfil (achadas pelo nome); null = não deu para saber */
   spend: number | null
-  /** seguidores ganhos no período (Instagram + Facebook); null = sem dado orgânico */
-  newFollowers: number | null
 }
+export const EMPTY_ORGANIC: OrganicWeekly = { engagement: { value: null, prev: null }, visits: { value: null, prev: null }, newFollowers: { value: null, prev: null }, spend: null }
 
-/** Extrai visitas ao perfil e seguidores novos do que a aba Orgânico já calcula. */
+/** Extrai engajamento, visitas ao perfil e seguidores novos do que a aba Orgânico já calcula (cada um já vem com o comparativo certo da semana anterior). */
 interface OrganicKpi { key: string; value: number | null; prev: number | null }
-interface OrganicLike { status: string; kpis: { ig: OrganicKpi[]; fb: OrganicKpi[] } }
+interface OrganicLike { status: string; kpis: { ig: OrganicKpi[] } }
 
 export function organicWeekly(view: OrganicLike | null, adSpend: number | null): OrganicWeekly {
-  if (!view || view.status !== 'ok') return { visits: 0, visitsPrev: null, spend: null, newFollowers: null }
-  const visits = view.kpis.ig.find(k => k.key === 'visits')
-  const igGained = view.kpis.ig.find(k => k.key === 'gained')
-  const fbFollowers = view.kpis.fb.find(k => k.key === 'followers')
-  const fbGained = fbFollowers && fbFollowers.value != null && fbFollowers.prev != null ? fbFollowers.value - fbFollowers.prev : null
-  const newFollowers = igGained?.value != null || fbGained != null ? (igGained?.value ?? 0) + (fbGained ?? 0) : null
-  return { visits: visits?.value ?? 0, visitsPrev: visits?.prev ?? null, spend: adSpend, newFollowers }
+  if (!view || view.status !== 'ok') return { ...EMPTY_ORGANIC, spend: adSpend }
+  const of = (key: string): WithPrev => { const k = view.kpis.ig.find(x => x.key === key); return { value: k?.value ?? null, prev: k?.prev ?? null } }
+  return { engagement: of('interactions'), visits: of('visits'), newFollowers: of('gained'), spend: adSpend }
 }
 
 /** Soma a verba das campanhas cujo nome indica visita ao perfil (convenção "VISITAS AO PERFIL" usada pela agência). Null se nenhuma bater. */
@@ -69,11 +66,19 @@ export function prevWeek(r: { since: string; until: string }): { since: string; 
   return { since: back(r.since), until: back(r.until) }
 }
 
-/** "+73%" / "-48%" / "0%"; nulo sem base de comparação. */
+/** "+73%" / "-48%"; nulo sem base de comparação ou variação de zero para zero. */
 function pct(cur: number, prev: number): string | null {
   if (!(prev > 0) || !Number.isFinite(cur)) return null
   const p = Math.round(((cur - prev) / prev) * 100)
   return p > 0 ? `+${p}%` : `${p}%`
+}
+
+/** " (vs N | +X%)" no formato do relatório; "" quando não há base de comparação. */
+function compare(cur: number, prev: number | null): string {
+  if (prev == null) return ''
+  if (prev === 0) return ' (vs 0 semana anterior)'
+  const p = pct(cur, prev)
+  return p ? ` (vs ${int(prev)} | ${p})` : ''
 }
 
 const ICON: Record<ResultKind, string> = { conversa: '💬', form: '📝', site: '🌐', sales: '🛒', custom: '🎯', misto: '🎯' }
@@ -90,7 +95,7 @@ const costOf = (kind: ResultKind, n: WeekNumbers) => (kind === 'form' ? n.cpl : 
 export function buildWeeklyMessage(i: WeeklyInput): string | null {
   const { current: c, previous: p, kind, profile } = i
   const res = resultOf(kind, c)
-  if (c.spend <= 0 && res <= 0 && !(profile && profile.visits > 0)) return null
+  if (c.spend <= 0 && res <= 0 && !((profile?.visits.value ?? 0) > 0)) return null
   const pw = prevWeek(i.range)
   const lines: string[] = [
     `Bom dia, pessoal! ☀️ Tudo bem? Segue o report dos últimos 7 dias (${rangeLabel(i.range)}) da ${i.business}${p ? `, com comparativo da semana anterior (${rangeLabel(pw)})` : ''}:`,
@@ -116,16 +121,19 @@ export function buildWeeklyMessage(i: WeeklyInput): string | null {
     lines.push('Sem investimento em anúncios na semana. Resultados do orgânico:', '')
   }
 
-  if (profile && profile.visits > 0) {
-    const note = profile.visitsPrev == null ? '' : profile.visitsPrev === 0 ? ' (vs 0 semana anterior)' : (() => { const vp = pct(profile.visits, profile.visitsPrev as number); return vp ? ` (vs ${int(profile.visitsPrev as number)} | ${vp})` : '' })()
-    lines.push(`👀 ${int(profile.visits)} ${profile.visits === 1 ? 'visita ao perfil' : 'visitas ao perfil'}${note}`)
-    if (profile.spend != null && profile.spend > 0) lines.push(`🏷️ Custo por visita ${brl(profile.spend / profile.visits)}`)
+  const eng = profile?.engagement.value
+  if (eng != null && eng > 0) lines.push(`❤️ ${int(eng)} ${eng === 1 ? 'interação no Instagram' : 'interações no Instagram'}${compare(eng, profile!.engagement.prev)}`)
+  const visits = profile?.visits.value
+  if (visits != null && visits > 0) {
+    lines.push(`👀 ${int(visits)} ${visits === 1 ? 'visita ao perfil' : 'visitas ao perfil'}${compare(visits, profile!.visits.prev)}`)
+    if (profile!.spend != null && profile!.spend > 0) lines.push(`🏷️ Custo por visita ${brl(profile!.spend / visits)}`)
   }
-  if (profile && profile.newFollowers != null && profile.newFollowers !== 0) {
-    lines.push(`👥 ${profile.newFollowers > 0 ? '+' : ''}${int(profile.newFollowers)} ${Math.abs(profile.newFollowers) === 1 ? 'seguidor novo' : 'seguidores novos'} no Instagram/Facebook`)
+  const gained = profile?.newFollowers.value
+  if (gained != null && gained !== 0) {
+    const label = Math.abs(gained) === 1 ? 'seguidor novo' : 'seguidores novos'
+    lines.push(`👥 ${gained > 0 ? '+' : ''}${int(gained)} ${label} no Instagram${compare(gained, profile!.newFollowers.prev)}`)
   }
   if (c.reach > 0) lines.push(`📣 ${int(c.reach)} ${c.reach === 1 ? 'pessoa alcançada' : 'pessoas alcançadas'}`)
-  if (c.clicks > 0) lines.push(`👆 ${int(c.clicks)} ${c.clicks === 1 ? 'clique total' : 'cliques totais'}`)
 
   const score = (x: WeekCampaign) => resultOf(kind, { leads: x.leads, results: x.results } as WeekNumbers)
   const top = [...i.campaigns].filter(x => score(x) > 0 && x.spend > 0).sort((a, b) => score(b) - score(a) || a.spend - b.spend)[0]

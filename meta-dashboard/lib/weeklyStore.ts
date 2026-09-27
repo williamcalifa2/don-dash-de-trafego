@@ -82,7 +82,7 @@ export async function weeklyClients(slugs?: string[]): Promise<WeeklyClient[]> {
 }
 
 const toWeek = (s: MetricsSummary): WeekNumbers => ({
-  spend: s.spend, clicks: s.clicks, reach: s.reach, leads: s.leads, results: s.results, cpl: s.cpl, cost_per_result: s.cost_per_result,
+  spend: s.spend, reach: s.reach, leads: s.leads, results: s.results, cpl: s.cpl, cost_per_result: s.cost_per_result,
   purchase_value: s.purchase_value, roas: s.roas,
 })
 
