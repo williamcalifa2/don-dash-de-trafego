@@ -8,8 +8,9 @@ import { ensureRuntime } from './meta/runtime'
 import { readMetrics } from './meta/read'
 import { refreshNow } from './meta/refreshNow'
 import { stores } from './meta/pipeline'
-import { buildWeeklyMessage, last7Range, profileVisitsOf, weekKeyBr, type WeekNumbers } from './weeklyReport'
-import type { ConversionItem, MetricsSummary } from './meta'
+import { buildWeeklyMessage, last7Range, organicWeekly, profileCampaignSpend, weekKeyBr, type WeekCampaign, type WeekNumbers } from './weeklyReport'
+import { readOrganic } from './meta/organicRead'
+import type { MetricsSummary } from './meta'
 
 /** Versão do formato da mensagem: mudou o texto, os relatórios da versão antiga são refeitos. */
 export const FORMAT = 3
@@ -80,9 +81,9 @@ export async function weeklyClients(slugs?: string[]): Promise<WeeklyClient[]> {
   return rows.map(r => ({ id: r.id, slug: r.slug, name: r.display_name ?? r.slug, logoUrl: logoPublicUrl(r.slug, r.logo_url), adAccountId: r.ad_account_id, active: cfgs[r.slug]?.active !== false }))
 }
 
-const toWeek = (s: MetricsSummary, conversions: ConversionItem[] | undefined, profileSpend = 0): WeekNumbers => ({
+const toWeek = (s: MetricsSummary): WeekNumbers => ({
   spend: s.spend, clicks: s.clicks, reach: s.reach, leads: s.leads, results: s.results, cpl: s.cpl, cost_per_result: s.cost_per_result,
-  purchase_value: s.purchase_value, roas: s.roas, profileVisits: profileVisitsOf(conversions), profileSpend,
+  purchase_value: s.purchase_value, roas: s.roas,
 })
 
 export type GenerateResult = { ok: true; report: WeeklyReport } | { ok: false; reason: 'pending' | 'no_snapshot_mode' | 'blocked' | 'error'; detail?: string }
@@ -106,12 +107,15 @@ export async function generateWeekly(c: WeeklyClient, opts: { refresh?: boolean 
   }
   if (resp.freshness.pending) return { ok: false, reason: 'pending' }
   const range = last7Range(now)
-  const current = toWeek(resp.summary, resp.conversions, resp.campaigns.filter(x => profileVisitsOf(x.conversions) > 0).reduce((n, x) => n + x.spend, 0))
-  const previous = resp.summary_prev ? toWeek(resp.summary_prev, resp.conversions_prev) : null
-  const campaigns = resp.campaigns.map(x => ({ name: x.name, spend: x.spend, results: x.results, leads: x.leads }))
+  const current = toWeek(resp.summary)
+  const previous = resp.summary_prev ? toWeek(resp.summary_prev) : null
+  const campaigns: WeekCampaign[] = resp.campaigns.map(x => ({ name: x.name, spend: x.spend, results: x.results, leads: x.leads }))
+  // Visitas ao perfil e seguidores novos: dado orgânico real (Instagram/Facebook Insights), sem SQL nem chamada extra à Meta (já coletado pelo ciclo do sistema).
+  const organic = await readOrganic(stores.snaps, c.id, 'last_7d', now).catch(() => null)
+  const profile = organicWeekly(organic, profileCampaignSpend(campaigns))
   const text = buildWeeklyMessage({
     business: c.name, range, kind: resp.result_kind,
-    current, previous, campaigns,
+    current, previous, campaigns, profile,
   })
   const top = [...campaigns].filter(x => (resp.result_kind === 'form' ? x.leads : x.results) > 0 && x.spend > 0).sort((a, b) => (resp.result_kind === 'form' ? b.leads - a.leads : b.results - a.results))[0]
   const report: WeeklyReport = { v: FORMAT, weekKey: weekKeyBr(now), range, status: text ? 'ready' : 'empty', text, generatedAt: now, kind: resp.result_kind, current, previous, top: top ? { name: top.name, spend: top.spend, results: resp.result_kind === 'form' ? top.leads : top.results } : null }
