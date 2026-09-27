@@ -29,7 +29,7 @@ describe('mensagem da semana (formato combinado)', () => {
 
   it('cabeçalho e investimento', () => {
     expect(m.split('\n')[0]).toBe('Bom dia, pessoal! ☀️ Tudo bem? Segue o report dos últimos 7 dias (14 a 20/09) da Estrela Utilidades, com comparativo da semana anterior (07 a 13/09):')
-    expect(m).toContain('\n\n📊 Investimos R$ 356,05 no período (vs R$ 282,00 | +26%).\n\nResultados da semana:\n\n')
+    expect(m).toContain('\n\n📊 Investimos R$ 356,05 no período.\n\nResultados da semana:\n\n')
   })
   it('resultados com comparativo, sem cliques totais', () => {
     expect(m).toContain('💬 57 conversas iniciadas no WhatsApp (vs 33 | +73%)')
@@ -89,10 +89,14 @@ describe('engajamento, visitas ao perfil e seguidores — todos com variação',
   })
 })
 
-describe('comparação em todas as métricas', () => {
-  it('investimento e alcance também comparam com a semana anterior', () => {
-    const m = buildWeeklyMessage({ ...base, kind: 'conversa', current: n({ spend: 356.05, reach: 21879 }), previous: n({ spend: 282, reach: 9000 }) })!
-    expect(m).toContain('📊 Investimos R$ 356,05 no período (vs R$ 282,00 | +26%).')
+describe('comparação em todas as métricas (menos investimento)', () => {
+  it('investimento nunca leva comparação, mesmo com semana anterior disponível', () => {
+    const m = buildWeeklyMessage({ ...base, kind: 'conversa', current: n({ spend: 356.05 }), previous: n({ spend: 282 }) })!
+    expect(m).toContain('📊 Investimos R$ 356,05 no período.')
+    expect(m).not.toContain('Investimos R$ 356,05 no período (vs')
+  })
+  it('alcance compara com a semana anterior', () => {
+    const m = buildWeeklyMessage({ ...base, kind: 'conversa', current: n({ reach: 21879 }), previous: n({ reach: 9000 }) })!
     expect(m).toContain('📣 21.879 pessoas alcançadas (vs 9.000 | +143%)')
   })
   it('faturamento e ROAS comparam também', () => {

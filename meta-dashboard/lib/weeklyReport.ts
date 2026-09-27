@@ -102,7 +102,7 @@ export function buildWeeklyMessage(i: WeeklyInput): string | null {
     '',
   ]
   if (c.spend > 0 || res > 0) {
-    lines.push(`📊 Investimos ${brl(c.spend)} no período${compare(c.spend, p?.spend ?? null, brl)}.`, '', 'Resultados da semana:', '')
+    lines.push(`📊 Investimos ${brl(c.spend)} no período.`, '', 'Resultados da semana:', '')
     const [one, many] = RESULT[kind]
     lines.push(`${ICON[kind]} ${int(res)} ${res === 1 ? one : many}${compare(res, p ? resultOf(kind, p) : null)}`)
 

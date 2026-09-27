@@ -13,7 +13,7 @@ import { readOrganic } from './meta/organicRead'
 import type { MetricsSummary } from './meta'
 
 /** Versão do formato da mensagem: mudou o texto, os relatórios da versão antiga são refeitos. */
-export const FORMAT = 3
+export const FORMAT = 4
 
 export interface WeeklyReport {
   v?: number
