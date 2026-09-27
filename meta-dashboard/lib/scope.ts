@@ -40,8 +40,9 @@ export async function scopeFor(req: NextRequest): Promise<Scope> {
   const manager = { id: mine.id, name: mine.name }
   const privileged = who.role === 'owner' || who.role === 'admin'
   if (!privileged) return { slugs: carteira, manager, restricted: true, canToggle: false, mode: 'mine' }
-  const wantsAll = req.cookies.get(SCOPE_COOKIE)?.value === 'all'
-  return wantsAll ? { slugs: null, manager, restricted: false, canToggle: true, mode: 'all' } : { slugs: carteira, manager, restricted: false, canToggle: true, mode: 'mine' }
+  // Padrão é "todos": administrador/dono que também é gestor só cai em "minhas contas" se escolher isso explicitamente.
+  const wantsMine = req.cookies.get(SCOPE_COOKIE)?.value === 'mine'
+  return wantsMine ? { slugs: carteira, manager, restricted: false, canToggle: true, mode: 'mine' } : { slugs: null, manager, restricted: false, canToggle: true, mode: 'all' }
 }
 
 export const canSee = (s: Scope, slug: string) => !s.slugs || s.slugs.has(slug)

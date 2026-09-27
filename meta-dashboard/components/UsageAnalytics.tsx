@@ -58,6 +58,8 @@ export function UsageAnalytics() {
   const [data, setData] = useState<Overview | null>(null)
   const [error, setError] = useState<'denied' | 'error' | null>(null)
   const [tab, setTab] = useState<Tab>('geral')
+  const [allClients, setAllClients] = useState<Array<{ slug: string; name: string }>>([])
+  useEffect(() => { apiFetch('/api/admin/clients/names', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then((j: { clients?: Array<{ slug: string; name: string }> } | null) => setAllClients(j?.clients ?? [])).catch(() => {}) }, [])
 
   const load = useCallback(async () => {
     try {
@@ -80,7 +82,7 @@ export function UsageAnalytics() {
   const people = useMemo(() => data?.people ?? [], [data])
   const team = people.filter(p => TEAM.includes(p.role))
   const externals = people.filter(p => !TEAM.includes(p.role))
-  const clientName = data?.byClient.find(c => c.slug === client)?.name ?? client
+  const clientName = allClients.find(c => c.slug === client)?.name ?? data?.byClient.find(c => c.slug === client)?.name ?? client
   const userName = people.find(p => p.userKey === user)?.name ?? user
   const scope = client ? clientName : ''
 
@@ -276,6 +278,10 @@ export function UsageAnalytics() {
             <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>Uso do app</h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>Quem entrou, quem está online, quanto tempo ficou e em quais telas</p>
           </div>
+          <select className="field" aria-label="Ver uso de um cliente" style={{ width: 'auto', maxWidth: 220 }} value={client} onChange={e => { setClient(e.target.value); if (e.target.value) setTab('clientes') }}>
+            <option value="">Todos os clientes</option>
+            {[...allClients].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map(c => <option key={c.slug} value={c.slug}>{c.name}</option>)}
+          </select>
           <PeriodPicker value={period} onChange={setPeriod} />
           <button type="button" className="btn btn-outline btn-icon btn-sm" onClick={toggle} aria-label="Alternar tema" title="Alternar tema">{theme === 'dark' ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}</button>
           <ProfileMenu />

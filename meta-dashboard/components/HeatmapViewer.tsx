@@ -68,8 +68,13 @@ export function HeatmapViewer() {
 
   useEffect(() => {
     let alive = true
-    apiFetch(`/api/admin/usage/overview?period=${period}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((j: { byClient?: Array<{ slug: string; name: string }>; people?: Array<{ userKey: string; name: string; role: string }> } | null) => {
-      if (alive && j) setOpts({ byClient: j.byClient ?? [], people: j.people ?? [] })
+    // Pessoas: só quem realmente usou o app no período. Clientes: todos, mesmo os sem cliques ainda, senão não dá pra escolher um cliente novo.
+    Promise.all([
+      apiFetch(`/api/admin/usage/overview?period=${period}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)) as Promise<{ people?: Array<{ userKey: string; name: string; role: string }> } | null>,
+      apiFetch('/api/admin/clients/names', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)) as Promise<{ clients?: Array<{ slug: string; name: string }> } | null>,
+    ]).then(([usage, names]) => {
+      if (!alive) return
+      setOpts({ byClient: [...(names?.clients ?? [])].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')), people: usage?.people ?? [] })
     }).catch(() => { })
     return () => { alive = false }
   }, [period])

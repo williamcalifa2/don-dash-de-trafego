@@ -78,6 +78,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
   const open = useCallback((action: StaffAction) => {
     setDrawer(false)
     if (action === 'reports') { go('/admin/reports'); return }
+    if (action === 'team') { go('/admin/membros'); return }
     if (pathname === '/admin') { window.dispatchEvent(new CustomEvent(STAFF_EVENT, { detail: action })); return }
     go(`/admin?open=${action}`)
   }, [pathname, go])
@@ -89,7 +90,8 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
   const onReports = pathname.startsWith('/admin/reports')
   const onHeatmap = pathname.startsWith('/admin/heatmap')
   const onUsage = pathname.startsWith('/admin/uso')
-  const onTeam = pathname.startsWith('/admin/equipe')
+  const onPerformance = pathname.startsWith('/admin/equipe')
+  const onTeam = pathname.startsWith('/admin/membros')
 
   return (
     <div className={`staff-shell${collapsed ? ' is-collapsed' : ''}`}>
@@ -112,8 +114,8 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
           <div className="staff-group">Administração</div>
           {canOperate && <Item collapsed={collapsed} icon={<Building2 size={18} strokeWidth={1.75} />} label="Clientes" onClick={() => open('clients')} />}
           {canOperate && <Item collapsed={collapsed} icon={<Receipt size={18} strokeWidth={1.75} />} label="Faturamento" active={pathname.startsWith('/admin/faturamento')} onClick={() => { setDrawer(false); go('/admin/faturamento') }} />}
-          {canManage && <Item collapsed={collapsed} icon={<Gauge size={18} strokeWidth={1.75} />} label="Performance" active={onTeam} onClick={() => { setDrawer(false); go('/admin/equipe') }} />}
-          {canManage && <Item collapsed={collapsed} icon={<Users size={18} strokeWidth={1.75} />} label="Equipe" onClick={() => open('team')} />}
+          {canManage && <Item collapsed={collapsed} icon={<Gauge size={18} strokeWidth={1.75} />} label="Performance" active={onPerformance} onClick={() => { setDrawer(false); go('/admin/equipe') }} />}
+          {canManage && <Item collapsed={collapsed} icon={<Users size={18} strokeWidth={1.75} />} label="Equipe" active={onTeam} onClick={() => open('team')} />}
           {canOperate && <>
             <div className="staff-group">Ferramentas</div>
             <Item collapsed={collapsed} icon={<FileBarChart size={18} strokeWidth={1.75} />} label="Report Studio" active={onReports} onClick={() => open('reports')} />

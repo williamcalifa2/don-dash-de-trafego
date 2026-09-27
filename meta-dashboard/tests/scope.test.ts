@@ -43,14 +43,14 @@ describe('scopeFor', () => {
     expect(s.slugs).toBeNull()
     expect(canSee(s, 'qualquer')).toBe(true)
   })
-  it('dono que é gestor começa na própria carteira e pode alternar para todos, sem perder o poder', async () => {
+  it('dono que é gestor começa vendo todos e pode alternar para a própria carteira', async () => {
     identity.mockResolvedValue({ role: 'owner', email: 'will@x.com' })
-    const mine = await scopeFor(req())
-    expect([...mine.slugs!]).toEqual(['klein'])
-    expect(mine).toMatchObject({ restricted: false, canToggle: true, mode: 'mine' })
-    const all = await scopeFor(req('dash_scope=all'))
+    const all = await scopeFor(req())
     expect(all.slugs).toBeNull()
-    expect(all).toMatchObject({ canToggle: true, mode: 'all' })
+    expect(all).toMatchObject({ restricted: false, canToggle: true, mode: 'all' })
+    const mine = await scopeFor(req('dash_scope=mine'))
+    expect([...mine.slugs!]).toEqual(['klein'])
+    expect(mine).toMatchObject({ canToggle: true, mode: 'mine' })
   })
   it('administrador sem gestor vê todos e não alterna; sem sessão de administração não se aplica', async () => {
     identity.mockResolvedValue({ role: 'admin', email: 'chefe@x.com' })

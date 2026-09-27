@@ -1306,9 +1306,17 @@ export default function AdminPage() {
     const onEvent = (e: Event) => run((e as CustomEvent<StaffAction>).detail)
     window.addEventListener(STAFF_EVENT, onEvent)
     const q = new URLSearchParams(window.location.search).get('open') as StaffAction | null
-    if (q && phase === 'ready') { run(q); window.history.replaceState(null, '', '/admin') }
+    if (q && phase === 'ready') run(q)
     return () => window.removeEventListener(STAFF_EVENT, onEvent)
   }, [canManage, phase])
+
+  // Mantém a tela reconhecível na URL enquanto a "página" (Clientes/Equipe) é, por dentro, um popup:
+  // assim um F5 no meio de um cadastro reabre o mesmo popup em vez de cair de volta no Painel.
+  useEffect(() => {
+    if (phase !== 'ready') return
+    const open = modal?.kind === 'clients' ? 'clients' : modal?.kind === 'team' ? 'team' : null
+    window.history.replaceState(null, '', open ? `/admin?open=${open}` : '/admin')
+  }, [modal, phase])
 
   const themeButton = (
     <button className="btn btn-outline btn-icon btn-sm" onClick={toggle} aria-label="Alternar tema" title="Alternar tema">
