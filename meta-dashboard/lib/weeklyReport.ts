@@ -73,12 +73,12 @@ function pct(cur: number, prev: number): string | null {
   return p > 0 ? `+${p}%` : `${p}%`
 }
 
-/** " (vs N | +X%)" no formato do relatório; "" quando não há base de comparação. */
-function compare(cur: number, prev: number | null): string {
-  if (prev == null) return ''
+/** " (vs N | +X%)" no formato do relatório, em todo número que tem comparação; "" quando não há base (conta nova, dado incompleto). */
+function compare(cur: number, prev: number | null, fmt: (v: number) => string = int): string {
+  if (prev == null || !Number.isFinite(cur)) return ''
   if (prev === 0) return ' (vs 0 semana anterior)'
   const p = pct(cur, prev)
-  return p ? ` (vs ${int(prev)} | ${p})` : ''
+  return p ? ` (vs ${fmt(prev)} | ${p})` : ''
 }
 
 const ICON: Record<ResultKind, string> = { conversa: '💬', form: '📝', site: '🌐', sales: '🛒', custom: '🎯', misto: '🎯' }
@@ -102,20 +102,15 @@ export function buildWeeklyMessage(i: WeeklyInput): string | null {
     '',
   ]
   if (c.spend > 0 || res > 0) {
-    lines.push(`📊 Investimos ${brl(c.spend)} no período.`, '', 'Resultados da semana:', '')
+    lines.push(`📊 Investimos ${brl(c.spend)} no período${compare(c.spend, p?.spend ?? null, brl)}.`, '', 'Resultados da semana:', '')
     const [one, many] = RESULT[kind]
-    const resPrev = p ? resultOf(kind, p) : null
-    const resPct = resPrev != null ? pct(res, resPrev) : null
-    lines.push(`${ICON[kind]} ${int(res)} ${res === 1 ? one : many}${resPrev != null && resPct ? ` (vs ${int(resPrev)} | ${resPct})` : ''}`)
+    lines.push(`${ICON[kind]} ${int(res)} ${res === 1 ? one : many}${compare(res, p ? resultOf(kind, p) : null)}`)
 
-    const cost = costOf(kind, c), costPrev = p ? costOf(kind, p) : null
-    if (cost != null && cost > 0) {
-      const cp = costPrev != null && costPrev > 0 ? pct(cost, costPrev) : null
-      lines.push(`💰 ${COST_LABEL[kind]} ${brl(cost)}${cp ? ` (vs ${brl(costPrev as number)} | ${cp})` : ''}`)
-    }
+    const cost = costOf(kind, c)
+    if (cost != null && cost > 0) lines.push(`💰 ${COST_LABEL[kind]} ${brl(cost)}${compare(cost, p ? costOf(kind, p) : null, brl)}`)
     if (kind === 'sales' && c.purchase_value > 0) {
-      lines.push(`💵 Faturamento ${brl(c.purchase_value)}`)
-      if (c.roas != null && c.roas > 0) lines.push(`📈 Retorno sobre o investimento ${c.roas.toFixed(1).replace('.', ',')}x`)
+      lines.push(`💵 Faturamento ${brl(c.purchase_value)}${compare(c.purchase_value, p?.purchase_value ?? null, brl)}`)
+      if (c.roas != null && c.roas > 0) lines.push(`📈 Retorno sobre o investimento ${c.roas.toFixed(1).replace('.', ',')}x${compare(c.roas, p?.roas ?? null, v => `${v.toFixed(1).replace('.', ',')}x`)}`)
     }
   } else {
     lines.push('Sem investimento em anúncios na semana. Resultados do orgânico:', '')
@@ -133,7 +128,7 @@ export function buildWeeklyMessage(i: WeeklyInput): string | null {
     const label = Math.abs(gained) === 1 ? 'seguidor novo' : 'seguidores novos'
     lines.push(`👥 ${gained > 0 ? '+' : ''}${int(gained)} ${label} no Instagram${compare(gained, profile!.newFollowers.prev)}`)
   }
-  if (c.reach > 0) lines.push(`📣 ${int(c.reach)} ${c.reach === 1 ? 'pessoa alcançada' : 'pessoas alcançadas'}`)
+  if (c.reach > 0) lines.push(`📣 ${int(c.reach)} ${c.reach === 1 ? 'pessoa alcançada' : 'pessoas alcançadas'}${compare(c.reach, p?.reach ?? null)}`)
 
   const score = (x: WeekCampaign) => resultOf(kind, { leads: x.leads, results: x.results } as WeekNumbers)
   const top = [...i.campaigns].filter(x => score(x) > 0 && x.spend > 0).sort((a, b) => score(b) - score(a) || a.spend - b.spend)[0]

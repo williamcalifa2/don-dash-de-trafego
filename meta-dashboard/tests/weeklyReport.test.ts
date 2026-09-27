@@ -29,7 +29,7 @@ describe('mensagem da semana (formato combinado)', () => {
 
   it('cabeçalho e investimento', () => {
     expect(m.split('\n')[0]).toBe('Bom dia, pessoal! ☀️ Tudo bem? Segue o report dos últimos 7 dias (14 a 20/09) da Estrela Utilidades, com comparativo da semana anterior (07 a 13/09):')
-    expect(m).toContain('\n\n📊 Investimos R$ 356,05 no período.\n\nResultados da semana:\n\n')
+    expect(m).toContain('\n\n📊 Investimos R$ 356,05 no período (vs R$ 282,00 | +26%).\n\nResultados da semana:\n\n')
   })
   it('resultados com comparativo, sem cliques totais', () => {
     expect(m).toContain('💬 57 conversas iniciadas no WhatsApp (vs 33 | +73%)')
@@ -86,6 +86,23 @@ describe('engajamento, visitas ao perfil e seguidores — todos com variação',
   it('achar a verba pelo nome da campanha de visita ao perfil', () => {
     expect(profileCampaignSpend([{ name: 'DON | VISITAS AO PERFIL | INSTI', spend: 100, results: 0, leads: 0 }, { name: 'DON | LEAD | Fecha Mês', spend: 50, results: 5, leads: 5 }])).toBe(100)
     expect(profileCampaignSpend([{ name: 'DON | LEAD | Fecha Mês', spend: 50, results: 5, leads: 5 }])).toBeNull()
+  })
+})
+
+describe('comparação em todas as métricas', () => {
+  it('investimento e alcance também comparam com a semana anterior', () => {
+    const m = buildWeeklyMessage({ ...base, kind: 'conversa', current: n({ spend: 356.05, reach: 21879 }), previous: n({ spend: 282, reach: 9000 }) })!
+    expect(m).toContain('📊 Investimos R$ 356,05 no período (vs R$ 282,00 | +26%).')
+    expect(m).toContain('📣 21.879 pessoas alcançadas (vs 9.000 | +143%)')
+  })
+  it('faturamento e ROAS comparam também', () => {
+    const m = buildWeeklyMessage({ ...base, kind: 'sales', current: n({ results: 12, purchase_value: 4800, roas: 4.8 }), previous: n({ results: 8, purchase_value: 3000, roas: 3.6 }) })!
+    expect(m).toContain('💵 Faturamento R$ 4.800,00 (vs R$ 3.000,00 | +60%)')
+    expect(m).toContain('📈 Retorno sobre o investimento 4,8x (vs 3,6x | +33%)')
+  })
+  it('semana anterior zerada mostra "vs 0 semana anterior" em qualquer métrica', () => {
+    const m = buildWeeklyMessage({ ...base, kind: 'conversa', current: n({ reach: 500 }), previous: n({ reach: 0 }) })!
+    expect(m).toContain('📣 500 pessoas alcançadas (vs 0 semana anterior)')
   })
 })
 
