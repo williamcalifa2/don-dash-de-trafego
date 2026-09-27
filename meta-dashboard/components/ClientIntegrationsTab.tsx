@@ -13,7 +13,7 @@ interface ClientIntegrationsTabProps {
   onNotice: (t: string) => void
 }
 
-type Which = 'shopify' | 'nuvemshop' | 'webhook'
+type Which = 'google' | 'ga4' | 'shopify' | 'nuvemshop' | 'webhook'
 type ShopTab = 'conexao' | 'live' | 'produtos' | 'avancado'
 type Feedback = { kind: 'ok' | 'err' | 'info'; text: string } | null
 
@@ -80,6 +80,8 @@ function Badge({ tone, children }: { tone: 'ok' | 'idle'; children: React.ReactN
 function Logo({ which, size = 48 }: { which: Which; size?: number }) {
   return (
     <span className="int-logo" style={{ width: size, height: size }}>
+      {which === 'google' && <img src="/integrations/google-ads.svg" alt="" style={{ width: Math.round(size * 0.6), height: Math.round(size * 0.6) }} />}
+      {which === 'ga4' && <img src="/integrations/ga4.svg" alt="" style={{ width: Math.round(size * 0.6), height: Math.round(size * 0.6) }} />}
       {which === 'shopify' && <img src="/integrations/shopify.svg" alt="" />}
       {which === 'nuvemshop' && <img src="/integrations/nuvemshop.png" alt="" />}
       {which === 'webhook' && <Webhook size={Math.round(size * 0.5)} color="var(--accent)" strokeWidth={1.75} />}
@@ -87,7 +89,13 @@ function Logo({ which, size = 48 }: { which: Which; size?: number }) {
   )
 }
 
-const TITLES: Record<Which, string> = { shopify: 'Shopify', nuvemshop: 'Nuvemshop', webhook: 'Webhook e CRMs' }
+const TITLES: Record<Which, string> = {
+  google: 'Google Ads',
+  ga4: 'Google Analytics 4',
+  shopify: 'Shopify',
+  nuvemshop: 'Nuvemshop',
+  webhook: 'Webhook e CRMs',
+}
 
 export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }: ClientIntegrationsTabProps) {
   const [loading, setLoading] = useState(true)
@@ -97,6 +105,14 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
   const [shopTab, setShopTab] = useState<ShopTab>('conexao')
   const [fb, setFb] = useState<Feedback>(null)
 
+  // Google Ads & GA4
+  const [googleId, setGoogleId] = useState('')
+  const [ga4Id, setGa4Id] = useState('')
+  const [ga4ServiceEmail, setGa4ServiceEmail] = useState<string | null>(null)
+  const [ga4Test, setGa4Test] = useState<{ ok: boolean; message: string } | null>(null)
+  const [ga4Busy, setGa4Busy] = useState(false)
+
+  // E-commerce & Webhooks
   const [webhookToken, setWebhookToken] = useState('')
   const [shopifySecret, setShopifySecret] = useState('')
   const [shopStoreUrl, setShopStoreUrl] = useState('')
@@ -136,13 +152,28 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
         setShopClientId(i.shopifyClientId || '')
         setShopClientSecret(i.shopifyClientSecret || '')
         setNuvemshopSecret(i.nuvemshopSecret || '')
+        setGoogleId(cfg.googleAdsCustomerId || '')
+        setGa4Id(cfg.ga4PropertyId || '')
       })
       .catch(() => { })
       .finally(() => { if (alive) setLoading(false) })
+
+    fetch('/api/admin/ga4')
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { serviceEmail?: string | null } | null) => {
+        if (alive && data?.serviceEmail) setGa4ServiceEmail(data.serviceEmail)
+      })
+      .catch(() => { })
+
     return () => { alive = false }
   }, [slug])
 
-  const close = useCallback(() => { setOpen(null); setFb(null); setInstallLink('') }, [])
+  const close = useCallback(() => {
+    setOpen(null)
+    setFb(null)
+    setInstallLink('')
+    setGa4Test(null)
+  }, [])
 
   // Esc fecha; a página de trás não rola enquanto o popup está aberto; o foco vai para dentro do popup.
   useEffect(() => {
@@ -166,22 +197,52 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
     nuvemshopSecret: nuvemshopSecret.trim() || undefined,
   })
 
-  async function persist(): Promise<boolean> {
-    const res = await fetch(`/api/admin/clients/${slug}/config`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ integrations: currentIntegrations() }) })
-    return res.ok
+  async function persist(): Promise<{ ok: boolean; error?: string }> {
+    const res = await fetch(`/api/admin/clients/${slug}/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        integrations: currentIntegrations(),
+        googleAdsCustomerId: googleId.trim(),
+        ga4PropertyId: ga4Id.trim(),
+      }),
+    })
+    const data = await res.json().catch(() => ({})) as { error?: string }
+    return { ok: res.ok, error: data?.error }
   }
 
   async function handleSave() {
     setSaving(true)
     setFb(null)
     try {
-      if (!(await persist())) throw new Error('save')
+      const r = await persist()
+      if (!r.ok) throw new Error(r.error || 'save')
       setFb({ kind: 'ok', text: 'Configurações salvas.' })
       onNotice('Integrações salvas com sucesso!')
-    } catch {
-      setFb({ kind: 'err', text: 'Não foi possível salvar. Tente de novo.' })
+    } catch (err: unknown) {
+      const msg = err instanceof Error && err.message !== 'save' ? err.message : 'Não foi possível salvar. Tente de novo.'
+      setFb({ kind: 'err', text: msg })
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function testGa4() {
+    if (!ga4Id.trim()) return
+    setGa4Busy(true)
+    setGa4Test(null)
+    try {
+      const res = await fetch('/api/admin/ga4', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ propertyId: ga4Id.trim() }),
+      })
+      const j = await res.json().catch(() => ({})) as { ok?: boolean; message?: string }
+      setGa4Test({ ok: !!j.ok, message: j.message || (j.ok ? 'Propriedade conectada!' : 'Falha na conexão.') })
+    } catch {
+      setGa4Test({ ok: false, message: 'Não foi possível conectar ao Google Analytics.' })
+    } finally {
+      setGa4Busy(false)
     }
   }
 
@@ -190,7 +251,8 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
     setBusy(key)
     setFb({ kind: 'info', text: 'Aguarde…' })
     try {
-      if (!(await persist())) throw new Error('save')
+      const p = await persist()
+      if (!p.ok) throw new Error(p.error || 'save')
       const res = await fetch(`/api/admin/clients/${slug}/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}) })
       const j = await res.json().catch(() => ({})) as Record<string, unknown>
       after?.(j)
@@ -223,9 +285,23 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
 
   if (loading) return <PulseLoader size={40} />
 
-  const shopifyStatus = connectedAt ? { tone: 'ok' as const, text: 'Conectado pelo app' } : shopifySecret ? { tone: 'ok' as const, text: 'Webhook manual' } : { tone: 'idle' as const, text: 'Não conectado' }
+  const googleStatus = googleId.trim()
+    ? { tone: 'ok' as const, text: `Conta ${googleId.trim()}` }
+    : { tone: 'idle' as const, text: 'Não conectado' }
+
+  const ga4Status = ga4Id.trim()
+    ? { tone: 'ok' as const, text: `Propriedade ${ga4Id.trim()}` }
+    : { tone: 'idle' as const, text: 'Não conectado' }
+
+  const shopifyStatus = connectedAt
+    ? { tone: 'ok' as const, text: 'Conectado pelo app' }
+    : shopifySecret
+    ? { tone: 'ok' as const, text: 'Webhook manual' }
+    : { tone: 'idle' as const, text: 'Não conectado' }
 
   const cards: Array<{ which: Which; desc: string; status: { tone: 'ok' | 'idle'; text: string } | null }> = [
+    { which: 'google', desc: 'Métricas de Pesquisa, Performance Max, Display e YouTube direto no painel.', status: googleStatus },
+    { which: 'ga4', desc: 'Sessões, canais de aquisição, engajamento e conversões do site.', status: ga4Status },
     { which: 'shopify', desc: 'Pedidos, faturamento, carrinhos abandonados, fotos dos produtos e o Live View da loja.', status: shopifyStatus },
     { which: 'nuvemshop', desc: 'Pedidos pagos da loja Nuvemshop para o faturamento e o ticket médio.', status: null },
     { which: 'webhook', desc: 'Envie leads e vendas de qualquer ferramenta: RD Station, Kommo, Typebot, n8n, Make.', status: null },
@@ -239,13 +315,13 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
         </span>
         <div style={{ minWidth: 0 }}>
           <h2 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Integrações</h2>
-          <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '2px 0 0' }}>Conecte a loja, o CRM e outras ferramentas de {clientName}.</p>
+          <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '2px 0 0' }}>Conecte a conta do Google Ads, Analytics, lojas e CRMs de {clientName}.</p>
         </div>
       </div>
 
       <div className="int-grid stagger">
         {cards.map(c => (
-          <button key={c.which} type="button" className="int-card" onClick={() => { setOpen(c.which); setShopTab('conexao'); setFb(null) }} aria-label={`Configurar ${TITLES[c.which]}`}>
+          <button key={c.which} type="button" className="int-card" onClick={() => { setOpen(c.which); setShopTab('conexao'); setFb(null); setGa4Test(null) }} aria-label={`Configurar ${TITLES[c.which]}`}>
             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <Logo which={c.which} />
               <ChevronRight size={18} color="var(--text-3)" aria-hidden="true" />
@@ -282,6 +358,140 @@ export function ClientIntegrationsTab({ slug, clientName, baseDomain, onNotice }
             )}
 
             <div className="int-dialog-body">
+              {open === 'google' && (
+                <>
+                  {googleId.trim() ? (
+                    <div className="int-note" style={{ color: 'var(--text-1)' }}>
+                      <strong style={{ color: 'var(--green)' }}>Conectado</strong> à conta <strong>{googleId.trim()}</strong>. A aba <strong>Google Ads</strong> está ativa no painel de {clientName}.
+                    </div>
+                  ) : (
+                    <div className="int-note">
+                      Conecte a conta de anúncios do Google Ads para exibir métricas consolidadas, campanhas de Pesquisa, Display e Performance Max. Ao salvar, a aba <strong>Google Ads</strong> é liberada automaticamente no painel.
+                    </div>
+                  )}
+
+                  <ol className="int-steps">
+                    <li>No Google Ads, localize o ID de 10 dígitos da conta (ex: <code>123-456-7890</code>) no canto superior direito.</li>
+                    <li>Certifique-se de que a conta está vinculada à Conta Gerente (MCC) da agência ou com acesso concedido.</li>
+                    <li>Cole o ID abaixo e clique em <strong>Salvar</strong>.</li>
+                  </ol>
+
+                  <Field
+                    id="google-account-id"
+                    label="ID da conta Google Ads (10 dígitos)"
+                    value={googleId}
+                    onChange={v => { setGoogleId(v); setFb(null) }}
+                    placeholder="123-456-7890"
+                    hint="Aceita com ou sem traços. Para desconectar, apague o ID e clique em Salvar."
+                  />
+
+                  {googleId.trim() && (
+                    <div>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ color: 'var(--red)' }}
+                        onClick={() => {
+                          setGoogleId('')
+                          setFb({ kind: 'info', text: 'ID removido. Clique em "Salvar" para confirmar a desconexão.' })
+                        }}
+                      >
+                        Desconectar Google Ads
+                      </button>
+                    </div>
+                  )}
+
+                  <Status fb={fb} />
+                </>
+              )}
+
+              {open === 'ga4' && (
+                <>
+                  {ga4Id.trim() ? (
+                    <div className="int-note" style={{ color: 'var(--text-1)' }}>
+                      <strong style={{ color: 'var(--green)' }}>Conectado</strong> à propriedade <strong>{ga4Id.trim()}</strong>. A aba <strong>Site</strong> está ativa no painel de {clientName}.
+                    </div>
+                  ) : (
+                    <div className="int-note">
+                      Conecte a propriedade do Google Analytics 4 para acompanhar sessões, páginas mais acessadas, fontes de tráfego e conversões do site. Ao salvar, a aba <strong>Site</strong> é liberada no painel.
+                    </div>
+                  )}
+
+                  <ol className="int-steps">
+                    <li>No Google Analytics 4 da empresa, vá em <strong>Administrador → Acesso à propriedade</strong>.</li>
+                    <li>
+                      Adicione a conta de serviço abaixo como <strong>Leitor (Viewer)</strong>:
+                      {ga4ServiceEmail ? (
+                        <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <input className="int-input" readOnly value={ga4ServiceEmail} style={{ height: 34, fontSize: 12 }} />
+                          <CopyBtn text={ga4ServiceEmail} label="Copiar e-mail de serviço" />
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
+                          Conta de serviço configurada no servidor da agência.
+                        </div>
+                      )}
+                    </li>
+                    <li>Em <strong>Detalhes da propriedade</strong>, copie o <strong>ID da propriedade</strong> (apenas números, ex: <code>123456789</code>).</li>
+                    <li>Cole o ID abaixo e clique em <strong>Testar conexão</strong>.</li>
+                  </ol>
+
+                  <div className="int-field">
+                    <label htmlFor="ga4-prop-id">ID da propriedade GA4</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        id="ga4-prop-id"
+                        className="int-input"
+                        value={ga4Id}
+                        onChange={e => { setGa4Id(e.target.value); setGa4Test(null); setFb(null) }}
+                        placeholder="Ex.: 123456789"
+                        autoComplete="off"
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        disabled={!ga4Id.trim() || ga4Busy}
+                        onClick={testGa4}
+                      >
+                        {ga4Busy ? 'Testando…' : 'Testar conexão'}
+                      </button>
+                    </div>
+                    <p className="hint">Apenas números. Para desconectar, apague o ID e clique em Salvar.</p>
+                  </div>
+
+                  {ga4Test && (
+                    <div style={{
+                      padding: '10px 14px',
+                      borderRadius: 12,
+                      fontSize: 13,
+                      color: ga4Test.ok ? 'var(--green)' : 'var(--red)',
+                      background: ga4Test.ok ? 'var(--green-soft)' : 'var(--red-soft)',
+                    }}>
+                      {ga4Test.message}
+                    </div>
+                  )}
+
+                  {ga4Id.trim() && (
+                    <div>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ color: 'var(--red)' }}
+                        onClick={() => {
+                          setGa4Id('')
+                          setGa4Test(null)
+                          setFb({ kind: 'info', text: 'Propriedade removida. Clique em "Salvar" para confirmar a desconexão.' })
+                        }}
+                      >
+                        Desconectar Google Analytics
+                      </button>
+                    </div>
+                  )}
+
+                  <Status fb={fb} />
+                </>
+              )}
+
               {open === 'shopify' && shopTab === 'conexao' && (
                 <>
                   {connectedAt ? (

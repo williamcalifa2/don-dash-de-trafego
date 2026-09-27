@@ -574,7 +574,11 @@ function Dashboard() {
               slug={me?.slug || 'default'}
               clientName={me?.name || 'Cliente'}
               baseDomain={null}
-              onNotice={() => { }}
+              onNotice={() => {
+                apiFetch('/api/me').then(r => r.ok ? r.json() : null).then(j => {
+                  if (j) setMe(j)
+                }).catch(() => {})
+              }}
             />
           </div>
         )}
