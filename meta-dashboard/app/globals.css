@@ -20,8 +20,6 @@
   /* fundo de ícone / selecionado */
   --accent-glow: hsl(227 100% 81% / .40);
   /* borda de destaque */
-  --accent-solid: hsl(227 100% 61%);
-  /* mesma cor da marca, mais escura: só para preencher atrás de texto branco (botão primário, badges de contagem). --accent sozinho dá 2,03:1 com branco, abaixo do mínimo de 4,5:1 */
   --primary-fg: #ffffff;
   --hover: hsl(220 14% 96% / .4);
   /* accent a 40% */
@@ -186,7 +184,7 @@ input:focus-visible {
 }
 
 .btn-primary {
-  background: var(--accent-solid);
+  background: var(--accent);
   color: var(--primary-fg);
 }
 
