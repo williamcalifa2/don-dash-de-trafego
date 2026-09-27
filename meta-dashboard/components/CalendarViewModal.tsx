@@ -543,6 +543,8 @@ export function CalendarViewModal({ onClose, daily, currency, kind = 'form', lea
                   onClick={() => setSelectedDateStr(null)}
                   className="btn btn-ghost btn-icon btn-sm"
                   style={{ width: 26, height: 26 }}
+                  aria-label="Fechar métricas do dia"
+                  title="Fechar"
                 >
                   <X size={15} />
                 </button>

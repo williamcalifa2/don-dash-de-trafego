@@ -1513,7 +1513,7 @@ export function EcommerceTab({ clientSlug, currency = 'BRL', summary, presetLabe
                     </div>
                   </div>
 
-                  <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setProductSummary(null)}>
+                  <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={() => setProductSummary(null)} aria-label="Fechar resumo do produto" title="Fechar">
                     <X size={16} />
                   </button>
                 </div>

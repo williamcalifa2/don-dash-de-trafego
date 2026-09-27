@@ -200,6 +200,7 @@ export function BudgetPacingCard({ campaigns, currentSpend, currency, clientSlug
               transition: 'transform 0.2s ease',
             }}
             title={isCollapsed ? 'Expandir Ritmo de Verba' : 'Recolher Ritmo de Verba'}
+            aria-label={isCollapsed ? 'Expandir Ritmo de Verba' : 'Recolher Ritmo de Verba'}
             aria-expanded={!isCollapsed}
           >
             <ChevronDown size={16} />

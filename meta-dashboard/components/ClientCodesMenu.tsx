@@ -18,6 +18,7 @@ export default function ClientCodesMenu({ clients }: { clients: Item[] }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [msg, setMsg] = useState<Record<string, string>>({})
   const [copied, setCopied] = useState<string | null>(null)
+  const [confirmSlug, setConfirmSlug] = useState<string | null>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
@@ -30,7 +31,7 @@ export default function ClientCodesMenu({ clients }: { clients: Item[] }) {
   }, [open])
 
   // Fechar o menu esconde todos os códigos.
-  useEffect(() => { if (!open) { setShown({}); setMsg({}) } }, [open])
+  useEffect(() => { if (!open) { setShown({}); setMsg({}); setConfirmSlug(null) } }, [open])
   useEffect(() => () => { Object.values(timers.current).forEach(clearTimeout) }, [])
 
   const hide = (slug: string) => setShown(s => { const { [slug]: _x, ...rest } = s; void _x; return rest })
@@ -52,8 +53,14 @@ export default function ClientCodesMenu({ clients }: { clients: Item[] }) {
     setBusy(null)
   }
 
+  /** Gerar um token para quem ainda não tem não precisa confirmar; revogar o atual (que deixa de funcionar) pede confirmação, no próprio tema. */
+  function askOrGenerate(c: Item) {
+    if (c.hasCode) setConfirmSlug(c.slug)
+    else void generate(c)
+  }
+
   async function generate(c: Item) {
-    if (c.hasCode && !confirm(`Revogar o token de ${c.name} e gerar outro? O atual deixa de funcionar.`)) return
+    setConfirmSlug(null)
     setBusy(c.slug)
     const r = await fetch(`/api/admin/clients/${c.slug}/code`, { method: 'POST' })
     const j = await r.json().catch(() => ({})) as { code?: string; error?: string }
@@ -105,11 +112,17 @@ export default function ClientCodesMenu({ clients }: { clients: Item[] }) {
                   </button>
                 )}
               </div>
-              {msg[c.slug] && (
+              {confirmSlug === c.slug ? (
+                <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-2)' }}>Revogar o token atual? Ele deixa de funcionar.</span>
+                  <button type="button" className="btn btn-danger btn-sm" style={{ height: 26, padding: '0 10px', fontSize: 11, borderRadius: 8 }} onClick={() => generate(c)} disabled={busy === c.slug}>Revogar</button>
+                  <button type="button" className="btn btn-ghost btn-sm" style={{ height: 26, padding: '0 10px', fontSize: 11, borderRadius: 8 }} onClick={() => setConfirmSlug(null)}>Cancelar</button>
+                </div>
+              ) : msg[c.slug] && (
                 <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-2)' }}>
                   {msg[c.slug]}{' '}
                   {c.hasCode && (
-                    <button type="button" onClick={() => generate(c)} disabled={busy === c.slug}
+                    <button type="button" onClick={() => askOrGenerate(c)} disabled={busy === c.slug}
                       style={{ padding: 0, background: 'none', border: 'none', fontSize: 11, color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}>
                       revogar e gerar outro
                     </button>

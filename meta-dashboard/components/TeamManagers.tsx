@@ -225,7 +225,7 @@ function Overview({ list, period, onOpen, onEdit, onNew, onAssigned }: { list: L
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '14px 12px' }}>
                     {([
-                      ['Otimizações', sc.made == null ? '—' : String(sc.made), sc.made == null ? 'Sem e-mail nem usuário da Meta ligado: não dá para saber o que ele fez' : 'Otimizações que ele mesmo fez no período (pausar, ativar, criar, orçamento, público, lance, criativo)'],
+                      ['Otimizações feitas', sc.made == null ? '—' : String(sc.made), sc.made == null ? 'Sem e-mail nem usuário da Meta ligado: não dá para saber o que ele fez' : 'Otimizações que ele mesmo fez no período (pausar, ativar, criar, orçamento, público, lance, criativo)'],
                       ['Otimizadas', `${sc.worked}/${sc.total}`, 'Contas ativas da carteira que tiveram alguma otimização no período'],
                       ['Média por dia', sc.perDay == null ? '—' : String(sc.perDay).replace('.', ','), 'Média de otimizações dele por dia no período'],
                     ] as const).map(([l, v, tip]) => (

@@ -49,7 +49,7 @@ export function FilterPicker({ active, onClear, children }: { active: number; on
     <>
       <button type="button" className="btn btn-outline btn-icon btn-sm" aria-haspopup="dialog" aria-expanded={!!pos} aria-label={active ? `Filtros (${active} ligados)` : 'Filtros'} title="Filtros" onClick={toggle} style={{ position: 'relative', borderColor: active ? 'var(--accent)' : undefined }}>
         <Filter size={16} strokeWidth={1.75} color={active ? 'var(--accent)' : undefined} />
-        {active > 0 && <span aria-hidden="true" style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 9999, background: 'var(--accent)', color: '#fff', fontSize: 10, fontWeight: 700, display: 'grid', placeItems: 'center', padding: '0 4px' }}>{active}</span>}
+        {active > 0 && <span aria-hidden="true" style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 9999, background: 'var(--accent-solid)', color: '#fff', fontSize: 10, fontWeight: 700, display: 'grid', placeItems: 'center', padding: '0 4px' }}>{active}</span>}
       </button>
       {pos && createPortal(
         <>

@@ -20,14 +20,16 @@
   /* fundo de ícone / selecionado */
   --accent-glow: hsl(227 100% 81% / .40);
   /* borda de destaque */
+  --accent-solid: hsl(227 100% 61%);
+  /* mesma cor da marca, mais escura: só para preencher atrás de texto branco (botão primário, badges de contagem). --accent sozinho dá 2,03:1 com branco, abaixo do mínimo de 4,5:1 */
   --primary-fg: #ffffff;
   --hover: hsl(220 14% 96% / .4);
   /* accent a 40% */
   --text-1: hsl(224 71% 4%);
   /* foreground */
-  --text-2: hsl(220 9% 46%);
-  /* muted foreground */
-  --text-3: hsl(220 9% 46%);
+  --text-2: hsl(220 9% 44%);
+  /* muted foreground (44%, não 46%: em cima de --bg-card2 o 46% cai pra 4.42:1 e reprova o mínimo de contraste AA de 4.5:1) */
+  --text-3: hsl(220 9% 44%);
   --sidebar-icon: hsl(227 100% 81%);
   --green: hsl(142 76% 36%);
   /* success */
@@ -184,7 +186,7 @@ input:focus-visible {
 }
 
 .btn-primary {
-  background: var(--accent);
+  background: var(--accent-solid);
   color: var(--primary-fg);
 }
 
@@ -219,6 +221,15 @@ input:focus-visible {
 
 .btn-soft:hover:not(:disabled) {
   border-color: var(--accent-glow);
+}
+
+.btn-danger {
+  background: var(--red);
+  color: var(--primary-fg);
+}
+
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(.92);
 }
 
 /* ── Cartões: 16 px, borda 70 %, Soft; clicável sobe 2 px para Elegant ── */
