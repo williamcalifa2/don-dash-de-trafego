@@ -28,7 +28,7 @@ const ROUTES: Array<[RegExp, EndpointKind]> = [
   [new RegExp(`^${ACT}$`), 'account'],
   [new RegExp(`^${ACT}/(insights|campaigns|adsets|ads|promote_pages|customconversions|activities)$`), 'account_edge'],
   [new RegExp(`^${ID}$`), 'object'],
-  [new RegExp(`^${ID}/(leadgen_forms|leads|adsets|ads|insights|previews|media|published_posts|stories)$`), 'object_edge'],
+  [new RegExp(`^${ID}/(leadgen_forms|leads|adsets|ads|insights|previews|media|published_posts|stories|owned_ad_accounts|client_ad_accounts)$`), 'object_edge'],
   // Insights de um post da Página (id no formato paginaID_postID) ou de uma mídia do Instagram (só números)
   [new RegExp(`^${ID}_${ID}/insights$`), 'object_edge'],
 ]

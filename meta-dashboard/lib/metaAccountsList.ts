@@ -54,20 +54,35 @@ export async function enrichPages(origin: Origin, accounts: AccountOpt[], previo
   return out
 }
 
+/** Só entram na lista de cadastro as contas dessa Business Manager (evita misturar contas de anúncios pessoais/de outras BMs do dono do token). Sem essa env, a lista vem de `me/adaccounts` sem filtro (comportamento antigo). */
+const BUSINESS_ID = process.env.META_BUSINESS_ID?.trim()
+
 /** Consulta a Meta e, se vier lista, guarda. Devolve o erro (texto) quando não veio. */
 export async function fetchAccounts(origin: Origin): Promise<{ cache: AccountsCache | null; error?: string }> {
   const get = async (path: string) => {
-    const r = await legacyGet<{ data?: Array<Record<string, string>> }>(`${path}&limit=100`, { purpose: 'admin:contas', origin })
-    return { data: r.ok ? (r.data.data ?? []) : [] as Array<Record<string, string>>, error: r.ok ? undefined : r.error?.message }
+    const r = await legacyGet<{ data?: Array<Record<string, unknown>> }>(`${path}&limit=100`, { purpose: 'admin:contas', origin })
+    return { data: r.ok ? (r.data.data ?? []) : [] as Array<Record<string, unknown>>, error: r.ok ? undefined : r.error?.message }
   }
-  const [acc, pg] = await Promise.all([get('me/adaccounts?fields=account_id,name,currency,account_status'), get('me/accounts?fields=id,name')])
+  // Com BM definida, busca as contas que a BM realmente enxerga: as que ela é dona (owned_ad_accounts)
+  // e as de cliente que ela gerencia (client_ad_accounts) — é a mesma lista que aparece no seletor de contas da Meta.
+  // Sem BM definida, cai no `me/adaccounts` antigo (todas as contas que o token da pessoa enxerga, de qualquer BM).
+  const fields = 'account_id,name,currency,account_status'
+  const [owned, client, pg] = await Promise.all([
+    BUSINESS_ID ? get(`${BUSINESS_ID}/owned_ad_accounts?fields=${fields}`) : get(`me/adaccounts?fields=${fields}`),
+    BUSINESS_ID ? get(`${BUSINESS_ID}/client_ad_accounts?fields=${fields}`) : Promise.resolve({ data: [] as Array<Record<string, unknown>>, error: undefined as string | undefined }),
+    get('me/accounts?fields=id,name'),
+  ])
+  if (owned.error && client.error) return { cache: null, error: owned.error ?? client.error }
+  const byId = new Map<string, Record<string, unknown>>()
+  for (const a of [...owned.data, ...client.data]) byId.set(a.account_id as string, a)
+  const acc = { data: [...byId.values()], error: owned.data.length || client.data.length ? undefined : (owned.error ?? client.error) }
   if (acc.error || !acc.data.length) return { cache: null, error: acc.error ?? 'A Meta não devolveu contas.' }
   const previous = await readAccountsCache().catch(() => null)
-  const accounts = acc.data.map(a => ({ id: `act_${a.account_id}`, name: a.name, currency: a.currency, status: Number(a.account_status) } as AccountOpt))
+  const accounts = acc.data.map(a => ({ id: `act_${a.account_id as string}`, name: a.name as string, currency: a.currency as string, status: Number(a.account_status) } as AccountOpt))
   const cache: AccountsCache = {
     at: Date.now(),
     accounts: await enrichPages(origin, accounts, previous?.accounts).catch(() => accounts),
-    pages: pg.data.map(p => ({ id: p.id, name: p.name })),
+    pages: pg.data.map(p => ({ id: p.id as string, name: p.name as string })),
   }
   await writeAccountsCache(cache).catch(() => {})
   return { cache }
