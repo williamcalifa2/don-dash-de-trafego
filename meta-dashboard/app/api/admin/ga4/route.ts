@@ -27,8 +27,18 @@ export async function POST(req: NextRequest) {
     await fetchGa4(id, rangeFor('last_7d'))
     return NextResponse.json({ ok: true, message: 'Conectado. A propriedade respondeu.' })
   } catch (e) {
+    const errText = e instanceof Error ? e.message : String(e)
+    console.error('[GA4 TEST ERROR]', errText)
     const kind = e instanceof Ga4Error ? e.kind : 'other'
     const email = serviceAccount()?.client_email
-    return NextResponse.json({ ok: false, message: kind === 'access' ? `Sem acesso. Adicione ${email ?? 'a conta de serviço'} como Leitor na propriedade.` : kind === 'notfound' ? 'Propriedade não encontrada. Confira o ID.' : 'Não foi possível conectar agora.' })
+    let message = 'Não foi possível conectar agora.'
+    if (kind === 'access') {
+      message = `Sem acesso. Adicione ${email ?? 'a conta de serviço'} como Leitor na propriedade. (${errText})`
+    } else if (kind === 'notfound') {
+      message = `Propriedade não encontrada. Confira o ID. (${errText})`
+    } else if (errText) {
+      message = `Erro: ${errText}`
+    }
+    return NextResponse.json({ ok: false, message })
   }
 }
