@@ -14,6 +14,7 @@ import type { CycleReport } from '@/lib/meta/orchestrator'
 import { refreshAccountsIfStale } from '@/lib/metaAccountsList'
 import { liveOrigin } from '@/lib/meta/mode'
 import { lastSyncAt, syncMetaActivity } from '@/lib/managersStore'
+import { runWeeklyBatch } from '@/lib/weeklyStore'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -119,6 +120,8 @@ async function run(req: NextRequest) {
   after(async () => {
     try { await execute() } catch (e) { console.error('[cron] falha no ciclo:', e instanceof Error ? e.message : e) }
     // Carona no mesmo agendador: mantém o histórico de alterações dos gestores em dia (leitura curta, só o que mudou desde a última).
+    // Segunda-feira: adianta os relatórios semanais dos clientes (o agendador externo de 01h faz o grosso; aqui termina o que faltou).
+    try { if (new Date(Date.now() - 3 * 3_600_000).getUTCDay() === 1) await runWeeklyBatch(20_000) } catch (e) { console.error('[cron] relatórios semanais:', e instanceof Error ? e.message : e) }
     try { const last = await lastSyncAt(); if (!last || Date.now() - Date.parse(last) > 8 * 60_000) await syncMetaActivity({ budgetMs: 20_000, limit: 6 }) } catch (e) { console.error('[cron] histórico dos gestores:', e instanceof Error ? e.message : e) }
   })
   return NextResponse.json({ ok: true, accepted: true })

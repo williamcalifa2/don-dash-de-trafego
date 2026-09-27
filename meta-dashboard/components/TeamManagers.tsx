@@ -18,6 +18,7 @@ import { StalledAccounts } from './StalledAccounts'
 import { AccessCard } from './AccessCard'
 import { JustificationsCard, type JItem } from './JustificationsCard'
 import { PeriodSummary } from './PeriodSummary'
+import { WeeklyReports } from './WeeklyReports'
 import { BarChart, ListCard, PagedRows, PeriodPicker, RankRow, SubTabs, Thumb, plural } from './UsageUi'
 import { RANGE_LABEL, RANGE_PERIODS, type RangePeriod } from '@/lib/usage'
 import { ChartCard, DonutChart, KIND_COLOR, paletteAt, topSlices, type Slice } from './Donut'
@@ -302,7 +303,7 @@ function Overview({ list, period, onOpen, onEdit, onNew, onAssigned }: { list: L
 }
 
 function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: string; period: RangePeriod; tick: number; pending: number; initialTab: string | null; onEdit: () => void }) {
-  const [tab, setTab] = useState<'geral' | 'timeline' | 'clientes' | 'otimizacoes'>(initialTab === 'otimizacoes' ? 'otimizacoes' : 'geral')
+  const [tab, setTab] = useState<'geral' | 'timeline' | 'clientes' | 'otimizacoes' | 'semanal'>(initialTab === 'otimizacoes' ? 'otimizacoes' : 'geral')
   const [scope, setScope] = useState<'accounts' | 'actor'>('accounts')
   const [client, setClient] = useState('')
   const [kind, setKind] = useState('')
@@ -348,7 +349,7 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
         </p>
       )}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <SubTabs value={tab} onChange={setTab} tabs={[{ key: 'geral', label: 'Visão geral' }, { key: 'otimizacoes', label: pending > 0 ? `Otimizações (${pending})` : 'Otimizações' }, { key: 'timeline', label: 'Linha do tempo' }, { key: 'clientes', label: 'Clientes' }]} />
+        <SubTabs value={tab} onChange={setTab} tabs={[{ key: 'geral', label: 'Visão geral' }, { key: 'otimizacoes', label: pending > 0 ? `Otimizações (${pending})` : 'Otimizações' }, { key: 'timeline', label: 'Linha do tempo' }, { key: 'clientes', label: 'Clientes' }, { key: 'semanal', label: 'Relatório semanal' }]} />
         {client && <button type="button" className="badge" onClick={() => setClient('')} title="Tirar este filtro" style={{ cursor: 'pointer', background: 'var(--accent-soft)', color: 'var(--text-1)', fontSize: 12, gap: 6, marginLeft: 'auto' }}>Cliente: {data.clients.find(c => c.slug === client)?.name ?? client} <X size={12} /></button>}
       </div>
 
@@ -394,6 +395,7 @@ function ProfileView({ id, period, tick, pending, initialTab, onEdit }: { id: st
       )}
 
       {tab === 'otimizacoes' && <TaskPanel managerId={id} />}
+      {tab === 'semanal' && <WeeklyReports managerId={id} />}
 
       {tab === 'timeline' && (
         <section className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
