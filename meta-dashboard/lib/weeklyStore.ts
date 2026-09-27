@@ -12,35 +12,60 @@ import { buildWeeklyMessage, last7Range, profileVisitsOf, weekKeyBr, type WeekNu
 import type { ConversionItem, MetricsSummary } from './meta'
 
 /** Versão do formato da mensagem: mudou o texto, os relatórios da versão antiga são refeitos. */
-export const FORMAT = 2
+export const FORMAT = 3
 
 export interface WeeklyReport {
   v?: number
-  /** segunda-feira da semana em que foi gerado */
+  /** segunda-feira da semana em que foi gerado (identifica o relatório) */
   weekKey: string
   range: { since: string; until: string }
   /** ready = mensagem pronta · empty = sem veiculação na semana */
   status: 'ready' | 'empty'
   text: string | null
+  /** texto que a pessoa ajustou e salvou; vale no lugar do gerado */
+  edited?: string | null
+  editedAt?: number
   generatedAt: number
+  /** números que deram origem à mensagem, guardados para consultar o histórico */
+  kind?: string
+  current?: WeekNumbers
+  previous?: WeekNumbers | null
+  top?: { name: string; spend: number; results: number } | null
 }
 
 export interface WeeklyClient { id: string; slug: string; name: string; logoUrl: string | null; adAccountId: string; active: boolean }
 
-const key = (slug: string) => `weekly_report:${slug}`
+/** Um relatório por cliente e por semana: fica guardado (histórico), sem SQL (meta_settings). */
+const key = (slug: string, week: string) => `weekly_report:${slug}:${week}`
 
-export async function readWeekly(slug: string): Promise<WeeklyReport | null> {
+export async function readWeekly(slug: string, week: string): Promise<WeeklyReport | null> {
   const db = getSupabaseServer()
   if (!db) return null
-  const { data } = await db.from('meta_settings').select('value').eq('key', key(slug)).maybeSingle()
+  const { data } = await db.from('meta_settings').select('value').eq('key', key(slug, week)).maybeSingle()
   const v = (data as { value?: WeeklyReport } | null)?.value
   return v && typeof v === 'object' && typeof v.weekKey === 'string' ? v : null
+}
+
+/** Semanas guardadas de um cliente, da mais nova para a mais antiga. */
+export async function listWeekly(slug: string, limit = 26): Promise<WeeklyReport[]> {
+  const db = getSupabaseServer()
+  if (!db) return []
+  const { data } = await db.from('meta_settings').select('key,value').like('key', `weekly_report:${slug}:%`).order('key', { ascending: false }).limit(limit)
+  return ((data ?? []) as Array<{ value: WeeklyReport }>).map(r => r.value).filter(v => v && typeof v.weekKey === 'string')
 }
 
 async function saveWeekly(slug: string, r: WeeklyReport): Promise<void> {
   const db = getSupabaseServer()
   if (!db) return
-  await db.from('meta_settings').upsert({ key: key(slug), value: r, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+  await db.from('meta_settings').upsert({ key: key(slug, r.weekKey), value: r, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+}
+
+/** Guarda o texto que a pessoa ajustou. Devolve false se essa semana não existe. */
+export async function saveEdited(slug: string, week: string, text: string): Promise<boolean> {
+  const r = await readWeekly(slug, week)
+  if (!r) return false
+  await saveWeekly(slug, { ...r, edited: text.slice(0, 4000), editedAt: Date.now() })
+  return true
 }
 
 /** Clientes com conta de anúncios, ativos primeiro. `slugs` limita a lista. */
@@ -81,14 +106,15 @@ export async function generateWeekly(c: WeeklyClient, opts: { refresh?: boolean 
   }
   if (resp.freshness.pending) return { ok: false, reason: 'pending' }
   const range = last7Range(now)
+  const current = toWeek(resp.summary, resp.conversions, resp.campaigns.filter(x => profileVisitsOf(x.conversions) > 0).reduce((n, x) => n + x.spend, 0))
+  const previous = resp.summary_prev ? toWeek(resp.summary_prev, resp.conversions_prev) : null
+  const campaigns = resp.campaigns.map(x => ({ name: x.name, spend: x.spend, results: x.results, leads: x.leads }))
   const text = buildWeeklyMessage({
     business: c.name, range, kind: resp.result_kind,
-    // Visitas ao perfil: pela conta inteira; o investimento vem só das campanhas que tiveram visita.
-    current: toWeek(resp.summary, resp.conversions, resp.campaigns.filter(x => profileVisitsOf(x.conversions) > 0).reduce((n, x) => n + x.spend, 0)),
-    previous: resp.summary_prev ? toWeek(resp.summary_prev, resp.conversions_prev) : null,
-    campaigns: resp.campaigns.map(x => ({ name: x.name, spend: x.spend, results: x.results, leads: x.leads })),
+    current, previous, campaigns,
   })
-  const report: WeeklyReport = { v: FORMAT, weekKey: weekKeyBr(now), range, status: text ? 'ready' : 'empty', text, generatedAt: now }
+  const top = [...campaigns].filter(x => (resp.result_kind === 'form' ? x.leads : x.results) > 0 && x.spend > 0).sort((a, b) => (resp.result_kind === 'form' ? b.leads - a.leads : b.results - a.results))[0]
+  const report: WeeklyReport = { v: FORMAT, weekKey: weekKeyBr(now), range, status: text ? 'ready' : 'empty', text, generatedAt: now, kind: resp.result_kind, current, previous, top: top ? { name: top.name, spend: top.spend, results: resp.result_kind === 'form' ? top.leads : top.results } : null }
   await saveWeekly(c.slug, report)
   return { ok: true, report }
 }
@@ -98,7 +124,7 @@ export async function runWeeklyBatch(budgetMs = 45_000, now = Date.now()): Promi
   const week = weekKeyBr(now)
   const clients = (await weeklyClients()).filter(c => c.active)
   const todo: WeeklyClient[] = []
-  for (const c of clients) { const r = await readWeekly(c.slug); if (!r || r.weekKey !== week || r.v !== FORMAT) todo.push(c) }
+  for (const c of clients) { const r = await readWeekly(c.slug, week); if (!r || r.v !== FORMAT) todo.push(c) }
   const deadline = Date.now() + budgetMs
   let generated = 0, pending = 0
   const errors: Array<{ slug: string; reason: string }> = []

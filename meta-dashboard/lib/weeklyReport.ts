@@ -48,6 +48,7 @@ function pct(cur: number, prev: number): string | null {
   return p > 0 ? `+${p}%` : `${p}%`
 }
 
+const ICON: Record<ResultKind, string> = { conversa: '💬', form: '📝', site: '🌐', sales: '🛒', custom: '🎯', misto: '🎯' }
 const RESULT: Record<ResultKind, [string, string]> = {
   conversa: ['conversa iniciada no WhatsApp', 'conversas iniciadas no WhatsApp'], form: ['lead', 'leads'], site: ['lead do site', 'leads do site'],
   sales: ['compra', 'compras'], custom: ['conversão', 'conversões'], misto: ['resultado', 'resultados'],
@@ -64,9 +65,9 @@ export function buildWeeklyMessage(i: WeeklyInput): string | null {
   if (c.spend <= 0 && res <= 0) return null
   const pw = prevWeek(i.range)
   const lines: string[] = [
-    `Bom dia, pessoal! Tudo bem? Segue o report dos últimos 7 dias (${rangeLabel(i.range)}) da ${i.business}${p ? `, com comparativo da semana anterior (${rangeLabel(pw)})` : ''}:`,
+    `Bom dia, pessoal! ☀️ Tudo bem? Segue o report dos últimos 7 dias (${rangeLabel(i.range)}) da ${i.business}${p ? `, com comparativo da semana anterior (${rangeLabel(pw)})` : ''}:`,
     '',
-    `Investimos ${brl(c.spend)} no período.`,
+    `📊 Investimos ${brl(c.spend)} no período.`,
     '',
     'Resultados da semana:',
     '',
@@ -74,26 +75,26 @@ export function buildWeeklyMessage(i: WeeklyInput): string | null {
   const [one, many] = RESULT[kind]
   const resPrev = p ? resultOf(kind, p) : null
   const resPct = resPrev != null ? pct(res, resPrev) : null
-  lines.push(`* ${int(res)} ${res === 1 ? one : many}${resPrev != null && resPct ? ` (vs ${int(resPrev)} | ${resPct})` : ''}`)
+  lines.push(`${ICON[kind]} ${int(res)} ${res === 1 ? one : many}${resPrev != null && resPct ? ` (vs ${int(resPrev)} | ${resPct})` : ''}`)
 
   const cost = costOf(kind, c), costPrev = p ? costOf(kind, p) : null
   if (cost != null && cost > 0) {
     const cp = costPrev != null && costPrev > 0 ? pct(cost, costPrev) : null
-    lines.push(`* ${COST_LABEL[kind]} ${brl(cost)}${cp ? ` (vs ${brl(costPrev as number)} | ${cp})` : ''}`)
+    lines.push(`💰 ${COST_LABEL[kind]} ${brl(cost)}${cp ? ` (vs ${brl(costPrev as number)} | ${cp})` : ''}`)
   }
   if (kind === 'sales' && c.purchase_value > 0) {
-    lines.push(`* Faturamento ${brl(c.purchase_value)}`)
-    if (c.roas != null && c.roas > 0) lines.push(`* Retorno sobre o investimento ${c.roas.toFixed(1).replace('.', ',')}x`)
+    lines.push(`💵 Faturamento ${brl(c.purchase_value)}`)
+    if (c.roas != null && c.roas > 0) lines.push(`📈 Retorno sobre o investimento ${c.roas.toFixed(1).replace('.', ',')}x`)
   }
   if (c.profileVisits > 0) {
     const prevV = p ? p.profileVisits : null
     const vp = prevV != null && prevV > 0 ? pct(c.profileVisits, prevV) : null
     const note = p == null ? '' : prevV === 0 ? ` (vs 0 semana anterior | campanha nova)` : vp ? ` (vs ${int(prevV as number)} | ${vp})` : ''
-    lines.push(`* ${int(c.profileVisits)} ${c.profileVisits === 1 ? 'visita ao perfil' : 'visitas ao perfil'}${note}`)
-    if (c.profileSpend > 0) lines.push(`* Custo por visita ${brl(c.profileSpend / c.profileVisits)}`)
+    lines.push(`👀 ${int(c.profileVisits)} ${c.profileVisits === 1 ? 'visita ao perfil' : 'visitas ao perfil'}${note}`)
+    if (c.profileSpend > 0) lines.push(`🏷️ Custo por visita ${brl(c.profileSpend / c.profileVisits)}`)
   }
-  if (c.reach > 0) lines.push(`* ${int(c.reach)} ${c.reach === 1 ? 'pessoa alcançada' : 'pessoas alcançadas'}`)
-  if (c.clicks > 0) lines.push(`* ${int(c.clicks)} ${c.clicks === 1 ? 'clique total' : 'cliques totais'}`)
+  if (c.reach > 0) lines.push(`📣 ${int(c.reach)} ${c.reach === 1 ? 'pessoa alcançada' : 'pessoas alcançadas'}`)
+  if (c.clicks > 0) lines.push(`👆 ${int(c.clicks)} ${c.clicks === 1 ? 'clique total' : 'cliques totais'}`)
 
   const score = (x: WeekCampaign) => resultOf(kind, { leads: x.leads, results: x.results } as WeekNumbers)
   const top = [...i.campaigns].filter(x => score(x) > 0 && x.spend > 0).sort((a, b) => score(b) - score(a) || a.spend - b.spend)[0]

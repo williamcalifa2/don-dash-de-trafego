@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { requireRole } from '@/lib/admin'
 import { loadRegistry } from '@/lib/activityLog'
 import { allow } from '@/lib/rateLimit'
-import { FORMAT, generateWeekly, readWeekly, weeklyClients, type WeeklyReport } from '@/lib/weeklyStore'
+import { FORMAT, generateWeekly, listWeekly, readWeekly, saveEdited, weeklyClients, type WeeklyReport } from '@/lib/weeklyStore'
 import { weekKeyBr } from '@/lib/weeklyReport'
 
 export const dynamic = 'force-dynamic'
@@ -12,14 +12,17 @@ export const maxDuration = 60
 export async function GET(req: NextRequest) {
   const denied = await requireRole(req, 'admin')
   if (denied) return denied
+  // Histórico de um cliente: as semanas guardadas, da mais nova para a mais antiga.
+  const hist = req.nextUrl.searchParams.get('history') === '1' ? req.nextUrl.searchParams.get('slug') : null
+  if (hist) return NextResponse.json({ history: await listWeekly(hist) }, { headers: { 'Cache-Control': 'no-store' } })
   const reg = await loadRegistry().catch(() => null)
   const wanted = req.nextUrl.searchParams.get('manager')
   const slugs = wanted && reg ? [...reg.byClient.entries()].filter(([, id]) => id === wanted).map(([s]) => s) : undefined
   const clients = (await weeklyClients(slugs)).filter(c => c.active)
   const week = weekKeyBr()
   const items = await Promise.all(clients.map(async c => {
-    const r = await readWeekly(c.slug)
-    const current = !!r && r.weekKey === week && r.v === FORMAT
+    const r = await readWeekly(c.slug, week)
+    const current = !!r && r.v === FORMAT
     return { slug: c.slug, name: c.name, logoUrl: c.logoUrl, report: r as WeeklyReport | null, state: current ? (r!.status === 'ready' ? 'ready' : 'empty') : r ? 'old' : 'none' as 'ready' | 'empty' | 'old' | 'none' }
   }))
   // Abrir a aba puxa o que falta da semana (até 3 por vez, no máximo a cada 3 min): a segunda de madrugada já deixa quase tudo pronto.
@@ -39,4 +42,14 @@ export async function POST(req: NextRequest) {
   if (!c) return NextResponse.json({ error: 'Cliente não encontrado.' }, { status: 404 })
   const r = await generateWeekly(c)
   return NextResponse.json(r.ok ? { ok: true, report: r.report } : { ok: false, reason: r.reason, detail: r.detail })
+}
+
+/** Salva o texto que a pessoa ajustou (fica guardado nessa semana). Corpo: { slug, weekKey, text }. */
+export async function PATCH(req: NextRequest) {
+  const denied = await requireRole(req, 'admin')
+  if (denied) return denied
+  const b = await req.json().catch(() => ({})) as { slug?: unknown; weekKey?: unknown; text?: unknown }
+  if (typeof b.slug !== 'string' || typeof b.weekKey !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(b.weekKey) || typeof b.text !== 'string' || !b.text.trim()) return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 })
+  const ok = await saveEdited(b.slug, b.weekKey, b.text)
+  return ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: 'Relatório não encontrado.' }, { status: 404 })
 }
