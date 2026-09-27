@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { requireRole } from '@/lib/admin'
 import { loadRegistry } from '@/lib/activityLog'
 import { allow } from '@/lib/rateLimit'
-import { generateWeekly, readWeekly, weeklyClients, type WeeklyReport } from '@/lib/weeklyStore'
+import { FORMAT, generateWeekly, readWeekly, weeklyClients, type WeeklyReport } from '@/lib/weeklyStore'
 import { weekKeyBr } from '@/lib/weeklyReport'
 
 export const dynamic = 'force-dynamic'
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const week = weekKeyBr()
   const items = await Promise.all(clients.map(async c => {
     const r = await readWeekly(c.slug)
-    const current = !!r && r.weekKey === week
+    const current = !!r && r.weekKey === week && r.v === FORMAT
     return { slug: c.slug, name: c.name, logoUrl: c.logoUrl, report: r as WeeklyReport | null, state: current ? (r!.status === 'ready' ? 'ready' : 'empty') : r ? 'old' : 'none' as 'ready' | 'empty' | 'old' | 'none' }
   }))
   // Abrir a aba puxa o que falta da semana (até 3 por vez, no máximo a cada 3 min): a segunda de madrugada já deixa quase tudo pronto.

@@ -90,6 +90,8 @@ export interface MetricsResponse {
   campaigns: CampaignRow[]
   /** Todas as conversões e ações da conta no período (nada fica de fora). */
   conversions: ConversionItem[]
+  /** o mesmo do período anterior (só na conta inteira), para comparativos */
+  conversions_prev?: ConversionItem[]
   /** Tipo de resultado do cliente, detectado pelo que a conta gera (formulário, site, conversas ou misto). */
   result_kind: ResultKind
   /** Só no modo banco: idade dos dados e motivo se estiverem velhos ou a conta estiver em espera. */
@@ -759,6 +761,7 @@ export function assembleMetrics(adAccountId: string, datePreset: DatePreset, raw
     daily,
     campaigns,
     conversions: listConversions((raw.summaryRow?.actions as ActionRow[] | undefined), summary.spend, raw.customNames),
+    conversions_prev: raw.prevRow ? listConversions((raw.prevRow.actions as ActionRow[] | undefined), summary_prev?.spend ?? 0, raw.customNames) : undefined,
     result_kind,
   }
 }

@@ -8,9 +8,14 @@ import { ensureRuntime } from './meta/runtime'
 import { readMetrics } from './meta/read'
 import { refreshNow } from './meta/refreshNow'
 import { stores } from './meta/pipeline'
-import { buildWeeklyMessage, last7Range, weekKeyBr, type WeekNumbers } from './weeklyReport'
+import { buildWeeklyMessage, last7Range, profileVisitsOf, weekKeyBr, type WeekNumbers } from './weeklyReport'
+import type { ConversionItem, MetricsSummary } from './meta'
+
+/** Versão do formato da mensagem: mudou o texto, os relatórios da versão antiga são refeitos. */
+export const FORMAT = 2
 
 export interface WeeklyReport {
+  v?: number
   /** segunda-feira da semana em que foi gerado */
   weekKey: string
   range: { since: string; until: string }
@@ -50,8 +55,9 @@ export async function weeklyClients(slugs?: string[]): Promise<WeeklyClient[]> {
   return rows.map(r => ({ id: r.id, slug: r.slug, name: r.display_name ?? r.slug, logoUrl: logoPublicUrl(r.slug, r.logo_url), adAccountId: r.ad_account_id, active: cfgs[r.slug]?.active !== false }))
 }
 
-const toWeek = (s: { spend: number; clicks: number; link_clicks: number; ctr: number; leads: number; results: number; cpl: number | null; cost_per_result: number | null; purchase_value: number; roas: number | null }): WeekNumbers => ({
-  spend: s.spend, clicks: s.clicks, link_clicks: s.link_clicks, ctr: s.ctr, leads: s.leads, results: s.results, cpl: s.cpl, cost_per_result: s.cost_per_result, purchase_value: s.purchase_value, roas: s.roas,
+const toWeek = (s: MetricsSummary, conversions: ConversionItem[] | undefined, profileSpend = 0): WeekNumbers => ({
+  spend: s.spend, clicks: s.clicks, reach: s.reach, leads: s.leads, results: s.results, cpl: s.cpl, cost_per_result: s.cost_per_result,
+  purchase_value: s.purchase_value, roas: s.roas, profileVisits: profileVisitsOf(conversions), profileSpend,
 })
 
 export type GenerateResult = { ok: true; report: WeeklyReport } | { ok: false; reason: 'pending' | 'no_snapshot_mode' | 'blocked' | 'error'; detail?: string }
@@ -77,10 +83,12 @@ export async function generateWeekly(c: WeeklyClient, opts: { refresh?: boolean 
   const range = last7Range(now)
   const text = buildWeeklyMessage({
     business: c.name, range, kind: resp.result_kind,
-    current: toWeek(resp.summary), previous: resp.summary_prev ? toWeek(resp.summary_prev) : null,
+    // Visitas ao perfil: pela conta inteira; o investimento vem só das campanhas que tiveram visita.
+    current: toWeek(resp.summary, resp.conversions, resp.campaigns.filter(x => profileVisitsOf(x.conversions) > 0).reduce((n, x) => n + x.spend, 0)),
+    previous: resp.summary_prev ? toWeek(resp.summary_prev, resp.conversions_prev) : null,
     campaigns: resp.campaigns.map(x => ({ name: x.name, spend: x.spend, results: x.results, leads: x.leads })),
   })
-  const report: WeeklyReport = { weekKey: weekKeyBr(now), range, status: text ? 'ready' : 'empty', text, generatedAt: now }
+  const report: WeeklyReport = { v: FORMAT, weekKey: weekKeyBr(now), range, status: text ? 'ready' : 'empty', text, generatedAt: now }
   await saveWeekly(c.slug, report)
   return { ok: true, report }
 }
@@ -90,7 +98,7 @@ export async function runWeeklyBatch(budgetMs = 45_000, now = Date.now()): Promi
   const week = weekKeyBr(now)
   const clients = (await weeklyClients()).filter(c => c.active)
   const todo: WeeklyClient[] = []
-  for (const c of clients) { const r = await readWeekly(c.slug); if (!r || r.weekKey !== week) todo.push(c) }
+  for (const c of clients) { const r = await readWeekly(c.slug); if (!r || r.weekKey !== week || r.v !== FORMAT) todo.push(c) }
   const deadline = Date.now() + budgetMs
   let generated = 0, pending = 0
   const errors: Array<{ slug: string; reason: string }> = []
