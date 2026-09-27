@@ -80,8 +80,8 @@ function Badge({ tone, children }: { tone: 'ok' | 'idle'; children: React.ReactN
 function Logo({ which, size = 48 }: { which: Which; size?: number }) {
   return (
     <span className="int-logo" style={{ width: size, height: size }}>
-      {which === 'google' && <img src="/integrations/google-ads.svg" alt="" style={{ width: Math.round(size * 0.6), height: Math.round(size * 0.6) }} />}
-      {which === 'ga4' && <img src="/integrations/ga4.svg" alt="" style={{ width: Math.round(size * 0.6), height: Math.round(size * 0.6) }} />}
+      {which === 'google' && <img src="/integrations/google-ads.png" alt="" style={{ width: Math.round(size * 0.6), height: Math.round(size * 0.6), objectFit: 'contain' }} />}
+      {which === 'ga4' && <img src="/integrations/ga4.png" alt="" style={{ width: Math.round(size * 0.6), height: Math.round(size * 0.6), objectFit: 'contain' }} />}
       {which === 'shopify' && <img src="/integrations/shopify.svg" alt="" />}
       {which === 'nuvemshop' && <img src="/integrations/nuvemshop.png" alt="" />}
       {which === 'webhook' && <Webhook size={Math.round(size * 0.5)} color="var(--accent)" strokeWidth={1.75} />}
