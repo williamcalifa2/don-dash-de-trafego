@@ -114,6 +114,7 @@ export async function GET(req: NextRequest) {
       ecommerce: allConfigs[c.slug as string] ? hasEcommerce(allConfigs[c.slug as string]) : false,
       managerId: registry?.byClient.get(c.slug as string) ?? null,
       googleAdsCustomerId: allConfigs[c.slug as string]?.googleAdsCustomerId ?? '',
+      ga4PropertyId: allConfigs[c.slug as string]?.ga4PropertyId ?? '',
       locked: !!c.locked_until && new Date(c.locked_until as string).getTime() > now,
       leadCount: count ?? 0,
       lastLeadAt: (last?.[0]?.created_at as string | undefined) ?? null,

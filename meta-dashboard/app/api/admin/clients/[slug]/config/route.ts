@@ -6,6 +6,7 @@ import { trackKey } from '@/lib/storeTrack'
 import { logStaffActivity } from '@/lib/activityLog'
 import { requireClientScope } from '@/lib/scope'
 import { cleanCustomerId } from '@/lib/googleAds/gaql'
+import { cleanPropertyId } from '@/lib/ga4/report'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,6 +59,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     if (String(body.googleAdsCustomerId ?? '').trim() && !id) return NextResponse.json({ error: 'O ID da conta Google Ads tem 10 dígitos (ex.: 123-456-7890).' }, { status: 400 })
     patch.googleAdsCustomerId = id
   }
+  if ((isAdmin || isMember) && 'ga4PropertyId' in body) {
+    const id = cleanPropertyId(body.ga4PropertyId)
+    if (String(body.ga4PropertyId ?? '').trim() && !id) return NextResponse.json({ error: 'O ID da propriedade do Google Analytics tem só números (ex.: 123456789).' }, { status: 400 })
+    patch.ga4PropertyId = id
+  }
   if ('strategicObjective' in body && typeof body.strategicObjective === 'string') {
     patch.strategicObjective = body.strategicObjective.slice(0, 2000)
   }
@@ -95,6 +101,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     const said: string[] = []
     if (patch.active !== undefined) said.push(patch.active ? 'Ativou o cliente' : 'Pausou o cliente')
     if (patch.integrations) said.push('Alterou as integrações')
+    if (patch.ga4PropertyId !== undefined) said.push(patch.ga4PropertyId ? 'Vinculou o Google Analytics' : 'Removeu o Google Analytics')
     if (patch.googleAdsCustomerId !== undefined) said.push(patch.googleAdsCustomerId ? 'Vinculou a conta do Google Ads' : 'Removeu a conta do Google Ads')
     if (patch.ecommerce !== undefined) said.push(patch.ecommerce ? 'Ligou o e-commerce' : 'Desligou o e-commerce')
     if (patch.strategicObjective !== undefined || patch.goalsPeriod !== undefined || patch.funnelGoals !== undefined || patch.targetBudget !== undefined) said.push('Alterou objetivos e metas')

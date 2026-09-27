@@ -35,6 +35,7 @@ interface AdminClient {
   active?: boolean
   ecommerce?: boolean
   googleAdsCustomerId?: string
+  ga4PropertyId?: string
   managerId?: string | null
   locked: boolean
   leadCount: number
@@ -857,17 +858,23 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
   // "Tem e-commerce?": libera a aba E-commerce e a integração com a loja para este cliente
   const [ecommerce, setEcommerce] = useState<boolean>(initial?.ecommerce === true)
   const [googleId, setGoogleId] = useState(initial?.googleAdsCustomerId ?? '')
+  const [ga4Id, setGa4Id] = useState(initial?.ga4PropertyId ?? '')
+  const [ga4Email, setGa4Email] = useState<string | null>(null)
+  const [ga4Test, setGa4Test] = useState<{ ok: boolean; message: string } | null>(null)
+  const [ga4Busy, setGa4Busy] = useState(false)
+  useEffect(() => { void api<{ serviceEmail: string | null }>('/api/admin/ga4').then(r => { if (r.ok) setGa4Email(r.data.serviceEmail) }) }, [])
 
   useEffect(() => {
     if (!initial?.slug) return
     let alive = true
     fetch(`/api/admin/clients/${initial.slug}/config`)
       .then(r => r.ok ? r.json() : null)
-      .then((cfg: { active?: boolean; ecommerce?: boolean; googleAdsCustomerId?: string; integrations?: Record<string, unknown> } | null) => {
+      .then((cfg: { active?: boolean; ecommerce?: boolean; googleAdsCustomerId?: string; ga4PropertyId?: string; integrations?: Record<string, unknown> } | null) => {
         if (!alive || !cfg) return
         if (cfg.active !== undefined) setActive(cfg.active !== false)
         if (typeof cfg.ecommerce === 'boolean') setEcommerce(cfg.ecommerce)
         if (typeof cfg.googleAdsCustomerId === 'string') setGoogleId(cfg.googleAdsCustomerId)
+        if (typeof cfg.ga4PropertyId === 'string') setGa4Id(cfg.ga4PropertyId)
       })
       .catch(() => { })
     return () => { alive = false }
@@ -892,7 +899,7 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
     const savedSlug = initial?.slug ?? (r.data as { slug: string }).slug
 
     // Salva status do cliente
-    const cr = await api(`/api/admin/clients/${savedSlug}/config`, 'POST', { active, ecommerce, googleAdsCustomerId: googleId }).catch(() => null)
+    const cr = await api(`/api/admin/clients/${savedSlug}/config`, 'POST', { active, ecommerce, googleAdsCustomerId: googleId, ga4PropertyId: ga4Id }).catch(() => null)
     if (cr && !cr.ok) { setSaving(false); setError(cr.data.error ?? 'Não foi possível salvar o Google Ads.'); return }
 
     setSaving(false)
@@ -953,6 +960,17 @@ function ClientForm({ initial, baseDomain, accounts, accountsError, accountsSave
         <label htmlFor="c-google" style={labelStyle}>Conta do Google Ads (opcional)</label>
         <input id="c-google" className="field" value={googleId} onChange={e => setGoogleId(e.target.value)} placeholder="123-456-7890" inputMode="numeric" autoComplete="off" />
         <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>ID de 10 dígitos da conta de anúncios (dentro da conta gerente). Libera a aba Google Ads.</div>
+      </div>
+
+      <div>
+        <label htmlFor="c-ga4" style={labelStyle}>Google Analytics 4 (opcional)</label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input id="c-ga4" className="field" value={ga4Id} onChange={e => { setGa4Id(e.target.value); setGa4Test(null) }} placeholder="ID da propriedade (só números)" inputMode="numeric" autoComplete="off" style={{ flex: 1 }} />
+          <button type="button" className="btn btn-outline" disabled={!ga4Id.trim() || ga4Busy} onClick={async () => { setGa4Busy(true); const r = await api<{ ok: boolean; message: string }>('/api/admin/ga4', 'POST', { propertyId: ga4Id }); setGa4Busy(false); setGa4Test({ ok: !!r.data.ok, message: r.data.message ?? 'Não foi possível testar.' }) }}>{ga4Busy ? 'Testando…' : 'Testar'}</button>
+        </div>
+        <div style={{ fontSize: 11, color: ga4Test ? (ga4Test.ok ? 'var(--green)' : 'var(--red)') : 'var(--text-3)', marginTop: 4 }}>
+          {ga4Test ? ga4Test.message : ga4Email ? <>No GA4 do cliente: Admin → Acesso à propriedade → adicione <strong>{ga4Email}</strong> como Leitor. Libera a aba Site.</> : 'Libera a aba Site. A conta de serviço ainda não está configurada no app.'}
+        </div>
       </div>
 
       {/* Identidade */}

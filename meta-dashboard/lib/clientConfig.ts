@@ -26,6 +26,8 @@ export interface ClientConfig {
   ecommerce?: boolean
   /** conta do Google Ads do cliente (10 dígitos, sem traços). Libera a aba Google. */
   googleAdsCustomerId?: string
+  /** propriedade do Google Analytics 4 (só números). Libera a aba Site. */
+  ga4PropertyId?: string
   active: boolean // true = ativo (sincronizando), false = pausado (sem chamadas à API)
   strategicObjective?: string
   goalsPeriod?: string

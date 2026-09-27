@@ -22,5 +22,6 @@ export async function GET(req: NextRequest) {
   const cfg = await getClientConfig(tenant.slug)
   const ecommerce = hasEcommerce(cfg)
   const google = Boolean(cfg.googleAdsCustomerId)
-  return NextResponse.json({ slug: tenant.slug, name: tenant.name, logoUrl: tenant.logoUrl, ecommerce, platforms: platformsFor({ ...tenant, ecommerce, google }), authEnabled: authEnabled(), admin: await isAdmin(req), role: await requestRole(req) })
+  const ga4 = Boolean(cfg.ga4PropertyId)
+  return NextResponse.json({ slug: tenant.slug, name: tenant.name, logoUrl: tenant.logoUrl, ecommerce, ga4, platforms: platformsFor({ ...tenant, ecommerce, google }), authEnabled: authEnabled(), admin: await isAdmin(req), role: await requestRole(req) })
 }
