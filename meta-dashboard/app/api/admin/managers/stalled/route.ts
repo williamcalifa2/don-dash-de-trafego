@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/admin'
 import { getAllClientsConfig } from '@/lib/clientConfig'
-import { clientLogos, clientNames, lastAccessByEmail, loadRegistry, readLog } from '@/lib/managersStore'
+import { clientLogos, clientNames, lastAccessByEmail, loadRegistry, maybeSyncActivity, readLog } from '@/lib/managersStore'
 import { buildStalled, countByManager, type StalledBy } from '@/lib/stalled'
 
 export const dynamic = 'force-dynamic'
@@ -29,5 +29,8 @@ export async function GET(req: NextRequest) {
   const rows = buildStalled({ managers: reg.managers, byClient: new Map(reg.byClient), lastAction, lastAccess: access, names, paused, now }, days, by)
   const counts = countByManager(rows)
   const withLogo = rows.map(r => ({ ...r, clientLogo: logos.get(r.slug) ?? null }))
+  after(() => {
+    void maybeSyncActivity()
+  })
   return NextResponse.json({ setup: 'ready', days, by, rows: withLogo, byManager: reg.managers.map(m => ({ id: m.id, name: m.name, n: counts.get(m.id) ?? 0 })).filter(m => m.n > 0), lookbackDays: LOOKBACK_DAYS })
 }
