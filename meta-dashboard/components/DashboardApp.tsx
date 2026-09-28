@@ -405,7 +405,7 @@ function Dashboard() {
       const gDay = gMap.get(date)
       return im + (gDay?.impressions || 0)
     })
-    const metaClicks: number[] = d.clicks || (d.metrics as Record<string, number[]> | undefined)?.clicks || d.dates.map(() => 0)
+    const metaClicks: number[] = (d as any)?.clicks || (d?.metrics as Record<string, number[]> | undefined)?.clicks || d.dates.map(() => 0)
     const newClicks = metaClicks.map((cl: number, i: number) => {
       const date = d.dates[i]
       const gDay = gMap.get(date)

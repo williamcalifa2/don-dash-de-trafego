@@ -73,6 +73,7 @@ export interface DailySummary {
   cpl: number[]
   impressions: number[]
   ctr: number[]
+  clicks?: number[]
   metrics?: Record<string, number[]>
 }
 
@@ -715,6 +716,7 @@ export function assembleMetrics(adAccountId: string, datePreset: DatePreset, raw
         return l > 0 ? sp / l : 0
       }),
       impressions: rows.map(r => Number(r.impressions ?? 0)),
+      clicks: rows.map(r => Number(r.clicks ?? 0)),
       ctr: rows.map(r => Number(r.ctr ?? 0)),
       metrics,
     }
