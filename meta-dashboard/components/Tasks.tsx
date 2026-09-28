@@ -1,12 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronDown, LayoutGrid, List, Loader2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, ChevronRight, LayoutGrid, List, Loader2 } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
-import { useAnchoredPopover } from '@/lib/useAnchoredPopover'
 import { REASONS, REASON_LABEL, type Task } from '@/lib/managers'
 import { DonutChart } from './Donut'
+import { ModalShell } from './ModalShell'
 import { PulseLoader } from './PulseLoader'
 import { SubTabs, Thumb, plural } from './UsageUi'
 
@@ -27,51 +26,16 @@ const when = (iso: string) => {
 }
 const sqlHint = <div className="card" style={{ padding: 24, fontSize: 14 }}>Falta liberar as otimizações no banco. Rode o SQL <code>supabase/2026-09-gestores-3.sql</code> no Supabase e recarregue a página.</div>
 
-/** Botão redondo "Motivo" que abre uma lista com caixinhas: dá para marcar mais de um. */
-function ReasonSelect({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
-  const { pos, close, toggle, menuRef } = useAnchoredPopover(6)
-  const has = (k: string) => value.includes(k)
-  const flip = (k: string) => onChange(has(k) ? value.filter(x => x !== k) : [...value, k])
-  const first = value[0] ? REASON_LABEL[value[0]] : null
-  return (
-    <>
-      <button type="button" className="btn btn-outline btn-sm" aria-haspopup="listbox" aria-expanded={!!pos} onClick={toggle}
-        style={{ borderRadius: 9999, gap: 6, flexShrink: 0, borderColor: value.length ? 'var(--accent)' : undefined, maxWidth: 220 }}>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{first ? `${first}${value.length > 1 ? ` +${value.length - 1}` : ''}` : 'Motivo'}</span>
-        <ChevronDown size={14} strokeWidth={1.75} aria-hidden="true" />
-      </button>
-      {pos && createPortal(
-        <>
-          <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={close} />
-          <div ref={menuRef} className="popover" role="listbox" aria-multiselectable="true" aria-label="Motivo" style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 1000, minWidth: 230 }}>
-            {REASONS.map(([k, l]) => (
-              <div key={k} role="option" aria-selected={has(k)} tabIndex={0} className="popover-item" onClick={() => flip(k)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(k) } }}>
-                <span aria-hidden="true" style={{ width: 16, height: 16, borderRadius: 5, border: `1.5px solid ${has(k) ? 'var(--accent)' : 'var(--border-input)'}`, background: has(k) ? 'var(--accent)' : 'transparent', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                  {has(k) && <Check size={11} strokeWidth={3} color="#fff" />}
-                </span>
-                <span style={{ flex: 1 }}>{l}</span>
-              </div>
-            ))}
-          </div>
-        </>,
-        document.body,
-      )}
-    </>
-  )
-}
-
 const eyebrow: React.CSSProperties = { fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-2)' }
 
-/** Uma otimização (sessão de alterações): o que foi feito numa frase; pendente mostra o formulário, com motivo mostra o motivo e o botão Editar. */
-function TaskItem({ t, onSaved, boxed }: { t: TaskView; onSaved: () => void; boxed?: boolean }) {
-  const answered = !!(t.reason || t.reasonKinds.length)
-  const [edit, setEdit] = useState(false)
+/** Popup pra justificar uma otimização: motivo (pode marcar mais de um) e um comentário. No molde do "comprovante de tarefa" da Pautta. */
+function JustifyModal({ t, onClose, onSaved }: { t: TaskView; onClose: () => void; onSaved: () => void }) {
   const [kinds, setKinds] = useState<string[]>(t.reasonKinds)
   const [text, setText] = useState(t.reason ?? '')
-  const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
-  const showForm = !answered || edit
+  const has = (k: string) => kinds.includes(k)
+  const flip = (k: string) => setKinds(v => (has(k) ? v.filter(x => x !== k) : [...v, k]))
 
   async function save() {
     setBusy(true); setErr(null)
@@ -79,49 +43,82 @@ function TaskItem({ t, onSaved, boxed }: { t: TaskView; onSaved: () => void; box
     const j = r ? await r.json().catch(() => ({})) as { error?: string } : {}
     setBusy(false)
     if (!r?.ok) return setErr(j.error ?? 'Não foi possível salvar.')
-    setEdit(false); onSaved()
+    onSaved(); onClose()
   }
+
+  return (
+    <ModalShell title="Justificar otimização" onClose={onClose} maxWidth={520}>
+      <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0, lineHeight: 1.5 }}>
+        Conte por que fez <strong style={{ color: 'var(--text-1)' }}>&ldquo;{t.short || t.headline}&rdquo;</strong>, em {t.clientName} ({when(t.at)}).
+      </p>
+      <div>
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 8 }}>Motivo</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {REASONS.map(([k, l]) => (
+            <button key={k} type="button" className="pill-btn" aria-pressed={has(k)} onClick={() => flip(k)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {has(k) && <Check size={12} strokeWidth={3} />} {l}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label htmlFor="task-comment" style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 8 }}>Comentário {kinds.length ? '(opcional)' : ''}</label>
+        <textarea id="task-comment" className="field" rows={3} placeholder="Alguma observação sobre essa otimização?" value={text} onChange={e => setText(e.target.value)} maxLength={500} style={{ height: 'auto', paddingTop: 10, paddingBottom: 10, resize: 'vertical' }} />
+      </div>
+      {err && <p role="alert" style={{ margin: 0, fontSize: 12, color: 'var(--red)' }}>{err}</p>}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <button type="button" className="btn btn-outline" onClick={onClose}>Cancelar</button>
+        <button type="button" className="btn btn-primary" onClick={save} disabled={busy || (!kinds.length && text.trim().length < 3)}>
+          {busy && <Loader2 size={14} className="spin" />} Confirmar
+        </button>
+      </div>
+    </ModalShell>
+  )
+}
+
+/** Uma otimização (sessão de alterações): o que foi feito numa frase, numa linha só; clica pra abrir o popup e justificar. */
+function TaskItem({ t, onSaved, boxed }: { t: TaskView; onSaved: () => void; boxed?: boolean }) {
+  const answered = !!(t.reason || t.reasonKinds.length)
+  const [open, setOpen] = useState(false)
+  const [justifying, setJustifying] = useState(false)
 
   const box: React.CSSProperties = boxed
     ? { padding: 16, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }
     : { padding: '14px 0', display: 'flex', flexDirection: 'column', gap: 10 }
   const inner = (
     <>
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <button type="button" onClick={() => setJustifying(true)} style={{ display: 'flex', gap: 12, justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', background: 'none', border: 0, padding: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer', color: 'inherit' }}>
         <div style={{ fontSize: 14, lineHeight: 1.5, overflowWrap: 'anywhere', minWidth: 0 }}>
           <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>{when(t.at)}{t.actorName ? ` · ${t.actorName}` : ''}</span>
           <span style={{ display: 'block', whiteSpace: 'pre-line', fontWeight: 600 }}>{t.short || t.headline}</span>
-          {t.items.length > 0 && <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} style={{ marginLeft: 8, background: 'none', border: 0, padding: 0, font: 'inherit', fontSize: 12, color: 'var(--text-2)', textDecoration: 'underline', cursor: 'pointer' }}>{open ? 'ocultar detalhes' : 'ver detalhes'}</button>}
         </div>
-        <span className="badge" style={{ background: answered ? 'var(--green-soft)' : 'rgba(245, 158, 11, 0.15)', color: 'var(--text-1)', flexShrink: 0 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: answered ? 'var(--green)' : 'var(--amber)' }} />{answered ? 'Com motivo' : 'Sem motivo'}</span>
-      </div>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <span className="badge" style={{ background: answered ? 'var(--green-soft)' : 'rgba(245, 158, 11, 0.15)', color: 'var(--text-1)' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: answered ? 'var(--green)' : 'var(--amber)' }} />{answered ? 'Com motivo' : 'Sem motivo'}</span>
+          <ChevronRight size={16} strokeWidth={1.75} color="var(--text-2)" aria-hidden="true" />
+        </span>
+      </button>
+      {t.items.length > 0 && (
+        <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} style={{ alignSelf: 'flex-start', background: 'none', border: 0, padding: 0, font: 'inherit', fontSize: 12, color: 'var(--text-2)', textDecoration: 'underline', cursor: 'pointer' }}>{open ? 'ocultar detalhes' : 'ver detalhes'}</button>
+      )}
       {open && (
         <ul style={{ margin: 0, padding: '10px 12px', listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--text-2)', background: 'var(--bg-card2)', borderRadius: 10 }}>
           {t.items.map((it, i) => <li key={i} style={{ overflowWrap: 'anywhere' }}><span style={{ color: 'var(--text-1)' }}>{it.objectName ?? it.text}</span>{it.change ? ` · ${it.change}` : ''}{it.objectName ? ` · ${it.text}` : ''}</li>)}
         </ul>
       )}
-      {showForm ? (
-        <>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <ReasonSelect value={kinds} onChange={setKinds} />
-            <input className="field" aria-label="Explique em uma frase" placeholder="Explique em uma frase (opcional)" value={text} onChange={e => setText(e.target.value)} maxLength={500} style={{ height: 34, fontSize: 13, flex: '1 1 180px', minWidth: 0, borderRadius: 9999, padding: '0 14px' }} />
-            <button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={busy || (!kinds.length && text.trim().length < 3)} style={{ borderRadius: 9999, flexShrink: 0 }}>
-              {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle2 size={14} strokeWidth={1.75} />} {answered ? 'Atualizar' : 'Salvar'}
-            </button>
-            {edit && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setEdit(false); setKinds(t.reasonKinds); setText(t.reason ?? '') }}>Cancelar</button>}
-          </div>
-          {err && <p role="alert" style={{ margin: 0, fontSize: 12, color: 'var(--red)' }}>{err}</p>}
-        </>
-      ) : (
+      {answered && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 13 }}>
           {t.reasonKinds.map(k => <span key={k} className="badge" style={{ background: 'var(--bg-card2)', color: 'var(--text-1)' }}>{REASON_LABEL[k] ?? k}</span>)}
-          {t.reason && <span style={{ overflowWrap: 'anywhere', flex: '1 1 160px' }}>{t.reason}</span>}
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEdit(true)} style={{ marginLeft: 'auto' }}>Editar</button>
+          {t.reason && <span style={{ overflowWrap: 'anywhere', flex: '1 1 160px', color: 'var(--text-2)' }}>&ldquo;{t.reason}&rdquo;</span>}
         </div>
       )}
     </>
   )
-  return boxed ? <article className="card" style={box}>{inner}</article> : <div style={box}>{inner}</div>
+  return (
+    <>
+      {boxed ? <article className="card" style={box}>{inner}</article> : <div style={box}>{inner}</div>}
+      {justifying && <JustifyModal t={t} onClose={() => setJustifying(false)} onSaved={onSaved} />}
+    </>
+  )
 }
 
 /** Card do cliente, no mesmo molde dos cards de clientes e de gestores. */
