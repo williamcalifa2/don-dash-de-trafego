@@ -32,7 +32,12 @@ export async function POST(req: NextRequest) {
     const kind = e instanceof Ga4Error ? e.kind : 'other'
     const email = serviceAccount()?.client_email
     let message = 'Não foi possível conectar agora.'
-    if (kind === 'access') {
+    if (kind === 'disabled') {
+      const sa = serviceAccount()
+      const p = sa?.project_id || '767258501607'
+      const directUrl = `https://console.developers.google.com/apis/api/analyticsdata.googleapis.com/overview?project=${p}`
+      message = `A API do Google Analytics Data precisa ser ativada no projeto da conta de serviço (${p}). Ative aqui: ${directUrl}`
+    } else if (kind === 'access') {
       message = `Sem acesso. Adicione ${email ?? 'a conta de serviço'} como Leitor na propriedade. (${errText})`
     } else if (kind === 'notfound') {
       message = `Propriedade não encontrada. Confira o ID. (${errText})`

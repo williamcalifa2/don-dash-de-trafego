@@ -6,15 +6,24 @@ import { previousRange } from '../googleAds/gaql'
 const SCOPE = 'https://www.googleapis.com/auth/analytics.readonly'
 const API = 'https://analyticsdata.googleapis.com/v1beta'
 
-interface ServiceAccount { client_email: string; private_key: string }
-interface OAuthCreds { clientId: string; clientSecret: string; refreshToken: string }
+export interface ServiceAccount { client_email: string; private_key: string; project_id?: string }
+export interface OAuthCreds { clientId: string; clientSecret: string; refreshToken: string }
 
 /** Conta de serviço (JSON, ou o JSON em base64). GA4_SERVICE_ACCOUNT_JSON tem prioridade; senão usa a mesma das planilhas. */
 export function serviceAccount(): ServiceAccount | null {
   const raw = process.env.GA4_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON
   if (!raw) return null
   for (const text of [raw, (() => { try { return Buffer.from(raw, 'base64').toString('utf8') } catch { return '' } })()]) {
-    try { const j = JSON.parse(text) as Partial<ServiceAccount>; if (j.client_email && j.private_key) return { client_email: j.client_email, private_key: j.private_key.replace(/\\n/g, '\n') } } catch { /* tenta o próximo formato */ }
+    try {
+      const j = JSON.parse(text) as Partial<ServiceAccount>
+      if (j.client_email && j.private_key) {
+        return {
+          client_email: j.client_email,
+          private_key: j.private_key.replace(/\\n/g, '\n'),
+          project_id: j.project_id,
+        }
+      }
+    } catch { /* tenta o próximo formato */ }
   }
   return null
 }

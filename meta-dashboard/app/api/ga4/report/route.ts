@@ -21,10 +21,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ setup: 'ready', ...data }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (e) {
     const kind = e instanceof Ga4Error ? e.kind : 'other'
-    const email = serviceAccount()?.client_email
+    const sa = serviceAccount()
+    const email = sa?.client_email
+    const projectId = sa?.project_id || '767258501607'
+    const directUrl = `https://console.developers.google.com/apis/api/analyticsdata.googleapis.com/overview?project=${projectId}`
     const origMsg = e instanceof Error ? e.message : ''
     const message = kind === 'disabled'
-      ? `A API do Google Analytics Data precisa ser ativada no Google Cloud Console. Acesse https://console.cloud.google.com/apis/library/analyticsdata.googleapis.com e clique em "Ativar".`
+      ? `A API do Google Analytics Data precisa ser ativada no projeto da conta de serviço (${projectId}). Acesse ${directUrl} e clique em "Ativar".`
       : kind === 'access'
       ? `Sem acesso a esta propriedade do Google Analytics. Peça para adicionar ${email ? `o e-mail ${email}` : 'o seu usuário/conta'} como Leitor no painel do Google Analytics.`
       : kind === 'notfound'
