@@ -7,6 +7,7 @@ import { resolveDelivery, type CampaignRow, type ConversionItem } from '@/lib/me
 import { apiFetch } from '@/lib/apiFetch'
 import { previewSrc } from '@/lib/adPreview'
 import { analyzeFatigue } from '@/lib/creativeFatigue'
+import { useFastTip } from './FastTip'
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; dot: string }> = {
   ACTIVE: { label: 'Ativo', color: 'var(--green)', bg: 'var(--green-soft)', dot: 'var(--green)' },
@@ -64,6 +65,7 @@ interface CampaignTableProps {
 
 export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kind = 'form' }: CampaignTableProps) {
   const L = KIND_LABELS[kind]
+  const tip = useFastTip()
   const [sortCol, setSortCol] = useState<SortCol>('spend')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [filterStatus, setFilterStatus] = useState<string>('ALL')
@@ -182,19 +184,27 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Campanha {sortIcon('name')}</span>
               </th>
               <th style={{ ...thStyle('spend'), textAlign: 'left' }}>Status</th>
-              {(['spend', 'leads', 'cpl', 'roas', 'ctr', 'frequency'] as SortCol[]).map(col => (
-                <th key={col} style={thStyle(col, true)} onClick={() => handleSort(col)}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end', width: '100%' }}>
-                    {col === 'frequency'
-                      ? 'Freq.'
-                      : col === 'leads'
-                        ? (kind === 'form' ? 'RESULTADOS / LEADS' : L.many.toUpperCase())
-                        : col === 'cpl'
-                          ? (kind === 'form' ? 'CUSTO / RES.' : L.cost.toUpperCase())
-                          : col.toUpperCase()} {sortIcon(col)}
-                  </span>
-                </th>
-              ))}
+              {(['spend', 'leads', 'cpl', 'roas', 'ctr', 'frequency'] as SortCol[]).map(col => {
+                const metricKey = col === 'leads' ? (kind === 'form' ? 'leads' : L.many) : col === 'cpl' ? (kind === 'form' ? 'cpl' : L.cost) : col
+                return (
+                  <th
+                    key={col}
+                    style={thStyle(col, true)}
+                    onClick={() => handleSort(col)}
+                    {...tip.bindMetric(metricKey)}
+                  >
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end', width: '100%' }}>
+                      {col === 'frequency'
+                        ? 'Freq.'
+                        : col === 'leads'
+                          ? (kind === 'form' ? 'RESULTADOS / LEADS' : L.many.toUpperCase())
+                          : col === 'cpl'
+                            ? (kind === 'form' ? 'CUSTO / RES.' : L.cost.toUpperCase())
+                            : col.toUpperCase()} {sortIcon(col)}
+                    </span>
+                  </th>
+                )
+              })}
               <th style={{ ...thStyle('spend'), textAlign: 'center' }}>↓</th>
             </tr>
           </thead>
@@ -273,14 +283,26 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                               <thead>
                                 <tr style={{ background: 'var(--bg-card2)' }}>
-                                  {['Conjunto de anúncio', 'Status', 'Investido', (kind === 'form' ? 'Resultados' : L.many), (kind === 'form' ? 'Custo / Res.' : L.cost), 'CTR', 'Freq.', ''].map((h, i) => (
-                                    <th key={i} style={{
-                                      padding: '8px 14px 8px ' + (i === 0 ? '40px' : '14px'),
-                                      fontSize: 9, fontWeight: 700, letterSpacing: '.07em',
-                                      textTransform: 'uppercase', color: 'var(--text-3)',
-                                      textAlign: i > 1 ? 'right' : 'left', whiteSpace: 'nowrap',
-                                      borderBottom: '1px solid var(--border-soft)',
-                                    }}>{h}</th>
+                                  {[
+                                    { label: 'Conjunto de anúncio', key: null },
+                                    { label: 'Status', key: null },
+                                    { label: 'Investido', key: 'spend' },
+                                    { label: (kind === 'form' ? 'Resultados' : L.many), key: 'leads' },
+                                    { label: (kind === 'form' ? 'Custo / Res.' : L.cost), key: 'cpl' },
+                                    { label: 'CTR', key: 'ctr' },
+                                    { label: 'Freq.', key: 'frequency' },
+                                    { label: '', key: null },
+                                  ].map((h, i) => (
+                                    <th key={i}
+                                      {...(h.key ? tip.bindMetric(h.key) : {})}
+                                      style={{
+                                        padding: '8px 14px 8px ' + (i === 0 ? '40px' : '14px'),
+                                        fontSize: 9, fontWeight: 700, letterSpacing: '.07em',
+                                        textTransform: 'uppercase', color: 'var(--text-3)',
+                                        textAlign: i > 1 ? 'right' : 'left', whiteSpace: 'nowrap',
+                                        borderBottom: '1px solid var(--border-soft)',
+                                        cursor: h.key ? 'help' : 'default',
+                                      }}>{h.label}</th>
                                   ))}
                                 </tr>
                               </thead>
@@ -598,6 +620,7 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
           </div>
         </div>
       )}
+      {tip.node}
     </div>
   )
 }

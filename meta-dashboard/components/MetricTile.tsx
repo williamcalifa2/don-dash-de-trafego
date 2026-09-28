@@ -1,6 +1,9 @@
 'use client'
 
+import { HelpCircle } from 'lucide-react'
 import { Sparkline } from './Sparkline'
+import { useFastTip } from './FastTip'
+import { getMetricTooltip, type MetricTooltip } from '@/lib/metricTooltips'
 
 interface MetricTileProps {
   label: string
@@ -11,6 +14,8 @@ interface MetricTileProps {
   lowerIsBetter?: boolean
   /** texto pequeno abaixo do valor (ex.: "+12 no período") */
   note?: string
+  /** Explicação detalhada da métrica (se omitido, busca automaticamente pelo label) */
+  tooltip?: string | MetricTooltip
 }
 
 function Delta({ current, prev, lowerIsBetter }: { current: number; prev: number; lowerIsBetter?: boolean }) {
@@ -33,9 +38,14 @@ function Delta({ current, prev, lowerIsBetter }: { current: number; prev: number
   )
 }
 
-export function MetricTile({ label, value, sparkData, prevValue, currentRaw, lowerIsBetter, note }: MetricTileProps) {
+export function MetricTile({ label, value, sparkData, prevValue, currentRaw, lowerIsBetter, note, tooltip }: MetricTileProps) {
   const hasDelta = currentRaw != null && prevValue != null && prevValue !== 0
   const hasSpark = sparkData && sparkData.length > 1
+  const tip = useFastTip()
+
+  const tipContent = tooltip
+    ? (typeof tooltip === 'string' ? { title: label, description: tooltip } : tooltip)
+    : getMetricTooltip(label)
 
   return (
     <div className="card" style={{
@@ -45,17 +55,53 @@ export function MetricTile({ label, value, sparkData, prevValue, currentRaw, low
       justifyContent: 'space-between',
       gap: 12,
       minHeight: 100,
+      position: 'relative',
     }}>
-      {/* Top: label */}
-      <div style={{
-        fontSize: 10, fontWeight: 700, letterSpacing: '.06em',
-        textTransform: 'uppercase' as const, color: 'var(--text-2)',
-      }}>
-        {label}
+      {/* Top: label + help affordance */}
+      <div
+        {...(tipContent ? tip.bind(tipContent) : {})}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 6,
+          cursor: tipContent ? 'help' : 'default',
+        }}
+      >
+        <span style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: '.06em',
+          textTransform: 'uppercase' as const, color: 'var(--text-2)',
+          borderBottom: tipContent ? '1px dotted var(--border)' : 'none',
+          paddingBottom: tipContent ? 1 : 0,
+        }}>
+          {label}
+        </span>
+        {tipContent && (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              color: 'var(--text-3)',
+              opacity: 0.7,
+              flexShrink: 0,
+            }}
+          >
+            <HelpCircle size={12} strokeWidth={2} />
+          </span>
+        )}
       </div>
 
       {/* Bottom: value + delta | sparkline */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
+      <div
+        {...(tipContent ? tip.bind(tipContent) : {})}
+        style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          gap: 8,
+          cursor: tipContent ? 'help' : 'default',
+        }}
+      >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <div style={{
             fontSize: 20, fontWeight: 700, color: 'var(--text-1)',
@@ -75,6 +121,8 @@ export function MetricTile({ label, value, sparkData, prevValue, currentRaw, low
           </div>
         )}
       </div>
+
+      {tip.node}
     </div>
   )
 }
