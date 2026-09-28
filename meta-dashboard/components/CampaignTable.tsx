@@ -68,7 +68,8 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
   const tip = useFastTip()
   const [sortCol, setSortCol] = useState<SortCol>('spend')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [filterStatus, setFilterStatus] = useState<string>('ALL')
+  const hasActive = campaigns.some(c => statusOf(c) === 'ACTIVE')
+  const [filterStatus, setFilterStatus] = useState<string>(hasActive ? 'ACTIVE' : 'ALL')
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null)
   const [adsetData, setAdsetData] = useState<Record<string, AdSet[]>>({})
   const [loadingAdset, setLoadingAdset] = useState<string | null>(null)
@@ -112,7 +113,10 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
   }, [expandedAdset, adsData, datePreset])
 
   const order = ['ACTIVE', 'NO_DELIVERY']
-  const statuses = ['ALL', ...Array.from(new Set(campaigns.map(statusOf))).sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99))]
+  const uniqueStatuses = Array.from(new Set(campaigns.map(statusOf))).sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99))
+  const statuses = uniqueStatuses.includes('ACTIVE')
+    ? ['ACTIVE', 'ALL', ...uniqueStatuses.filter(s => s !== 'ACTIVE')]
+    : ['ALL', ...uniqueStatuses]
 
   const sorted = [...campaigns]
     .filter(c => filterStatus === 'ALL' || statusOf(c) === filterStatus)
@@ -471,6 +475,20 @@ export function CampaignTable({ campaigns, currency, datePreset = 'last_7d', kin
                 </Fragment>
               )
             })}
+            {sorted.length === 0 && (
+              <tr>
+                <td colSpan={8} style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)', fontSize: 13 }}>
+                  Nenhuma campanha com o filtro &quot;{STATUS_MAP[filterStatus]?.label ?? filterStatus}&quot; no período.{' '}
+                  <button
+                    type="button"
+                    onClick={() => setFilterStatus('ALL')}
+                    style={{ color: 'var(--accent)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    Ver todas as campanhas
+                  </button>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

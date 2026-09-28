@@ -49,19 +49,45 @@ export const dailyQuery = (r: Range) => `SELECT segments.date, ${METRICS} FROM c
 export const campaignsQuery = (r: Range) =>
   `SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign_budget.amount_micros, ${METRICS} FROM campaign WHERE segments.date BETWEEN '${r.since}' AND '${r.until}' AND campaign.status != 'REMOVED' ORDER BY metrics.cost_micros DESC LIMIT 100`
 export const currencyQuery = () => 'SELECT customer.currency_code, customer.descriptive_name FROM customer LIMIT 1'
+export const searchTermsQuery = (r: Range) =>
+  `SELECT search_term_view.search_term, metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.ctr FROM search_term_view WHERE segments.date BETWEEN '${r.since}' AND '${r.until}' ORDER BY metrics.clicks DESC LIMIT 50`
+export const geographicQuery = (r: Range) =>
+  `SELECT geographic_view.country_criterion_id, segments.geo_target_region, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions FROM geographic_view WHERE segments.date BETWEEN '${r.since}' AND '${r.until}' ORDER BY metrics.cost_micros DESC LIMIT 30`
 
 /** Linha da API (REST devolve camelCase; números grandes chegam como texto). */
 export interface GRow {
-  segments?: { date?: string }
+  segments?: { date?: string; geoTargetRegion?: string }
   campaign?: { id?: string; name?: string; status?: string; advertisingChannelType?: string }
   campaignBudget?: { amountMicros?: string | number }
   customer?: { currencyCode?: string; descriptiveName?: string }
-  metrics?: { costMicros?: string | number; impressions?: string | number; clicks?: string | number; conversions?: number | string; conversionsValue?: number | string }
+  searchTermView?: { searchTerm?: string }
+  geographicView?: { countryCriterionId?: string | number }
+  metrics?: { costMicros?: string | number; impressions?: string | number; clicks?: string | number; conversions?: number | string; conversionsValue?: number | string; ctr?: number | string }
 }
 
 export interface GSummary { spend: number; impressions: number; clicks: number; conversions: number; conversionValue: number; ctr: number; cpc: number; cpa: number; roas: number }
 export interface GDay extends Pick<GSummary, 'spend' | 'clicks' | 'conversions' | 'impressions'> { date: string }
 export interface GCampaign extends GSummary { id: string; name: string; status: 'ENABLED' | 'PAUSED' | 'REMOVED' | string; channel: string; dailyBudget: number | null }
+
+export interface GSearchTerm {
+  searchTerm: string
+  impressions: number
+  clicks: number
+  spend: number
+  conversions: number
+  ctr: number
+  cpc: number
+}
+
+export interface GRegion {
+  region: string
+  spend: number
+  impressions: number
+  clicks: number
+  conversions: number
+  ctr: number
+  cpc: number
+}
 
 const num = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
 const micros = (v: unknown) => Math.round(num(v) / 10_000) / 100 // micros → unidade da moeda, 2 casas
@@ -98,6 +124,77 @@ export function parseCampaigns(rows: GRow[]): GCampaign[] {
     id: String(r.campaign!.id), name: r.campaign!.name ?? '(sem nome)', status: r.campaign!.status ?? 'UNKNOWN',
     channel: r.campaign!.advertisingChannelType ?? '', dailyBudget: r.campaignBudget?.amountMicros != null ? micros(r.campaignBudget.amountMicros) : null,
   })).sort((a, b) => b.spend - a.spend)
+}
+
+export function parseSearchTerms(rows: GRow[]): GSearchTerm[] {
+  return rows
+    .filter(r => r.searchTermView?.searchTerm)
+    .map(r => {
+      const x = totals(r.metrics)
+      return {
+        searchTerm: r.searchTermView!.searchTerm!,
+        impressions: x.impressions,
+        clicks: x.clicks,
+        spend: x.spend,
+        conversions: x.conversions,
+        ctr: x.impressions > 0 ? (x.clicks / x.impressions) * 100 : 0,
+        cpc: x.clicks > 0 ? x.spend / x.clicks : 0,
+      }
+    })
+    .sort((a, b) => b.clicks - a.clicks)
+}
+
+export const BRAZIL_STATES: Record<string, string> = {
+  '20106': 'São Paulo (SP)',
+  '20102': 'Rio de Janeiro (RJ)',
+  '20098': 'Minas Gerais (MG)',
+  '20103': 'Rio Grande do Sul (RS)',
+  '20101': 'Paraná (PR)',
+  '20105': 'Santa Catarina (SC)',
+  '20088': 'Bahia (BA)',
+  '20094': 'Goiás (GO)',
+  '20091': 'Distrito Federal (DF)',
+  '20090': 'Ceará (CE)',
+  '20100': 'Pernambuco (PE)',
+  '20093': 'Espírito Santo (ES)',
+  '20097': 'Mato Grosso do Sul (MS)',
+  '20096': 'Mato Grosso (MT)',
+  '20095': 'Maranhão (MA)',
+  '20099': 'Pará (PA)',
+  '20104': 'Rio Grande do Norte (RN)',
+  '20092': 'Paraíba (PB)',
+  '20086': 'Alagoas (AL)',
+  '20107': 'Sergipe (SE)',
+  '20108': 'Tocantins (TO)',
+  '20109': 'Piauí (PI)',
+  '20087': 'Amazonas (AM)',
+  '20089': 'Rondônia (RO)',
+  '20085': 'Acre (AC)',
+  '20084': 'Amapá (AP)',
+  '20110': 'Roraima (RR)',
+}
+
+export function parseGeographic(rows: GRow[]): GRegion[] {
+  const map = new Map<string, GRegion>()
+  for (const r of rows) {
+    const rawRegion = r.segments?.geoTargetRegion ?? ''
+    const regionId = rawRegion.replace(/^geoTargetConstants\//, '')
+    const name = BRAZIL_STATES[regionId] || (regionId ? `Região ${regionId}` : 'Brasil')
+    const x = totals(r.metrics)
+    const existing = map.get(name) ?? { region: name, spend: 0, impressions: 0, clicks: 0, conversions: 0, ctr: 0, cpc: 0 }
+    existing.spend = Math.round((existing.spend + x.spend) * 100) / 100
+    existing.impressions += x.impressions
+    existing.clicks += x.clicks
+    existing.conversions = Math.round((existing.conversions + x.conversions) * 10) / 10
+    map.set(name, existing)
+  }
+  return Array.from(map.values())
+    .map(g => ({
+      ...g,
+      ctr: g.impressions > 0 ? (g.clicks / g.impressions) * 100 : 0,
+      cpc: g.clicks > 0 ? g.spend / g.clicks : 0,
+    }))
+    .sort((a, b) => b.spend - a.spend)
 }
 
 /** ID da conta: só os 10 dígitos, aceita "123-456-7890". Vazio se inválido. */

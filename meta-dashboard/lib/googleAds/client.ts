@@ -1,7 +1,18 @@
-import { campaignsQuery, currencyQuery, dailyQuery, parseCampaigns, parseDaily, parseSummary, previousRange, rangeFor, summaryQuery, type GCampaign, type GDay, type GRow, type GSummary, type GooglePreset } from './gaql'
+import { campaignsQuery, currencyQuery, dailyQuery, geographicQuery, parseCampaigns, parseDaily, parseGeographic, parseSearchTerms, parseSummary, previousRange, rangeFor, searchTermsQuery, summaryQuery, type GCampaign, type GDay, type GRegion, type GRow, type GSearchTerm, type GSummary, type GooglePreset } from './gaql'
 import { mockGoogle } from './mock'
 
-export interface GoogleMetrics { currency: string; accountName: string | null; range: { since: string; until: string }; summary: GSummary; previous: GSummary; daily: GDay[]; campaigns: GCampaign[]; source: 'live' | 'demo' }
+export interface GoogleMetrics {
+  currency: string
+  accountName: string | null
+  range: { since: string; until: string }
+  summary: GSummary
+  previous: GSummary
+  daily: GDay[]
+  campaigns: GCampaign[]
+  searchTerms?: GSearchTerm[]
+  regions?: GRegion[]
+  source: 'live' | 'demo'
+}
 
 /** live: credenciais completas · demo: GOOGLE_ADS_MOCK=1 (dados de exemplo, nunca em produção real) · off: falta configurar. */
 export function googleAdsMode(): 'live' | 'demo' | 'off' {
@@ -59,12 +70,26 @@ export async function fetchGoogleMetrics(customerId: string, preset: GooglePrese
   const hit = cache.get(key)
   if (hit && Date.now() - hit.at < TTL) return hit.data
   const prev = previousRange(range)
-  const [cur, prevRows, daily, camps, meta] = await Promise.all([
-    gaql(customerId, summaryQuery(range)), gaql(customerId, summaryQuery(prev)), gaql(customerId, dailyQuery(range)), gaql(customerId, campaignsQuery(range)), gaql(customerId, currencyQuery()),
+  const [cur, prevRows, daily, camps, searchRows, geoRows, meta] = await Promise.all([
+    gaql(customerId, summaryQuery(range)),
+    gaql(customerId, summaryQuery(prev)),
+    gaql(customerId, dailyQuery(range)),
+    gaql(customerId, campaignsQuery(range)),
+    gaql(customerId, searchTermsQuery(range)).catch(() => [] as GRow[]),
+    gaql(customerId, geographicQuery(range)).catch(() => [] as GRow[]),
+    gaql(customerId, currencyQuery()),
   ])
   const data: GoogleMetrics = {
-    currency: meta[0]?.customer?.currencyCode ?? 'BRL', accountName: meta[0]?.customer?.descriptiveName ?? null, range,
-    summary: parseSummary(cur), previous: parseSummary(prevRows), daily: parseDaily(daily), campaigns: parseCampaigns(camps), source: 'live',
+    currency: meta[0]?.customer?.currencyCode ?? 'BRL',
+    accountName: meta[0]?.customer?.descriptiveName ?? null,
+    range,
+    summary: parseSummary(cur),
+    previous: parseSummary(prevRows),
+    daily: parseDaily(daily),
+    campaigns: parseCampaigns(camps),
+    searchTerms: parseSearchTerms(searchRows),
+    regions: parseGeographic(geoRows),
+    source: 'live',
   }
   cache.set(key, { at: Date.now(), data })
   return data

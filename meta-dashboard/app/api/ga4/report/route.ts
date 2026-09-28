@@ -22,11 +22,18 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     const kind = e instanceof Ga4Error ? e.kind : 'other'
     const email = serviceAccount()?.client_email
-    const message = kind === 'access' ? `Sem acesso a esta propriedade do Google Analytics. Peça para adicionar ${email ?? 'a conta de serviço'} como Leitor.`
-      : kind === 'notfound' ? 'Propriedade do Google Analytics não encontrada. Confira o ID no cadastro do cliente.'
-      : kind === 'quota' ? 'Limite do Google Analytics atingido. Tente de novo em alguns minutos.'
-      : kind === 'auth' ? 'Falha ao autenticar no Google Analytics. Confira a conta de serviço.'
-      : 'Não foi possível ler o Google Analytics agora.'
+    const origMsg = e instanceof Error ? e.message : ''
+    const message = kind === 'disabled'
+      ? `A API do Google Analytics Data precisa ser ativada no Google Cloud Console. Acesse https://console.cloud.google.com/apis/library/analyticsdata.googleapis.com e clique em "Ativar".`
+      : kind === 'access'
+      ? `Sem acesso a esta propriedade do Google Analytics. Peça para adicionar ${email ? `o e-mail ${email}` : 'o seu usuário/conta'} como Leitor no painel do Google Analytics.`
+      : kind === 'notfound'
+      ? 'Propriedade do Google Analytics não encontrada. Confira o ID no cadastro do cliente.'
+      : kind === 'quota'
+      ? 'Limite do Google Analytics atingido. Tente de novo em alguns minutos.'
+      : kind === 'auth'
+      ? `Falha ao autenticar no Google Analytics. ${origMsg || 'Confira as credenciais do Google.'}`
+      : (origMsg || 'Não foi possível ler o Google Analytics agora.')
     return NextResponse.json({ setup: 'error', kind, message }, { status: 502 })
   }
 }

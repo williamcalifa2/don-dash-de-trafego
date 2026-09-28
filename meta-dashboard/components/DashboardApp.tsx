@@ -6,8 +6,9 @@ import { MetricTile } from '@/components/MetricTile'
 import { DailyChart } from '@/components/DailyChart'
 import { FunnelTab } from '@/components/FunnelTab'
 import { LeadsTab } from '@/components/LeadsTab'
-import { MetricPicker, useSelectedMetrics } from '@/components/MetricPicker'
-import type { MetricKey } from '@/lib/metricDefs'
+import { GoogleMetricPicker, MetricPicker, useSelectedGoogleMetrics, useSelectedMetrics } from '@/components/MetricPicker'
+import type { GoogleMetricKey, MetricKey } from '@/lib/metricDefs'
+import type { GoogleMetrics } from '@/lib/googleAds/client'
 import { TvMode } from '@/components/TvMode'
 import { ReportTab } from '@/components/ReportTab'
 import { ReportStudioTab } from '@/components/ReportStudioTab'
@@ -129,7 +130,12 @@ function Dashboard() {
   const leadsApi = useLeadsData()
   const alerts = useLeadAlerts(leadsApi.leads, !leadsApi.loading && !leadsApi.error)
   const staleCount = useMemo(() => leadsApi.leads.filter(l => isStale(l)).length, [leadsApi.leads])
-  const [selectedMetrics, setSelectedMetrics] = useSelectedMetrics()
+  const [selectedMetrics, setSelectedMetrics] = useSelectedMetrics(me?.slug)
+  const [googleMetrics, setGoogleMetrics] = useState<GoogleMetrics | null>(null)
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const [googlePickerOpen, setGooglePickerOpen] = useState(false)
+  const hasGoogle = !!me?.platforms?.includes('google')
+  const [selectedGoogleMetrics, setSelectedGoogleMetrics] = useSelectedGoogleMetrics(me?.slug)
   // Publica a aba atual para a análise de uso e o mapa de calor saberem em que tela a pessoa está.
   useEffect(() => { document.body.dataset.view = tab; return () => { delete document.body.dataset.view } }, [tab])
   // A sidebar da agência abre o Report Studio; o link de outra tela traz ?tab=reports.
@@ -287,24 +293,170 @@ function Dashboard() {
     }
   }, [mutate])
 
+  useEffect(() => {
+    if (!hasGoogle) {
+      setGoogleMetrics(null)
+      return
+    }
+    let alive = true
+    setGoogleLoading(true)
+    apiFetch(`/api/google/metrics?date_preset=${preset}`, { cache: 'no-store' })
+      .then(async r => {
+        if (!r.ok) return null
+        const j = await r.json().catch(() => null)
+        if (j?.setup === 'ready') return j as GoogleMetrics
+        return null
+      })
+      .then(g => {
+        if (alive) {
+          setGoogleMetrics(g)
+          setGoogleLoading(false)
+        }
+      })
+      .catch(() => {
+        if (alive) setGoogleLoading(false)
+      })
+    return () => { alive = false }
+  }, [hasGoogle, preset])
+
+  const blendedSummary = useMemo(() => {
+    if (!s) return null
+    if (!hasGoogle || !googleMetrics?.summary) return s
+
+    const gs = googleMetrics.summary
+    const spend = Math.round((s.spend + gs.spend) * 100) / 100
+    const impressions = s.impressions + gs.impressions
+    const clicks = s.clicks + gs.clicks
+    const results = (s.results || 0) + (gs.conversions || 0)
+    const leads = (s.leads || 0) + (gs.conversions || 0)
+    const purchase_value = (s.purchase_value || 0) + (gs.conversionValue || 0)
+    const roas = spend > 0 ? (purchase_value / spend) : (s.roas || 0)
+    const ctr = impressions > 0 ? (clicks / impressions) * 100 : s.ctr
+    const cpc = clicks > 0 ? spend / clicks : s.cpc
+    const cost_per_result = results > 0 ? spend / results : s.cost_per_result
+    const cpl = leads > 0 ? spend / leads : s.cpl
+
+    return {
+      ...s,
+      spend,
+      impressions,
+      clicks,
+      results,
+      leads,
+      purchase_value,
+      roas,
+      ctr,
+      cpc,
+      cost_per_result,
+      cpl,
+    }
+  }, [s, hasGoogle, googleMetrics])
+
+  const blendedPrev = useMemo(() => {
+    if (!p) return undefined
+    if (!hasGoogle || !googleMetrics?.previous) return p
+
+    const gp = googleMetrics.previous
+    const spend = Math.round((p.spend + gp.spend) * 100) / 100
+    const impressions = p.impressions + gp.impressions
+    const clicks = p.clicks + gp.clicks
+    const results = (p.results || 0) + (gp.conversions || 0)
+    const leads = (p.leads || 0) + (gp.conversions || 0)
+    const purchase_value = (p.purchase_value || 0) + (gp.conversionValue || 0)
+    const roas = spend > 0 ? (purchase_value / spend) : (p.roas || 0)
+    const ctr = impressions > 0 ? (clicks / impressions) * 100 : p.ctr
+    const cpc = clicks > 0 ? spend / clicks : p.cpc
+    const cost_per_result = results > 0 ? spend / results : p.cost_per_result
+    const cpl = leads > 0 ? spend / leads : p.cpl
+
+    return {
+      ...p,
+      spend,
+      impressions,
+      clicks,
+      results,
+      leads,
+      purchase_value,
+      roas,
+      ctr,
+      cpc,
+      cost_per_result,
+      cpl,
+    }
+  }, [p, hasGoogle, googleMetrics])
+
+  const blendedDaily = useMemo(() => {
+    if (!d) return undefined
+    if (!hasGoogle || !googleMetrics?.daily?.length) return d
+
+    const gMap = new Map(googleMetrics.daily.map(gd => [gd.date, gd]))
+    const newSpend = d.spend.map((sp, i) => {
+      const date = d.dates[i]
+      const gDay = gMap.get(date)
+      return Math.round((sp + (gDay?.spend || 0)) * 100) / 100
+    })
+    const newLeads = d.leads.map((ld, i) => {
+      const date = d.dates[i]
+      const gDay = gMap.get(date)
+      return Math.round((ld + (gDay?.conversions || 0)) * 10) / 10
+    })
+    const newImpressions = d.impressions.map((im, i) => {
+      const date = d.dates[i]
+      const gDay = gMap.get(date)
+      return im + (gDay?.impressions || 0)
+    })
+    const metaClicks: number[] = d.clicks || (d.metrics as Record<string, number[]> | undefined)?.clicks || d.dates.map(() => 0)
+    const newClicks = metaClicks.map((cl: number, i: number) => {
+      const date = d.dates[i]
+      const gDay = gMap.get(date)
+      return cl + (gDay?.clicks || 0)
+    })
+    const newCtr = newImpressions.map((im, i) => (im > 0 ? (newClicks[i] / im) * 100 : 0))
+    const newCpl = newSpend.map((sp, i) => (newLeads[i] > 0 ? sp / newLeads[i] : 0))
+
+    return {
+      ...d,
+      spend: newSpend,
+      leads: newLeads,
+      cpl: newCpl,
+      impressions: newImpressions,
+      clicks: newClicks,
+      ctr: newCtr,
+      metrics: {
+        ...d.metrics,
+        spend: newSpend,
+        leads: newLeads,
+        results: newLeads,
+        impressions: newImpressions,
+        clicks: newClicks,
+        ctr: newCtr,
+      },
+    }
+  }, [d, hasGoogle, googleMetrics])
+
+  const currentSummary = tab === 'metrics' ? (blendedSummary || s) : s
+  const currentPrev = tab === 'metrics' ? (blendedPrev || p) : p
+  const currentDaily = tab === 'metrics' ? (blendedDaily || d) : d
+
   const tiles = useMemo(() => {
-    if (!s) return []
-    // Os indicadores principais da conta vêm sempre primeiro (investimento, resultado e custo por resultado); o resto segue a escolha da pessoa, sem repetir nada.
-    const main: MetricKey[] = kind === 'sales' ? ['spend', 'leads', 'cpl', 'roas', 'purchase_value'] : ['spend', 'leads', 'cpl']
-    const keys = [...new Set<MetricKey>([...main, ...selectedMetrics])]
+    if (!currentSummary) return []
+    const keys = Array.from(new Set(selectedMetrics))
     const seen = new Set<string>()
     return keys
       .map(key => {
-        const t = buildTile(key, s, p, d, currency, kind)
-        if (t && !t.spark) t.spark = d?.metrics?.[kind !== 'form' && key === 'leads' ? 'results' : key]
+        const t = buildTile(key, currentSummary, currentPrev, currentDaily, currency, kind)
+        const sparkMetrics = currentDaily?.metrics as Record<string, number[]> | undefined
+        if (t && !t.spark && sparkMetrics) {
+          t.spark = sparkMetrics[kind !== 'form' && key === 'leads' ? 'results' : key]
+        }
         return t ? { ...t, id: key } : null
       })
       .filter((t): t is NonNullable<typeof t> => {
-        if (!t || seen.has(t.label)) return false // dois indicadores com o mesmo nome (ex.: "CPA" e "Custo por compra") viram um só
+        if (!t || seen.has(t.label)) return false
         seen.add(t.label)
         return true
       })
-  }, [s, selectedMetrics, p, d, currency, kind])
+  }, [currentSummary, selectedMetrics, currentPrev, currentDaily, currency, kind])
 
   const hasEnvError = data?.error?.includes('META_ACCESS_TOKEN')
 
@@ -476,7 +628,15 @@ function Dashboard() {
               <CalendarDays size={16} strokeWidth={1.75} />
             </button>
 
-            <button onClick={() => setPickerOpen(true)} title="Personalizar métricas" aria-label="Personalizar métricas" className="btn btn-outline btn-icon btn-sm">
+            <button
+              onClick={() => {
+                if (tab === 'google') setGooglePickerOpen(true)
+                else setPickerOpen(true)
+              }}
+              title={tab === 'google' ? 'Personalizar métricas do Google Ads' : 'Personalizar métricas'}
+              aria-label="Personalizar métricas"
+              className="btn btn-outline btn-icon btn-sm"
+            >
               <Settings2 size={16} strokeWidth={1.75} />
             </button>
             <button onClick={alerts.toggle} aria-pressed={alerts.enabled}
@@ -506,7 +666,7 @@ function Dashboard() {
           <div className="tabs" role="tablist" style={{ borderBottom: 'none', marginBottom: 0 }}>
             {([
               ['metrics', 'Geral'],
-              ['campaigns', 'Campanhas'],
+              ['campaigns', 'Meta Ads'],
               ['google', 'Google Ads'],
               ['site', 'Site'],
               ['organic', 'Orgânico'],
@@ -564,7 +724,13 @@ function Dashboard() {
           />
         )}
         {tab === 'site' && <SiteTab preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} />}
-        {tab === 'google' && <GoogleTab preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} />}
+        {tab === 'google' && (
+          <GoogleTab
+            preset={preset}
+            presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''}
+            clientSlug={me?.slug}
+          />
+        )}
         {tab === 'audience' && <AudienceTab preset={preset} presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''} kind={kind} />}
         {tab === 'organic' && <OrganicTab preset="this_month" presetLabel="Este mês" isStaff={!me?.authEnabled || !!me?.admin} canLink={me?.role === 'owner' || me?.role === 'admin'} slug={me?.slug} />}
         {tab === 'leads' && <LeadsTab openId={openLeadId} onOpenConsumed={() => setOpenLeadId(null)} readOnly={me?.role === 'reader'} />}
@@ -616,12 +782,17 @@ function Dashboard() {
           </div>
         )}
 
-
-
         {/* Metric tiles */}
-        {s && tab === 'metrics' && (
+        {currentSummary && tab === 'metrics' && (
           <>
-            <div className="tile-grid" style={{ marginBottom: 4, opacity: isLoading ? 0.7 : 1, transition: 'opacity 0.2s' }}>
+            {hasGoogle && googleMetrics?.summary && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 600, fontSize: 11 }}>
+                  Meta Ads + Google Ads combinados
+                </span>
+              </div>
+            )}
+            <div className="tile-grid" style={{ marginBottom: 4, opacity: (isLoading || googleLoading) ? 0.7 : 1, transition: 'opacity 0.2s' }}>
               {tiles.map((t) => (
                 <MetricTile
                   key={t.id}
@@ -641,10 +812,10 @@ function Dashboard() {
         )}
 
         {/* Daily chart */}
-        {!isLoading && d && tab === 'metrics' && (
+        {!isLoading && currentDaily && tab === 'metrics' && (
           <div className="card" style={{ padding: 24, marginBottom: 24 }}>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Evolução diária{preset === 'today' ? <span style={{ fontWeight: 400, color: 'var(--text-2)', fontSize: 13 }}> · últimos 7 dias</span> : null}</div>
-            <DailyChart daily={d} currency={currency} kind={kind} />
+            <DailyChart daily={currentDaily} currency={currency} kind={kind} />
           </div>
         )}
 
@@ -655,10 +826,6 @@ function Dashboard() {
             {data.freshness?.note && <div style={{ color: 'var(--amber)', marginTop: 4 }} role="status">{data.freshness.note}</div>}
           </div>
         )}
-
-
-
-
 
         {alerts.toast && (
           <LeadToast
@@ -673,7 +840,7 @@ function Dashboard() {
         {tv && (
           <TvMode
             data={data ?? null}
-            summary={s}
+            summary={currentSummary}
             tiles={tiles}
             currency={currency}
             presetLabel={PRESETS.find(pr => pr.value === preset)?.label ?? ''}
@@ -700,11 +867,24 @@ function Dashboard() {
           />
         )}
 
+        {/* Google Metric Picker modal */}
+        {googlePickerOpen && (
+          <GoogleMetricPicker
+            selected={selectedGoogleMetrics}
+            summary={googleMetrics?.summary}
+            currency={currency}
+            onClose={(keys) => {
+              setSelectedGoogleMetrics(keys)
+              setGooglePickerOpen(false)
+            }}
+          />
+        )}
+
         {/* Calendar View Modal */}
         {calendarOpen && (
           <CalendarViewModal
             onClose={() => setCalendarOpen(false)}
-            daily={d}
+            daily={currentDaily}
             currency={currency}
             kind={kind}
             leads={leadsApi.leads}

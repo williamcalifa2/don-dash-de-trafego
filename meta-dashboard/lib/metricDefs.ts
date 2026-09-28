@@ -32,3 +32,22 @@ export const DEFAULT_METRICS: MetricKey[] = [
   'spend', 'leads', 'cpl', 'roas', 'impressions', 'ctr', 'cpm', 'frequency',
 ]
 
+export const GOOGLE_METRIC_DEFS = [
+  { key: 'spend', label: 'Investimento', group: 'Financeiro' },
+  { key: 'cpc', label: 'CPC médio', group: 'Financeiro' },
+  { key: 'cpa', label: 'Custo por conversão', group: 'Financeiro' },
+  { key: 'roas', label: 'ROAS', group: 'Financeiro' },
+  { key: 'conversionValue', label: 'Valor de conversão', group: 'Financeiro' },
+  { key: 'impressions', label: 'Impressões', group: 'Alcance' },
+  { key: 'clicks', label: 'Cliques', group: 'Engajamento' },
+  { key: 'ctr', label: 'CTR', group: 'Engajamento' },
+  { key: 'conversions', label: 'Conversões', group: 'Conversões' },
+  { key: 'conversionRate', label: 'Taxa de conversão', group: 'Conversões' },
+] as const
+
+export type GoogleMetricKey = typeof GOOGLE_METRIC_DEFS[number]['key']
+
+export const DEFAULT_GOOGLE_METRICS: GoogleMetricKey[] = [
+  'spend', 'impressions', 'clicks', 'ctr', 'cpc', 'conversions', 'cpa', 'roas',
+]
+
