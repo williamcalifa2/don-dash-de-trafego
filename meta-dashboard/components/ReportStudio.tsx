@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Circle,
   Clock,
+  Copy,
   Download,
   Eye,
   EyeOff,
@@ -838,6 +839,8 @@ export function ReportStudio({
   const [saveTitle, setSaveTitle] = useState('')
   const [savingLibrary, setSavingLibrary] = useState(false)
   const [librarySaved, setLibrarySaved] = useState(false)
+  const [meetingNotesOpen, setMeetingNotesOpen] = useState(false)
+  const [meetingNotesCopied, setMeetingNotesCopied] = useState(false)
 
   const toggleReportTheme = () => {
     setReportTheme(prev => {
@@ -1191,15 +1194,16 @@ export function ReportStudio({
     const el = stageBox.current
     if (!el) return
     const fit = () => {
-      const extraW = drawingOpen ? 104 : 36
-      const extraH = presenterMode ? 190 : 48
-      setScale(Math.max(0.3, Math.min(1, (el.clientWidth - extraW) / STAGE.w, (el.clientHeight - extraH) / STAGE.h)))
+      const isCreatives = !!active && (active.id.includes('creat') || active.id.includes('criat'))
+      const extraW = drawingOpen ? 120 : 48
+      const extraH = presenterMode ? 230 : (isCreatives ? 120 : 75)
+      setScale(Math.max(0.25, Math.min(1, (el.clientWidth - extraW) / STAGE.w, (el.clientHeight - extraH) / STAGE.h)))
     }
     fit()
     const ro = new ResizeObserver(fit)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [phase.kind, drawingOpen, presenterMode])
+  }, [phase.kind, drawingOpen, presenterMode, active])
 
   const save = useCallback(async (n: ReportNotes, p = preset) => {
     if (readOnly || savedReport) return
@@ -1490,6 +1494,28 @@ export function ReportStudio({
           </button>
         )}
 
+        {/* Botão Notas da Reunião */}
+        {!readOnly && data && (
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            style={{
+              borderRadius: 20,
+              padding: '0 14px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontWeight: 600,
+            }}
+            onClick={() => setMeetingNotesOpen(true)}
+            title="Anotações e decisões da reunião com o cliente"
+          >
+            <FileText size={14} strokeWidth={1.75} />
+            <span>Notas da reunião</span>
+            {notes?.meetingNotes ? <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)' }} /> : null}
+          </button>
+        )}
+
         {/* Botão de Apresentar */}
         {data && (
           <button
@@ -1701,7 +1727,7 @@ export function ReportStudio({
               })}
             </nav>
           )}
-          <div ref={stageBox} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, background: 'var(--muted-bg, rgba(127,127,160,.08))', position: 'relative', overflow: 'hidden' }}>
+          <div ref={stageBox} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: presenterMode ? '8px 12px' : '10px 14px', background: 'var(--muted-bg, rgba(127,127,160,.08))', position: 'relative', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, maxWidth: '100%' }}>
               <div
                 style={{
@@ -2311,6 +2337,31 @@ export function ReportStudio({
                     <span>{formatPresentationTime(presentationTime)}</span>
                   </div>
 
+                  {/* Notas da Reunião */}
+                  <button
+                    type="button"
+                    onClick={() => setMeetingNotesOpen(true)}
+                    title="Notas e decisões da reunião"
+                    style={{
+                      height: 32,
+                      padding: '0 12px',
+                      borderRadius: 10,
+                      color: notes?.meetingNotes ? '#4ADE80' : '#CBD5E1',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <FileText size={15} />
+                    <span>Notas</span>
+                  </button>
+
                   {/* Sair do Modo Apresentador */}
                   <button
                     type="button"
@@ -2614,6 +2665,117 @@ export function ReportStudio({
               >
                 {savingLibrary ? <Loader2 size={14} className="spin" /> : <Bookmark size={14} />}
                 <span>{savingLibrary ? 'Salvando…' : savedReport ? 'Atualizar no Studio' : 'Salvar no Studio'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {meetingNotesOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 600,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+            backdropFilter: 'blur(3px)',
+          }}
+          onClick={() => setMeetingNotesOpen(false)}
+        >
+          <div
+            className="card"
+            style={{
+              width: '100%',
+              maxWidth: 680,
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+              borderRadius: 16,
+              overflow: 'hidden',
+              background: 'var(--bg-card, #FFFFFF)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <FileText size={18} color="var(--accent, #6366f1)" />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>Notas da Reunião</h3>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Anotações da call com o cliente · Salvas automaticamente</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-icon btn-sm"
+                onClick={() => setMeetingNotesOpen(false)}
+                aria-label="Fechar"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ padding: 20, flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+                Registre o que foi alinhado, feedbacks, alterações de orçamento aprovadas e próximos passos combinados:
+              </div>
+              <textarea
+                value={notes?.meetingNotes ?? ''}
+                onChange={e => edit('meetingNotes', e.target.value)}
+                placeholder="Ex:&#10;• Cliente aprovou aumentar o orçamento da campanha de Leads para R$ 100/dia a partir de quarta.&#10;• Ajustar criativo com foco na dor do pós-operatório.&#10;• Próxima reunião agendada para dia 05/10 às 14h."
+                rows={12}
+                style={{
+                  width: '100%',
+                  padding: 12,
+                  borderRadius: 10,
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-input, var(--bg))',
+                  color: 'var(--text-1)',
+                  fontSize: 14,
+                  lineHeight: 1.6,
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                  {saved === 'saving' ? 'Salvando…' : saved === 'saved' ? 'Salvo no banco' : 'Salvo automaticamente ao digitar'}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  onClick={async () => {
+                    if (!notes?.meetingNotes) return
+                    try {
+                      await navigator.clipboard.writeText(notes.meetingNotes)
+                      setMeetingNotesCopied(true)
+                      setTimeout(() => setMeetingNotesCopied(false), 2000)
+                    } catch { }
+                  }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                >
+                  {meetingNotesCopied ? <Check size={14} color="var(--green)" /> : <Copy size={14} />}
+                  <span>{meetingNotesCopied ? 'Notas copiadas!' : 'Copiar notas'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  if (notes) void save(notes)
+                  setMeetingNotesOpen(false)
+                }}
+              >
+                Salvar e Fechar
               </button>
             </div>
           </div>

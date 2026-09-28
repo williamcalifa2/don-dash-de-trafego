@@ -112,10 +112,10 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
           <Item collapsed={collapsed} icon={<LayoutGrid size={18} strokeWidth={1.75} />} label="Painel" active={onPanel} onClick={() => { setDrawer(false); if (!onPanel) go('/admin'); else window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
           {tasks.managerId && <Item collapsed={collapsed} icon={<ClipboardCheck size={18} strokeWidth={1.75} />} label="Otimizações" badge={tasks.pending} active={pathname.startsWith('/admin/tarefas')} onClick={() => { setDrawer(false); go('/admin/tarefas') }} />}
           <div className="staff-group">Administração</div>
-          {canOperate && <Item collapsed={collapsed} icon={<Building2 size={18} strokeWidth={1.75} />} label="Clientes" onClick={() => open('clients')} />}
-          {canOperate && <Item collapsed={collapsed} icon={<Receipt size={18} strokeWidth={1.75} />} label="Faturamento" active={pathname.startsWith('/admin/faturamento')} onClick={() => { setDrawer(false); go('/admin/faturamento') }} />}
           {canManage && <Item collapsed={collapsed} icon={<Gauge size={18} strokeWidth={1.75} />} label="Performance" active={onPerformance} onClick={() => { setDrawer(false); go('/admin/equipe') }} />}
+          {canOperate && <Item collapsed={collapsed} icon={<Building2 size={18} strokeWidth={1.75} />} label="Clientes" onClick={() => open('clients')} />}
           {canManage && <Item collapsed={collapsed} icon={<Users size={18} strokeWidth={1.75} />} label="Equipe" active={onTeam} onClick={() => open('team')} />}
+          {canOperate && <Item collapsed={collapsed} icon={<Receipt size={18} strokeWidth={1.75} />} label="Faturamento" active={pathname.startsWith('/admin/faturamento')} onClick={() => { setDrawer(false); go('/admin/faturamento') }} />}
           {canOperate && <>
             <div className="staff-group">Ferramentas</div>
             <Item collapsed={collapsed} icon={<FileBarChart size={18} strokeWidth={1.75} />} label="Report Studio" active={onReports} onClick={() => open('reports')} />
@@ -124,8 +124,8 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
           {canManage && <>
             <div className="staff-group">Análise</div>
             <Item collapsed={collapsed} icon={<Activity size={18} strokeWidth={1.75} />} label="Uso do app" active={onUsage} onClick={() => { setDrawer(false); go('/admin/uso') }} />
-            <Item collapsed={collapsed} icon={<Radar size={18} strokeWidth={1.75} />} label="Consumo da Meta" active={pathname.startsWith('/admin/consumo-meta')} onClick={() => { setDrawer(false); go('/admin/consumo-meta') }} />
             <Item collapsed={collapsed} icon={<MousePointerClick size={18} strokeWidth={1.75} />} label="Heatmap" active={onHeatmap} onClick={() => { setDrawer(false); go('/admin/heatmap') }} />
+            <Item collapsed={collapsed} icon={<Radar size={18} strokeWidth={1.75} />} label="Consumo da Meta" active={pathname.startsWith('/admin/consumo-meta')} onClick={() => { setDrawer(false); go('/admin/consumo-meta') }} />
           </>}
         </nav>
 

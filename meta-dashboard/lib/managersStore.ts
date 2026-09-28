@@ -123,7 +123,9 @@ export async function syncMetaActivity(opts: { only?: string[]; budgetMs?: numbe
 
   async function one(c: { id: string; slug: string; act: string }) {
     if (Date.now() > deadline) { out.skipped++; return }
-    const since = Math.floor((through.get(c.slug) ? Date.parse(through.get(c.slug)!) - 3_600_000 : Date.now() - FIRST_DAYS * 86_400_000) / 1000) // 1 h de folga: evento que a Meta registra com atraso
+    const throughMs = through.get(c.slug) ? Date.parse(through.get(c.slug)!) : null
+    const lookbackMin = Date.now() - 14 * 86_400_000
+    const since = Math.floor((throughMs ? Math.min(throughMs - 3_600_000, lookbackMin) : Date.now() - FIRST_DAYS * 86_400_000) / 1000)
     const rows: LogInsert[] = []
     let after: string | undefined
     let failed: string | null = null

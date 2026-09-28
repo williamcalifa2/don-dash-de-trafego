@@ -4,7 +4,7 @@ import MetaSyncPopover from '@/components/MetaSyncPopover'
 import AdminOverview from '@/components/AdminOverview'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, UserPlus, Copy, Check, ExternalLink, Settings2, Pencil, KeyRound, Trash2, Ban, LockOpen, Link2, X, Moon, Sun, Search, GripVertical, Users, RefreshCw, CalendarDays, ChevronDown, TrendingUp, DollarSign, Clock, ArrowRight, Loader2, Webhook } from 'lucide-react'
+import { ArrowLeft, UserPlus, Copy, Check, ExternalLink, Settings2, Pencil, KeyRound, Trash2, Ban, LockOpen, Link2, X, Moon, Sun, Search, GripVertical, Users, RefreshCw, CalendarDays, ChevronDown, TrendingUp, DollarSign, Clock, ArrowRight, Loader2, Webhook, LayoutGrid } from 'lucide-react'
 import { Sparkline } from '@/components/Sparkline'
 import { STATUS_META } from '@/components/LeadsTab'
 import { timeAgo } from '@/lib/leadUtils'
@@ -67,7 +67,7 @@ type Modal =
   | { kind: 'delete'; client: AdminClient }
   | { kind: 'metrics'; client: AdminClient }
   | { kind: 'team' }
-  | { kind: 'clients'; select: string | 'new' | null; tab?: ManagerTab }
+  | { kind: 'clients'; select: string | 'new' | 'all' | null; tab?: ManagerTab }
   | { kind: 'member-token'; email: string; token: string; role: TeamRole }
   | null
 
@@ -539,22 +539,22 @@ function Avatar({ name, logoUrl, size = 40 }: { name: string; logoUrl: string | 
 
 /** Gestão de clientes: cadastro, acessos (e-mail e token) e metas num lugar só, com a lista de clientes ao lado. */
 function ClientsManager({ clients, initial, initialTab, canManage, baseDomain, accounts, accountsError, accountsSavedAt, urlFor, onReload, onOpenPanel, onNotice, onConfigSaved, onClose }: {
-  clients: AdminClient[]; initial: string | 'new' | null; initialTab?: ManagerTab; canManage: boolean; baseDomain: string | null
+  clients: AdminClient[]; initial: string | 'new' | 'all' | null; initialTab?: ManagerTab; canManage: boolean; baseDomain: string | null
   accounts: MetaOption[]; accountsError: string | null; accountsSavedAt: number | null; urlFor: (slug: string) => string
   onReload: () => Promise<void>; onOpenPanel: (slug: string) => void; onNotice: (t: string) => void; onConfigSaved: (slug: string, active: boolean | undefined) => void; onClose: () => void
 }) {
-  const [selected, setSelected] = useState<string | 'new' | null>(initial ?? clients[0]?.slug ?? null)
+  const [selected, setSelected] = useState<string | 'new' | 'all' | null>(initial ?? clients[0]?.slug ?? null)
   const [tab, setTab] = useState<ManagerTab>(initialTab ?? 'cadastro')
   const [query, setQuery] = useState('')
   const [copied, setCopied] = useState(false)
-  const client = selected && selected !== 'new' ? clients.find(c => c.slug === selected) ?? null : null
+  const client = selected && selected !== 'new' && selected !== 'all' ? clients.find(c => c.slug === selected) ?? null : null
 
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
 
   const q = query.trim().toLowerCase()
   const list = clients.filter(c => !q || c.name.toLowerCase().includes(q) || c.slug.includes(q))
   const status = (c: AdminClient) => (c.locked ? { text: 'Bloqueado', dot: 'var(--red)' } : c.active === false ? { text: 'Pausado', dot: 'var(--amber)' } : { text: 'Ativo', dot: 'var(--green)' })
-  const pick = (slug: string | 'new') => { setSelected(slug); setTab(slug === 'new' ? 'cadastro' : tab) }
+  const pick = (slug: string | 'new' | 'all') => { setSelected(slug); setTab(slug === 'new' ? 'cadastro' : tab) }
   const TABS: Array<[ManagerTab, string]> = [['cadastro', 'Cadastro'], ['acessos', 'Acessos'], ['metas', 'Metas e status'], ['integracoes', 'Integrações']]
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
@@ -579,7 +579,29 @@ function ClientsManager({ clients, initial, initialTab, canManage, baseDomain, a
               <Search size={16} color="var(--text-2)" strokeWidth={1.75} aria-hidden="true" />
               <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente" />
             </label>
-            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{list.length} de {clients.length} cliente{clients.length !== 1 ? 's' : ''}</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{list.length} de {clients.length} cliente{clients.length !== 1 ? 's' : ''}</div>
+              <button
+                type="button"
+                onClick={() => setSelected('all')}
+                style={{
+                  background: selected === 'all' ? 'var(--accent-soft)' : 'none',
+                  border: 'none',
+                  color: selected === 'all' ? 'var(--accent)' : 'var(--text-2)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '2px 8px',
+                  borderRadius: 6,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <LayoutGrid size={13} />
+                <span>Ver todos</span>
+              </button>
+            </div>
           </div>
           <ul style={{ listStyle: 'none', margin: 0, padding: '0 8px 16px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
             {list.map(c => {
@@ -602,7 +624,107 @@ function ClientsManager({ clients, initial, initialTab, canManage, baseDomain, a
         </aside>
 
         <section className="cm-main">
-          <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ maxWidth: 840, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {selected === 'all' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Todos os Clientes</h2>
+                  <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '2px 0 0' }}>
+                    Visão geral dos {clients.length} clientes cadastrados na agência
+                  </p>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+                  <div className="card" style={{ padding: '12px 16px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase' }}>Total</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-1)', marginTop: 2 }}>{clients.length}</div>
+                  </div>
+                  <div className="card" style={{ padding: '12px 16px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase' }}>Ativos</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--green)', marginTop: 2 }}>{clients.filter(c => c.active !== false && !c.locked).length}</div>
+                  </div>
+                  <div className="card" style={{ padding: '12px 16px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase' }}>Pausados</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--amber)', marginTop: 2 }}>{clients.filter(c => c.active === false && !c.locked).length}</div>
+                  </div>
+                  <div className="card" style={{ padding: '12px 16px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase' }}>Bloqueados</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--red)', marginTop: 2 }}>{clients.filter(c => c.locked).length}</div>
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ background: 'var(--bg-card2)', borderBottom: '1px solid var(--border)' }}>
+                          <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: 'var(--text-2)' }}>Cliente</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-2)' }}>Status</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-2)' }}>Conta Meta</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-2)' }}>Plataformas</th>
+                          <th style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 600, color: 'var(--text-2)' }}>Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {list.map(c => {
+                          const st = status(c)
+                          const platforms = platformsFor({
+                            adAccountId: c.adAccountId,
+                            google: !!c.googleAdsCustomerId,
+                            ecommerce: !!c.ecommerce,
+                          })
+                          return (
+                            <tr key={c.slug} style={{ borderTop: '1px solid var(--border-soft)' }}>
+                              <td style={{ padding: '10px 14px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <Avatar name={c.name} logoUrl={c.logoUrl} size={32} />
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontWeight: 600, color: 'var(--text-1)' }}>{c.name}</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{c.slug}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: 'var(--text-1)' }}>
+                                  <i style={{ width: 7, height: 7, borderRadius: '50%', background: st.dot }} />
+                                  {st.text}
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 12px', color: 'var(--text-2)', fontSize: 12, fontFamily: 'monospace' }}>
+                                {c.adAccountId || '—'}
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <PlatformBadges platforms={platforms} height={14} />
+                              </td>
+                              <td style={{ padding: '10px 14px', textAlign: 'right' }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline btn-xs"
+                                    onClick={() => setSelected(c.slug)}
+                                  >
+                                    Gerenciar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-ghost btn-icon btn-xs"
+                                    onClick={() => onOpenPanel(c.slug)}
+                                    title="Abrir painel"
+                                  >
+                                    <ExternalLink size={13} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {selected === 'new' && (
               <>
                 <div><h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Novo cliente</h2><p style={{ fontSize: 13, color: 'var(--text-2)', margin: '2px 0 0' }}>Depois de salvar, você cadastra o e-mail de quem vai entrar e gera o token.</p></div>

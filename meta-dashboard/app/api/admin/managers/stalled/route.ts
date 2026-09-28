@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   const now = Date.now()
   const sinceIso = new Date(now - LOOKBACK_DAYS * 86_400_000).toISOString()
   const emails = reg.managers.flatMap(m => (m.email ? [m.email] : []))
-  const [log, access, names, logos] = await Promise.all([readLog({ sinceIso, limit: 20000 }), lastAccessByEmail(emails, sinceIso), clientNames(), clientLogos()])
+  const [log, access, names, logos] = await Promise.all([readLog({ sinceIso, limit: 20000, raw: true }), lastAccessByEmail(emails, sinceIso), clientNames(), clientLogos()])
   const lastAction = new Map<string, string>()
   // O histórico vem do mais novo para o mais antigo. Rodada de leitura e login não contam como movimento.
   for (const r of log ?? []) if (r.kind !== 'sync' && r.kind !== 'access' && !lastAction.has(r.client_slug)) lastAction.set(r.client_slug, r.at)

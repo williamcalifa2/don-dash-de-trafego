@@ -121,6 +121,7 @@ export interface ReportNotes {
   pillar1?: string
   pillar2?: string
   pillar3?: string
+  meetingNotes?: string
 }
 
 export type ReportMode = 'standard' | 'advanced' | 'organic'
@@ -396,6 +397,7 @@ export function cleanNotes(v: unknown): ReportNotes {
     goals: t('goals'),
     analysis: t('analysis'),
     next: t('next'),
+    ...(typeof o.meetingNotes === 'string' ? { meetingNotes: (o.meetingNotes as string).slice(0, 10000) } : {}),
     ...(hasOverrides ? { creativeOverrides: overrides } : {}),
   }
 }
