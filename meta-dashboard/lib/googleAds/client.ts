@@ -11,7 +11,7 @@ export function googleAdsMode(): 'live' | 'demo' | 'off' {
   return e.GOOGLE_ADS_MOCK === '1' ? 'demo' : 'off'
 }
 
-const API = 'https://googleads.googleapis.com/v20'
+const API = 'https://googleads.googleapis.com/v22'
 let tokenCache: { token: string; exp: number } | null = null
 
 async function accessToken(): Promise<string> {
@@ -37,11 +37,13 @@ export async function gaql(customerId: string, query: string): Promise<GRow[]> {
   }
   if (process.env.GOOGLE_ADS_DEVELOPER_TOKEN) headers['developer-token'] = process.env.GOOGLE_ADS_DEVELOPER_TOKEN
   if (process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID) headers['login-customer-id'] = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID.replace(/\D/g, '')
-  const res = await fetch(`${API}/customers/${customerId}/googleAds:search`, { method: 'POST', headers, body: JSON.stringify({ query, pageSize: 1000 }), cache: 'no-store' })
-  const j = await res.json().catch(() => ({})) as { results?: GRow[]; error?: { message?: string; status?: string } }
+  const res = await fetch(`${API}/customers/${customerId}/googleAds:search`, { method: 'POST', headers, body: JSON.stringify({ query }), cache: 'no-store' })
+  const j = await res.json().catch(() => ({})) as { results?: GRow[]; error?: { message?: string; status?: string; details?: Array<{ errors?: Array<{ message?: string; errorCode?: Record<string, string> }> }> } }
   if (!res.ok) {
+    const detailMsg = j.error?.details?.[0]?.errors?.[0]?.message
     const st = j.error?.status ?? ''
-    throw new GoogleAdsError(j.error?.message ?? `Google Ads ${res.status}`, res.status === 429 || st === 'RESOURCE_EXHAUSTED' ? 'quota' : res.status === 401 ? 'auth' : res.status === 403 ? 'access' : 'other')
+    const msg = detailMsg ?? j.error?.message ?? `Google Ads ${res.status}`
+    throw new GoogleAdsError(msg, res.status === 429 || st === 'RESOURCE_EXHAUSTED' ? 'quota' : res.status === 401 ? 'auth' : res.status === 403 ? 'access' : 'other')
   }
   return j.results ?? []
 }

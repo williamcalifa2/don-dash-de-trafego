@@ -21,7 +21,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ setup: 'ready', ...data }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (e) {
     const kind = e instanceof GoogleAdsError ? e.kind : 'other'
-    const message = kind === 'access' ? 'Sem acesso a esta conta do Google Ads. Confira se ela está dentro da conta gerente (MCC).' : kind === 'quota' ? 'Limite do Google Ads atingido. Tente de novo em alguns minutos.' : kind === 'auth' ? 'Falha ao autenticar no Google Ads. Confira as credenciais.' : 'Não foi possível ler o Google Ads agora.'
+    const detail = e instanceof Error ? e.message : ''
+    let message = 'Não foi possível ler o Google Ads agora.'
+    if (/test accounts/i.test(detail) || /NOT_APPROVED_FOR_PRODUCTION/i.test(detail)) {
+      message = 'O Token de Desenvolvedor da MCC está em modo de teste. Na Central da API da sua MCC, solicite o "Acesso Básico" (Basic Access) para ler contas reais de clientes.'
+    } else if (kind === 'access') {
+      message = detail || 'Sem acesso a esta conta do Google Ads. Confira se ela está dentro da conta gerente (MCC).'
+    } else if (kind === 'quota') {
+      message = 'Limite do Google Ads atingido. Tente de novo em alguns minutos.'
+    } else if (kind === 'auth') {
+      message = 'Falha ao autenticar no Google Ads. Confira as credenciais.'
+    }
     return NextResponse.json({ setup: 'error', kind, message }, { status: 502 })
   }
 }
