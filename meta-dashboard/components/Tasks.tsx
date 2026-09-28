@@ -1,13 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ArrowRight, Check, ChevronRight, LayoutGrid, List, Loader2 } from 'lucide-react'
+import { Check, ChevronRight, Loader2 } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import { REASONS, REASON_LABEL, type Task } from '@/lib/managers'
 import { DonutChart } from './Donut'
 import { ModalShell } from './ModalShell'
 import { PulseLoader } from './PulseLoader'
-import { SubTabs, Thumb, plural } from './UsageUi'
+import { SubTabs, Thumb } from './UsageUi'
 
 export type TaskView = Task & { clientName: string; clientLogo: string | null }
 interface ClientSummary { slug: string; name: string; logo: string | null; pending: number; answered: number; lastAt: string; headline: string; accountManager?: string | null }
@@ -77,7 +77,7 @@ function JustifyModal({ t, onClose, onSaved }: { t: TaskView; onClose: () => voi
 }
 
 /** Uma otimização (sessão de alterações): o que foi feito numa frase, numa linha só; clica pra abrir o popup e justificar. */
-function TaskItem({ t, onSaved, boxed }: { t: TaskView; onSaved: () => void; boxed?: boolean }) {
+function TaskItem({ t, onSaved, boxed, showClient }: { t: TaskView; onSaved: () => void; boxed?: boolean; showClient?: boolean }) {
   const answered = !!(t.reason || t.reasonKinds.length)
   const [open, setOpen] = useState(false)
   const [justifying, setJustifying] = useState(false)
@@ -88,9 +88,10 @@ function TaskItem({ t, onSaved, boxed }: { t: TaskView; onSaved: () => void; box
   const inner = (
     <>
       <button type="button" onClick={() => setJustifying(true)} style={{ display: 'flex', gap: 12, justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', background: 'none', border: 0, padding: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer', color: 'inherit' }}>
-        <div style={{ fontSize: 14, lineHeight: 1.5, overflowWrap: 'anywhere', minWidth: 0 }}>
-          <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>{when(t.at)}{t.actorName ? ` · ${t.actorName}` : ''}</span>
+        {showClient && <Thumb name={t.clientName} src={t.clientLogo} size={36} />}
+        <div style={{ fontSize: 14, lineHeight: 1.5, overflowWrap: 'anywhere', minWidth: 0, flex: 1 }}>
           <span style={{ display: 'block', whiteSpace: 'pre-line', fontWeight: 600 }}>{t.short || t.headline}</span>
+          <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>{showClient ? `${t.clientName} · ` : ''}{when(t.at)}{t.actorName ? ` · ${t.actorName}` : ''}</span>
         </div>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <span className="badge" style={{ background: answered ? 'var(--green-soft)' : 'rgba(245, 158, 11, 0.15)', color: 'var(--text-1)' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: answered ? 'var(--green)' : 'var(--amber)' }} />{answered ? 'Com motivo' : 'Sem motivo'}</span>
@@ -121,44 +122,24 @@ function TaskItem({ t, onSaved, boxed }: { t: TaskView; onSaved: () => void; box
   )
 }
 
-/** Card do cliente, no mesmo molde dos cards de clientes e de gestores. */
-function ClientCard({ c, onOpen }: { c: ClientSummary; onOpen: () => void }) {
-  const done = c.pending === 0
+/** Peça de estatística no topo, no molde dos tiles "Total de Tarefas / Concluídas / Pendentes" da Pautta. */
+function StatTile({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
-    <article className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <Thumb name={c.name} src={c.logo} size={40} />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <h3 title={c.name} style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</h3>
-          {c.accountManager && <div title={`Essa conta é da carteira de ${c.accountManager}. As alterações foram feitas por quem está nesta lista, então o motivo fica com ele informar.`} style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Conta de {c.accountManager}</div>}
-        </div>
-        <span className="badge" style={{ background: done ? 'var(--green-soft)' : 'rgba(245, 158, 11, 0.15)', color: 'var(--text-1)', flexShrink: 0 }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: done ? 'var(--green)' : 'var(--amber)' }} />{done ? 'Em dia' : 'Pendente'}
-        </span>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '14px 12px' }}>
-        {([['Sem motivo', String(c.pending), done ? undefined : 'var(--amber)'], ['Com motivo', String(c.answered), undefined], ['Última', when(c.lastAt).replace(' às ', ' ').replace('hoje', 'hoje'), undefined]] as const).map(([l, v, col]) => (
-          <div key={l} style={{ minWidth: 0 }}>
-            <div style={{ ...eyebrow, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l}</div>
-            <div style={{ fontSize: l === 'Última' ? 15 : 20, fontWeight: 700, lineHeight: 1.6, color: col, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{v}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ fontSize: 12, color: 'var(--text-2)', height: 54, lineHeight: '18px', whiteSpace: 'pre-line', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.headline}</div>
-      <button type="button" className="btn btn-primary btn-sm" onClick={onOpen}><ArrowRight size={16} strokeWidth={1.75} /> {done ? 'Ver otimizações' : 'Informar motivo'}</button>
-    </article>
+    <div className="card" style={{ padding: '16px 20px', textAlign: 'center', minWidth: 0 }}>
+      <div style={{ fontSize: 28, fontWeight: 700, lineHeight: 1.2, color, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      <div style={{ ...eyebrow, marginTop: 4 }}>{label}</div>
+    </div>
   )
 }
 
-type Filter = 'todos' | 'pendentes' | 'em-dia'
+type Filter = 'pendentes' | 'respondidas' | 'todos'
 
-/** Otimizações de um gestor: cards por cliente; ao abrir um cliente, a lista das otimizações dele (em lista ou em cards). */
+/** Início do gestor, no molde da Pautta: cabeçalho com quem é, números do período e a lista (não mais cards por cliente) — clica numa linha pra justificar. */
 export function TaskPanel({ managerId, onCount }: { managerId: string | null; onCount?: (pending: number) => void }) {
   const [data, setData] = useState<TasksData | null>(null)
+  const [me, setMe] = useState<{ name: string; avatar: string | null; role: string } | null>(null)
   const [failed, setFailed] = useState(false)
-  const [selected, setSelected] = useState<string | null>(null)
-  const [view, setView] = useState<'list' | 'cards'>('list')
-  const [filter, setFilter] = useState<Filter>('todos')
+  const [filter, setFilter] = useState<Filter>('pendentes')
 
   const load = useCallback(async () => {
     try {
@@ -169,63 +150,45 @@ export function TaskPanel({ managerId, onCount }: { managerId: string | null; on
     } catch { setFailed(true) }
   }, [managerId, onCount])
   useEffect(() => { void load() }, [load])
+  useEffect(() => { apiFetch('/api/admin/profile', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((j: { name?: string; avatar?: string | null; role?: string } | null) => { if (j) setMe({ name: j.name ?? '', avatar: j.avatar ?? null, role: j.role ?? '' }) }).catch(() => {}) }, [])
 
-  const shown = useMemo(() => (data?.clients ?? []).filter(c => filter === 'todos' || (filter === 'pendentes' ? c.pending > 0 : c.pending === 0)), [data, filter])
-  const client = data?.clients.find(c => c.slug === selected) ?? null
-  const clientTasks = useMemo(() => [...(data?.pending ?? []), ...(data?.answered ?? [])].filter(t => t.clientSlug === selected).sort((a, b) => Number(!!(a.reason || a.reasonKinds.length)) - Number(!!(b.reason || b.reasonKinds.length)) || b.at.localeCompare(a.at)), [data, selected])
+  // Mais antigas primeiro entre as sem motivo (são as "atrasadas"); mais recentes primeiro entre as com motivo.
+  const all = useMemo(() => {
+    const pend = [...(data?.pending ?? [])].sort((a, b) => a.at.localeCompare(b.at))
+    const ans = [...(data?.answered ?? [])].sort((a, b) => b.at.localeCompare(a.at))
+    return { pend, ans, todos: [...pend, ...ans] }
+  }, [data])
+  const shown = filter === 'pendentes' ? all.pend : filter === 'respondidas' ? all.ans : all.todos
 
   if (failed) return <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>Não foi possível carregar as otimizações agora.</div>
   if (!data) return <PulseLoader size={44} />
   if (data.setup === 'columns' || data.setup === 'tables') return sqlHint
 
-  // Tela do cliente: as otimizações dele.
-  if (selected && client) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-outline btn-sm" onClick={() => setSelected(null)}><ArrowLeft size={16} strokeWidth={1.75} /> Voltar</button>
-          <Thumb name={client.name} src={client.logo} size={40} />
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.name}</h2>
-            <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{plural(client.pending, 'otimização sem motivo', 'otimizações sem motivo')} · {plural(client.answered, 'com motivo', 'com motivo')}</div>
-          </div>
-          <div role="group" aria-label="Modo de exibição" style={{ display: 'flex', gap: 4 }}>
-            <button type="button" className="pill-btn" aria-pressed={view === 'list'} onClick={() => setView('list')}><List size={14} strokeWidth={1.75} style={{ marginRight: 4, verticalAlign: -2 }} />Lista</button>
-            <button type="button" className="pill-btn" aria-pressed={view === 'cards'} onClick={() => setView('cards')}><LayoutGrid size={14} strokeWidth={1.75} style={{ marginRight: 4, verticalAlign: -2 }} />Cards</button>
-          </div>
-        </div>
-        {clientTasks.length === 0
-          ? <div className="card" style={{ padding: 28, textAlign: 'center', color: 'var(--text-2)', fontSize: 14 }}>Nenhuma otimização neste cliente.</div>
-          : view === 'list'
-            ? <div className="card" style={{ padding: '0 20px', display: 'flex', flexDirection: 'column' }}>{clientTasks.map((t, i) => <div key={t.key} style={{ borderTop: i ? '1px solid var(--border-soft)' : 'none' }}><TaskItem t={t} onSaved={load} /></div>)}</div>
-            : <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 380px), 1fr))', alignItems: 'start' }}>{clientTasks.map(t => <TaskItem key={t.key} t={t} onSaved={load} boxed />)}</div>}
-      </div>
-    )
-  }
-
   const total = data.counts.pending + data.counts.answered
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <section className="card" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-        <DonutChart legend={false} size={84} thickness={18} slices={[{ key: 'ok', label: 'Com motivo', value: data.counts.answered, color: 'var(--green)' }, { key: 'pend', label: 'Pendentes', value: data.counts.pending, color: 'var(--amber)' }]} center={data.counts.rate == null ? '—' : `${data.counts.rate}%`} />
-        <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
-          {([['Sem motivo', data.counts.pending, 'var(--amber)'], ['Com motivo', data.counts.answered, 'var(--green)']] as const).map(([l, v, col]) => (
-            <div key={l}>
-              <div style={eyebrow}>{l}</div>
-              <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, color: col }}>{v}</div>
-            </div>
-          ))}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <section className="card" style={{ padding: 24, display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+        <Thumb name={me?.name || data.manager?.name || '?'} src={me?.avatar ?? null} size={56} />
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{me?.name || data.manager?.name || 'Gestor'}</h2>
+          <div style={{ fontSize: 13, color: 'var(--text-2)' }}>Gestor de Tráfego</div>
         </div>
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)', flex: '1 1 260px' }}>Informe o motivo de cada otimização. Últimos 30 dias.</p>
+        <DonutChart legend={false} size={72} thickness={14} slices={[{ key: 'ok', label: 'Com motivo', value: data.counts.answered, color: 'var(--green)' }, { key: 'pend', label: 'Pendentes', value: data.counts.pending, color: 'var(--amber)' }]} center={data.counts.rate == null ? '—' : `${data.counts.rate}%`} />
       </section>
 
+      <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
+        <StatTile label="Total" value={total} />
+        <StatTile label="Com motivo" value={data.counts.answered} color="var(--green)" />
+        <StatTile label="Sem motivo" value={data.counts.pending} color={data.counts.pending ? 'var(--amber)' : undefined} />
+      </div>
+
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <SubTabs value={filter} onChange={setFilter} tabs={[{ key: 'todos', label: 'Todos' }, { key: 'pendentes', label: 'Sem motivo' }, { key: 'em-dia', label: 'Em dia' }]} />
+        <SubTabs value={filter} onChange={setFilter} tabs={[{ key: 'pendentes', label: `Sem motivo (${all.pend.length})` }, { key: 'respondidas', label: `Com motivo (${all.ans.length})` }, { key: 'todos', label: `Todos (${all.todos.length})` }]} />
       </div>
 
       {shown.length === 0
-        ? <div className="card" style={{ padding: 28, textAlign: 'center', color: 'var(--text-2)', fontSize: 14 }}>{total === 0 ? 'Nenhuma alteração registrada ainda. Elas aparecem aqui quando alguém mexer nas contas.' : 'Nenhum cliente neste filtro.'}</div>
-        : <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>{shown.map(c => <ClientCard key={c.slug} c={c} onOpen={() => setSelected(c.slug)} />)}</div>}
+        ? <div className="card" style={{ padding: 28, textAlign: 'center', color: 'var(--text-2)', fontSize: 14 }}>{total === 0 ? 'Nenhuma alteração registrada ainda. Elas aparecem aqui quando alguém mexer nas contas.' : 'Nada por aqui neste filtro.'}</div>
+        : <div className="card" style={{ padding: '0 20px', display: 'flex', flexDirection: 'column' }}>{shown.map((t, i) => <div key={t.key} style={{ borderTop: i ? '1px solid var(--border-soft)' : 'none' }}><TaskItem t={t} onSaved={load} showClient /></div>)}</div>}
     </div>
   )
 }

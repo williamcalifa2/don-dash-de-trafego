@@ -9,7 +9,7 @@ import { PulseLoader } from './PulseLoader'
 import { StaffShell } from './StaffShell'
 import { TaskPanel } from './Tasks'
 
-/** Espaço do gestor: as alterações que ele fez nas contas e ainda precisa explicar. Achado pelo e-mail de login dele. */
+/** Início do gestor: as otimizações que ele fez nas contas, em lista, pra justificar. Achado pelo e-mail de login dele. */
 export function MyTasks() {
   const { theme, toggle } = useTheme()
   const [me, setMe] = useState<{ managerId: string | null } | null>(null)
@@ -23,8 +23,8 @@ export function MyTasks() {
       <main className="page page-ready">
         <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 220 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>Otimizações</h1>
-            <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>Explique por que cada otimização foi feita nas contas</p>
+            <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>Início</h1>
+            <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>Suas otimizações: clique numa linha pra justificar</p>
           </div>
           <button type="button" className="btn btn-outline btn-icon btn-sm" onClick={toggle} aria-label="Alternar tema" title="Alternar tema">{theme === 'dark' ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}</button>
           <ProfileMenu />
