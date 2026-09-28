@@ -61,7 +61,7 @@ describe('coletor de insights', () => {
     const get: CollectDeps['get'] = async () => { dry++; return { ok: true, status: 0, data: {} as never, dryRun: true, attempts: 0 } }
     const out = await collectInsights(deps(get, { dryRun: true, maxPagesPerJob: 50 }), acc)
     expect(out.status).toBe('dry')
-    expect(dry).toBe(5 * 5 + 1 + 3 * 5) // 5 períodos (hoje, 7, 14, 30 e mês) x 5 + diário + público (3 períodos x 5 recortes)
+    expect(dry).toBe(5 * 6 + 1 + 3 * 5) // 5 períodos (hoje, 7, 14, 30 e mês) x 6 (soma campanhas do período anterior) + diário + público (3 períodos x 5 recortes)
     expect(snaps.data.size).toBe(0)
     const st = await store.getState('c1')
     expect(st.lastSynced['dry_insights:today']).toBe(t)

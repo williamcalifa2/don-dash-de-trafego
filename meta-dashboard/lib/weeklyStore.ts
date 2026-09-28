@@ -12,8 +12,8 @@ import { buildWeeklyMessage, last7Range, organicWeekly, profileCampaignSpend, we
 import { readOrganic } from './meta/organicRead'
 import type { MetricsSummary } from './meta'
 
-/** Versão do formato da mensagem: mudou o texto, os relatórios da versão antiga são refeitos. */
-export const FORMAT = 4
+/** Versão do formato da mensagem (ou dos números por trás dela): muda quando o texto ou o cálculo muda, os relatórios da versão antiga são refeitos. */
+export const FORMAT = 5
 
 export interface WeeklyReport {
   v?: number

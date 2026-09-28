@@ -149,14 +149,19 @@ export async function collectInsights(d: CollectDeps, acc: Account, opts: { forc
       // Um período é gravado inteiro ou não é gravado: só começa um novo se ainda cabe no teto de páginas do job.
       if (run.pagesLeft < 3) throw new Stop({ status: 'deferred', reason: 'page_limit', runAfter: d.now(), calls: run.calls })
       const q = periodQuery(p, currentTimeRange(p)) // "date_preset=…" ou o intervalo de datas (semana, hoje e ontem)
+      const prevRange = prevTimeRange(p)
       const summary = await run.one<{ data?: Array<Record<string, unknown>> }>(`${a}/insights?fields=${INSIGHT_FIELDS}&${q}`)
-      const prev = await run.one<{ data?: Array<Record<string, unknown>> }>(`${a}/insights?fields=${INSIGHT_FIELDS}&time_range=${encodeURIComponent(prevTimeRange(p))}`)
+      const prev = await run.one<{ data?: Array<Record<string, unknown>> }>(`${a}/insights?fields=${INSIGHT_FIELDS}&time_range=${encodeURIComponent(prevRange)}`)
       const campaigns = await run.paged(`${a}/insights?level=campaign&fields=${CAMPAIGN_FIELDS}&${q}&limit=${cfg.pageSize}`, `campaigns:${p}`)
+      // Campanha por campanha do período anterior: só assim dá para comparar custo por resultado sem misturar
+      // "campanha filtrada agora" com "conta inteira antes" (ver assembleMetrics). Mesmas campanhas, período de trás.
+      const campaignsPrev = await run.paged(`${a}/insights?level=campaign&fields=${CAMPAIGN_FIELDS}&time_range=${encodeURIComponent(prevRange)}&limit=${cfg.pageSize}`, `campaigns_prev:${p}`)
       const adsets = await run.paged(`${a}/insights?level=adset&fields=${ADSET_FIELDS}&${q}&limit=${cfg.pageSize}`, `adsets:${p}`)
       const ads = await run.paged(`${a}/insights?level=ad&fields=${AD_FIELDS}&${q}&limit=${cfg.pageSize}`, `ads:${p}`)
       if (!run.dry) {
         await snaps.put(acc.clientId, 'summary', p, { row: summary.data?.[0] ?? null, prev: prev.data?.[0] ?? null }, d.now())
         await snaps.put(acc.clientId, 'campaign_insights', p, campaigns, d.now())
+        await snaps.put(acc.clientId, 'campaign_insights_prev', p, campaignsPrev, d.now())
         await snaps.put(acc.clientId, 'adset_insights', p, adsets, d.now())
         await snaps.put(acc.clientId, 'ad_insights', p, ads, d.now())
       }

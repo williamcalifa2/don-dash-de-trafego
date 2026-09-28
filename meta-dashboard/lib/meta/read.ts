@@ -61,25 +61,31 @@ interface StructRow { id: string; name?: string; objective?: string | null; effe
 
 export async function readMetrics(snaps: SnapshotStore, clientId: string, adAccountId: string, preset: DatePreset, cfg: MetaConfig, st: AccountState | null, now = Date.now()): Promise<MetricsResponse & { freshness: Freshness; dailyMissing: boolean }> {
   const isPastMonth = preset === 'last_month' || preset === 'month_2' || preset === 'month_3'
-  const [summary, dailySpecific, daily30d, account, camps, campIns, customs] = await Promise.all([
+  const [summary, dailySpecific, daily30d, account, camps, campIns, campInsPrev, customs] = await Promise.all([
     snaps.get<{ row: InsightRow | null; prev: InsightRow | null }>(clientId, 'summary', preset),
     isPastMonth ? snaps.get<InsightRow[]>(clientId, 'daily', preset) : Promise.resolve(null),
     snaps.get<InsightRow[]>(clientId, 'daily', 'last_30d'),
     snaps.get<{ name: string | null; currency: string }>(clientId, 'account', ''),
     snaps.get<StructRow[]>(clientId, 'structure', 'campaigns'),
     snaps.get<InsightRow[]>(clientId, 'campaign_insights', preset),
+    snaps.get<InsightRow[]>(clientId, 'campaign_insights_prev', preset),
     snaps.get<Record<string, string>>(clientId, 'custom_conversions', ''),
   ])
   const daily = dailySpecific ?? daily30d
   const fresh = describeFreshness(summary?.fetchedAt ?? null, st, cfg, now)
   const byCampaign = new Map((campIns?.payload ?? []).map(r => [String(r.campaign_id), r]))
+  // Undefined (nunca sincronizado esse recorte) é diferente de já ter sincronizado e não achar a campanha: só o segundo caso vale "sem dado".
+  const byCampaignPrev = campInsPrev ? new Map(campInsPrev.payload.map(r => [String(r.campaign_id), r])) : null
   const resp = assembleMetrics(adAccountId, preset, {
     customNames: customs?.payload,
     account: { name: account?.payload.name ?? undefined, currency: account?.payload.currency },
     summaryRow: summary?.payload.row ?? undefined,
     prevRow: summary?.payload.prev ?? undefined,
     dailyRows: daily ? (dailySpecific ? dailySpecific.payload : sliceDaily(daily.payload, preset, new Date(now))) : undefined,
-    campaigns: (camps?.payload ?? []).map(c => ({ id: c.id, name: c.name ?? c.id, objective: c.objective, effective_status: c.effective_status, daily_budget: c.daily_budget, insight: byCampaign.get(c.id) })),
+    campaigns: (camps?.payload ?? []).map(c => ({
+      id: c.id, name: c.name ?? c.id, objective: c.objective, effective_status: c.effective_status, daily_budget: c.daily_budget,
+      insight: byCampaign.get(c.id), prevInsight: byCampaignPrev ? (byCampaignPrev.get(c.id) ?? {}) : undefined,
+    })),
   }, new Date(summary?.fetchedAt ?? now).toISOString())
   // dailyMissing: a série diária nunca foi coletada (o gráfico não tem de onde sair); a leitura pede a busca em segundo plano.
   return { ...resp, freshness: fresh, dailyMissing: !daily, ...(fresh.pending ? { error: fresh.note ?? undefined } : {}) }

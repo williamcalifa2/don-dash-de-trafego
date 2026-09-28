@@ -683,7 +683,7 @@ export interface RawMetrics {
   summaryRow: InsightRow | undefined
   prevRow?: InsightRow | undefined
   dailyRows?: InsightRow[]
-  campaigns: Array<{ id: string; name: string; objective?: string | null; effective_status?: string; daily_budget?: string | number | null; insight?: InsightRow }>
+  campaigns: Array<{ id: string; name: string; objective?: string | null; effective_status?: string; daily_budget?: string | number | null; insight?: InsightRow; /** mesma campanha, período anterior: dá para comparar custo por resultado sem misturar bases (ver assembleMetrics) */ prevInsight?: InsightRow }>
   /** id da conversão personalizada -> nome dado na Meta */
   customNames?: Record<string, string>
 }
@@ -691,7 +691,10 @@ export interface RawMetrics {
 /** Monta a resposta de métricas. Único caminho de montagem: vale para o modo ao vivo e para os dados do banco. */
 export function assembleMetrics(adAccountId: string, datePreset: DatePreset, raw: RawMetrics, generatedAt = new Date().toISOString()): MetricsResponse {
   const summary = buildSummary(raw.summaryRow ?? {})
-  const summary_prev = raw.prevRow ? buildSummary(raw.prevRow) : undefined
+  // A Meta não devolve linha nenhuma quando a conta não teve verba/entrega no período: ausência de prevRow é
+  // "zero na semana anterior", não "não sabemos" (o pending/freshness já cobre o caso de nunca ter sincronizado).
+  // Tratar como zero em vez de indefinido é o que faz a comparação aparecer ("vs 0") em vez de sumir sem motivo.
+  const summary_prev = buildSummary(raw.prevRow ?? {})
 
   let daily: DailySummary | undefined
   const rows = raw.dailyRows ?? []
@@ -746,8 +749,18 @@ export function assembleMetrics(adAccountId: string, datePreset: DatePreset, raw
     if (base.results > 0) summary.cost_per_result = base.spend / base.results
     if (base.leads > 0) summary.cpl = base.spend / base.leads
     if (result_kind === 'conversa' && base.results > 0) summary.cost_per_conversation = base.spend / base.results
-    // O período anterior vem da conta inteira (sem campanhas): comparar seria misturar bases. Sem variação nesses custos.
-    if (summary_prev) { summary_prev.cost_per_result = null; summary_prev.cpl = null; summary_prev.cost_per_conversation = null }
+    // O período anterior não vem por campanha (só a conta inteira): comparar com o custo já filtrado da campanha
+    // misturaria bases. Quando a campanha por campanha do período anterior também foi lida (prevInsight), refaz o
+    // mesmo filtro nela e compara igual para igual; sem isso, fica sem comparação em vez de comparar errado.
+    const havePrevByCampaign = raw.campaigns.some(c => c.prevInsight !== undefined)
+    if (havePrevByCampaign) {
+      const prevBase = costBase(result_kind, raw.campaigns.map(c => { const ps = buildSummary(c.prevInsight ?? {}); return { objective: c.objective, spend: ps.spend, results: ps.results, leads: ps.leads } }))
+      summary_prev.cost_per_result = prevBase.results > 0 ? prevBase.spend / prevBase.results : null
+      summary_prev.cpl = prevBase.leads > 0 ? prevBase.spend / prevBase.leads : null
+      summary_prev.cost_per_conversation = result_kind === 'conversa' && prevBase.results > 0 ? prevBase.spend / prevBase.results : null
+    } else {
+      summary_prev.cost_per_result = null; summary_prev.cpl = null; summary_prev.cost_per_conversation = null
+    }
   }
 
   return {

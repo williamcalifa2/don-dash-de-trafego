@@ -53,4 +53,41 @@ describe('custo por lead nas métricas do cliente', () => {
     expect(r.summary.cpl).toBe(10)
     expect(r.summary_prev?.cpl).toBe(10)
   })
+  it('com a campanha por campanha do período anterior, compara igual para igual em vez de ficar sem comparação', () => {
+    const r = assembleMetrics('act_1', 'last_7d', {
+      account: { currency: 'BRL' },
+      summaryRow: { spend: '300', actions: lead(10) },
+      prevRow: { spend: '250', actions: lead(9) }, // conta inteira: se fosse usado direto, daria um CPL bem diferente (27,7)
+      campaigns: [
+        { id: '1', name: 'Leads', objective: 'OUTCOME_LEADS', insight: { spend: '100', actions: lead(10) }, prevInsight: { spend: '90', actions: lead(9) } },
+        { id: '2', name: 'Tráfego', objective: 'OUTCOME_TRAFFIC', insight: { spend: '200' }, prevInsight: { spend: '160' } },
+      ],
+    })
+    expect(r.summary.cpl).toBe(10) // 100 / 10
+    expect(r.summary_prev?.cpl).toBe(10) // 90 / 9, não 250 / 9
+  })
+  it('sem lead nenhum na campanha de lead do período anterior: fica "vs 0" (null), não inventa custo', () => {
+    const r = assembleMetrics('act_1', 'last_7d', {
+      account: { currency: 'BRL' },
+      summaryRow: { spend: '100', actions: lead(10) },
+      prevRow: { spend: '50', actions: lead(0) },
+      campaigns: [
+        { id: '1', name: 'Leads', objective: 'OUTCOME_LEADS', insight: { spend: '100', actions: lead(10) }, prevInsight: { spend: '50' } },
+        { id: '2', name: 'Tráfego', objective: 'OUTCOME_TRAFFIC', insight: { spend: '0' }, prevInsight: { spend: '0' } },
+      ],
+    })
+    expect(r.summary_prev?.cpl).toBeNull()
+  })
+})
+
+describe('período anterior sem nenhuma linha (conta sem entrega naquela semana)', () => {
+  it('vira zero em vez de "sem comparação": a Meta não devolve linha quando não houve gasto', () => {
+    const r = assembleMetrics('act_1', 'last_7d', {
+      account: { currency: 'BRL' },
+      summaryRow: { spend: '150', actions: lead(20) },
+      // prevRow ausente (a Meta devolveu data:[] pro período anterior)
+      campaigns: [{ id: '1', name: 'Leads', objective: 'OUTCOME_LEADS', insight: { spend: '150', actions: lead(20) } }],
+    })
+    expect(r.summary_prev).toMatchObject({ spend: 0, leads: 0, results: 0 })
+  })
 })
