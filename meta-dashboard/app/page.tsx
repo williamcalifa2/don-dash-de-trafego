@@ -18,5 +18,5 @@ export default async function Home() {
     const isManager = !!reg?.managers.find(m => m.email && m.email.toLowerCase() === email)
     redirect(isManager ? '/admin/tarefas' : '/admin')
   }
-  redirect('/dashboard/meta')
+  redirect('/admin')
 }
