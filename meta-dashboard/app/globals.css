@@ -1,147 +1,161 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+@theme {
+  --color-background: var(--bg);
+  --color-foreground: var(--text-1);
+  --color-card: var(--bg-card);
+  --color-card-foreground: var(--text-1);
+  --color-popover: var(--bg-card);
+  --color-popover-foreground: var(--text-1);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--primary-fg);
+  --color-secondary: var(--accent-dim);
+  --color-secondary-foreground: #ffffff;
+  --color-muted: var(--bg-card2);
+  --color-muted-foreground: var(--text-2);
+  --color-accent: var(--hover);
+  --color-accent-foreground: var(--text-1);
+  --color-destructive: var(--red);
+  --color-destructive-foreground: #ffffff;
+  --color-border: var(--border);
+  --color-input: var(--border-input);
+  --color-ring: var(--accent);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
 /* Pautta Design System — Tokens semânticos oficiais (Don Digital) */
 :root {
+  --bg: hsl(220 23% 97%);
+  --bg-card: hsl(0 0% 100%);
+  --bg-card2: hsl(220 15% 95%);
+  --border: hsl(220 15% 88%);
+  --border-soft: hsl(220 15% 88% / .6);
+  --border-input: hsl(220 15% 88%);
+  --accent: hsl(238 100% 74%);
+  --accent-dim: hsl(215 25% 27%);
+  --accent-soft: hsl(238 100% 74% / .12);
+  --accent-glow: hsl(238 100% 74% / .40);
+  --primary: hsl(238 100% 74%);
+  --primary-fg: #ffffff;
+  --hover: hsl(240 15% 96%);
+  --text-1: hsl(230 35% 12%);
+  --text-2: hsl(230 10% 45%);
+  --text-3: hsl(230 10% 45%);
+  --sidebar-icon: hsl(238 100% 74%);
+  --sidebar-background: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(230 35% 12%);
+  --sidebar-primary: hsl(238 100% 74%);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: hsl(240 15% 96%);
+  --sidebar-accent-foreground: hsl(230 35% 12%);
+  --sidebar-border: hsl(220 15% 88%);
+  --sidebar-ring: hsl(238 100% 74%);
+  --sidebar-bg: var(--sidebar-background);
+  --green: hsl(152 62% 38%);
+  --amber: hsl(33 100% 70%);
+  --red: hsl(0 84% 60%);
+  --green-soft: hsl(152 62% 38% / .10);
+  --amber-soft: hsl(33 100% 70% / .12);
+  --red-soft: hsl(0 84% 60% / .10);
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+  --radius: 0.75rem;
+  --font: 'Montserrat', system-ui, -apple-system, sans-serif;
+  --mono: var(--font);
+  --shadow-soft: 0 2px 8px -2px hsl(230 35% 12% / 0.06);
+  --shadow-elegant: 0 10px 40px -10px hsl(238 100% 74% / 0.15);
+  --hero-bg: hsl(220 15% 95%);
+  --hero-fg: hsl(230 35% 12%);
+  --hero-fg-soft: hsl(230 10% 45%);
+  --hero-ring: hsl(238 100% 74%);
+  --hero-track: hsl(220 15% 88%);
+
+  /* Shadcn compat */
   --background: 220 23% 97%;
   --foreground: 230 35% 12%;
   --card: 0 0% 100%;
   --card-foreground: 230 35% 12%;
   --popover: 0 0% 100%;
   --popover-foreground: 230 35% 12%;
-  --primary: 238 100% 74%;
-  --primary-foreground: 0 0% 100%;
   --secondary: 215 25% 27%;
   --secondary-foreground: 0 0% 100%;
   --muted: 220 15% 95%;
   --muted-foreground: 230 10% 45%;
-  --accent: 238 100% 74%;
-  --accent-foreground: 0 0% 100%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
   --warning: 33 100% 70%;
   --warning-foreground: 33 90% 30%;
   --success: 152 62% 38%;
   --success-foreground: 0 0% 100%;
-  --flag-yellow: 45 95% 50%;
-  --flag-red: 0 84% 60%;
-  --border: 220 15% 88%;
   --input: 220 15% 88%;
   --ring: 238 100% 74%;
-  --radius: 0.75rem;
-  --gradient-primary: linear-gradient(135deg, hsl(238 100% 74%) 0%, hsl(215 25% 27%) 100%);
-  --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 23% 97%) 100%);
-  --shadow-elegant: 0 10px 40px -10px hsl(238 100% 74% / 0.15);
-  --shadow-soft: 0 2px 8px -2px hsl(230 35% 12% / 0.08);
-  --header-gradient: linear-gradient(135deg, hsl(238 100% 74%), hsl(215 25% 27%));
-  --header-text: 0 0% 100%;
-  --completed-task: 250 20% 92%;
-  --sidebar-background: 0 0% 98%;
-  --sidebar-foreground: 230 35% 12%;
-  --sidebar-primary: 238 100% 74%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 15% 96%;
-  --sidebar-accent-foreground: 230 35% 12%;
-  --sidebar-border: 220 15% 88%;
-  --sidebar-ring: 238 100% 74%;
-
-  /* Mapeamento de compatibilidade */
-  --bg: hsl(var(--background));
-  --bg-card: hsl(var(--card));
-  --bg-card2: hsl(var(--muted));
-  --border-soft: hsl(var(--border) / .6);
-  --border-input: hsl(var(--input));
-  --accent-dim: hsl(var(--secondary));
-  --accent-soft: hsl(var(--primary) / .10);
-  --accent-glow: hsl(var(--primary) / .40);
-  --primary-fg: #ffffff;
-  --hover: hsl(var(--sidebar-accent));
-  --text-1: hsl(var(--foreground));
-  --text-2: hsl(var(--muted-foreground));
-  --text-3: hsl(var(--muted-foreground));
-  --sidebar-icon: hsl(var(--primary));
-  --green: hsl(var(--success));
-  --amber: hsl(var(--warning));
-  --red: hsl(var(--destructive));
-  --green-soft: hsl(var(--success) / .10);
-  --amber-soft: hsl(var(--warning) / .12);
-  --red-soft: hsl(var(--destructive) / .10);
-  --radius-sm: 8px;
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: 16px;
-  --radius-full: 9999px;
-  --font: 'Montserrat', system-ui, -apple-system, sans-serif;
-  --mono: var(--font);
-  --hero-bg: hsl(var(--muted));
-  --hero-fg: hsl(var(--foreground));
-  --hero-fg-soft: hsl(var(--muted-foreground));
-  --hero-ring: hsl(var(--primary));
-  --hero-track: hsl(220 15% 88%);
 }
 
 :root[data-theme="dark"],
 .dark {
+  --bg: hsl(230 35% 7%);
+  --bg-card: hsl(230 30% 10%);
+  --bg-card2: hsl(230 25% 15%);
+  --border: hsl(230 20% 20%);
+  --border-soft: hsl(230 20% 20% / .5);
+  --border-input: hsl(230 20% 20%);
+  --accent: hsl(238 100% 74%);
+  --accent-dim: hsl(238 55% 57%);
+  --accent-soft: hsl(238 100% 74% / .15);
+  --accent-glow: hsl(238 100% 74% / .35);
+  --primary: hsl(238 100% 74%);
+  --primary-fg: #ffffff;
+  --hover: hsl(230 25% 12%);
+  --text-1: hsl(220 23% 95%);
+  --text-2: hsl(220 15% 65%);
+  --text-3: hsl(220 15% 50%);
+  --sidebar-background: hsl(230 30% 8%);
+  --sidebar-foreground: hsl(220 23% 95%);
+  --sidebar-primary: hsl(238 100% 74%);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: hsl(230 25% 12%);
+  --sidebar-accent-foreground: hsl(220 23% 95%);
+  --sidebar-border: hsl(230 20% 20%);
+  --sidebar-ring: hsl(238 100% 74%);
+  --sidebar-bg: var(--sidebar-background);
+  --green: hsl(152 58% 48%);
+  --amber: hsl(33 100% 70%);
+  --red: hsl(0 84% 60%);
+  --green-soft: hsl(152 58% 48% / .12);
+  --amber-soft: hsl(33 100% 70% / .12);
+  --red-soft: hsl(0 84% 60% / .12);
+  --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / 0.3);
+  --shadow-elegant: 0 10px 40px -10px hsl(238 100% 74% / 0.25);
+  --hero-bg: hsl(230 30% 10%);
+  --hero-fg: hsl(220 23% 95%);
+  --hero-fg-soft: hsl(220 15% 65%);
+  --hero-ring: hsl(238 100% 74%);
+  --hero-track: hsl(230 25% 18%);
+
   --background: 230 35% 7%;
   --foreground: 220 23% 95%;
   --card: 230 30% 10%;
   --card-foreground: 220 23% 95%;
   --popover: 230 30% 10%;
   --popover-foreground: 220 23% 95%;
-  --primary: 238 100% 74%;
-  --primary-foreground: 0 0% 100%;
   --secondary: 215 25% 27%;
   --secondary-foreground: 0 0% 100%;
   --muted: 230 25% 15%;
   --muted-foreground: 220 15% 65%;
-  --accent: 238 100% 74%;
-  --accent-foreground: 0 0% 100%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
   --warning: 33 100% 70%;
   --warning-foreground: 33 90% 30%;
   --success: 152 58% 48%;
   --success-foreground: 0 0% 100%;
-  --border: 230 20% 20%;
   --input: 230 20% 20%;
   --ring: 238 100% 74%;
-  --gradient-primary: linear-gradient(135deg, hsl(238 100% 74%) 0%, hsl(215 25% 27%) 100%);
-  --gradient-subtle: linear-gradient(180deg, hsl(230 30% 10%) 0%, hsl(230 35% 7%) 100%);
-  --shadow-elegant: 0 10px 40px -10px hsl(238 100% 74% / 0.25);
-  --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / 0.3);
-  --completed-task: 250 30% 20%;
-  --sidebar-background: 230 30% 8%;
-  --sidebar-foreground: 220 23% 95%;
-  --sidebar-primary: 238 100% 74%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 230 25% 12%;
-  --sidebar-accent-foreground: 220 23% 95%;
-  --sidebar-border: 230 20% 20%;
-  --sidebar-ring: 238 100% 74%;
-
-  --bg: hsl(var(--background));
-  --bg-card: hsl(var(--card));
-  --bg-card2: hsl(var(--muted));
-  --border-soft: hsl(var(--border) / .5);
-  --border-input: hsl(var(--input));
-  --accent-dim: hsl(238 55% 57%);
-  --accent-soft: hsl(var(--primary) / .15);
-  --accent-glow: hsl(var(--primary) / .35);
-  --hover: hsl(var(--sidebar-accent));
-  --text-1: hsl(var(--foreground));
-  --text-2: hsl(var(--muted-foreground));
-  --text-3: hsl(220 15% 50%);
-  --green: hsl(var(--success));
-  --amber: hsl(var(--warning));
-  --red: hsl(var(--destructive));
-  --green-soft: hsl(var(--success) / .12);
-  --amber-soft: hsl(var(--warning) / .12);
-  --red-soft: hsl(var(--destructive) / .12);
-  --hero-bg: hsl(var(--card));
-  --hero-fg: hsl(var(--foreground));
-  --hero-fg-soft: hsl(var(--muted-foreground));
-  --hero-ring: hsl(var(--primary));
-  --hero-track: hsl(230 25% 18%);
 }
 
 /* Utilitários Pautta */
@@ -250,22 +264,28 @@ input:focus-visible {
 }
 
 .btn-primary {
-  background: var(--accent);
-  color: var(--primary-fg);
+  background-color: var(--accent);
+  color: #ffffff !important;
+  border: 1px solid transparent;
+  box-shadow: 0 2px 6px -1px hsl(238 100% 74% / 0.35);
 }
 
 .btn-primary:hover:not(:disabled) {
-  filter: brightness(.95);
+  filter: brightness(.92);
+  box-shadow: 0 4px 12px -2px hsl(238 100% 74% / 0.45);
 }
 
 .btn-outline {
-  background: var(--bg-card);
-  border-color: var(--border);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
   color: var(--text-1);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
 }
 
 .btn-outline:hover:not(:disabled) {
-  background: var(--hover);
+  background-color: var(--hover);
+  border-color: var(--border-soft);
+  color: var(--text-1);
 }
 
 .btn-ghost {
