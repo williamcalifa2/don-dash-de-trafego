@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { ExtensionLink } from './ExtensionLink'
-import { Building2, FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, ClipboardCheck, Gauge, Receipt, Radar, PanelLeftClose, Puzzle, PanelLeftOpen, Users, X } from 'lucide-react'
+import { Building2, FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, ClipboardCheck, Gauge, Receipt, Radar, PanelLeftClose, Puzzle, PanelLeftOpen, Settings, Users, X } from 'lucide-react'
 import type { Me } from '@/components/ProfileMenu'
 import { PulseLoader } from '@/components/PulseLoader'
 
@@ -92,6 +92,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
   const onUsage = pathname.startsWith('/admin/uso')
   const onPerformance = pathname.startsWith('/admin/equipe')
   const onTeam = pathname.startsWith('/admin/membros')
+  const onConfig = pathname.startsWith('/admin/configuracoes')
 
   return (
     <div className={`staff-shell${collapsed ? ' is-collapsed' : ''}`}>
@@ -116,6 +117,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
           {canOperate && <Item collapsed={collapsed} icon={<Building2 size={18} strokeWidth={1.75} />} label="Clientes" onClick={() => open('clients')} />}
           {canManage && <Item collapsed={collapsed} icon={<Users size={18} strokeWidth={1.75} />} label="Equipe" active={onTeam} onClick={() => open('team')} />}
           {canOperate && <Item collapsed={collapsed} icon={<Receipt size={18} strokeWidth={1.75} />} label="Faturamento" active={pathname.startsWith('/admin/faturamento')} onClick={() => { setDrawer(false); go('/admin/faturamento') }} />}
+          {canManage && <Item collapsed={collapsed} icon={<Settings size={18} strokeWidth={1.75} />} label="Configurações" active={onConfig} onClick={() => { setDrawer(false); go('/admin/configuracoes') }} />}
           {canOperate && <>
             <div className="staff-group">Ferramentas</div>
             <Item collapsed={collapsed} icon={<FileBarChart size={18} strokeWidth={1.75} />} label="Report Studio" active={onReports} onClick={() => open('reports')} />

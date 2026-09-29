@@ -97,8 +97,8 @@ function MemberTokenModal({ email, token, role, onClose }: { email: string; toke
   )
 }
 
-/** Tela da equipe da agência: quem entra no painel, com qual nível de acesso. Antes era um popup em cima do Painel (perdia o lugar se desse F5); agora é uma tela própria. */
-export function TeamManagement() {
+/** Conteúdo da tela de equipe, sem o cabeçalho nem o StaffShell: dá pra encaixar dentro de outra tela (ex.: a aba "Equipe & Gestores" de Configurações). */
+export function TeamManagementContent() {
   const [members, setMembers] = useState<TeamMember[] | null>(null)
   const [canManageAdmins, setCanManageAdmins] = useState(false)
   const [role, setRole] = useState<TeamRole>('member')
@@ -149,16 +149,7 @@ export function TeamManagement() {
   }
 
   return (
-    <StaffShell>
-      <main className="page page-ready">
-        <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>Equipe</h1>
-            <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>Quem entra no painel da agência e com qual nível de acesso</p>
-          </div>
-          <ProfileMenu />
-        </header>
-
+    <>
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: 20 }}>
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
             Cada pessoa entra só com o e-mail cadastrado aqui e o token que você gerar, que funciona como senha. Escolha o nível de acesso dela.
@@ -295,6 +286,23 @@ export function TeamManagement() {
             }} />
         )}
         {issued && <MemberTokenModal email={issued.email} token={issued.token} role={issued.role} onClose={() => setIssued(null)} />}
+    </>
+  )
+}
+
+/** Tela própria da equipe (rota /admin/membros): mesmo conteúdo acima, com cabeçalho e StaffShell. Antes era um popup em cima do Painel (perdia o lugar se desse F5). */
+export function TeamManagement() {
+  return (
+    <StaffShell>
+      <main className="page page-ready">
+        <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>Equipe</h1>
+            <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>Quem entra no painel da agência e com qual nível de acesso</p>
+          </div>
+          <ProfileMenu />
+        </header>
+        <TeamManagementContent />
       </main>
     </StaffShell>
   )
