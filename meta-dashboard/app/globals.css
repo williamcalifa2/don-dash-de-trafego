@@ -68,13 +68,13 @@
   --radius: 0.75rem;
   --font: 'Montserrat', system-ui, -apple-system, sans-serif;
   --mono: var(--font);
-  --shadow-soft: 0 2px 10px -2px hsl(230 35% 12% / 0.05);
-  --shadow-elegant: 0 12px 32px -10px hsl(238 100% 74% / 0.16);
-  --hero-bg: hsl(227 50% 95.5%);
+  --shadow-soft: 0 2px 8px -2px hsl(230 35% 12% / 0.06);
+  --shadow-elegant: 0 10px 40px -10px hsl(238 100% 74% / 0.15);
+  --hero-bg: hsl(220 15% 95%);
   --hero-fg: hsl(230 35% 12%);
-  --hero-fg-soft: hsl(228 25% 44%);
-  --hero-ring: hsl(238 85% 70%);
-  --hero-track: hsl(227 35% 88%);
+  --hero-fg-soft: hsl(230 10% 45%);
+  --hero-ring: hsl(238 100% 74%);
+  --hero-track: hsl(220 15% 88%);
 
   /* Shadcn compat */
   --background: 220 23% 97%;

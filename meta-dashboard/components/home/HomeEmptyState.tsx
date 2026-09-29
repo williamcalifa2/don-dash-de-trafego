@@ -41,14 +41,14 @@ export function HomeEmptyState({ macro }: HomeEmptyStateProps) {
   const Icon = config.icon
 
   return (
-    <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-12 sm:p-16 flex flex-col items-center justify-center text-center transition-all">
-      <div className="h-16 w-16 rounded-2xl bg-card border border-border/60 flex items-center justify-center text-primary mb-4 shadow-xs">
-        <Icon className="h-8 w-8 stroke-[1.75]" />
+    <div className="rounded-xl border border-dashed border-border/80 bg-card/50 p-12 md:p-16 flex flex-col items-center justify-center text-center transition-all">
+      <div className="h-14 w-14 rounded-2xl bg-muted/60 border border-border/60 flex items-center justify-center text-muted-foreground/70 mb-4 shadow-2xs">
+        <Icon className="h-7 w-7 stroke-[1.6]" />
       </div>
-      <h3 className="text-base sm:text-lg font-bold text-foreground tracking-tight">
+      <h3 className="text-base font-bold text-foreground">
         {config.title}
       </h3>
-      <p className="text-sm text-muted-foreground max-w-sm mt-1.5 leading-relaxed font-medium">
+      <p className="text-sm text-muted-foreground max-w-sm mt-1 leading-relaxed">
         {config.subtitle}
       </p>
     </div>

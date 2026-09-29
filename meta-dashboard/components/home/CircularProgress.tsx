@@ -9,8 +9,8 @@ interface CircularProgressProps {
 
 export function CircularProgress({
   percentage,
-  size = 96,
-  strokeWidth = 6,
+  size = 92,
+  strokeWidth = 5,
   label = 'Meta do Ciclo',
 }: CircularProgressProps) {
   const validPercent = Math.min(100, Math.max(0, isNaN(percentage) ? 0 : percentage))
@@ -19,26 +19,26 @@ export function CircularProgress({
   const strokeDashoffset = circumference - (validPercent / 100) * circumference
 
   return (
-    <div className="flex flex-col items-center justify-center shrink-0 select-none">
+    <div className="flex flex-col items-center justify-center shrink-0">
       <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="rotate-[-90deg]">
-          {/* Fundo suave do anel (track) */}
+          {/* Subtle muted track */}
           <circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
             fill="transparent"
-            stroke="var(--hero-track, hsl(227 35% 88%))"
+            stroke="currentColor"
             strokeWidth={strokeWidth}
-            className="transition-colors"
+            className="text-muted/30 transition-colors"
           />
-          {/* Anel indicador preenchido com cantos arredondados */}
+          {/* Progress circle */}
           <circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
             fill="transparent"
-            stroke="var(--hero-ring, hsl(238 85% 70%))"
+            stroke="var(--accent)"
             strokeWidth={strokeWidth}
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
@@ -47,13 +47,13 @@ export function CircularProgress({
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-          <span className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--hero-fg,currentColor)] font-mono leading-none">
+          <span className="text-xl md:text-2xl font-bold tracking-tight text-foreground font-mono leading-none">
             {validPercent.toFixed(1)}%
           </span>
         </div>
       </div>
       {label && (
-        <span className="text-[10px] font-bold tracking-wider uppercase text-[var(--hero-fg-soft,#858D99)] mt-2 whitespace-nowrap">
+        <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground/80 mt-2 whitespace-nowrap">
           {label}
         </span>
       )}
