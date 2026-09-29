@@ -4,9 +4,11 @@ import { sessionRole } from '@/lib/admin'
 import { loadRegistry } from '@/lib/activityLog'
 import { readSession, SESSION_COOKIE } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Endereço raiz do domínio: quem tem sessão de administração cai direto no Início (gestor) ou no Painel
- * (sem gestor vinculado); sem sessão, cai no dashboard de exemplo do cliente, como sempre foi.
+ * (sem gestor vinculado); sem sessão, cai no login de administração (/admin).
  */
 export default async function Home() {
   const jar = await cookies()
