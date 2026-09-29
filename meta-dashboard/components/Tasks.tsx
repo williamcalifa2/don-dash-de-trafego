@@ -170,16 +170,14 @@ export function TaskPanel({ managerId, onCount }: { managerId: string | null; on
   const total = data.counts.pending + data.counts.answered
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Cabeçalho no mesmo visual fixo (sempre escuro) da tela Início da Pautta, pra ficar idêntico independente do tema do resto do app. */}
-      <section style={{ borderRadius: 20, padding: '28px 32px', display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap', background: '#0c0e1c' }}>
+      {/* Mesma proporção do cabeçalho da Início da Pautta (avatar/nome/anel maiores), mas nas cores do tema do app — claro e escuro. */}
+      <section className="card" style={{ borderRadius: 20, padding: '28px 32px', display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
         <Thumb name={me?.name || data.manager?.name || '?'} src={me?.avatar ?? null} size={72} />
         <div style={{ minWidth: 0, flex: 1 }}>
-          <h2 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{me?.name || data.manager?.name || 'Gestor'}</h2>
-          <div style={{ fontSize: 15, color: '#9aa0c3', marginTop: 4 }}>Gestor de Tráfego</div>
+          <h2 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{me?.name || data.manager?.name || 'Gestor'}</h2>
+          <div style={{ fontSize: 15, color: 'var(--text-2)', marginTop: 4 }}>Gestor de Tráfego</div>
         </div>
-        <div style={{ color: '#fff', ['--bg-card2' as string]: '#1b1e33' } as React.CSSProperties}>
-          <DonutChart legend={false} size={112} thickness={12} slices={[{ key: 'ok', label: 'Justificadas', value: data.counts.answered, color: '#7c86ff' }, { key: 'rest', label: 'Pra justificar', value: data.counts.pending, color: '#1b1e33' }]} center={data.counts.rate == null ? '—' : `${data.counts.rate}%`} />
-        </div>
+        <DonutChart legend={false} size={112} thickness={12} slices={[{ key: 'ok', label: 'Justificadas', value: data.counts.answered, color: 'var(--accent-dim)' }, { key: 'rest', label: 'Pra justificar', value: data.counts.pending, color: 'var(--bg-card2)' }]} center={data.counts.rate == null ? '—' : `${data.counts.rate}%`} />
       </section>
 
       <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
