@@ -1431,10 +1431,13 @@ export default function AdminPage() {
 
   // A sidebar pede ações (novo cliente, equipe, sincronização, Report Studio); também vale o ?open= quando vem de outra tela.
   useEffect(() => {
+    // canManage vem de /api/admin/whoami, numa chamada à parte: não trava nisso aqui (senão, se ainda não
+    // tiver chegado quando ?open=new/team dispara, o modal nunca abre e o efeito de baixo apaga o ?open=
+    // sem nada ter acontecido). Quem não pode, nem vê o botão que leva a essas ações; o servidor barra de novo.
     const run = (a: StaffAction) => {
-      if (a === 'new' && canManage) setModal({ kind: 'clients', select: 'new' })
+      if (a === 'new') setModal({ kind: 'clients', select: 'new' })
       else if (a === 'clients') setModal({ kind: 'clients', select: null })
-      else if (a === 'team' && canManage) setModal({ kind: 'team' })
+      else if (a === 'team') setModal({ kind: 'team' })
       else if (a === 'sync') setSyncSignal(n => n + 1)
       else if (a === 'access') setModal({ kind: 'clients', select: null, tab: 'acessos' })
       else if (a === 'integracoes') setModal({ kind: 'clients', select: null, tab: 'integracoes' })
