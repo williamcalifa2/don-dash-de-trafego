@@ -15,6 +15,7 @@ import { refreshAccountsIfStale } from '@/lib/metaAccountsList'
 import { liveOrigin } from '@/lib/meta/mode'
 import { lastSyncAt, syncMetaActivity } from '@/lib/managersStore'
 import { runWeeklyBatch } from '@/lib/weeklyStore'
+import { checkOptimizationReminders } from '@/lib/optimizationReminders'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -123,6 +124,8 @@ async function run(req: NextRequest) {
     // Segunda-feira: adianta os relatórios semanais dos clientes (o agendador externo de 01h faz o grosso; aqui termina o que faltou).
     try { if (new Date(Date.now() - 3 * 3_600_000).getUTCDay() === 1) await runWeeklyBatch(20_000) } catch (e) { console.error('[cron] relatórios semanais:', e instanceof Error ? e.message : e) }
     try { const last = await lastSyncAt(); if (!last || Date.now() - Date.parse(last) > 8 * 60_000) await syncMetaActivity({ budgetMs: 20_000, limit: 6 }) } catch (e) { console.error('[cron] histórico dos gestores:', e instanceof Error ? e.message : e) }
+    // Cliente sem otimização há N dias (configurável em Configurações): idempotente, então tanto faz rodar a cada 10 min.
+    try { await checkOptimizationReminders() } catch (e) { console.error('[cron] lembretes de otimização:', e instanceof Error ? e.message : e) }
   })
   return NextResponse.json({ ok: true, accepted: true })
 }

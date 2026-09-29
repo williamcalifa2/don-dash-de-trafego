@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Check, CircleCheck, Clock, ListChecks, Loader2 } from 'lucide-react'
+import { AlarmClock, Check, CircleCheck, Clock, ListChecks, Loader2 } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import { REASONS, REASON_LABEL, type Task } from '@/lib/managers'
 import { DonutChart } from './Donut'
@@ -136,11 +136,34 @@ function StatTile({ icon, label, value, color }: { icon: React.ReactNode; label:
 }
 
 type Filter = 'pendentes' | 'respondidas' | 'todos'
+interface Reminder { slug: string; clientName: string; daysIdle: number }
+
+/** Lembrete "Otimização Semanal - {Cliente}": criado sozinho pelo cron quando o cliente passa dias sem nenhuma ação (cadência em Configurações → Automação). */
+function ReminderRow({ r, onDone }: { r: Reminder; onDone: () => void }) {
+  const [busy, setBusy] = useState(false)
+  async function done() {
+    setBusy(true)
+    await apiFetch('/api/admin/optimization-reminders', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: r.slug }) }).catch(() => null)
+    setBusy(false); onDone()
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px' }}>
+      <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--red-soft)', color: 'var(--red)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><AlarmClock size={18} strokeWidth={1.75} /></span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 600, fontSize: 14 }}>Otimização Semanal - {r.clientName}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{r.daysIdle} {r.daysIdle === 1 ? 'dia' : 'dias'} sem nenhuma ação nessa conta</div>
+      </div>
+      <span className="badge" style={{ background: 'var(--red-soft)', color: 'var(--red)', flexShrink: 0 }}>Prioridade Alta</span>
+      <button type="button" className="btn btn-outline btn-sm" onClick={done} disabled={busy} style={{ flexShrink: 0 }}>{busy ? <Loader2 size={14} className="spin" /> : <Check size={14} strokeWidth={1.75} />} Feito</button>
+    </div>
+  )
+}
 
 /** Início do gestor, no molde da Pautta: cabeçalho com quem é, números do período e a lista (não mais cards por cliente) — clica numa linha pra justificar. */
 export function TaskPanel({ managerId, onCount }: { managerId: string | null; onCount?: (pending: number) => void }) {
   const [data, setData] = useState<TasksData | null>(null)
   const [me, setMe] = useState<{ name: string; avatar: string | null; role: string } | null>(null)
+  const [reminders, setReminders] = useState<Reminder[]>([])
   const [failed, setFailed] = useState(false)
   const [filter, setFilter] = useState<Filter>('pendentes')
 
@@ -152,7 +175,14 @@ export function TaskPanel({ managerId, onCount }: { managerId: string | null; on
       setData(j); setFailed(false); onCount?.(j.counts?.pending ?? 0)
     } catch { setFailed(true) }
   }, [managerId, onCount])
+  const loadReminders = useCallback(async () => {
+    if (!managerId) return
+    const r = await apiFetch(`/api/admin/optimization-reminders?manager=${encodeURIComponent(managerId)}`, { cache: 'no-store' }).catch(() => null)
+    const j = r?.ok ? await r.json().catch(() => null) as { reminders?: Reminder[] } | null : null
+    setReminders(j?.reminders ?? [])
+  }, [managerId])
   useEffect(() => { void load() }, [load])
+  useEffect(() => { void loadReminders() }, [loadReminders])
   useEffect(() => { apiFetch('/api/admin/profile', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((j: { name?: string; avatar?: string | null; role?: string } | null) => { if (j) setMe({ name: j.name ?? '', avatar: j.avatar ?? null, role: j.role ?? '' }) }).catch(() => {}) }, [])
 
   // Mais antigas primeiro entre as sem motivo (são as "atrasadas"); mais recentes primeiro entre as com motivo.
@@ -187,6 +217,12 @@ export function TaskPanel({ managerId, onCount }: { managerId: string | null; on
         <StatTile icon={<CircleCheck size={15} strokeWidth={1.75} />} label="Justificadas" value={data.counts.answered} color="var(--green)" />
         <StatTile icon={<Clock size={15} strokeWidth={1.75} />} label="Pra justificar" value={data.counts.pending} color={data.counts.pending ? 'var(--amber)' : undefined} />
       </div>
+
+      {reminders.length > 0 && (
+        <div className="card" style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', borderColor: 'var(--red)' }}>
+          {reminders.map((r, i) => <div key={r.slug} style={{ borderTop: i ? '1px solid var(--border-soft)' : 'none' }}><ReminderRow r={r} onDone={loadReminders} /></div>)}
+        </div>
+      )}
 
       <div className="card" style={{ padding: 6, display: 'inline-flex', gap: 4, alignItems: 'center', flexWrap: 'wrap', background: 'var(--bg-card2)' }}>
         <SubTabs value={filter} onChange={setFilter} tabs={[{ key: 'pendentes', label: `Pra justificar (${all.pend.length})` }, { key: 'respondidas', label: `Justificadas (${all.ans.length})` }, { key: 'todos', label: `Todos (${all.todos.length})` }]} />
