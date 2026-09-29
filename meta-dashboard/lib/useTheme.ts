@@ -12,12 +12,14 @@ export function useTheme() {
     const initial = saved === 'dark' || saved === 'light' ? saved : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
     setTheme(initial)
     document.documentElement.setAttribute('data-theme', initial)
+    document.documentElement.classList.toggle('dark', initial === 'dark')
   }, [])
 
   const toggle = useCallback(() => {
     setTheme(prev => {
       const next = prev === 'dark' ? 'light' : 'dark'
       document.documentElement.setAttribute('data-theme', next)
+      document.documentElement.classList.toggle('dark', next === 'dark')
       try { localStorage.setItem('theme', next) } catch {}
       return next
     })

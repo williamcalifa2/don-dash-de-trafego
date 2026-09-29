@@ -26,8 +26,6 @@ export function MyTasks() {
             <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>Início</h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0 }}>Suas otimizações: clique numa linha pra justificar</p>
           </div>
-          <button type="button" className="btn btn-outline btn-icon btn-sm" onClick={toggle} aria-label="Alternar tema" title="Alternar tema">{theme === 'dark' ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}</button>
-          <ProfileMenu />
         </header>
         {!me && <PulseLoader size={44} />}
         {me && !me.managerId && <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)', lineHeight: 1.6 }}>O seu e-mail de login ainda não está ligado a um gestor. Peça a um administrador para informar o seu e-mail em Performance, no cadastro do gestor.</div>}

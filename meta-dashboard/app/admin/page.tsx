@@ -1666,8 +1666,6 @@ export default function AdminPage() {
             <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2 }}>Painel</h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)' }}>Acompanhe os clientes, os leads e os acessos em um só lugar</p>
           </div>
-          {themeButton}
-          <ProfileMenu />
         </header>
 
         {keyStatus !== 'service' && (
