@@ -18,7 +18,7 @@
   --color-accent-foreground: var(--text-1);
   --color-destructive: var(--red);
   --color-destructive-foreground: #ffffff;
-  --color-border: var(--border);
+  --color-border: var(--border-soft);
   --color-input: var(--border-input);
   --color-ring: var(--accent);
   --radius-lg: var(--radius);
@@ -31,9 +31,9 @@
   --bg: hsl(220 23% 97%);
   --bg-card: hsl(0 0% 100%);
   --bg-card2: hsl(220 15% 95%);
-  --border: hsl(220 15% 88%);
-  --border-soft: hsl(220 15% 88% / .6);
-  --border-input: hsl(220 15% 88%);
+  --border: hsl(220 14% 90%);
+  --border-soft: hsl(220 14% 90% / .65);
+  --border-input: hsl(220 14% 89%);
   --accent: hsl(238 100% 74%);
   --accent-dim: hsl(215 25% 27%);
   --accent-soft: hsl(238 100% 74% / .12);
@@ -319,7 +319,7 @@ input:focus-visible {
 /* ── Cartões: 16 px, borda 70 %, Soft; clicável sobe 2 px para Elegant ── */
 .card {
   background: var(--bg-card);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
 }

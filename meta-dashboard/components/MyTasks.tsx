@@ -29,9 +29,9 @@ export function MyTasks() {
 
   return (
     <StaffShell>
-      <main className="min-h-screen px-4 md:px-8 py-6 max-w-7xl mx-auto">
+      <main className="min-h-screen px-4 sm:px-6 md:px-10 py-6 md:py-8 w-full">
         {loading && (
-          <div className="py-24 flex items-center justify-center">
+          <div className="py-28 flex items-center justify-center">
             <PulseLoader size={44} caption="Carregando Início..." />
           </div>
         )}

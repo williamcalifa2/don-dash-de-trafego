@@ -10,7 +10,7 @@ interface CircularProgressProps {
 export function CircularProgress({
   percentage,
   size = 96,
-  strokeWidth = 9,
+  strokeWidth = 6.5,
   label = 'Meta do Ciclo',
 }: CircularProgressProps) {
   const validPercent = Math.min(100, Math.max(0, isNaN(percentage) ? 0 : percentage))
@@ -19,10 +19,10 @@ export function CircularProgress({
   const strokeDashoffset = circumference - (validPercent / 100) * circumference
 
   return (
-    <div className="flex flex-col items-center justify-center shrink-0" style={{ width: size }}>
+    <div className="flex flex-col items-center justify-center shrink-0">
       <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="rotate-[-90deg]">
-          {/* Background circle */}
+          {/* Subtle muted track */}
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -30,7 +30,7 @@ export function CircularProgress({
             fill="transparent"
             stroke="currentColor"
             strokeWidth={strokeWidth}
-            className="text-muted/70 transition-colors"
+            className="text-muted/40 transition-colors"
           />
           {/* Progress circle */}
           <circle
@@ -53,7 +53,7 @@ export function CircularProgress({
         </div>
       </div>
       {label && (
-        <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground mt-1.5 whitespace-nowrap">
+        <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground/80 mt-2 whitespace-nowrap">
           {label}
         </span>
       )}
