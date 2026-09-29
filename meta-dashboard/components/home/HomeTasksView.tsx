@@ -159,11 +159,12 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
       case 'futuras':
         list = [...macroCategorized.futuras]
         break
-      case 'todos':
-        list = [...macroCategorized.todos]
-        break
       case 'concluidas':
         list = [...macroCategorized.concluidas]
+        break
+      case 'todos':
+      default:
+        list = [...macroCategorized.todos]
         break
     }
 
@@ -212,7 +213,7 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
       : 'normal'
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-8 pb-16 pt-2">
+    <div className="w-full max-w-6xl mx-auto space-y-7 md:space-y-8 pb-16 pt-2">
       {/* 1. Cabeçalho de Perfil Oficial Pautta */}
       <HomeProfileHeader
         name={me?.name || data?.manager?.name || 'Gestor de Tráfego'}
@@ -222,16 +223,16 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
         statusPriority={priorityStatus}
       />
 
-      {/* 2. Abas Sublinhadas & Controles de Ciclo */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50">
-        {/* Abas sublinhadas com alinhamento perfeito na borda inferior */}
+      {/* 2. Linha de Abas Sublinhadas & Controles de Ciclo */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60">
+        {/* Abas sublinhadas alinhadas à linha inferior */}
         <div className="flex items-center gap-8 -mb-px">
           <button
             type="button"
             onClick={() => setActiveMainTab('tarefas')}
-            className={`pb-3.5 text-sm font-bold flex items-center gap-2 transition-all cursor-pointer border-b-2 ${
+            className={`pb-3.5 text-sm font-semibold flex items-center gap-2.5 transition-all cursor-pointer border-b-2 ${
               activeMainTab === 'tarefas'
-                ? 'border-primary text-primary'
+                ? 'border-primary text-primary font-bold'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -247,32 +248,32 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
           <button
             type="button"
             onClick={() => setActiveMainTab('notificacoes')}
-            className={`pb-3.5 text-sm font-bold flex items-center gap-2 transition-all cursor-pointer border-b-2 ${
+            className={`pb-3.5 text-sm font-semibold flex items-center gap-2.5 transition-all cursor-pointer border-b-2 ${
               activeMainTab === 'notificacoes'
-                ? 'border-primary text-primary'
+                ? 'border-primary text-primary font-bold'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             <Bell className="h-4 w-4" />
             Notificações
             {reminders.length > 0 && (
-              <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold inline-flex items-center justify-center shadow-2xs">
+              <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold inline-flex items-center justify-center shadow-xs">
                 {reminders.length}
               </span>
             )}
           </button>
         </div>
 
-        {/* Controles à direita: todos em cápsula conforme Guia de Design página 8 e 14 */}
+        {/* Controles à direita */}
         {activeMainTab === 'tarefas' && (
           <div className="flex items-center gap-2.5 pb-2.5 flex-wrap sm:flex-nowrap">
-            {/* Seletor de Ciclo (~200px cápsula) */}
+            {/* Seletor de Ciclo */}
             <div className="relative">
               <select
                 value={selectedCycle}
                 onChange={e => setSelectedCycle(e.target.value)}
                 aria-label="Selecionar ciclo"
-                className="h-9 w-[190px] sm:w-[215px] rounded-full border border-border/70 bg-card px-4 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer appearance-none pr-9 shadow-soft"
+                className="h-9 w-[190px] sm:w-[215px] rounded-lg border border-border/70 bg-card px-3 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 cursor-pointer appearance-none pr-8 shadow-xs"
               >
                 {CYCLES.map(c => (
                   <option key={c.id} value={c.id}>
@@ -280,10 +281,10 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                   </option>
                 ))}
               </select>
-              <Calendar className="h-3.5 w-3.5 text-muted-foreground absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            {/* Botão Filtros cápsula */}
+            {/* Botão Filtros */}
             <div className="relative">
               <button
                 type="button"
@@ -291,19 +292,19 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                   setOpenFilterMenu(!openFilterMenu)
                   setOpenSortMenu(false)
                 }}
-                className={`h-9 px-4 rounded-full border border-border/70 bg-card text-xs font-semibold flex items-center gap-1.5 shadow-soft hover:bg-muted/50 transition-all ${
-                  filterClient !== 'all' ? 'border-primary text-primary bg-primary/10' : 'text-foreground'
+                className={`btn btn-sm btn-outline gap-1.5 text-xs font-semibold rounded-lg border-border/70 shadow-xs ${
+                  filterClient !== 'all' ? 'border-primary text-primary bg-primary/5' : ''
                 }`}
               >
-                <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                <Filter className="h-3.5 w-3.5" />
                 Filtros
                 {filterClient !== 'all' && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
               </button>
 
               {openFilterMenu && (
-                <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-border/70 bg-popover p-3 shadow-elegant z-40 animate-in fade-in-0 zoom-in-95">
-                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/60">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-border/70 bg-card p-3 shadow-elegant z-40 animate-in fade-in-0 zoom-in-95">
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/50">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       Filtrar por Cliente
                     </span>
                     {filterClient !== 'all' && (
@@ -351,7 +352,7 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
               )}
             </div>
 
-            {/* Botão Classificar cápsula */}
+            {/* Botão Classificar */}
             <div className="relative">
               <button
                 type="button"
@@ -359,14 +360,14 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                   setOpenSortMenu(!openSortMenu)
                   setOpenFilterMenu(false)
                 }}
-                className="h-9 px-4 rounded-full border border-border/70 bg-card text-xs font-semibold flex items-center gap-1.5 shadow-soft hover:bg-muted/50 transition-all text-foreground"
+                className="btn btn-sm btn-outline gap-1.5 text-xs font-semibold rounded-lg border-border/70 shadow-xs"
               >
-                <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+                <ArrowUpDown className="h-3.5 w-3.5" />
                 Classificar
               </button>
 
               {openSortMenu && (
-                <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-border/70 bg-popover p-2 shadow-elegant z-40 animate-in fade-in-0 zoom-in-95">
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-border/70 bg-card p-2 shadow-elegant z-40 animate-in fade-in-0 zoom-in-95">
                   <div className="space-y-1">
                     {[
                       { id: 'recentes', label: 'Mais recentes' },
@@ -398,14 +399,14 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
 
       {activeMainTab === 'tarefas' ? (
         <>
-          {/* 3. Cards de Resumo (3 Colunas com borda sutil 70% e sombra soft) */}
+          {/* 3. Cards de Resumo (3 Colunas) */}
           <HomeSummaryCards total={total} completed={completed} pending={pending} />
 
-          {/* 4. Barra de Segmentação de Macros e Busca Canônica (cápsula) */}
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              {/* Segmented Control oficial Pautta: container bg-muted rounded-full p-1 */}
-              <div className="inline-flex items-center bg-muted/80 p-1 rounded-full border border-border/60 gap-1 overflow-x-auto max-w-full scrollbar-none">
+          {/* 4. Card Principal com Controle Segmentado de Macros e Lista */}
+          <div className="rounded-2xl border border-border/70 bg-card shadow-soft overflow-hidden">
+            {/* Barra de Macros Segmentadas + Busca */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-3.5 sm:px-6 sm:py-4 border-b border-border/60 bg-muted/30">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
                 {[
                   { id: 'hoje', label: 'Para hoje', count: macroCategorized.hoje.length, alert: false },
                   { id: 'atrasadas', label: 'Atrasadas', count: macroCategorized.atrasadas.length, alert: true },
@@ -419,10 +420,10 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                       key={m.id}
                       type="button"
                       onClick={() => setActiveMacro(m.id as MacroType)}
-                      className={`h-7.5 px-3.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
+                      className={`h-8.5 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
                         active
-                          ? 'bg-card text-foreground font-bold shadow-soft border border-border/50'
-                          : 'text-muted-foreground hover:text-foreground'
+                          ? 'bg-card text-foreground font-bold shadow-xs border border-border/70'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                       }`}
                     >
                       {m.label}
@@ -432,7 +433,7 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                             m.alert
                               ? 'bg-red-500 text-white'
                               : active
-                              ? 'bg-primary/20 text-primary'
+                              ? 'bg-primary/10 text-primary'
                               : 'bg-muted text-muted-foreground'
                           }`}
                         >
@@ -444,34 +445,36 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                 })}
               </div>
 
-              {/* Busca canônica oficial Pautta (Guia página 14: h-10 + rounded-full + bg-card + ícone 16 px) */}
-              <div className="relative w-full sm:w-64 shrink-0">
-                <Search className="h-4 w-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              {/* Campo de Busca Rápida na Lista */}
+              <div className="relative w-full sm:w-60 shrink-0">
+                <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Buscar nesta lista..."
-                  className="h-9.5 w-full rounded-full border border-border/70 bg-card pl-10 pr-4 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium shadow-soft"
+                  className="h-8.5 w-full rounded-lg border border-border/70 bg-card pl-8.5 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 font-medium shadow-xs"
                 />
               </div>
             </div>
 
-            {/* 5. Lista de Tarefas ou Estado Vazio: sem card dentro de card */}
-            {currentList.length === 0 ? (
-              <HomeEmptyState macro={activeMacro} />
-            ) : (
-              <div className="space-y-3">
-                {currentList.map(task => (
-                  <HomeTaskItem key={task.key} task={task} onSaved={loadTasks} />
-                ))}
-              </div>
-            )}
+            {/* 5. Lista de Tarefas ou Estado Vazio */}
+            <div className="p-5 sm:p-6 md:p-7 min-h-[280px]">
+              {currentList.length === 0 ? (
+                <HomeEmptyState macro={activeMacro} />
+              ) : (
+                <div className="space-y-3.5">
+                  {currentList.map(task => (
+                    <HomeTaskItem key={task.key} task={task} onSaved={loadTasks} />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </>
       ) : (
         /* Aba Notificações */
-        <div className="rounded-xl border border-border/70 bg-card p-6 shadow-soft">
+        <div className="rounded-2xl border border-border/70 bg-card p-6 md:p-8 shadow-soft">
           <HomeNotificationsList reminders={reminders} onRefresh={loadReminders} />
         </div>
       )}

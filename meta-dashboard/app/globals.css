@@ -28,73 +28,73 @@
 
 /* Pautta Design System — Tokens semânticos oficiais (Don Digital) */
 :root {
-  --bg: #F7F8FA;
-  --bg-card: #FFFFFF;
-  --bg-card2: #F3F4F6;
-  --border: hsl(220 15% 90%);
-  --border-soft: hsl(220 15% 90% / 0.70);
-  --border-input: hsl(220 15% 90%);
-  --accent: hsl(227 100% 81%);
-  --accent-dim: hsl(231 52% 66%);
-  --accent-soft: hsl(227 100% 81% / 0.15);
-  --accent-glow: hsl(227 100% 81% / 0.40);
-  --primary: hsl(227 100% 81%);
-  --primary-fg: #030712;
-  --hover: hsl(220 14% 96%);
-  --text-1: #030712;
-  --text-2: #858D99;
-  --text-3: #858D99;
-  --sidebar-icon: hsl(227 100% 81%);
+  --bg: hsl(220 23% 97%);
+  --bg-card: hsl(0 0% 100%);
+  --bg-card2: hsl(220 15% 95%);
+  --border: hsl(220 15% 88%);
+  --border-soft: hsl(220 15% 88% / .6);
+  --border-input: hsl(220 15% 88%);
+  --accent: hsl(238 100% 74%);
+  --accent-dim: hsl(215 25% 27%);
+  --accent-soft: hsl(238 100% 74% / .12);
+  --accent-glow: hsl(238 100% 74% / .40);
+  --primary: hsl(238 100% 74%);
+  --primary-fg: #ffffff;
+  --hover: hsl(240 15% 96%);
+  --text-1: hsl(230 35% 12%);
+  --text-2: hsl(230 10% 45%);
+  --text-3: hsl(230 10% 45%);
+  --sidebar-icon: hsl(238 100% 74%);
   --sidebar-background: hsl(0 0% 98%);
-  --sidebar-foreground: #030712;
-  --sidebar-primary: hsl(227 100% 81%);
-  --sidebar-primary-foreground: #030712;
-  --sidebar-accent: hsl(220 14% 96%);
-  --sidebar-accent-foreground: #030712;
-  --sidebar-border: hsl(220 15% 90% / 0.70);
-  --sidebar-ring: hsl(227 100% 81%);
+  --sidebar-foreground: hsl(230 35% 12%);
+  --sidebar-primary: hsl(238 100% 74%);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: hsl(240 15% 96%);
+  --sidebar-accent-foreground: hsl(230 35% 12%);
+  --sidebar-border: hsl(220 15% 88%);
+  --sidebar-ring: hsl(238 100% 74%);
   --sidebar-bg: var(--sidebar-background);
-  --green: #16A34A;
-  --amber: #F59E0B;
-  --red: #EF4444;
-  --green-soft: hsl(142 76% 36% / 0.10);
-  --amber-soft: hsl(38 92% 50% / 0.12);
-  --red-soft: hsl(0 84% 60% / 0.10);
+  --green: hsl(152 62% 38%);
+  --amber: hsl(33 100% 70%);
+  --red: hsl(0 84% 60%);
+  --green-soft: hsl(152 62% 38% / .10);
+  --amber-soft: hsl(33 100% 70% / .12);
+  --red-soft: hsl(0 84% 60% / .10);
   --radius-sm: 8px;
   --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
   --radius-full: 9999px;
-  --radius: 1rem;
+  --radius: 0.75rem;
   --font: 'Montserrat', system-ui, -apple-system, sans-serif;
   --mono: var(--font);
-  --shadow-soft: 0 2px 8px -2px rgba(3, 7, 18, 0.08);
-  --shadow-elegant: 0 10px 30px -12px rgba(126, 137, 209, 0.18);
-  --hero-bg: #FFFFFF;
-  --hero-fg: #030712;
-  --hero-fg-soft: #858D99;
-  --hero-ring: hsl(227 100% 81%);
-  --hero-track: hsl(220 15% 90% / 0.60);
+  --shadow-soft: 0 2px 8px -2px hsl(230 35% 12% / 0.06);
+  --shadow-elegant: 0 10px 40px -10px hsl(238 100% 74% / 0.15);
+  --hero-bg: hsl(220 15% 95%);
+  --hero-fg: hsl(230 35% 12%);
+  --hero-fg-soft: hsl(230 10% 45%);
+  --hero-ring: hsl(238 100% 74%);
+  --hero-track: hsl(220 15% 88%);
 
   /* Shadcn compat */
   --background: 220 23% 97%;
-  --foreground: 224 71% 4%;
+  --foreground: 230 35% 12%;
   --card: 0 0% 100%;
-  --card-foreground: 224 71% 4%;
+  --card-foreground: 230 35% 12%;
   --popover: 0 0% 100%;
-  --popover-foreground: 224 71% 4%;
-  --secondary: 231 52% 66%;
+  --popover-foreground: 230 35% 12%;
+  --secondary: 215 25% 27%;
   --secondary-foreground: 0 0% 100%;
-  --muted: 220 14% 96%;
-  --muted-foreground: 220 9% 46%;
+  --muted: 220 15% 95%;
+  --muted-foreground: 230 10% 45%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --warning: 38 92% 50%;
-  --warning-foreground: 38 90% 25%;
-  --success: 142 76% 36%;
+  --warning: 33 100% 70%;
+  --warning-foreground: 33 90% 30%;
+  --success: 152 62% 38%;
   --success-foreground: 0 0% 100%;
-  --input: 220 15% 90%;
-  --ring: 227 100% 81%;
+  --input: 220 15% 88%;
+  --ring: 238 100% 74%;
 }
 
 :root[data-theme="dark"],
@@ -267,19 +267,19 @@ input:focus-visible {
   background-color: var(--accent);
   color: #ffffff !important;
   border: 1px solid transparent;
-  box-shadow: 0 2px 8px -1px rgba(126, 137, 209, 0.35);
+  box-shadow: 0 2px 6px -1px hsl(238 100% 74% / 0.35);
 }
 
 .btn-primary:hover:not(:disabled) {
-  filter: brightness(.94);
-  box-shadow: 0 4px 14px -2px rgba(126, 137, 209, 0.45);
+  filter: brightness(.92);
+  box-shadow: 0 4px 12px -2px hsl(238 100% 74% / 0.45);
 }
 
 .btn-outline {
   background-color: var(--bg-card);
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border);
   color: var(--text-1);
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
 }
 
 .btn-outline:hover:not(:disabled) {
