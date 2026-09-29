@@ -47,6 +47,12 @@
   --mono: var(--font);
   --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / .08);
   --shadow-elegant: 0 10px 30px -12px hsl(231 52% 40% / .18);
+  /* Cabeçalho de destaque (ex.: Início do gestor): painel com identidade própria, claro num tema e escuro no outro. */
+  --hero-bg: hsl(227 55% 95%);
+  --hero-fg: var(--text-1);
+  --hero-fg-soft: hsl(228 25% 42%);
+  --hero-ring: var(--accent-dim);
+  --hero-track: hsl(227 40% 88%);
 }
 
 :root[data-theme="dark"] {
@@ -68,6 +74,11 @@
   --red-soft: hsl(0 62% 50% / .12);
   --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / .35);
   --shadow-elegant: 0 10px 30px -12px hsl(0 0% 0% / .5);
+  --hero-bg: hsl(228 45% 10%);
+  --hero-fg: hsl(220 20% 98%);
+  --hero-fg-soft: hsl(228 30% 72%);
+  --hero-ring: hsl(231 100% 74%);
+  --hero-track: hsl(228 35% 22%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -90,6 +101,11 @@
     --red-soft: hsl(0 62% 50% / .12);
     --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / .35);
     --shadow-elegant: 0 10px 30px -12px hsl(0 0% 0% / .5);
+    --hero-bg: hsl(228 45% 10%);
+    --hero-fg: hsl(220 20% 98%);
+    --hero-fg-soft: hsl(228 30% 72%);
+    --hero-ring: hsl(231 100% 74%);
+    --hero-track: hsl(228 35% 22%);
   }
 }
 
