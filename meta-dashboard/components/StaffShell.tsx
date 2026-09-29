@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { ExtensionLink } from './ExtensionLink'
-import { FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, Home, Gauge, Receipt, Radar, PanelLeftClose, Puzzle, PanelLeftOpen, Settings, Users, X } from 'lucide-react'
+import { FileBarChart, LayoutGrid, Menu, MousePointerClick, Activity, Home, Gauge, Receipt, Radar, PanelLeftClose, Puzzle, PanelLeftOpen, Settings, Users, X, CheckSquare } from 'lucide-react'
 import type { Me } from '@/components/ProfileMenu'
 import { PulseLoader } from '@/components/PulseLoader'
 
@@ -110,18 +110,16 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav aria-label="Menu da agência" className="staff-nav">
-          {tasks.managerId && <Item collapsed={collapsed} icon={<Home size={18} strokeWidth={1.75} />} label="Início" badge={tasks.pending} active={pathname.startsWith('/admin/tarefas')} onClick={() => { setDrawer(false); go('/admin/tarefas') }} />}
-          <Item collapsed={collapsed} icon={<LayoutGrid size={18} strokeWidth={1.75} />} label="Painel" active={onPanel} onClick={() => { setDrawer(false); if (!onPanel) go('/admin'); else window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
-          <div className="staff-group">Administração</div>
+          <Item collapsed={collapsed} icon={<Home size={18} strokeWidth={1.75} />} label="Início" active={onPanel} onClick={() => { setDrawer(false); if (!onPanel) go('/admin'); else window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
+          <Item collapsed={collapsed} icon={<CheckSquare size={18} strokeWidth={1.75} />} label="Pauta" badge={tasks.pending} active={pathname.startsWith('/admin/tarefas')} onClick={() => { setDrawer(false); go('/admin/tarefas') }} />
           {canManage && <Item collapsed={collapsed} icon={<Gauge size={18} strokeWidth={1.75} />} label="Performance" active={onPerformance} onClick={() => { setDrawer(false); go('/admin/equipe') }} />}
-          {canManage && <Item collapsed={collapsed} icon={<Users size={18} strokeWidth={1.75} />} label="Equipe" active={onTeam} onClick={() => open('team')} />}
-          {canOperate && <Item collapsed={collapsed} icon={<Receipt size={18} strokeWidth={1.75} />} label="Faturamento" active={pathname.startsWith('/admin/faturamento')} onClick={() => { setDrawer(false); go('/admin/faturamento') }} />}
+          {canOperate && <Item collapsed={collapsed} icon={<FileBarChart size={18} strokeWidth={1.75} />} label="Criação" active={onReports} onClick={() => { setDrawer(false); go('/admin/reports') }} />}
           {canManage && <Item collapsed={collapsed} icon={<Settings size={18} strokeWidth={1.75} />} label="Configurações" active={onConfig} onClick={() => { setDrawer(false); go('/admin/configuracoes') }} />}
-          {canOperate && <>
-            <div className="staff-group">Ferramentas</div>
-            <Item collapsed={collapsed} icon={<FileBarChart size={18} strokeWidth={1.75} />} label="Report Studio" active={onReports} onClick={() => open('reports')} />
-            <Item collapsed={collapsed} icon={<Puzzle size={18} strokeWidth={1.75} />} label="Integrações" onClick={() => open('integracoes')} />
-          </>}
+
+          <div className="staff-group">Ferramentas</div>
+          {canOperate && <Item collapsed={collapsed} icon={<Puzzle size={18} strokeWidth={1.75} />} label="Integrações" onClick={() => open('integracoes')} />}
+          {canOperate && <Item collapsed={collapsed} icon={<Receipt size={18} strokeWidth={1.75} />} label="Faturamento" active={pathname.startsWith('/admin/faturamento')} onClick={() => { setDrawer(false); go('/admin/faturamento') }} />}
+
           {canManage && <>
             <div className="staff-group">Análise</div>
             <Item collapsed={collapsed} icon={<Activity size={18} strokeWidth={1.75} />} label="Uso do app" active={onUsage} onClick={() => { setDrawer(false); go('/admin/uso') }} />
