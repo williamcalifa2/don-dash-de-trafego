@@ -1315,8 +1315,10 @@ export default function AdminPage() {
   useEffect(() => { document.title = 'Painel · Grupo Don' }, [])
   // O app abre no Início (as otimizações do gestor), não no Painel: só na primeira vez da sessão,
   // pra clicar em "Painel" depois continuar levando pra cá normalmente (sem loop de redirecionamento).
+  // Não vale quando a pessoa chegou aqui pra abrir algo específico (?open=novo cliente, equipe...): isso tem prioridade.
   useEffect(() => {
     if (phase !== 'ready' || !scopeInfo?.manager) return
+    if (new URLSearchParams(window.location.search).get('open')) return
     try {
       if (sessionStorage.getItem('landed_admin')) return
       sessionStorage.setItem('landed_admin', '1')
