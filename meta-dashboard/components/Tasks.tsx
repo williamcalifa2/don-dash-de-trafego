@@ -193,7 +193,7 @@ export function TaskPanel({ managerId, onCount }: { managerId: string | null; on
   }, [data])
   const hasReminders = (filter === 'pendentes' || filter === 'todos') && reminders.length > 0
   const pendCount = all.pend.length + reminders.length
-  const allCount = all.todos.length + reminders.length
+  const allTotal = all.todos.length + reminders.length
   const shown = filter === 'pendentes' ? all.pend : filter === 'respondidas' ? all.ans : all.todos
   const isEmpty = shown.length === 0 && !hasReminders
 
