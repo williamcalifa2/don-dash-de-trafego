@@ -3,6 +3,7 @@
 import MetaSyncPopover from '@/components/MetaSyncPopover'
 import AdminOverview from '@/components/AdminOverview'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { ArrowLeft, UserPlus, Copy, Check, ExternalLink, Settings2, Pencil, KeyRound, Trash2, Ban, LockOpen, Link2, X, Moon, Sun, Search, GripVertical, Users, RefreshCw, CalendarDays, ChevronDown, TrendingUp, DollarSign, Clock, ArrowRight, Loader2, Webhook, LayoutGrid } from 'lucide-react'
 import { Sparkline } from '@/components/Sparkline'
@@ -1271,6 +1272,7 @@ function CardMetricsModal({ client, saved, days, onClose, onSaved }: { client: A
 }
 
 export default function AdminPage() {
+  const router = useRouter()
   const { theme, toggle } = useTheme()
   const [phase, setPhase] = useState<'loading' | 'login' | 'off' | 'ready'>('loading')
   const [clients, setClients] = useState<AdminClient[]>([])
@@ -1311,6 +1313,16 @@ export default function AdminPage() {
   const [openingSlug, setOpeningSlug] = useState<string | null>(null)
 
   useEffect(() => { document.title = 'Painel · Grupo Don' }, [])
+  // O app abre no Início (as otimizações do gestor), não no Painel: só na primeira vez da sessão,
+  // pra clicar em "Painel" depois continuar levando pra cá normalmente (sem loop de redirecionamento).
+  useEffect(() => {
+    if (phase !== 'ready' || !scopeInfo?.manager) return
+    try {
+      if (sessionStorage.getItem('landed_admin')) return
+      sessionStorage.setItem('landed_admin', '1')
+    } catch { return }
+    router.replace('/admin/tarefas')
+  }, [phase, scopeInfo, router])
 
   const load = useCallback(async () => {
     const start = Date.now()

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Check, ChevronRight, Loader2 } from 'lucide-react'
+import { Check, CircleCheck, Clock, ListChecks, Loader2 } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import { REASONS, REASON_LABEL, type Task } from '@/lib/managers'
 import { DonutChart } from './Donut'
@@ -87,16 +87,16 @@ function TaskItem({ t, onSaved, boxed, showClient }: { t: TaskView; onSaved: () 
     : { padding: '14px 0', display: 'flex', flexDirection: 'column', gap: 10 }
   const inner = (
     <>
-      <button type="button" onClick={() => setJustifying(true)} style={{ display: 'flex', gap: 12, justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', background: 'none', border: 0, padding: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer', color: 'inherit' }}>
+      <button type="button" onClick={() => setJustifying(true)} aria-label={answered ? `Editar justificativa: ${t.short || t.headline}` : `Justificar: ${t.short || t.headline}`} style={{ display: 'flex', gap: 12, alignItems: 'center', width: '100%', background: 'none', border: 0, padding: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer', color: 'inherit' }}>
+        <span aria-hidden="true" style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, display: 'grid', placeItems: 'center', border: `2px solid ${answered ? 'var(--green)' : 'var(--border-input)'}`, background: answered ? 'var(--green)' : 'transparent' }}>
+          {answered && <Check size={13} strokeWidth={3} color="var(--primary-fg)" />}
+        </span>
         {showClient && <Thumb name={t.clientName} src={t.clientLogo} size={36} />}
         <div style={{ fontSize: 14, lineHeight: 1.5, overflowWrap: 'anywhere', minWidth: 0, flex: 1 }}>
           <span style={{ display: 'block', whiteSpace: 'pre-line', fontWeight: 600 }}>{t.short || t.headline}</span>
           <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>{showClient ? `${t.clientName} · ` : ''}{when(t.at)}{t.actorName ? ` · ${t.actorName}` : ''}</span>
         </div>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <span className="badge" style={{ background: answered ? 'var(--green-soft)' : 'rgba(245, 158, 11, 0.15)', color: 'var(--text-1)' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: answered ? 'var(--green)' : 'var(--amber)' }} />{answered ? 'Com motivo' : 'Sem motivo'}</span>
-          <ChevronRight size={16} strokeWidth={1.75} color="var(--text-2)" aria-hidden="true" />
-        </span>
+        {!answered && <span className="badge" style={{ background: 'var(--amber)', color: '#000', flexShrink: 0, fontWeight: 700 }}>Justificar</span>}
       </button>
       {t.items.length > 0 && (
         <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} style={{ alignSelf: 'flex-start', background: 'none', border: 0, padding: 0, font: 'inherit', fontSize: 12, color: 'var(--text-2)', textDecoration: 'underline', cursor: 'pointer' }}>{open ? 'ocultar detalhes' : 'ver detalhes'}</button>
@@ -123,11 +123,14 @@ function TaskItem({ t, onSaved, boxed, showClient }: { t: TaskView; onSaved: () 
 }
 
 /** Peça de estatística no topo, no molde dos tiles "Total de Tarefas / Concluídas / Pendentes" da Pautta. */
-function StatTile({ label, value, color }: { label: string; value: number; color?: string }) {
+function StatTile({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number; color?: string }) {
   return (
-    <div className="card" style={{ padding: '16px 20px', textAlign: 'center', minWidth: 0 }}>
-      <div style={{ fontSize: 28, fontWeight: 700, lineHeight: 1.2, color, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-      <div style={{ ...eyebrow, marginTop: 4 }}>{label}</div>
+    <div className="card" style={{ padding: '16px 20px', minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: color ?? 'var(--text-2)' }}>
+        {icon}
+        <span style={eyebrow}>{label}</span>
+      </div>
+      <div style={{ fontSize: 28, fontWeight: 700, lineHeight: 1.5, color, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
     </div>
   )
 }
@@ -177,13 +180,13 @@ export function TaskPanel({ managerId, onCount }: { managerId: string | null; on
       </section>
 
       <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
-        <StatTile label="Total" value={total} />
-        <StatTile label="Com motivo" value={data.counts.answered} color="var(--green)" />
-        <StatTile label="Sem motivo" value={data.counts.pending} color={data.counts.pending ? 'var(--amber)' : undefined} />
+        <StatTile icon={<ListChecks size={15} strokeWidth={1.75} />} label="Total" value={total} />
+        <StatTile icon={<CircleCheck size={15} strokeWidth={1.75} />} label="Justificadas" value={data.counts.answered} color="var(--green)" />
+        <StatTile icon={<Clock size={15} strokeWidth={1.75} />} label="Pra justificar" value={data.counts.pending} color={data.counts.pending ? 'var(--amber)' : undefined} />
       </div>
 
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <SubTabs value={filter} onChange={setFilter} tabs={[{ key: 'pendentes', label: `Sem motivo (${all.pend.length})` }, { key: 'respondidas', label: `Com motivo (${all.ans.length})` }, { key: 'todos', label: `Todos (${all.todos.length})` }]} />
+      <div className="card" style={{ padding: 6, display: 'inline-flex', gap: 4, alignItems: 'center', flexWrap: 'wrap', background: 'var(--bg-card2)' }}>
+        <SubTabs value={filter} onChange={setFilter} tabs={[{ key: 'pendentes', label: `Pra justificar (${all.pend.length})` }, { key: 'respondidas', label: `Justificadas (${all.ans.length})` }, { key: 'todos', label: `Todos (${all.todos.length})` }]} />
       </div>
 
       {shown.length === 0

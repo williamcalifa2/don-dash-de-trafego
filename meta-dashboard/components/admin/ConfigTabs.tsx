@@ -10,7 +10,7 @@ import { ClientSettings } from './ClientSettings'
 import { TeamSettings } from './TeamSettings'
 
 type Tab = 'clientes' | 'equipe'
-const TABS: Array<{ key: Tab; label: string }> = [{ key: 'clientes', label: 'Cadastro de Clientes' }, { key: 'equipe', label: 'Equipe & Gestores' }]
+const TABS: Array<{ key: Tab; label: string }> = [{ key: 'clientes', label: 'Clientes' }, { key: 'equipe', label: 'Equipe' }]
 
 /** Tela unificada de Configurações: cadastro de clientes e equipe/gestores, cada um na sua aba. */
 export function ConfigTabs() {
