@@ -4,6 +4,7 @@ import { duplicateOf } from '@/lib/clientsDup'
 import { canSee, scopeFor } from '@/lib/scope'
 import { assignClient, loadRegistry } from '@/lib/managersStore'
 import { requireAdmin, requireRole, requireServiceKey } from '@/lib/admin'
+import { isPreviewEnvironment } from '@/lib/auth'
 import { getSupabaseServer, serviceKeyStatus } from '@/lib/supabase'
 import { clearClientCache, tenantBySlug } from '@/lib/tenant'
 import { syncLeads } from '@/lib/metaLeads'
@@ -98,10 +99,13 @@ export async function GET(req: NextRequest) {
     keyStatus: 'service', baseDomain: null,
   }, { headers: { 'Cache-Control': 'no-store' } })
 
-  if (!db) return demoFallback()
+  if (!db) return isPreviewEnvironment() ? demoFallback() : NextResponse.json({ error: 'Supabase não configurado' }, { status: 500 })
 
   const { data: allRows, error } = await db.from('clients').select(COLUMNS).order('slug')
-  if (error || !allRows || allRows.length === 0) return demoFallback()
+  if (error) return isPreviewEnvironment() ? demoFallback() : NextResponse.json({ error: error.message }, { status: 500 })
+  if (!allRows || allRows.length === 0) {
+    if (isPreviewEnvironment()) return demoFallback()
+  }
   // Gestor só vê a própria carteira (administrador/dono que também é gestor vê a dele até alternar para "todos").
   const scope = await scopeFor(req)
   const data = scope.slugs ? (allRows ?? []).filter(c => canSee(scope, (c as { slug: string }).slug)) : allRows

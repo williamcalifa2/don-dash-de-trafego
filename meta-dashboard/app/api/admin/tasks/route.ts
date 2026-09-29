@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requestIdentity } from '@/lib/admin'
+import { isPreviewEnvironment } from '@/lib/auth'
 import { isAnswered, cleanReason } from '@/lib/managers'
 import { clientLogos, clientNames, loadRegistry, loadTasks, ownersOf, saveReason } from '@/lib/managersStore'
 
@@ -57,10 +58,10 @@ export async function GET(req: NextRequest) {
   }, { headers: { 'Cache-Control': 'no-store' } })
 
   const a = await actor(req, req.nextUrl.searchParams.get('manager'))
-  if ('error' in a) return demoTasks()
-  if (!a.managerId) return demoTasks()
+  if ('error' in a) return isPreviewEnvironment() ? demoTasks() : a.error
+  if (!a.managerId) return isPreviewEnvironment() ? demoTasks() : NextResponse.json({ setup: 'ready', manager: null, pending: [], answered: [], counts: { pending: 0, answered: 0, rate: null } })
   const r = await loadTasks()
-  if ('error' in r) return demoTasks()
+  if ('error' in r) return isPreviewEnvironment() ? demoTasks() : NextResponse.json({ setup: r.error })
   const [names, logos] = await Promise.all([clientNames(), clientLogos()])
   const manager = a.reg.managers.find(m => m.id === a.managerId)
   const mine = r.tasks.filter(t => t.ownerId === a.managerId).map(t => ({ ...t, clientName: names.get(t.clientSlug) ?? t.clientSlug, clientLogo: logos.get(t.clientSlug) ?? null }))

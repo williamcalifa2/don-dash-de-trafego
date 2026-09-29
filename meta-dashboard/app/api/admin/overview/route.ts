@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { maybeSyncActivity } from '@/lib/managersStore'
 import { requireAdmin } from '@/lib/admin'
+import { isPreviewEnvironment } from '@/lib/auth'
 import { scopeFor } from '@/lib/scope'
 import { getSupabaseServer } from '@/lib/supabase'
 import { dailyRowsFor } from '@/lib/adminData'
@@ -20,18 +21,21 @@ export async function GET(req: NextRequest) {
   const db = getSupabaseServer()
   const period = parseAdminPeriod(req.nextUrl.searchParams.get('period') ?? req.nextUrl.searchParams.get('days')) ?? 7
 
+  const demoOverview = () => NextResponse.json({
+    days: 7, period: '7',
+    dates: Array.from({ length: 7 }, (_, i) => new Date(Date.now() - (7 - 1 - i) * 86_400_000).toISOString().slice(0, 10)),
+    spend: [2400, 2800, 2600, 3100, 2900, 3200, 3500],
+    results: [48, 55, 52, 63, 58, 65, 70],
+    impressions: [35000, 39000, 37000, 42000, 40000, 44000, 47000],
+    clicks: [1200, 1400, 1300, 1600, 1450, 1650, 1800],
+    totals: { spend: 20500, impressions: 284000, clicks: 10400, results: 411 },
+    prev: { spend: 18200, impressions: 251000, clicks: 9200, results: 365 },
+    clientsWithData: 4, clientsTotal: 4, partial: false,
+  }, { headers: { 'Cache-Control': 'no-store' } })
+
   if (!db) {
-    return NextResponse.json({
-      days: 7, period: '7',
-      dates: Array.from({ length: 7 }, (_, i) => new Date(Date.now() - (7 - 1 - i) * 86_400_000).toISOString().slice(0, 10)),
-      spend: [2400, 2800, 2600, 3100, 2900, 3200, 3500],
-      results: [48, 55, 52, 63, 58, 65, 70],
-      impressions: [35000, 39000, 37000, 42000, 40000, 44000, 47000],
-      clicks: [1200, 1400, 1300, 1600, 1450, 1650, 1800],
-      totals: { spend: 20500, impressions: 284000, clicks: 10400, results: 411 },
-      prev: { spend: 18200, impressions: 251000, clicks: 9200, results: 365 },
-      clientsWithData: 4, clientsTotal: 4, partial: false,
-    }, { headers: { 'Cache-Control': 'no-store' } })
+    if (isPreviewEnvironment()) return demoOverview()
+    return NextResponse.json({ error: 'Supabase não configurado' }, { status: 500 })
   }
 
   const slug = (req.nextUrl.searchParams.get('client') ?? '').trim().toLowerCase()
@@ -41,17 +45,8 @@ export async function GET(req: NextRequest) {
   if (scope.slugs) q = q.in('slug', [...scope.slugs]) // só a carteira: a visão geral soma e consulta menos clientes
   const { data, error } = await q
   if (error || !data || data.length === 0) {
-    return NextResponse.json({
-      days: 7, period: '7',
-      dates: Array.from({ length: 7 }, (_, i) => new Date(Date.now() - (7 - 1 - i) * 86_400_000).toISOString().slice(0, 10)),
-      spend: [2400, 2800, 2600, 3100, 2900, 3200, 3500],
-      results: [48, 55, 52, 63, 58, 65, 70],
-      impressions: [35000, 39000, 37000, 42000, 40000, 44000, 47000],
-      clicks: [1200, 1400, 1300, 1600, 1450, 1650, 1800],
-      totals: { spend: 20500, impressions: 284000, clicks: 10400, results: 411 },
-      prev: { spend: 18200, impressions: 251000, clicks: 9200, results: 365 },
-      clientsWithData: 4, clientsTotal: 4, partial: false,
-    }, { headers: { 'Cache-Control': 'no-store' } })
+    if (isPreviewEnvironment()) return demoOverview()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   }
   await ensureRuntime()
   const budget = { live: MAX_LIVE }

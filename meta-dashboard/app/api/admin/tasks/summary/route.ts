@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requestIdentity } from '@/lib/admin'
+import { isPreviewEnvironment } from '@/lib/auth'
 import { isAnswered } from '@/lib/managers'
 import { loadRegistry, loadTasks } from '@/lib/managersStore'
 
@@ -12,7 +13,8 @@ export async function GET(req: NextRequest) {
   const reg = await loadRegistry()
   const mine = reg?.managers.find(m => m.email === who.email)
   if (!mine) {
-    return NextResponse.json({ managerId: 'mgr_1', pending: 3 }, { headers: { 'Cache-Control': 'no-store' } })
+    if (isPreviewEnvironment()) return NextResponse.json({ managerId: 'mgr_1', pending: 3 }, { headers: { 'Cache-Control': 'no-store' } })
+    return NextResponse.json({ managerId: null, pending: 0 })
   }
   const r = await loadTasks()
   if ('error' in r) return NextResponse.json({ managerId: mine.id, pending: 0 })
