@@ -9,8 +9,8 @@ interface CircularProgressProps {
 
 export function CircularProgress({
   percentage,
-  size = 96,
-  strokeWidth = 6.5,
+  size = 92,
+  strokeWidth = 5,
   label = 'Meta do Ciclo',
 }: CircularProgressProps) {
   const validPercent = Math.min(100, Math.max(0, isNaN(percentage) ? 0 : percentage))
@@ -30,7 +30,7 @@ export function CircularProgress({
             fill="transparent"
             stroke="currentColor"
             strokeWidth={strokeWidth}
-            className="text-muted/40 transition-colors"
+            className="text-muted/30 transition-colors"
           />
           {/* Progress circle */}
           <circle

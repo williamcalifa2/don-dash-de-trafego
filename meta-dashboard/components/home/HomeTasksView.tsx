@@ -263,16 +263,16 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
           </button>
         </div>
 
-        {/* Controles à direita */}
+        {/* Controles à direita: todos em cápsula conforme Guia de Design página 8 e 14 */}
         {activeMainTab === 'tarefas' && (
           <div className="flex items-center gap-2.5 pb-2.5 flex-wrap sm:flex-nowrap">
-            {/* Seletor de Ciclo (~200px) */}
+            {/* Seletor de Ciclo (~200px cápsula) */}
             <div className="relative">
               <select
                 value={selectedCycle}
                 onChange={e => setSelectedCycle(e.target.value)}
                 aria-label="Selecionar ciclo"
-                className="h-9 w-[190px] sm:w-[215px] rounded-lg border border-border/60 bg-card px-3 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer appearance-none pr-8 shadow-2xs"
+                className="h-9 w-[190px] sm:w-[215px] rounded-full border border-border/70 bg-card px-4 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer appearance-none pr-9 shadow-soft"
               >
                 {CYCLES.map(c => (
                   <option key={c.id} value={c.id}>
@@ -280,10 +280,10 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                   </option>
                 ))}
               </select>
-              <Calendar className="h-3.5 w-3.5 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            {/* Botão Filtros */}
+            {/* Botão Filtros cápsula */}
             <div className="relative">
               <button
                 type="button"
@@ -291,19 +291,19 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                   setOpenFilterMenu(!openFilterMenu)
                   setOpenSortMenu(false)
                 }}
-                className={`btn btn-sm btn-outline gap-1.5 text-xs font-semibold rounded-lg border-border/60 shadow-2xs ${
-                  filterClient !== 'all' ? 'border-primary text-primary bg-primary/5' : ''
+                className={`h-9 px-4 rounded-full border border-border/70 bg-card text-xs font-semibold flex items-center gap-1.5 shadow-soft hover:bg-muted/50 transition-all ${
+                  filterClient !== 'all' ? 'border-primary text-primary bg-primary/10' : 'text-foreground'
                 }`}
               >
-                <Filter className="h-3.5 w-3.5" />
+                <Filter className="h-3.5 w-3.5 text-muted-foreground" />
                 Filtros
                 {filterClient !== 'all' && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
               </button>
 
               {openFilterMenu && (
-                <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-border/60 bg-card p-3 shadow-xl z-40 animate-in fade-in-0 zoom-in-95">
-                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/50">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-border/70 bg-popover p-3 shadow-elegant z-40 animate-in fade-in-0 zoom-in-95">
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/60">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Filtrar por Cliente
                     </span>
                     {filterClient !== 'all' && (
@@ -351,7 +351,7 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
               )}
             </div>
 
-            {/* Botão Classificar */}
+            {/* Botão Classificar cápsula */}
             <div className="relative">
               <button
                 type="button"
@@ -359,14 +359,14 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                   setOpenSortMenu(!openSortMenu)
                   setOpenFilterMenu(false)
                 }}
-                className="btn btn-sm btn-outline gap-1.5 text-xs font-semibold rounded-lg border-border/60 shadow-2xs"
+                className="h-9 px-4 rounded-full border border-border/70 bg-card text-xs font-semibold flex items-center gap-1.5 shadow-soft hover:bg-muted/50 transition-all text-foreground"
               >
-                <ArrowUpDown className="h-3.5 w-3.5" />
+                <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
                 Classificar
               </button>
 
               {openSortMenu && (
-                <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-border/60 bg-card p-2 shadow-xl z-40 animate-in fade-in-0 zoom-in-95">
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-border/70 bg-popover p-2 shadow-elegant z-40 animate-in fade-in-0 zoom-in-95">
                   <div className="space-y-1">
                     {[
                       { id: 'recentes', label: 'Mais recentes' },
@@ -398,14 +398,14 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
 
       {activeMainTab === 'tarefas' ? (
         <>
-          {/* 3. Cards de Resumo (3 Colunas com amplo respiro) */}
+          {/* 3. Cards de Resumo (3 Colunas com borda sutil 70% e sombra soft) */}
           <HomeSummaryCards total={total} completed={completed} pending={pending} />
 
-          {/* 4. Barra de Segmentação de Macros Pautta (Container bg-muted rounded-xl p-1.5) */}
+          {/* 4. Barra de Segmentação de Macros e Busca Canônica (cápsula) */}
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              {/* Segmented Control oficial Pautta */}
-              <div className="inline-flex items-center bg-muted/70 p-1.5 rounded-xl border border-border/40 gap-1 overflow-x-auto max-w-full scrollbar-none">
+              {/* Segmented Control oficial Pautta: container bg-muted rounded-full p-1 */}
+              <div className="inline-flex items-center bg-muted/80 p-1 rounded-full border border-border/60 gap-1 overflow-x-auto max-w-full scrollbar-none">
                 {[
                   { id: 'hoje', label: 'Para hoje', count: macroCategorized.hoje.length, alert: false },
                   { id: 'atrasadas', label: 'Atrasadas', count: macroCategorized.atrasadas.length, alert: true },
@@ -419,9 +419,9 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                       key={m.id}
                       type="button"
                       onClick={() => setActiveMacro(m.id as MacroType)}
-                      className={`h-8 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
+                      className={`h-7.5 px-3.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
                         active
-                          ? 'bg-card text-foreground font-bold shadow-xs border border-border/40'
+                          ? 'bg-card text-foreground font-bold shadow-soft border border-border/50'
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
@@ -432,7 +432,7 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                             m.alert
                               ? 'bg-red-500 text-white'
                               : active
-                              ? 'bg-primary/10 text-primary'
+                              ? 'bg-primary/20 text-primary'
                               : 'bg-muted text-muted-foreground'
                           }`}
                         >
@@ -444,36 +444,34 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                 })}
               </div>
 
-              {/* Busca rápida com borda suave */}
-              <div className="relative w-full sm:w-60 shrink-0">
-                <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              {/* Busca canônica oficial Pautta (Guia página 14: h-10 + rounded-full + bg-card + ícone 16 px) */}
+              <div className="relative w-full sm:w-64 shrink-0">
+                <Search className="h-4 w-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Buscar nesta lista..."
-                  className="h-9 w-full rounded-lg border border-border/60 bg-card pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 font-medium shadow-2xs"
+                  className="h-9.5 w-full rounded-full border border-border/70 bg-card pl-10 pr-4 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium shadow-soft"
                 />
               </div>
             </div>
 
-            {/* 5. Card de Conteúdo da Lista de Tarefas ou Estado Vazio */}
-            <div className="rounded-2xl border border-border/60 bg-card shadow-soft p-5 md:p-7 min-h-[280px]">
-              {currentList.length === 0 ? (
-                <HomeEmptyState macro={activeMacro} />
-              ) : (
-                <div className="space-y-3">
-                  {currentList.map(task => (
-                    <HomeTaskItem key={task.key} task={task} onSaved={loadTasks} />
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* 5. Lista de Tarefas ou Estado Vazio: sem card dentro de card */}
+            {currentList.length === 0 ? (
+              <HomeEmptyState macro={activeMacro} />
+            ) : (
+              <div className="space-y-3">
+                {currentList.map(task => (
+                  <HomeTaskItem key={task.key} task={task} onSaved={loadTasks} />
+                ))}
+              </div>
+            )}
           </div>
         </>
       ) : (
         /* Aba Notificações */
-        <div className="rounded-2xl border border-border/60 bg-card p-6 md:p-8 shadow-soft">
+        <div className="rounded-xl border border-border/70 bg-card p-6 shadow-soft">
           <HomeNotificationsList reminders={reminders} onRefresh={loadReminders} />
         </div>
       )}
