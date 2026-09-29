@@ -214,7 +214,7 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-7 md:space-y-8 pb-16 pt-2">
-      {/* 1. Cabeçalho de Perfil Oficial Pautta */}
+      {/* 1. Cabeçalho de Perfil Oficial Pautta com fundo Hero aconchegante */}
       <HomeProfileHeader
         name={me?.name || data?.manager?.name || 'Gestor de Tráfego'}
         role="Gestor de Tráfego Pago"
@@ -223,14 +223,14 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
         statusPriority={priorityStatus}
       />
 
-      {/* 2. Linha de Abas Sublinhadas & Controles de Ciclo */}
+      {/* 2. Linha de Abas Sublinhadas & Controles de Ciclo com alinhamento refinado */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60">
-        {/* Abas sublinhadas alinhadas à linha inferior */}
-        <div className="flex items-center gap-8 -mb-px">
+        {/* Abas sublinhadas perfeitamente alinhadas à linha inferior */}
+        <div className="flex items-center gap-7 -mb-px">
           <button
             type="button"
             onClick={() => setActiveMainTab('tarefas')}
-            className={`pb-3.5 text-sm font-semibold flex items-center gap-2.5 transition-all cursor-pointer border-b-2 ${
+            className={`pb-3 text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer border-b-2 ${
               activeMainTab === 'tarefas'
                 ? 'border-primary text-primary font-bold'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -239,7 +239,7 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
             <ListChecks className="h-4 w-4" />
             Minhas tarefas
             {pending > 0 && (
-              <span className="min-w-5 h-5 px-1.5 rounded-full bg-primary/10 text-primary text-[11px] font-bold inline-flex items-center justify-center">
+              <span className="min-w-5 h-5 px-1.5 rounded-full bg-primary/15 text-primary text-[11px] font-bold inline-flex items-center justify-center">
                 {pending}
               </span>
             )}
@@ -248,7 +248,7 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
           <button
             type="button"
             onClick={() => setActiveMainTab('notificacoes')}
-            className={`pb-3.5 text-sm font-semibold flex items-center gap-2.5 transition-all cursor-pointer border-b-2 ${
+            className={`pb-3 text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer border-b-2 ${
               activeMainTab === 'notificacoes'
                 ? 'border-primary text-primary font-bold'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -257,7 +257,7 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
             <Bell className="h-4 w-4" />
             Notificações
             {reminders.length > 0 && (
-              <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold inline-flex items-center justify-center shadow-xs">
+              <span className="min-w-5 h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-bold inline-flex items-center justify-center shadow-xs">
                 {reminders.length}
               </span>
             )}
@@ -273,7 +273,7 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                 value={selectedCycle}
                 onChange={e => setSelectedCycle(e.target.value)}
                 aria-label="Selecionar ciclo"
-                className="h-9 w-[190px] sm:w-[215px] rounded-lg border border-border/70 bg-card px-3 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 cursor-pointer appearance-none pr-8 shadow-xs"
+                className="h-9 w-[190px] sm:w-[215px] rounded-xl border border-border/70 bg-card px-3 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer appearance-none pr-8 shadow-xs hover:border-primary/40 transition-colors"
               >
                 {CYCLES.map(c => (
                   <option key={c.id} value={c.id}>
@@ -292,7 +292,7 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                   setOpenFilterMenu(!openFilterMenu)
                   setOpenSortMenu(false)
                 }}
-                className={`btn btn-sm btn-outline gap-1.5 text-xs font-semibold rounded-lg border-border/70 shadow-xs ${
+                className={`h-9 px-3.5 rounded-xl border border-border/70 bg-card text-xs font-semibold text-foreground shadow-xs hover:bg-muted/50 hover:border-primary/40 transition-all flex items-center gap-1.5 cursor-pointer ${
                   filterClient !== 'all' ? 'border-primary text-primary bg-primary/5' : ''
                 }`}
               >
@@ -360,7 +360,7 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                   setOpenSortMenu(!openSortMenu)
                   setOpenFilterMenu(false)
                 }}
-                className="btn btn-sm btn-outline gap-1.5 text-xs font-semibold rounded-lg border-border/70 shadow-xs"
+                className="h-9 px-3.5 rounded-xl border border-border/70 bg-card text-xs font-semibold text-foreground shadow-xs hover:bg-muted/50 hover:border-primary/40 transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <ArrowUpDown className="h-3.5 w-3.5" />
                 Classificar
@@ -399,14 +399,15 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
 
       {activeMainTab === 'tarefas' ? (
         <>
-          {/* 3. Cards de Resumo (3 Colunas) */}
+          {/* 3. Cards de Resumo (3 Colunas) com proporção harmoniosa */}
           <HomeSummaryCards total={total} completed={completed} pending={pending} />
 
           {/* 4. Card Principal com Controle Segmentado de Macros e Lista */}
           <div className="rounded-2xl border border-border/70 bg-card shadow-soft overflow-hidden">
-            {/* Barra de Macros Segmentadas + Busca */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-3.5 sm:px-6 sm:py-4 border-b border-border/60 bg-muted/30">
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+            {/* Barra de Macros Segmentadas + Busca Integrada */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-3.5 sm:px-6 sm:py-4 border-b border-border/60 bg-muted/20">
+              {/* Segmented Control Pill Track */}
+              <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-muted/70 border border-border/50 overflow-x-auto max-w-full scrollbar-none">
                 {[
                   { id: 'hoje', label: 'Para hoje', count: macroCategorized.hoje.length, alert: false },
                   { id: 'atrasadas', label: 'Atrasadas', count: macroCategorized.atrasadas.length, alert: true },
@@ -420,20 +421,20 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
                       key={m.id}
                       type="button"
                       onClick={() => setActiveMacro(m.id as MacroType)}
-                      className={`h-8.5 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
+                      className={`h-8 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer ${
                         active
-                          ? 'bg-card text-foreground font-bold shadow-xs border border-border/70'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                          ? 'bg-card text-foreground font-bold shadow-xs border border-border/60'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-card/40'
                       }`}
                     >
                       {m.label}
                       {m.count > 0 && (
                         <span
-                          className={`min-w-4 h-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${
+                          className={`min-w-4.5 h-4.5 px-1.5 rounded-full text-[10px] font-bold flex items-center justify-center ${
                             m.alert
-                              ? 'bg-red-500 text-white'
+                              ? 'bg-rose-500 text-white shadow-2xs'
                               : active
-                              ? 'bg-primary/10 text-primary'
+                              ? 'bg-primary/20 text-primary'
                               : 'bg-muted text-muted-foreground'
                           }`}
                         >
@@ -446,24 +447,24 @@ export function HomeTasksView({ managerId }: { managerId: string | null }) {
               </div>
 
               {/* Campo de Busca Rápida na Lista */}
-              <div className="relative w-full sm:w-60 shrink-0">
+              <div className="relative w-full sm:w-64 shrink-0">
                 <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Buscar nesta lista..."
-                  className="h-8.5 w-full rounded-lg border border-border/70 bg-card pl-8.5 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 font-medium shadow-xs"
+                  className="h-9 w-full rounded-xl border border-border/70 bg-card pl-9 pr-3.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 font-medium shadow-xs transition-all"
                 />
               </div>
             </div>
 
             {/* 5. Lista de Tarefas ou Estado Vazio */}
-            <div className="p-5 sm:p-6 md:p-7 min-h-[280px]">
+            <div className="p-5 sm:p-6 md:p-8 min-h-[300px]">
               {currentList.length === 0 ? (
                 <HomeEmptyState macro={activeMacro} />
               ) : (
-                <div className="space-y-3.5">
+                <div className="space-y-3">
                   {currentList.map(task => (
                     <HomeTaskItem key={task.key} task={task} onSaved={loadTasks} />
                   ))}
