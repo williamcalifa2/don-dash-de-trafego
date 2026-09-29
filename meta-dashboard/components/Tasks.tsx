@@ -147,7 +147,7 @@ function ReminderRow({ r, onDone }: { r: Reminder; onDone: () => void }) {
     setBusy(false); onDone()
   }
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 0', flexWrap: 'wrap' }}>
       <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--red-soft)', color: 'var(--red)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><AlarmClock size={18} strokeWidth={1.75} /></span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 14 }}>Otimização Semanal - {r.clientName}</div>
@@ -191,7 +191,11 @@ export function TaskPanel({ managerId, onCount }: { managerId: string | null; on
     const ans = [...(data?.answered ?? [])].sort((a, b) => b.at.localeCompare(a.at))
     return { pend, ans, todos: [...pend, ...ans] }
   }, [data])
+  const hasReminders = (filter === 'pendentes' || filter === 'todos') && reminders.length > 0
+  const pendCount = all.pend.length + reminders.length
+  const allCount = all.todos.length + reminders.length
   const shown = filter === 'pendentes' ? all.pend : filter === 'respondidas' ? all.ans : all.todos
+  const isEmpty = shown.length === 0 && !hasReminders
 
   if (failed) return <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>Não foi possível carregar as otimizações agora.</div>
   if (!data) return <PulseLoader size={44} />
@@ -218,19 +222,26 @@ export function TaskPanel({ managerId, onCount }: { managerId: string | null; on
         <StatTile icon={<Clock size={15} strokeWidth={1.75} />} label="Pra justificar" value={data.counts.pending} color={data.counts.pending ? 'var(--amber)' : undefined} />
       </div>
 
-      {reminders.length > 0 && (
-        <div className="card" style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', borderColor: 'var(--red)' }}>
-          {reminders.map((r, i) => <div key={r.slug} style={{ borderTop: i ? '1px solid var(--border-soft)' : 'none' }}><ReminderRow r={r} onDone={loadReminders} /></div>)}
-        </div>
-      )}
-
       <div className="card" style={{ padding: 6, display: 'inline-flex', gap: 4, alignItems: 'center', flexWrap: 'wrap', background: 'var(--bg-card2)' }}>
-        <SubTabs value={filter} onChange={setFilter} tabs={[{ key: 'pendentes', label: `Pra justificar (${all.pend.length})` }, { key: 'respondidas', label: `Justificadas (${all.ans.length})` }, { key: 'todos', label: `Todos (${all.todos.length})` }]} />
+        <SubTabs value={filter} onChange={setFilter} tabs={[{ key: 'pendentes', label: `Pra justificar (${pendCount})` }, { key: 'respondidas', label: `Justificadas (${all.ans.length})` }, { key: 'todos', label: `Todos (${allTotal})` }]} />
       </div>
 
-      {shown.length === 0
-        ? <div className="card" style={{ padding: 28, textAlign: 'center', color: 'var(--text-2)', fontSize: 14 }}>{total === 0 ? 'Nenhuma alteração registrada ainda. Elas aparecem aqui quando alguém mexer nas contas.' : 'Nada por aqui neste filtro.'}</div>
-        : <div className="card" style={{ padding: '0 20px', display: 'flex', flexDirection: 'column' }}>{shown.map((t, i) => <div key={t.key} style={{ borderTop: i ? '1px solid var(--border-soft)' : 'none' }}><TaskItem t={t} onSaved={load} showClient /></div>)}</div>}
+      {isEmpty
+        ? <div className="card" style={{ padding: 28, textAlign: 'center', color: 'var(--text-2)', fontSize: 14 }}>{total === 0 && reminders.length === 0 ? 'Nenhuma alteração registrada ainda. Elas aparecem aqui quando alguém mexer nas contas.' : 'Nada por aqui neste filtro.'}</div>
+        : (
+          <div className="card" style={{ padding: '0 20px', display: 'flex', flexDirection: 'column' }}>
+            {hasReminders && reminders.map((r, i) => (
+              <div key={r.slug} style={{ borderTop: i ? '1px solid var(--border-soft)' : 'none' }}>
+                <ReminderRow r={r} onDone={loadReminders} />
+              </div>
+            ))}
+            {shown.map((t, i) => (
+              <div key={t.key} style={{ borderTop: (i > 0 || hasReminders) ? '1px solid var(--border-soft)' : 'none' }}>
+                <TaskItem t={t} onSaved={load} showClient />
+              </div>
+            ))}
+          </div>
+        )}
     </div>
   )
 }
