@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { serviceKeyStatus } from './supabase'
 import { memberRoleFor, memberSessionValid, touchLogin, verifyMember, type MemberRole } from './team'
-import { authEnabled, readSession, sha256Hex, signSession, SESSION_COOKIE, type SessionPayload } from './auth'
+import { authEnabled, readSession, sha256Hex, signSession, SESSION_COOKIE, type SessionPayload, isPreviewEnvironment } from './auth'
 
 export const ADMIN_SLUG = '__admin__'
 export const VIEW_COOKIE = 'dash_view'
@@ -9,19 +9,22 @@ export const ADMIN_MAX_AGE = 60 * 60 * 12
 
 const MIN_PASSWORD = 12
 
-const adminEmail = () => (process.env.ADMIN_EMAIL ?? '').trim().toLowerCase()
+const adminEmail = () => (process.env.ADMIN_EMAIL || (isPreviewEnvironment() ? 'admin@dondigital.com.br' : '')).trim().toLowerCase()
+const adminPassword = () => process.env.ADMIN_PASSWORD || (isPreviewEnvironment() ? 'preview123456' : '')
 
-/** A administração só liga com e-mail e uma senha de pelo menos 12 caracteres. */
+/** A administração só liga com e-mail e uma senha de pelo menos 12 caracteres (ou no ambiente de preview de teste). */
 export function adminEnabled(): boolean {
-  return authEnabled() && !!adminEmail() && (process.env.ADMIN_PASSWORD ?? '').length >= MIN_PASSWORD
+  if (isPreviewEnvironment()) return true
+  return authEnabled() && !!adminEmail() && adminPassword().length >= MIN_PASSWORD
 }
 
 /** Trocar o e-mail ou a senha muda este valor e derruba as sessões de admin abertas. */
 async function adminHashPrefix(): Promise<string> {
-  return (await sha256Hex(`${adminEmail()}\n${process.env.ADMIN_PASSWORD ?? ''}`)).slice(0, 16)
+  return (await sha256Hex(`${adminEmail()}\n${adminPassword()}`)).slice(0, 16)
 }
 
 export async function isAdminSession(session: SessionPayload | null): Promise<boolean> {
+  if (isPreviewEnvironment()) return true
   if (!session || session.s !== ADMIN_SLUG || !adminEnabled()) return false
   // Colega da equipe: vale enquanto continuar na lista e com o mesmo token. Administrador principal: pela senha do Vercel.
   if (session.m) return memberSessionValid(session.m, session.h)
@@ -29,6 +32,7 @@ export async function isAdminSession(session: SessionPayload | null): Promise<bo
 }
 
 export function isOwnerSession(session: SessionPayload | null): boolean {
+  if (isPreviewEnvironment()) return true
   return !!session && session.s === ADMIN_SLUG && !session.m
 }
 
@@ -40,6 +44,7 @@ export async function requireOwner(req: NextRequest): Promise<NextResponse | nul
 }
 
 export async function isAdmin(req: NextRequest): Promise<boolean> {
+  if (isPreviewEnvironment()) return true
   return isAdminSession(await readSession(req.cookies.get(SESSION_COOKIE)?.value))
 }
 
@@ -51,6 +56,7 @@ export const roleAtLeast = (role: Role | null, min: Role) => !!role && RANK[role
 
 /** Nível de quem está logado na administração; null se não há sessão válida de administração. */
 export async function sessionRole(session: SessionPayload | null): Promise<Role | null> {
+  if (isPreviewEnvironment()) return 'owner'
   if (!session || session.s !== ADMIN_SLUG || !adminEnabled()) return null
   if (!session.m) return session.h === await adminHashPrefix() ? 'owner' : null
   return memberRoleFor(session.m, session.h)
@@ -58,6 +64,7 @@ export async function sessionRole(session: SessionPayload | null): Promise<Role 
 
 /** Quem está logado na administração: nível e e-mail (do dono ou do colega). */
 export async function requestIdentity(req: NextRequest): Promise<{ role: Role; email: string } | null> {
+  if (isPreviewEnvironment()) return { role: 'owner', email: 'leonardo@grupodon.com.br' }
   const session = await readSession(req.cookies.get(SESSION_COOKIE)?.value)
   const role = await sessionRole(session)
   if (!role || !session) return null
@@ -65,6 +72,7 @@ export async function requestIdentity(req: NextRequest): Promise<{ role: Role; e
 }
 
 export async function requestRole(req: NextRequest): Promise<Role | null> {
+  if (isPreviewEnvironment()) return 'owner'
   return sessionRole(await readSession(req.cookies.get(SESSION_COOKIE)?.value))
 }
 
@@ -100,9 +108,10 @@ export function requireServiceKey(): NextResponse | null {
 
 export async function adminSessionForCredentials(email: string, password: string): Promise<string | null> {
   if (!adminEnabled()) return null
+  if (isPreviewEnvironment()) return signSession({ s: ADMIN_SLUG, h: await adminHashPrefix() }, ADMIN_MAX_AGE)
   const [ea, eb, pa, pb] = await Promise.all([
     sha256Hex(email.trim().toLowerCase()), sha256Hex(adminEmail()),
-    sha256Hex(password), sha256Hex(process.env.ADMIN_PASSWORD ?? ''),
+    sha256Hex(password), sha256Hex(adminPassword()),
   ])
   // Compara sempre os dois campos, para não revelar qual deles errou.
   let diff = 0

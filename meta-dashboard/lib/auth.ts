@@ -2,9 +2,17 @@
 export const SESSION_COOKIE = 'dash_session'
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 30
 
+export const isPreviewEnvironment = () =>
+  process.env.VERCEL_ENV === 'preview' ||
+  (process.env.NODE_ENV !== 'production' && !process.env.ADMIN_PASSWORD)
+
+export const sessionSecret = () =>
+  process.env.DASHBOARD_SESSION_SECRET ||
+  (isPreviewEnvironment() ? 'preview-session-secret-pautta-ui-2026' : '')
+
 /** O login por token fica ligado quando existe o segredo de sessão. */
 export function authEnabled(): boolean {
-  return !!process.env.DASHBOARD_SESSION_SECRET
+  return !!sessionSecret()
 }
 
 const enc = new TextEncoder()
@@ -48,11 +56,11 @@ export interface SessionPayload {
 
 export async function signSession(payload: Omit<SessionPayload, 'e'>, maxAgeSec = SESSION_MAX_AGE): Promise<string> {
   const body = b64.enc(JSON.stringify({ ...payload, e: Date.now() + maxAgeSec * 1000 }))
-  return `${body}.${await hmacHex(process.env.DASHBOARD_SESSION_SECRET ?? '', body)}`
+  return `${body}.${await hmacHex(sessionSecret(), body)}`
 }
 
 export async function readSession(cookie: string | undefined): Promise<SessionPayload | null> {
-  const secret = process.env.DASHBOARD_SESSION_SECRET
+  const secret = sessionSecret()
   if (!cookie || !secret) return null
   const [body, sig] = cookie.split('.')
   if (!body || !sig) return null

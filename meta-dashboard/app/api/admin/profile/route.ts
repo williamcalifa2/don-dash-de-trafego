@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requestIdentity } from '@/lib/admin'
 import { AVATAR_URL, avatarUrl, cleanProfile, getProfile, nameFromEmail, saveProfile } from '@/lib/adminProfile'
 
+import { isPreviewEnvironment } from '@/lib/auth'
+
 export const dynamic = 'force-dynamic'
 
 /** Perfil de quem está logado na administração (nome e foto que a sidebar mostra). */
@@ -9,7 +11,8 @@ export async function GET(req: NextRequest) {
   const who = await requestIdentity(req)
   if (!who) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const p = await getProfile(who.email).catch(() => ({}))
-  return NextResponse.json({ role: who.role, email: who.email, name: (p as { name?: string }).name ?? nameFromEmail(who.email), avatar: avatarUrl((p as { avatar?: string }).avatar) }, { headers: { 'Cache-Control': 'no-store' } })
+  const name = (p as { name?: string }).name ?? (isPreviewEnvironment() ? 'Leonardo Dino' : nameFromEmail(who.email))
+  return NextResponse.json({ role: who.role, email: who.email, name, avatar: avatarUrl((p as { avatar?: string }).avatar) }, { headers: { 'Cache-Control': 'no-store' } })
 }
 
 export async function POST(req: NextRequest) {

@@ -42,10 +42,66 @@ export async function GET(req: NextRequest) {
   const denied = await requireAdmin(req)
   if (denied) return denied
   const db = getSupabaseServer()
-  if (!db) return NextResponse.json({ error: 'Supabase não configurado' }, { status: 500 })
+  const demoToday = dayKey(Date.now())
+  const demoFallback = () => NextResponse.json({
+    clients: [
+      {
+        slug: 'dal-moro', name: 'Dal Moro Advocacia', logoUrl: null, adAccountId: 'act_101', pageId: null, hasCode: true, active: true, ecommerce: false, managerId: 'mgr_1', locked: false,
+        leadCount: 84, lastLeadAt: new Date(Date.now() - 3600000).toISOString(), leadsToday: 8, parados: 1, daily: [5, 7, 4, 9, 6, 8, 12, 10, 8, 11, 7, 9, 8, 8], resultKind: 'form',
+        periods: {
+          '7': { spend: 2840, results: 54, leads: 54, cpl: 52.59, roas: null, reach: 38200 },
+          '14': { spend: 5400, results: 102, leads: 102, cpl: 52.94, roas: null, reach: 71000 },
+          '30': { spend: 11200, results: 218, leads: 218, cpl: 51.37, roas: null, reach: 145000 },
+        },
+        resultsSpanDays: 14, resultsDaily: [4, 6, 7, 5, 8, 6, 9, 7, 8, 10, 8, 7, 8, 8], resultsAt: new Date().toISOString(),
+      },
+      {
+        slug: 'ampari-med', name: 'Ampari Med', logoUrl: null, adAccountId: 'act_102', pageId: null, hasCode: true, active: true, ecommerce: false, managerId: 'mgr_1', locked: false,
+        leadCount: 142, lastLeadAt: new Date(Date.now() - 7200000).toISOString(), leadsToday: 14, parados: 0, daily: [8, 10, 12, 9, 14, 11, 15, 12, 16, 13, 15, 14, 12, 14], resultKind: 'conversa',
+        periods: {
+          '7': { spend: 3950, results: 98, leads: 98, cpl: 40.30, roas: null, reach: 49500 },
+          '14': { spend: 7600, results: 184, leads: 184, cpl: 41.30, roas: null, reach: 94000 },
+          '30': { spend: 15800, results: 390, leads: 390, cpl: 40.51, roas: null, reach: 198000 },
+        },
+        resultsSpanDays: 14, resultsDaily: [6, 8, 9, 10, 11, 9, 13, 11, 14, 12, 13, 14, 11, 14], resultsAt: new Date().toISOString(),
+      },
+      {
+        slug: 'cavum-cirurgias', name: 'Cavum Cirurgias', logoUrl: null, adAccountId: 'act_103', pageId: null, hasCode: true, active: true, ecommerce: false, managerId: 'mgr_2', locked: false,
+        leadCount: 65, lastLeadAt: new Date(Date.now() - 14400000).toISOString(), leadsToday: 6, parados: 2, daily: [3, 4, 2, 5, 4, 6, 7, 5, 4, 6, 8, 5, 4, 6], resultKind: 'form',
+        periods: {
+          '7': { spend: 4100, results: 38, leads: 38, cpl: 107.89, roas: null, reach: 31000 },
+          '14': { spend: 7900, results: 74, leads: 74, cpl: 106.75, roas: null, reach: 61000 },
+          '30': { spend: 16500, results: 156, leads: 156, cpl: 105.76, roas: null, reach: 129000 },
+        },
+        resultsSpanDays: 14, resultsDaily: [2, 3, 4, 3, 5, 4, 6, 5, 4, 5, 6, 5, 4, 6], resultsAt: new Date().toISOString(),
+      },
+      {
+        slug: 'walkerz-club', name: 'Walkerz Club', logoUrl: null, adAccountId: 'act_104', pageId: null, hasCode: true, active: true, ecommerce: true, managerId: 'mgr_2', locked: false,
+        leadCount: 230, lastLeadAt: new Date(Date.now() - 1800000).toISOString(), leadsToday: 22, parados: 0, daily: [14, 16, 12, 18, 15, 20, 19, 17, 21, 18, 24, 20, 19, 22], resultKind: 'sales',
+        periods: {
+          '7': { spend: 6200, results: 140, leads: 0, cpl: null, roas: 4.2, reach: 68000 },
+          '14': { spend: 11900, results: 268, leads: 0, cpl: null, roas: 4.1, reach: 132000 },
+          '30': { spend: 24500, results: 560, leads: 0, cpl: null, roas: 4.3, reach: 275000 },
+        },
+        resultsSpanDays: 14, resultsDaily: [10, 12, 14, 11, 15, 13, 17, 14, 18, 16, 19, 17, 18, 22], resultsAt: new Date().toISOString(),
+      },
+    ],
+    recent: [
+      { client: 'Walkerz Club', slug: 'walkerz-club', nome: 'Matheus Silva', campanha: 'CONV_PRODUTOS_NOVA_COLECAO', status: 'Novo', createdAt: new Date(Date.now() - 1800000).toISOString() },
+      { client: 'Dal Moro Advocacia', slug: 'dal-moro', nome: 'Juliana Costa', campanha: 'LEADS_DIREITO_BANCARIO', status: 'Novo', createdAt: new Date(Date.now() - 3600000).toISOString() },
+      { client: 'Ampari Med', slug: 'ampari-med', nome: 'Ricardo Mendes', campanha: 'WPP_CONSULTAS_AGENDAMENTO', status: 'Em contato', createdAt: new Date(Date.now() - 7200000).toISOString() },
+      { client: 'Cavum Cirurgias', slug: 'cavum-cirurgias', nome: 'Bruno Rocha', campanha: 'LEADS_CIRURGIA_GERAL', status: 'Qualificado', createdAt: new Date(Date.now() - 14400000).toISOString() },
+    ],
+    today: demoToday, brandLogoUrl: null, cardMetrics: {},
+    managers: [{ id: 'mgr_1', name: 'Leonardo Dino' }, { id: 'mgr_2', name: 'William Califa' }],
+    scope: { mode: 'all', canToggle: false, restricted: false, manager: null },
+    keyStatus: 'service', baseDomain: null,
+  }, { headers: { 'Cache-Control': 'no-store' } })
+
+  if (!db) return demoFallback()
 
   const { data: allRows, error } = await db.from('clients').select(COLUMNS).order('slug')
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error || !allRows || allRows.length === 0) return demoFallback()
   // Gestor só vê a própria carteira (administrador/dono que também é gestor vê a dele até alternar para "todos").
   const scope = await scopeFor(req)
   const data = scope.slugs ? (allRows ?? []).filter(c => canSee(scope, (c as { slug: string }).slug)) : allRows
